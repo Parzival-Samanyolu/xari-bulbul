@@ -36,7 +36,22 @@ nsis:
   allowToChangeInstallationDirectory: true
 linux:
   category: Development
-  target: [AppImage, deb]
+  # pacman = Arch Linux / Manjaro / EndeavourOS (install with `sudo pacman -U file.pacman`)
+  target: [AppImage, deb, pacman]
   maintainer: Xarı Bülbül contributors
+  # Used for the .desktop file and the package name on Linux (must be lowercase ASCII).
+  executableName: xari-bulbul
+  synopsis: AI coding agent for your desktop
+  description: Xarı Bülbül is a desktop AI coding agent that works with OpenRouter, Ollama and any OpenAI-compatible provider.
+  desktop:
+    entry:
+      Name: Xarı Bülbül
+      StartupWMClass: Xari Bulbul
+# Package names may not contain spaces or capitals, so they don't follow productName.
+deb:
+  packageName: xari-bulbul
+pacman:
+  packageName: xari-bulbul
+  depends: [gtk3, nss, alsa-lib, libxss, libxtst, xdg-utils, at-spi2-core, libsecret]
 # Publishing (GitHub Releases + auto-update feed) is configured by the release workflow,
 # where GitHub provides the repository. Local builds (`pnpm dist`) never publish.

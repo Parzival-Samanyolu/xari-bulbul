@@ -24,6 +24,10 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Linux packaging tools
+        if: runner.os == 'Linux'
+        # bsdtar builds the Arch Linux (.pacman) package.
+        run: sudo apt-get update && sudo apt-get install -y libarchive-tools
       - run: pnpm test
       - name: Build and publish
         working-directory: apps/desktop

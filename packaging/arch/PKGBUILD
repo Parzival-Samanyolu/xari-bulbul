@@ -1,0 +1,27 @@
+# Maintainer: Xarı Bülbül contributors
+# AUR-style package that installs the prebuilt release. Build and install with:
+#   makepkg -si
+# Or install the release file directly: sudo pacman -U XariBulbul-<version>-linux-x64.pacman
+pkgname=xari-bulbul-bin
+_pkgname=xari-bulbul
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Desktop AI coding agent for OpenRouter, Ollama and any OpenAI-compatible provider'
+arch=('x86_64')
+url='https://github.com/Parzival-Samanyolu/xari-bulbul'
+license=('MIT')
+depends=('gtk3' 'nss' 'alsa-lib' 'libxss' 'libxtst' 'xdg-utils' 'at-spi2-core' 'libsecret')
+provides=("$_pkgname")
+conflicts=("$_pkgname")
+options=('!strip' '!debug')
+source=("XariBulbul-$pkgver-linux-x64.pacman::$url/releases/download/v$pkgver/XariBulbul-$pkgver-linux-x64.pacman")
+noextract=("XariBulbul-$pkgver-linux-x64.pacman")
+sha256sums=('SKIP')
+
+package() {
+  bsdtar -xf "$srcdir/XariBulbul-$pkgver-linux-x64.pacman" -C "$pkgdir" --exclude '.PKGINFO' --exclude '.MTREE' --exclude '.INSTALL' --exclude '.BUILDINFO'
+  install -dm755 "$pkgdir/usr/bin"
+  ln -s "/opt/Xari Bulbul/xari-bulbul" "$pkgdir/usr/bin/$_pkgname"
+  # Electron's sandbox helper must be setuid on kernels without unprivileged user namespaces.
+  chmod 4755 "$pkgdir/opt/Xari Bulbul/chrome-sandbox"
+}

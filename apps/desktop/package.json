@@ -1,10 +1,16 @@
 {
   "name": "@harness/desktop",
   "productName": "Xari Bulbul",
+  "desktopName": "xari-bulbul.desktop",
   "version": "0.1.0",
   "description": "Xarı Bülbül — desktop AI coding agent",
   "author": "Xarı Bülbül contributors",
   "license": "MIT",
+  "homepage": "https://github.com/Parzival-Samanyolu/xari-bulbul",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Parzival-Samanyolu/xari-bulbul.git"
+  },
   "private": true,
   "main": "./out/main/index.js",
   "scripts": {

@@ -23,7 +23,7 @@ export const BUILTIN_PROVIDERS: ProviderConfig[] = [
     name: 'OpenRouter',
     baseUrl: 'https://openrouter.ai/api/v1',
     enabled: true,
-    headers: { 'HTTP-Referer': 'https://github.com/harness-agent/harness', 'X-Title': 'Xari Bulbul' },
+    headers: { 'HTTP-Referer': 'https://github.com/Parzival-Samanyolu/xari-bulbul', 'X-Title': 'Xari Bulbul' },
     requestUsageCost: true,
     requiresKey: true,
   },

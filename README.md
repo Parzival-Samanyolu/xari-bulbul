@@ -41,7 +41,19 @@ Built to be owned and extended. The engine is small, readable TypeScript with no
 - **Extensions:** add your own tools (`.mjs`) and slash commands (`.md`), and add any OpenAI-compatible provider.
 - **Auto-updates** from GitHub Releases.
 
-## Quick start
+## Install
+
+Download the latest installer from [Releases](https://github.com/Parzival-Samanyolu/xari-bulbul/releases/latest):
+
+| System | File |
+|---|---|
+| macOS (Apple silicon and Intel) | `.dmg` |
+| Windows | `.exe` |
+| Arch Linux / Manjaro | `.pacman`: `sudo pacman -U XariBulbul-*-linux-x64.pacman` |
+| Debian / Ubuntu | `.deb` |
+| Other Linux | `.AppImage` |
+
+## Quick start (from source)
 
 Requires Node 22+ and pnpm 10.
 
@@ -136,6 +148,8 @@ Pushing a tag like `v0.1.0` runs `.github/workflows/release.yml`. It builds on m
 - macOS: `.dmg` and `.zip`
 - Windows: `.exe`
 - Linux: `.AppImage`, `.deb` and `.pacman` (Arch Linux)
+
+On Arch Linux, install the `.pacman` file with `sudo pacman -U XariBulbul-<version>-linux-x64.pacman`, or use the `PKGBUILD` in [`packaging/arch`](packaging/arch).
 
 Builds are **unsigned** until you add signing secrets (see the comments in the workflow). Without signing:
 - On macOS, right-click the app and choose **Open** the first time.

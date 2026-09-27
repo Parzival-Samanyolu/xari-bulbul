@@ -4,8 +4,15 @@
   "version": "0.1.0",
   "description": "Cross-platform desktop AI coding agent with any-model support",
   "license": "MIT",
+  "homepage": "https://github.com/Parzival-Samanyolu/xari-bulbul",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Parzival-Samanyolu/xari-bulbul.git"
+  },
   "packageManager": "pnpm@10.22.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "dev": "pnpm --filter @harness/desktop dev",
     "cli": "pnpm --filter @harness/cli start",
