@@ -23,7 +23,7 @@ cd packages/core && npx vitest run -t "delegates to a read-only subagent"
 OPENROUTER_API_KEY=... pnpm cli --model openrouter:openrouter/free --mode ask
 ```
 
-CI (`.github/workflows/ci.yml`) runs typecheck, test and build on macOS/Windows/Linux. Pushing a `v*` tag runs `release.yml`, which publishes to GitHub Releases (the publish provider is passed as CLI flags, not in `electron-builder.yml`).
+CI (`.github/workflows/ci.yml`) runs typecheck, test and build on macOS and Linux (Windows builds are off). Pushing a `v*` tag runs `release.yml`, which publishes to GitHub Releases (the publish provider is passed as CLI flags, not in `electron-builder.yml`).
 
 ## Architecture
 
