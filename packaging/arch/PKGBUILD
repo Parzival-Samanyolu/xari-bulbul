@@ -4,7 +4,7 @@
 # Or install the release file directly: sudo pacman -U XariBulbul-<version>-linux-x64.pacman
 pkgname=xari-bulbul-bin
 _pkgname=xari-bulbul
-pkgver=0.1.0
+pkgver=0.1.1
 pkgrel=1
 pkgdesc='Desktop AI coding agent for OpenRouter, Ollama and any OpenAI-compatible provider'
 arch=('x86_64')
