@@ -126,6 +126,8 @@ export const SettingsSchema = z.object({
       allow: z.array(z.string()).default([]),
       deny: z.array(z.string()).default(['bash(rm -rf /*)']),
       allowOutsideWorkspace: z.boolean().default(false),
+      /** Ask before deleting files or discarding git history, even in auto mode. */
+      confirmDestructive: z.boolean().default(true),
     })
     .prefault({}),
 

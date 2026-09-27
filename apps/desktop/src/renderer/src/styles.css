@@ -524,6 +524,9 @@ kbd {
   background: transparent;
   border-style: dashed;
 }
+.user.summary.review {
+  font-size: 0.92em;
+}
 .user.summary summary {
   cursor: pointer;
   color: var(--muted);
@@ -1725,6 +1728,12 @@ button.sb-item:hover {
   flex-direction: column;
   gap: 10px;
   background: var(--panel);
+}
+.approval.destructive {
+  box-shadow: inset 3px 0 0 var(--danger);
+}
+.approval.destructive .approval-q {
+  color: var(--danger);
 }
 .approval-preview {
   margin: 0;

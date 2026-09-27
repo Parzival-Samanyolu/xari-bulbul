@@ -462,6 +462,9 @@ function PermissionsTab({ app, save }: TabProps) {
         <Row label="Allow edits outside the project folder" hint="When off, writing outside the workspace always asks, even in Full auto">
           <Toggle label="Allow edits outside the project folder" value={p.allowOutsideWorkspace} onChange={(v) => save((s) => ((s.permissions.allowOutsideWorkspace = v), s))} />
         </Row>
+        <Row label="Confirm destructive commands" hint="Asks before rm, git reset --hard, force pushes and similar, even in Full auto. Allow rules you add above still apply.">
+          <Toggle label="Confirm destructive commands" value={p.confirmDestructive} onChange={(v) => save((s) => ((s.permissions.confirmDestructive = v), s))} />
+        </Row>
       </Section>
     </>
   )

@@ -1,7 +1,6 @@
 import { compactionSplit, estimateTokens, summarize } from '../context/compact.js'
 import { buildSystemPrompt } from '../context/system-prompt.js'
 import type { Permissions, PermissionAnswer } from '../permissions/permissions.js'
-import { ruleFor } from '../permissions/permissions.js'
 import type { ProviderRegistry } from '../providers/registry.js'
 import { ProviderError, type ChatRequest } from '../providers/types.js'
 import { newSession, titleFrom, type Session } from '../sessions/store.js'
@@ -75,6 +74,8 @@ export class Agent {
   private abort: AbortController | null = null
   private readFiles = new Set<string>()
   private registry: ProviderRegistry
+  /** Tool calls that failed (not denied, not retried successfully) this turn, for the end-of-turn review. */
+  private failedCalls: string[] = []
 
   constructor(private readonly o: AgentOptions) {
     this.session = o.session
@@ -198,6 +199,8 @@ export class Agent {
     this.push({ role: 'user', content: text, ...(files ? { files } : {}), ...(images ? { images } : {}) })
 
     let reason: TurnEndReason = 'max_steps'
+    this.failedCalls = []
+    let reviewed = false
     try {
       for (let step = 0; step < this.settings.agent.maxStepsPerTurn; step++) {
         const budget = checkBudget(this.o.usage.summary(this.usageId), this.settings.usage)
@@ -214,6 +217,13 @@ export class Agent {
         await this.maybeCompact(abort.signal)
         const toolCalls = await this.step(abort.signal)
         if (!toolCalls.length) {
+          const review = reviewed ? null : this.reviewPrompt()
+          if (review) {
+            // One nudge per turn: finish the rest, or say plainly what was skipped.
+            reviewed = true
+            this.push({ role: 'user', content: review, synthetic: 'review' })
+            continue
+          }
           reason = 'done'
           break
         }
@@ -236,6 +246,11 @@ export class Agent {
           break
         }
       }
+      const open = this.unfinishedTodos()
+      if (reason === 'done' && open.length) {
+        const total = this.session.todos?.length ?? 0
+        this.emit({ type: 'notice', level: 'warn', text: `${open.length} of ${total} checklist items not completed: ${open.map((t) => t.content).join('; ')}` })
+      }
       if (reason === 'max_steps') {
         this.emit({
           type: 'notice',
@@ -255,6 +270,24 @@ export class Agent {
       this.emit({ type: 'turn_end', reason })
     }
     return reason
+  }
+
+  private unfinishedTodos(): TodoItem[] {
+    return (this.session.todos ?? []).filter((t) => t.status !== 'completed')
+  }
+
+  /** What the model should account for before ending the turn, or null if nothing. */
+  private reviewPrompt(): string | null {
+    const open = this.unfinishedTodos()
+    const failed = [...new Set(this.failedCalls)]
+    if (!open.length && !failed.length) return null
+    const parts = ['[Automatic check before you finish]']
+    if (open.length) parts.push(`These checklist items are not completed:\n${open.map((t) => `- ${t.content} (${t.status})`).join('\n')}`)
+    if (failed.length) parts.push(`These tool calls failed:\n${failed.map((f) => `- ${f}`).join('\n')}`)
+    parts.push(
+      'Finish what you still can. For anything you cannot do, say so plainly in your final reply: which step, why, and what you did instead. Do not claim everything is done. Update the checklist to match.',
+    )
+    return parts.join('\n\n')
   }
 
   /** One model request. Appends the assistant message and returns its tool calls. */
@@ -410,7 +443,14 @@ export class Agent {
   private async runTool(call: ToolCall, signal: AbortSignal): Promise<void> {
     // Reset after approval so durations measure execution, not time spent waiting for the user.
     let started = Date.now()
+    let label = ''
     const finish = (result: ToolResult, denied = false) => {
+      // Only failures of real work count (not malformed calls), and a later success of the same call clears them.
+      if (label) {
+        const key = `${call.name} ${label.slice(0, 120)}`
+        if (result.isError && !denied) this.failedCalls.push(key)
+        else if (!result.isError) this.failedCalls = this.failedCalls.filter((f) => f !== key)
+      }
       if (result.display) (this.session.displays ??= {})[call.id] = result.display
       if (denied) (this.session.denied ??= []).push(call.id)
       this.emit({ type: 'tool_end', callId: call.id, name: call.name, result, durationMs: Date.now() - started, denied })
@@ -442,6 +482,7 @@ export class Agent {
       return finish({ content: (e as Error).message, isError: true })
     }
     const subject = tool.subject(input)
+    label = subject
     this.emit({ type: 'tool_start', callId: call.id, name: call.name, subject, input })
 
     const verdict = this.o.permissions.check(tool, subject)
@@ -454,7 +495,7 @@ export class Agent {
         subject,
         input,
         reason: verdict.reason,
-        suggestedRule: ruleFor(tool, subject),
+        suggestedRule: this.o.permissions.suggestRule(tool, subject),
       })
       if (signal.aborted) return finish({ content: 'Interrupted by user.', isError: true }, true)
       if (answer.type === 'deny') {

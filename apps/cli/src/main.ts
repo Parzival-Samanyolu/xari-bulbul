@@ -58,9 +58,12 @@ const agent = new Agent({
   onSave: (s) => store.save(s),
   askPermission: async (req) => {
     stdout.write('\n')
-    const a = (await rl.question(c.yellow(`Allow ${req.tool}: ${req.subject}? (${req.reason}) [y]es / [a]lways / [n]o: `))).trim().toLowerCase()
-    if (a === 'a') return { type: 'allowAlways' }
-    if (a === 'y' || a === '') return { type: 'allow' }
+    // Destructive commands (no suggested rule) need an explicit "y" and can't be allowed always.
+    const oneTime = !req.suggestedRule
+    const choices = oneTime ? '[y]es / [n]o' : '[y]es / [a]lways / [n]o'
+    const a = (await rl.question(c.yellow(`Allow ${req.tool}: ${req.subject}? (${req.reason}) ${choices}: `))).trim().toLowerCase()
+    if (a === 'a' && !oneTime) return { type: 'allowAlways' }
+    if (a === 'y' || (a === '' && !oneTime)) return { type: 'allow' }
     return { type: 'deny', feedback: a.length > 1 ? a : undefined }
   },
   onEvent: (e) => {

@@ -10,7 +10,14 @@ export interface ToolCall {
 
 export type ChatMessage =
   | { role: 'system'; content: string }
-  | { role: 'user'; content: string; files?: FileAttachment[]; images?: ImageAttachment[] }
+  | {
+      role: 'user'
+      content: string
+      files?: FileAttachment[]
+      images?: ImageAttachment[]
+      /** Written by the engine, not the user (e.g. the end-of-turn review). Shown as a note. */
+      synthetic?: 'review'
+    }
   | { role: 'assistant'; content: string; toolCalls?: ToolCall[]; reasoning?: string }
   | { role: 'tool'; toolCallId: string; name: string; content: string }
 

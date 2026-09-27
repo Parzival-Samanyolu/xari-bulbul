@@ -139,6 +139,15 @@ function UserBubble({ message }: { message: Extract<ChatMessage, { role: 'user' 
   const text = message.content
   const summary = text.startsWith('[Summary of the earlier conversation]')
   if (summary) return <div className="user summary"><details><summary>Earlier conversation (summarized)</summary><Markdown text={text} /></details></div>
+  if (message.synthetic === 'review')
+    return (
+      <div className="user summary review">
+        <details>
+          <summary>Checked for unfinished steps before finishing</summary>
+          <Markdown text={text.replace(/^\[Automatic check before you finish\]\s*/, '')} />
+        </details>
+      </div>
+    )
   const files = message.files ?? []
   const images = message.images ?? []
   return (

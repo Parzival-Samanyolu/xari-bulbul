@@ -1,5 +1,6 @@
 import path from 'node:path'
 import type { PermissionMode } from '../types.js'
+import { destructiveReason } from './destructive.js'
 import { isInside, resolvePath, toPosix, type Tool } from '../tools/types.js'
 
 export interface PermissionConfig {
@@ -7,6 +8,8 @@ export interface PermissionConfig {
   allow: string[]
   deny: string[]
   allowOutsideWorkspace: boolean
+  /** Ask before destructive shell commands (rm, git reset --hard, …) in every mode. Default true. */
+  confirmDestructive?: boolean
 }
 
 export type Verdict = { decision: 'allow' } | { decision: 'deny'; reason: string } | { decision: 'ask'; reason: string }
@@ -102,14 +105,32 @@ export class Permissions {
     const outside =
       tool.kind === 'edit' && !this.config.allowOutsideWorkspace && !isInside(this.cwd, resolvePath(this.cwd, subject))
     if (outside) return { decision: 'ask', reason: 'Writes outside the workspace folder.' }
+    // Destructive commands ask even in auto mode; only a rule the user wrote in Settings skips that.
+    const destructive = this.destructive(tool, subject)
+    if (destructive) {
+      if (allow.some((r) => ruleMatches(r, tool, subject, this.cwd))) return { decision: 'allow' }
+      return { decision: 'ask', reason: `${destructive}. This can't be undone.` }
+    }
     if ([...allow, ...this.sessionAllow].some((r) => ruleMatches(r, tool, subject, this.cwd))) return { decision: 'allow' }
     if (mode === 'auto') return { decision: 'allow' }
     if (mode === 'acceptEdits' && tool.kind === 'edit') return { decision: 'allow' }
     return { decision: 'ask', reason: tool.kind === 'exec' ? 'Runs a shell command.' : 'Modifies files.' }
   }
 
+  private destructive(tool: Tool, subject: string): string | null {
+    if (tool.kind !== 'exec' || this.config.confirmDestructive === false) return null
+    return destructiveReason(subject)
+  }
+
+  /** The rule "always allow" would add, or '' when only a one-time allow is offered. */
+  suggestRule(tool: Tool, subject: string): string {
+    return this.destructive(tool, subject) ? '' : ruleFor(tool, subject)
+  }
+
+  /** Grants a session rule for "always allow". Destructive commands are only ever allowed once. */
   remember(tool: Tool, subject: string): string {
     const rule = ruleFor(tool, subject)
+    if (this.destructive(tool, subject)) return rule
     if (!this.sessionAllow.includes(rule)) this.sessionAllow.push(rule)
     return rule
   }

@@ -21,16 +21,18 @@ export function Approval({ request, onAnswer }: Props) {
   }, [])
 
   const deny = () => onAnswer({ type: 'deny', feedback: note.trim() || undefined })
+  // Destructive commands come without a rule to remember: they can only be allowed once.
+  const oneTime = !request.suggestedRule
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && e.shiftKey) {
+    if (e.key === 'Enter' && e.shiftKey && !oneTime) {
       e.preventDefault()
       onAnswer({ type: 'allowAlways' })
     }
   }
 
   return (
-    <div className="approval" role="group" aria-label={`Approve ${request.tool}`} onKeyDown={onKeyDown}>
+    <div className={`approval${oneTime ? ' destructive' : ''}`} role="group" aria-label={`Approve ${request.tool}`} onKeyDown={onKeyDown}>
       <Preview tool={request.tool} input={input} subject={request.subject} />
       <div className="approval-q">
         <span>
@@ -41,9 +43,11 @@ export function Approval({ request, onAnswer }: Props) {
         <button ref={allowRef} className="btn primary" onClick={() => onAnswer({ type: 'allow' })}>
           Allow <kbd>↵</kbd>
         </button>
-        <button className="btn" onClick={() => onAnswer({ type: 'allowAlways' })}>
-          Allow <code>{request.suggestedRule}</code> for this session <kbd>⇧↵</kbd>
-        </button>
+        {!oneTime && (
+          <button className="btn" onClick={() => onAnswer({ type: 'allowAlways' })}>
+            Allow <code>{request.suggestedRule}</code> for this session <kbd>⇧↵</kbd>
+          </button>
+        )}
         <button className="btn danger" onClick={deny}>
           {note.trim() ? 'Deny with note' : 'Deny'} <kbd>Esc</kbd>
         </button>
