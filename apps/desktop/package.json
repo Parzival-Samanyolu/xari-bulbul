@@ -1,0 +1,38 @@
+{
+  "name": "@harness/desktop",
+  "productName": "Xari Bulbul",
+  "version": "0.1.0",
+  "description": "Xarı Bülbül — desktop AI coding agent",
+  "author": "Xarı Bülbül contributors",
+  "license": "MIT",
+  "private": true,
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "typecheck": "tsc -p tsconfig.node.json && tsc -p tsconfig.web.json",
+    "test": "echo \"desktop: typecheck only\"",
+    "dist": "electron-vite build && electron-builder --publish never",
+    "release": "electron-vite build && electron-builder --publish always -c.publish.provider=github"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  },
+  "devDependencies": {
+    "@harness/core": "workspace:*",
+    "@types/node": "^22.19.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^5.2.0",
+    "dompurify": "^3.4.16",
+    "electron": "44.4.5",
+    "electron-builder": "^26.15.3",
+    "electron-vite": "^5.0.0",
+    "marked": "^18.0.14",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.6"
+  }
+}

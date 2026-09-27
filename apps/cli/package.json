@@ -1,0 +1,13 @@
+{
+  "name": "@harness/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/main.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "echo \"no cli tests\""
+  },
+  "dependencies": { "@harness/core": "workspace:*" },
+  "devDependencies": { "@types/node": "^22.19.0", "tsx": "^4.23.15", "typescript": "~5.9.3" }
+}

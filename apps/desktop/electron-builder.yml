@@ -1,0 +1,42 @@
+appId: dev.xaribulbul.app
+# Packaged Electron crashes at launch (SIGTRAP) when the product/bundle name contains
+# non-ASCII letters, so internal names stay ASCII and the real name is the display name.
+productName: Xari Bulbul
+artifactName: XariBulbul-${version}-${os}-${arch}.${ext}
+directories:
+  output: release/${version}
+  buildResources: build
+files:
+  - out/**
+  - package.json
+asarUnpack:
+  - resources/**
+mac:
+  category: public.app-category.developer-tools
+  # Only the display name may be non-ASCII: Electron finds its helper apps via CFBundleName.
+  extendInfo:
+    CFBundleDisplayName: Xarı Bülbül
+  target:
+    - target: dmg
+      arch: [universal]
+    - target: zip
+      arch: [universal]
+  # Ad-hoc signature ("-") until a Developer ID is configured (CSC_LINK / APPLE_ID ...).
+  # A complete ad-hoc signature keeps macOS from reporting the app as damaged.
+  identity: '-'
+  # Hardened runtime is only needed for notarization (Developer ID); with ad-hoc signing it can block launch.
+  hardenedRuntime: false
+win:
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+nsis:
+  shortcutName: Xarı Bülbül
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+linux:
+  category: Development
+  target: [AppImage, deb]
+  maintainer: Xarı Bülbül contributors
+# Publishing (GitHub Releases + auto-update feed) is configured by the release workflow,
+# where GitHub provides the repository. Local builds (`pnpm dist`) never publish.

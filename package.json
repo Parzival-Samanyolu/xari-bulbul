@@ -1,0 +1,17 @@
+{
+  "name": "harness",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Cross-platform desktop AI coding agent with any-model support",
+  "license": "MIT",
+  "packageManager": "pnpm@10.22.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "dev": "pnpm --filter @harness/desktop dev",
+    "cli": "pnpm --filter @harness/cli start",
+    "build": "pnpm --filter @harness/desktop build",
+    "dist": "pnpm --filter @harness/desktop dist",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  }
+}
