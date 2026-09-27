@@ -282,25 +282,59 @@ export class AppController {
 
   // ---------- workspace & sessions ----------
 
+  /** Opens a folder (adding it to the sidebar) and shows its most recent chat. */
   async setWorkspace(dir: string): Promise<AppState> {
     if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) throw new Error(`Not a folder: ${dir}`)
+    const cwd = await this.enterFolder(dir)
+    const latest = this.store.list({ cwd })[0]
+    const session = latest ? this.store.load(latest.id) : null
+    this.activate(session ?? newSession(cwd, this.settings.models.default))
+    return this.state()
+  }
+
+  /**
+   * Makes `dir` the current folder: keeps it in the sidebar and recents and loads its
+   * extensions. Chats in other folders keep running with their own tools.
+   */
+  private async enterFolder(dir: string): Promise<string> {
     // NFC so the same folder isn't treated as two (macOS may return decomposed Unicode).
-    this.workspace = path.resolve(dir).normalize('NFC')
-    const recents = [this.workspace, ...this.settings.app.recentWorkspaces.map((w) => w.normalize('NFC')).filter((w) => w !== this.workspace)]
-      .filter((w, i, all) => all.indexOf(w) === i)
-      .slice(0, 10)
-    this.settings = { ...this.settings, app: { ...this.settings.app, lastWorkspace: this.workspace, recentWorkspaces: recents } }
+    const cwd = path.resolve(dir).normalize('NFC')
+    const changed = cwd !== this.workspace
+    this.workspace = cwd
+    const app = this.settings.app
+    const recents = [cwd, ...app.recentWorkspaces.map((w) => w.normalize('NFC')).filter((w) => w !== cwd)].slice(0, 10)
+    const open = app.openWorkspaces.includes(cwd) ? app.openWorkspaces : [...app.openWorkspaces, cwd]
+    this.settings = { ...this.settings, app: { ...app, lastWorkspace: cwd, recentWorkspaces: recents, openWorkspaces: open } }
+    this.saveSettings()
+    if (changed) await this.reloadExtensions()
+    return cwd
+  }
+
+  /** Removes a folder from the sidebar. Its chats stay on disk, and running ones finish. */
+  async closeWorkspace(dir: string): Promise<AppState> {
+    const cwd = dir.normalize('NFC')
+    const open = this.settings.app.openWorkspaces.filter((w) => w !== cwd)
+    this.settings = { ...this.settings, app: { ...this.settings.app, openWorkspaces: open } }
+    this.saveSettings()
+    if (cwd !== this.workspace) return this.state()
+    if (open.length) return this.setWorkspace(open[0])
+    this.workspace = null
+    this.activeId = null
+    this.settings = { ...this.settings, app: { ...this.settings.app, lastWorkspace: null } }
     this.saveSettings()
     await this.reloadExtensions()
-    const latest = this.store.list({ cwd: this.workspace })[0]
-    const session = latest ? this.store.load(latest.id) : null
-    this.activate(session ?? newSession(this.workspace, this.settings.models.default))
     return this.state()
   }
 
   async restoreWorkspace(): Promise<void> {
-    const last = this.settings.app.lastWorkspace
-    if (last && fs.existsSync(last)) await this.setWorkspace(last).catch(() => {})
+    const app = this.settings.app
+    // Folders that were deleted or unmounted drop out; older settings only knew the last folder.
+    let open = app.openWorkspaces.map((w) => w.normalize('NFC')).filter((w) => fs.existsSync(w))
+    const last = app.lastWorkspace && fs.existsSync(app.lastWorkspace) ? app.lastWorkspace.normalize('NFC') : null
+    if (!open.length && last) open = [last]
+    this.settings = { ...this.settings, app: { ...app, openWorkspaces: open } }
+    const start = last && open.includes(last) ? last : open[0]
+    if (start) await this.setWorkspace(start).catch(() => {})
   }
 
   private activate(session: Session) {
@@ -383,20 +417,22 @@ export class AppController {
     }
   }
 
-  openSession(id: string): AppState {
+  async openSession(id: string): Promise<AppState> {
     if (!this.agents.has(id)) {
       const s = this.store.load(id)
       if (!s) throw new Error('Session not found')
       this.activate(s)
     } else this.activate(this.agents.get(id)!.agent.session)
-    const cwd = this.agent!.session.meta.cwd.normalize('NFC')
-    if (cwd !== this.workspace) this.workspace = cwd
+    // A chat in another folder switches folders (and that folder's extensions).
+    await this.enterFolder(this.agent!.session.meta.cwd)
     return this.state()
   }
 
-  createSession(): AppState {
-    if (!this.workspace) throw new Error('Open a folder first.')
-    this.activate(newSession(this.workspace, this.agent?.model ?? this.settings.models.default))
+  async createSession(cwd?: string): Promise<AppState> {
+    const dir = cwd ?? this.workspace
+    if (!dir) throw new Error('Open a folder first.')
+    const model = this.agent?.model ?? this.settings.models.default
+    this.activate(newSession(await this.enterFolder(dir), model))
     return this.state()
   }
 
@@ -531,6 +567,19 @@ export class AppController {
     return this.state()
   }
 
+  /** Chats for every open folder, from one pass over the store. */
+  private sessionLists(): Pick<AppState, 'sessions' | 'folders'> {
+    const byFolder = new Map<string, AppState['sessions']>()
+    for (const meta of this.store.list()) {
+      const cwd = meta.cwd.normalize('NFC')
+      byFolder.set(cwd, [...(byFolder.get(cwd) ?? []), meta])
+    }
+    return {
+      sessions: this.workspace ? (byFolder.get(this.workspace) ?? []) : [],
+      folders: this.settings.app.openWorkspaces.map((p) => ({ path: p, sessions: byFolder.get(p) ?? [] })),
+    }
+  }
+
   state(): AppState {
     const keys: Record<string, boolean> = {}
     const ready: Record<string, boolean> = {}
@@ -548,7 +597,7 @@ export class AppController {
       providerPresets: PROVIDER_PRESETS,
       workspace: this.workspace,
       session: this.sessionView(),
-      sessions: this.workspace ? this.store.list({ cwd: this.workspace }) : [],
+      ...this.sessionLists(),
       usage: this.usage.summary(this.agent?.session.meta.id),
       mode: this.mode,
       running: this.agent?.running ?? false,

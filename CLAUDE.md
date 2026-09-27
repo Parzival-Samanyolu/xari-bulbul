@@ -62,6 +62,7 @@ Commits must use the GitHub no-reply address (set in the repo's local git config
 - `src/shared/ipc.ts` is the contract: `AppState` (full snapshot), `UiEvent` (streamed), and `HarnessApi` (exposed as `window.harness` by `preload/index.ts`).
 - `src/main/controller.ts` (`AppController`) owns all state.
   - It keeps a `Map<sessionId, Agent>`, so chats keep running while the user views another chat or folder; `activeId` is the chat on screen.
+  - Several folders are open at once (`settings.app.openWorkspaces`, shown as groups in the sidebar via `AppState.folders`). `workspace` is the folder of the chat on screen; `enterFolder()` switches it, keeps it open, and reloads that folder's extensions. Chats in other folders keep their own tools. `AppState.sessions` stays the current folder's chats (⌘1–9 use it).
   - Pending approvals are keyed `${sessionId}:${callId}`, because call ids are only unique within a chat.
   - Agent events are forwarded with `sessionId`.
   - `pushState()` sends a fresh `AppState` at turn start/end, on the first message, and on compaction.

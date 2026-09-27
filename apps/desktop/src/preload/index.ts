@@ -19,7 +19,7 @@ const api: HarnessApi = {
   keys: { set: call('keys.set') as any },
   providers: { test: call('providers.test') as any },
   models: { list: call('models.list') as any },
-  workspace: { pick: call('workspace.pick') as any, set: call('workspace.set') as any },
+  workspace: { pick: call('workspace.pick') as any, set: call('workspace.set') as any, close: call('workspace.close') as any },
   sessions: {
     open: call('sessions.open') as any,
     create: call('sessions.create') as any,

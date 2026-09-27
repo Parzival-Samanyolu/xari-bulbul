@@ -210,6 +210,8 @@ export const SettingsSchema = z.object({
       /** System notification when a chat you're not looking at finishes or needs approval. */
       notifications: z.boolean().default(true),
       lastWorkspace: z.string().nullable().default(null),
+      /** Folders shown in the sidebar, in order. */
+      openWorkspaces: z.array(z.string()).default([]),
       recentWorkspaces: z.array(z.string()).default([]),
     })
     .prefault({}),

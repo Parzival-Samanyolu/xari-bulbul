@@ -21,11 +21,8 @@ function notify(n: BackgroundNotice) {
     if (!win || win.isDestroyed()) createWindow()
     win?.show()
     win?.focus()
-    try {
-      send({ type: 'state', state: controller.openSession(n.sessionId) })
-    } catch {
-      /* chat was deleted */
-    }
+    // The chat may have been deleted meanwhile.
+    controller.openSession(n.sessionId).then((state) => send({ type: 'state', state }), () => {})
   })
   note.show()
 }
@@ -95,8 +92,9 @@ function registerIpc() {
     return c.setWorkspace(r.filePaths[0])
   })
   handle('workspace.set', (p) => c.setWorkspace(p))
+  handle('workspace.close', (p) => c.closeWorkspace(p))
   handle('sessions.open', (id) => c.openSession(id))
-  handle('sessions.create', () => c.createSession())
+  handle('sessions.create', (cwd) => c.createSession(cwd))
   handle('sessions.remove', (id) => c.removeSession(id))
   handle('sessions.removeAll', () => c.removeAllSessions())
   // Fire and forget: progress arrives as events; the promise resolves when the turn ends.

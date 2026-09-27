@@ -456,6 +456,76 @@ kbd {
   color: var(--danger);
 }
 
+.folder + .folder {
+  margin-top: 6px;
+}
+.folder-head {
+  display: flex;
+  align-items: center;
+  border-radius: 6px;
+}
+.folder-toggle {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px;
+  border-radius: 6px;
+  color: var(--muted);
+  font-size: 0.85em;
+  font-weight: 600;
+  text-align: left;
+}
+.folder.current .folder-toggle {
+  color: var(--text);
+}
+.folder-toggle:hover {
+  background: var(--panel-2);
+}
+.folder-toggle .chev {
+  width: 12px;
+  flex-shrink: 0;
+  font-size: 1.1em;
+}
+.folder-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.folder-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--muted);
+}
+.folder-dot.awaiting {
+  background: var(--accent-strong);
+}
+.folder-act {
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  color: var(--muted);
+  opacity: 0;
+}
+.folder-head:hover .folder-act,
+.folder-head:focus-within .folder-act {
+  opacity: 1;
+}
+.folder-act:hover,
+.folder-act:focus-visible {
+  background: var(--border);
+  color: var(--text);
+}
+.folder ul .session-open {
+  padding-left: 22px;
+}
+.folder ul .pad {
+  padding-left: 22px;
+}
 .sidebar-settings {
   display: flex;
   justify-content: space-between;

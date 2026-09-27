@@ -77,9 +77,13 @@ export interface AppState {
   ready: Record<string, boolean>
   keyStorage: 'os' | 'basic'
   providerPresets: { id: string; name: string; baseUrl: string; requiresKey: boolean }[]
+  /** Folder of the chat on screen. */
   workspace: string | null
   session: SessionView | null
+  /** Chats in `workspace`, newest first. */
   sessions: SessionMeta[]
+  /** Every folder open in the sidebar, with its chats. */
+  folders: { path: string; sessions: SessionMeta[] }[]
   usage: UsageSummary
   mode: PermissionMode
   /** Whether the chat shown in the window is working. */
@@ -143,10 +147,13 @@ export interface HarnessApi {
   workspace: {
     pick(): Promise<AppState>
     set(path: string): Promise<AppState>
+    /** Removes a folder from the sidebar; its chats stay on disk. */
+    close(path: string): Promise<AppState>
   }
   sessions: {
     open(id: string): Promise<AppState>
-    create(): Promise<AppState>
+    /** New chat in `cwd`, or in the current folder. */
+    create(cwd?: string): Promise<AppState>
     remove(id: string): Promise<AppState>
     removeAll(): Promise<AppState>
   }

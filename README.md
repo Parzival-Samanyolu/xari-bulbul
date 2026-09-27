@@ -35,7 +35,7 @@ Built to be owned and extended. The engine is small, readable TypeScript with no
   - Models: defaults, per-model overrides, reasoning effort
   - Agent: custom instructions, system prompt override, compaction, timeouts, shell
   - Tools, Usage, Appearance, and settings import/export for your team
-- **Parallel chats:** chats keep working while you switch to another chat or folder. The sidebar shows which chats are working or need approval, and you get a notification when a background chat finishes.
+- **Several folders at once:** the sidebar lists every open folder with its chats. Chats keep working while you look at another chat or folder; the sidebar shows which are working or need approval (a dot on collapsed folders), and you get a notification when a background chat finishes.
 - **Subagents:** the agent can hand wide searches or independent jobs to subagents that start with a fresh context and run in parallel. Only their reports come back to the chat. You can set their model, how many run at once, and whether they may edit.
 - **Automatic context compaction:** long conversations are summarized when the context window fills up. `AGENTS.md` / `HARNESS.md` / `CLAUDE.md` project instructions are loaded automatically.
 - **Extensions:** add your own tools (`.mjs`) and slash commands (`.md`), and add any OpenAI-compatible provider.
