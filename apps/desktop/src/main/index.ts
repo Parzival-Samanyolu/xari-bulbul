@@ -3,6 +3,7 @@ import path from 'node:path'
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme, Notification, shell } from 'electron'
 import { IPC_EVENT, type UiEvent } from '../shared/ipc'
 import { AppController, type BackgroundNotice } from './controller'
+import { loadShellPath } from './shell-path'
 import { initUpdater, checkForUpdates, installUpdate } from './updater'
 
 let win: BrowserWindow | null = null
@@ -117,6 +118,8 @@ function registerIpc() {
     return true
   })
   handle('usage.clear', () => c.clearUsage())
+  handle('mcp.restart', (id) => c.restartMcp(id))
+  handle('mcp.setToken', (id, token) => c.setMcpToken(id, token))
   handle('memory.remove', (scope, fact) => c.removeMemory(scope, fact))
   handle('memory.clear', (scope) => c.clearMemory(scope))
   handle('extensions.reload', () => c.reloadExtensions())
@@ -139,15 +142,27 @@ app.setName('Xarı Bülbül')
 if (process.env.HARNESS_DATA_DIR) app.setPath('userData', path.resolve(process.env.HARNESS_DATA_DIR))
 
 app.whenReady().then(async () => {
+  loadShellPath()
   controller = new AppController(app.getPath('userData'), app.getVersion(), send, notify)
   registerIpc()
   await controller.restoreWorkspace()
+  controller.startMcp()
   createWindow()
   initUpdater(send, controller.getSettings().app.autoUpdate)
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
+})
+
+// Stop MCP server processes before quitting so none are left running.
+let disposed = false
+app.on('before-quit', (e) => {
+  if (disposed || !controller) return
+  e.preventDefault()
+  disposed = true
+  const done = () => app.quit()
+  Promise.race([controller.dispose(), new Promise((r) => setTimeout(r, 2000))]).then(done, done)
 })
 
 app.on('window-all-closed', () => {

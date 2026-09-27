@@ -27,6 +27,9 @@ Built to be owned and extended. The engine is small, readable TypeScript with no
   - a context-window meter
   - a per-model breakdown, CSV export, and per-chat or daily budgets (warn or stop)
 - **Permission modes:** Ask / Auto-edit / Plan (read-only) / Full auto, plus allow and deny rules like `bash(npm test*)` or `edit_file(src/**)`. Writes outside the project folder always ask.
+- **Destructive commands always ask:** `rm`, `git reset --hard`, force pushes and similar need your approval even in Full auto, and are only ever allowed once. Before a turn ends, the agent checks for unfinished checklist steps and failed tool calls and must report anything it skipped.
+- **MCP servers:** connect local (command) or remote (URL) Model Context Protocol servers in **Settings → MCP Servers**. Their tools follow your permission rules as `mcp__<server>__<tool>`.
+- **Memory:** the agent can remember facts across chats (your preferences, how to test a project) with the `remember` / `forget` tools. Memories live in the app's data folder, and you can review or delete them in **Settings → Memory**.
 - **Detailed settings:**
   - Providers & keys: stored with OS-encrypted storage
   - Models: defaults, per-model overrides, reasoning effort
@@ -107,6 +110,8 @@ packages/core/          the engine: no UI, fully tested
   src/sessions/         chat persistence
   src/context/          system prompt, project instructions, compaction
   src/extensions/       user tools and slash commands
+  src/mcp/              MCP client: connects servers, adapts their tools
+  src/memory/           facts saved across chats
   src/settings/         the settings schema (zod) with defaults
 apps/desktop/           Electron app: main process (controller, IPC, keys, updater) + React UI
 apps/cli/               headless dev runner
@@ -130,7 +135,7 @@ pnpm dist         # builds installers for the current OS into apps/desktop/relea
 Pushing a tag like `v0.1.0` runs `.github/workflows/release.yml`. It builds on macOS, Windows and Linux and publishes these files to a GitHub Release, which installed apps auto-update from:
 - macOS: `.dmg` and `.zip`
 - Windows: `.exe`
-- Linux: `.AppImage` and `.deb`
+- Linux: `.AppImage`, `.deb` and `.pacman` (Arch Linux)
 
 Builds are **unsigned** until you add signing secrets (see the comments in the workflow). Without signing:
 - On macOS, right-click the app and choose **Open** the first time.
@@ -139,9 +144,8 @@ Builds are **unsigned** until you add signing secrets (see the comments in the w
 ## Roadmap
 
 - Undo / checkpoints per turn
-- MCP client
+- OAuth sign-in for remote MCP servers
 - Hooks
-- Persistent memory
 - Sandboxed shell
 - Code signing
 - Team settings sync

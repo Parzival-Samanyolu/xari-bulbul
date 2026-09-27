@@ -50,7 +50,7 @@ export interface Tool<I = any> {
   subject(input: I): string
   execute(input: I, ctx: ToolContext): Promise<ToolResult>
   /** Where the tool came from, for the UI. */
-  source?: 'builtin' | 'user' | 'project'
+  source?: 'builtin' | 'user' | 'project' | 'mcp'
 }
 
 /** Helper for built-in tools: zod input → JSON schema + validation. */

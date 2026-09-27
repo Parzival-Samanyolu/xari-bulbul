@@ -51,6 +51,32 @@ export function providerReady(config: ProviderConfig | undefined, hasKey: boolea
   return !!config && config.enabled && (hasKey || !config.requiresKey)
 }
 
+const McpBase = {
+  /** Stable id; also where a bearer token is stored (secret key `mcp:<id>`). */
+  id: z.string().min(1),
+  /** Shown in the UI and used in tool names (`mcp__<name>__<tool>`). */
+  name: z.string().min(1),
+  enabled: z.boolean().default(true),
+}
+
+export const McpServerSchema = z.discriminatedUnion('transport', [
+  z.object({
+    ...McpBase,
+    transport: z.literal('stdio'),
+    command: z.string().min(1),
+    args: z.array(z.string()).default([]),
+    env: z.record(z.string(), z.string()).default({}),
+  }),
+  z.object({
+    ...McpBase,
+    transport: z.literal('http'),
+    url: z.string().url(),
+    /** Non-secret headers. A bearer token is stored with the API keys instead. */
+    headers: z.record(z.string(), z.string()).default({}),
+  }),
+])
+export type McpServerConfig = z.infer<typeof McpServerSchema>
+
 const ModelRefSchema = z.object({ providerId: z.string(), modelId: z.string() })
 
 export const ModelOverrideSchema = z.object({
@@ -146,6 +172,12 @@ export const SettingsSchema = z.object({
       enabled: z.boolean().default(true),
       /** Size limit per scope (project, global). */
       maxChars: z.number().int().min(500).max(50_000).default(6000),
+    })
+    .prefault({}),
+
+  mcp: z
+    .object({
+      servers: z.array(McpServerSchema).default([]),
     })
     .prefault({}),
 

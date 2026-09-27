@@ -2,6 +2,7 @@
 import type {
   AgentEvent,
   ChatMessage,
+  McpServerStatus,
   ModelInfo,
   ModelRef,
   PermissionAnswer,
@@ -17,6 +18,7 @@ import type {
 export type {
   AgentEvent,
   ChatMessage,
+  McpServerStatus,
   ModelInfo,
   ModelRef,
   PermissionAnswer,
@@ -46,7 +48,7 @@ export interface CommandInfo {
 export interface ToolInfo {
   name: string
   description: string
-  source: 'builtin' | 'user' | 'project'
+  source: 'builtin' | 'user' | 'project' | 'mcp'
   readOnly: boolean
   kind: string
 }
@@ -87,6 +89,8 @@ export interface AppState {
   /** Chats waiting for you to approve a tool. */
   awaitingSessions: string[]
   extensions: ExtensionsInfo
+  /** Connection state of each configured MCP server, and which have a stored token. */
+  mcp: { servers: McpServerStatus[]; tokens: Record<string, boolean> }
   /** Saved memories for the open folder and for every folder. */
   memory: MemoryInfo
   paths: { data: string; sessions: string; usage: string }
@@ -163,6 +167,10 @@ export interface HarnessApi {
   usage: {
     exportCsv(): Promise<boolean>
     clear(): Promise<AppState>
+  }
+  mcp: {
+    restart(id: string): Promise<AppState>
+    setToken(id: string, token: string | null): Promise<AppState>
   }
   memory: {
     remove(scope: 'project' | 'global', fact: string): Promise<AppState>

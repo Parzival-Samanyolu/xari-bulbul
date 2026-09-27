@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { AppState, ModelRef, ProviderTestResult, Settings, UpdateStatus } from '../../../shared/ipc'
+import type { AppState, McpServerStatus, ModelRef, ProviderTestResult, Settings, UpdateStatus } from '../../../shared/ipc'
 import { api } from '../lib/api'
 import { cost, modelLabel, tokens } from '../lib/format'
 import { MODES } from './Composer'
@@ -22,6 +22,7 @@ const TABS = [
   { id: 'agent', label: 'Agent' },
   { id: 'permissions', label: 'Permissions' },
   { id: 'tools', label: 'Tools & Extensions' },
+  { id: 'mcp', label: 'MCP Servers' },
   { id: 'memory', label: 'Memory' },
   { id: 'usage', label: 'Usage & Budgets' },
   { id: 'appearance', label: 'Appearance' },
@@ -53,6 +54,7 @@ export function SettingsView({ app, tab, onTab, onState, onError, onClose, updat
         {tab === 'agent' && <AgentTab {...common} />}
         {tab === 'permissions' && <PermissionsTab {...common} />}
         {tab === 'tools' && <ToolsTab {...common} />}
+        {tab === 'mcp' && <McpTab {...common} />}
         {tab === 'memory' && <MemoryTab {...common} />}
         {tab === 'usage' && <UsageTab {...common} />}
         {tab === 'appearance' && <AppearanceTab {...common} />}
@@ -559,6 +561,204 @@ Review the uncommitted changes (git diff) for bugs and risky code. Focus on: $AR
           ))}
         </div>
       </Section>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------- MCP
+
+type McpServer = Settings['mcp']['servers'][number]
+
+/** `npx -y "@scope/server" --flag` → ['npx', '-y', '@scope/server', '--flag'] */
+function splitCommand(line: string): string[] {
+  const out: string[] = []
+  const re = /"((?:\\.|[^"])*)"|'([^']*)'|(\S+)/g
+  for (let m = re.exec(line); m; m = re.exec(line)) out.push(m[1] ?? m[2] ?? m[3])
+  return out
+}
+
+const quote = (a: string) => (/[\s"']/.test(a) ? JSON.stringify(a) : a)
+const pairs = (rec: Record<string, string>, sep: string) => Object.entries(rec).map(([k, v]) => `${k}${sep}${v}`)
+function unpairs(list: string[], sep: string): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const item of list) {
+    const i = item.indexOf(sep)
+    if (i > 0) out[item.slice(0, i).trim()] = item.slice(i + sep.length).trim()
+  }
+  return out
+}
+
+const STATE_TEXT: Record<McpServerStatus['state'], string> = { connecting: 'connecting…', ready: 'connected', error: 'failed', off: 'off' }
+
+function McpTab({ app, save, onState, onError }: TabProps) {
+  const servers = app.settings.mcp.servers
+  const status = new Map(app.mcp.servers.map((s) => [s.id, s]))
+  const [tokens, setTokens] = useState<Record<string, string>>({})
+  const [draft, setDraft] = useState({ name: '', transport: 'stdio' as 'stdio' | 'http', target: '' })
+  const tools = app.extensions.tools.filter((t) => t.source === 'mcp')
+
+  const update = (i: number, fn: (s: McpServer) => McpServer) => save((st) => ((st.mcp.servers[i] = fn(st.mcp.servers[i])), st))
+  const idFor = (name: string) => {
+    const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'server'
+    let id = base
+    for (let n = 2; servers.some((s) => s.id === id); n++) id = `${base}-${n}`
+    return id
+  }
+  const nameTaken = servers.some((s) => s.name.toLowerCase() === draft.name.trim().toLowerCase())
+  const parts = splitCommand(draft.target)
+  const valid = draft.name.trim() && !nameTaken && (draft.transport === 'stdio' ? parts.length > 0 : /^https?:\/\/\S+$/.test(draft.target.trim()))
+  const add = () => {
+    const base = { id: idFor(draft.name), name: draft.name.trim(), enabled: true }
+    const server: McpServer =
+      draft.transport === 'stdio'
+        ? { ...base, transport: 'stdio', command: parts[0], args: parts.slice(1), env: {} }
+        : { ...base, transport: 'http', url: draft.target.trim(), headers: {} }
+    save((st) => ((st.mcp.servers = [...st.mcp.servers, server]), st))
+    setDraft({ name: '', transport: draft.transport, target: '' })
+  }
+
+  return (
+    <>
+      <Section
+        title="MCP servers"
+        description="Connect tools from Model Context Protocol servers. Their tools work in every chat and follow your permission rules; name them in rules as mcp__<server>__<tool>. Tools a server marks read-only run without asking."
+      >
+        {servers.length === 0 && <p className="muted small">No servers yet. Add one below.</p>}
+        {servers.map((srv, i) => {
+          const st = status.get(srv.id)
+          const state = st?.state ?? (srv.enabled ? 'connecting' : 'off')
+          return (
+            <div key={srv.id} className="provider-card">
+              <div className="provider-head">
+                <Toggle label={`Enable ${srv.name}`} value={srv.enabled} onChange={(v) => update(i, (s) => ({ ...s, enabled: v }))} />
+                <b>{srv.name}</b>
+                <span className={`badge ${state === 'ready' ? 'ok' : ''}`} role="status">
+                  {STATE_TEXT[state]}
+                  {state === 'ready' ? ` · ${st?.toolCount ?? 0} ${st?.toolCount === 1 ? 'tool' : 'tools'}` : ''}
+                </span>
+                <span className="muted small mono mcp-target" title={srv.transport === 'stdio' ? [srv.command, ...srv.args].join(' ') : srv.url}>
+                  {srv.transport === 'stdio' ? [srv.command, ...srv.args].map(quote).join(' ') : srv.url}
+                </span>
+                <div className="spacer" />
+                <button className="btn ghost" disabled={!srv.enabled} onClick={() => api.mcp.restart(srv.id).then(onState, onError)}>
+                  Restart
+                </button>
+                <button className="link danger small" onClick={() => confirm(`Remove ${srv.name}?`) && save((st) => ((st.mcp.servers = st.mcp.servers.filter((x) => x.id !== srv.id)), st))}>
+                  Remove
+                </button>
+              </div>
+              {state === 'error' && st?.error && <div className="notice notice-error small">{st.error}</div>}
+              {srv.transport === 'http' && (
+                <Row label="Bearer token" hint="Optional. Sent as Authorization: Bearer …, stored encrypted like API keys" labelFor={`mcp-token-${srv.id}`}>
+                  <div className="key-row">
+                    <input
+                      id={`mcp-token-${srv.id}`}
+                      type="password"
+                      className="mono"
+                      autoComplete="off"
+                      placeholder={app.mcp.tokens[srv.id] ? '•••••••• (saved)' : 'Paste token'}
+                      value={tokens[srv.id] ?? ''}
+                      onChange={(e) => setTokens((t) => ({ ...t, [srv.id]: e.target.value }))}
+                    />
+                    <button
+                      className="btn primary"
+                      disabled={!tokens[srv.id]?.trim()}
+                      onClick={() => api.mcp.setToken(srv.id, tokens[srv.id]).then((s) => (onState(s), setTokens((t) => ({ ...t, [srv.id]: '' }))), onError)}
+                    >
+                      Save
+                    </button>
+                    {app.mcp.tokens[srv.id] && (
+                      <button className="btn ghost" onClick={() => api.mcp.setToken(srv.id, null).then(onState, onError)}>
+                        Remove token
+                      </button>
+                    )}
+                  </div>
+                </Row>
+              )}
+              <details className="advanced">
+                <summary>Edit</summary>
+                {srv.transport === 'stdio' ? (
+                  <>
+                    <Row label="Command" hint="The program and its arguments" labelFor={`mcp-cmd-${srv.id}`}>
+                      <TextField
+                        label="Command"
+                        id={`mcp-cmd-${srv.id}`}
+                        mono
+                        value={[srv.command, ...srv.args].map(quote).join(' ')}
+                        onChange={(v) => {
+                          const p = splitCommand(v)
+                          if (p.length) update(i, (s) => ({ ...s, command: p[0], args: p.slice(1) }) as McpServer)
+                        }}
+                      />
+                    </Row>
+                    <Row label="Environment" hint="KEY=value, added to the server's environment">
+                      <ListField label="Environment" placeholder="API_TOKEN=…" value={pairs(srv.env, '=')} onChange={(v) => update(i, (s) => ({ ...s, env: unpairs(v, '=') }) as McpServer)} />
+                    </Row>
+                  </>
+                ) : (
+                  <>
+                    <Row label="URL" hint="Streamable HTTP endpoint" labelFor={`mcp-url-${srv.id}`}>
+                      <TextField label="URL" id={`mcp-url-${srv.id}`} mono value={srv.url} onChange={(v) => /^https?:\/\//.test(v) && update(i, (s) => ({ ...s, url: v.trim() }) as McpServer)} />
+                    </Row>
+                    <Row label="Headers" hint="Name: value, sent with every request (not for secrets; use the token field)">
+                      <ListField label="Headers" placeholder="X-Workspace: main" value={pairs(srv.headers, ': ')} onChange={(v) => update(i, (s) => ({ ...s, headers: unpairs(v, ':') }) as McpServer)} />
+                    </Row>
+                  </>
+                )}
+              </details>
+            </div>
+          )
+        })}
+      </Section>
+      <Section title="Add a server" description="Local servers run as a command on this computer; remote ones are reached by URL.">
+        <div className="custom-provider">
+          <label>
+            <span className="small muted">Name</span>
+            <input placeholder="github" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+          </label>
+          <label>
+            <span className="small muted">Type</span>
+            <Select
+              label="Server type"
+              value={draft.transport}
+              options={[
+                { value: 'stdio', label: 'Command' },
+                { value: 'http', label: 'URL' },
+              ]}
+              onChange={(v) => setDraft({ ...draft, transport: v })}
+            />
+          </label>
+          <label className="grow">
+            <span className="small muted">{draft.transport === 'stdio' ? 'Command' : 'URL'}</span>
+            <input
+              className="mono"
+              placeholder={draft.transport === 'stdio' ? 'npx -y @modelcontextprotocol/server-filesystem ~/Documents' : 'https://example.com/mcp'}
+              value={draft.target}
+              onChange={(e) => setDraft({ ...draft, target: e.target.value })}
+              onKeyDown={(e) => e.key === 'Enter' && valid && add()}
+            />
+          </label>
+          <button className="btn" disabled={!valid} onClick={add}>
+            Add
+          </button>
+        </div>
+        {nameTaken && <div className="small warn">A server named "{draft.name.trim()}" already exists.</div>}
+      </Section>
+      {tools.length > 0 && (
+        <Section title="Available MCP tools">
+          <div className="tool-list">
+            {tools.map((t) => (
+              <div key={t.name} className="tool-item">
+                <code>{t.name}</code>
+                <span className={`badge ${t.readOnly ? 'ok' : ''}`}>{t.readOnly ? 'read-only' : 'asks'}</span>
+                <span className="muted small tool-desc" title={t.description}>
+                  {t.description.replace(/^\[MCP: [^\]]*\]\s*/, '')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Section>
+      )}
     </>
   )
 }

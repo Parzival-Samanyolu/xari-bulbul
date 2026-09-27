@@ -1820,3 +1820,10 @@ button.sb-item:hover {
   -webkit-line-clamp: unset;
   overflow: visible;
 }
+
+.mcp-target {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

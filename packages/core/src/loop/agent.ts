@@ -106,6 +106,11 @@ export class Agent {
     this.save()
   }
 
+  /** Every tool this agent can offer (before mode and settings filters). */
+  get availableTools(): Tool[] {
+    return this.tools
+  }
+
   updateSettings(settings: Settings, tools?: Tool[]): void {
     this.settings = settings
     if (tools) this.tools = tools

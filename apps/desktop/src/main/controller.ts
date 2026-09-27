@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import {
   Agent,
+  McpManager,
   MemoryStore,
   Permissions,
   ProviderRegistry,
@@ -34,6 +35,9 @@ import { SecretStore } from './secrets'
 
 const MAX_ATTACHMENTS = 10
 
+/** MCP bearer tokens live next to API keys, under their own prefix. */
+const mcpSecretId = (serverId: string) => `mcp:${serverId}`
+
 const BUILTIN_COMMANDS = [
   { name: 'compact', description: 'Summarize older messages to free up context', source: 'builtin' as const },
   { name: 'clear', description: 'Start a new chat', source: 'builtin' as const },
@@ -63,6 +67,8 @@ export class AppController {
   private readonly usage: UsageTracker
   private readonly store: SessionStore
   private readonly memory: MemoryStore
+  private readonly mcp: McpManager
+  private mcpTimer: NodeJS.Timeout | null = null
   private ext: LoadedExtensions = { tools: [], commands: [], errors: [] }
   private tools: Tool[] = builtinTools()
   private workspace: string | null = null
@@ -91,6 +97,19 @@ export class AppController {
     this.usage = new UsageTracker(this.paths.usage)
     this.store = new SessionStore(this.paths.sessions)
     this.memory = new MemoryStore(path.join(dataDir, 'memory'), this.settings.memory.maxChars)
+    this.mcp = new McpManager({
+      clientVersion: version,
+      secret: (id) => this.secrets.get(mcpSecretId(id)),
+      // Servers connect in the background; batch their updates into one tool refresh.
+      onChange: () => {
+        if (this.mcpTimer) return
+        this.mcpTimer = setTimeout(() => {
+          this.mcpTimer = null
+          this.applyTools()
+          this.pushState()
+        }, 50)
+      },
+    })
     this.buildRegistry()
   }
 
@@ -133,6 +152,7 @@ export class AppController {
     if (prev.tools.loadProjectExtensions !== this.settings.tools.loadProjectExtensions || prev.tools.loadUserExtensions !== this.settings.tools.loadUserExtensions) {
       await this.reloadExtensions()
     }
+    if (JSON.stringify(prev.mcp) !== JSON.stringify(this.settings.mcp)) void this.mcp.sync(this.settings.mcp.servers)
     for (const r of this.agents.values()) r.agent.updateSettings(this.settings)
     return this.state()
   }
@@ -196,17 +216,51 @@ export class AppController {
           project: this.settings.tools.loadProjectExtensions,
         })
       : { tools: [], commands: [], errors: [] }
-    const builtins = builtinTools()
-    const names = new Set(builtins.map((t) => t.name))
+    const names = new Set(builtinTools().map((t) => t.name))
     for (const t of this.ext.tools) {
       if (names.has(t.name)) this.ext.errors.push({ file: t.name, error: `Tool "${t.name}" conflicts with a built-in tool and was skipped.` })
     }
-    this.tools = [...builtins, ...this.ext.tools.filter((t) => !names.has(t.name))]
-    // Extensions belong to a folder; chats in other folders keep their own tools.
-    for (const r of this.agents.values()) {
-      if (r.agent.session.meta.cwd.normalize('NFC') === this.workspace) r.agent.updateSettings(this.settings, this.tools)
-    }
+    this.applyTools()
     return this.state()
+  }
+
+  /** Built-in tools, then this folder's extensions, then MCP tools; later duplicates are skipped. */
+  private applyTools() {
+    const tools = builtinTools()
+    const add = (list: Tool[]) => {
+      const names = new Set(tools.map((t) => t.name))
+      tools.push(...list.filter((t) => !names.has(t.name)))
+    }
+    add(this.ext.tools)
+    add(this.mcp.tools())
+    this.tools = tools
+    for (const r of this.agents.values()) {
+      // Extensions belong to a folder; chats in other folders keep theirs but get current MCP tools.
+      if (r.agent.session.meta.cwd.normalize('NFC') === this.workspace) r.agent.updateSettings(this.settings, this.tools)
+      else r.agent.updateSettings(this.settings, [...r.agent.availableTools.filter((t) => t.source !== 'mcp'), ...this.mcp.tools()])
+    }
+  }
+
+  // ---------- MCP ----------
+
+  /** Starts the configured MCP servers in the background. */
+  startMcp() {
+    void this.mcp.sync(this.settings.mcp.servers)
+  }
+
+  async restartMcp(id: string): Promise<AppState> {
+    await this.mcp.restart(id)
+    return this.state()
+  }
+
+  async setMcpToken(id: string, token: string | null): Promise<AppState> {
+    this.secrets.set(mcpSecretId(id), token?.trim() || null)
+    await this.mcp.sync(this.settings.mcp.servers)
+    return this.state()
+  }
+
+  async dispose() {
+    await this.mcp.close()
   }
 
   private extensionsInfo(): ExtensionsInfo {
@@ -502,6 +556,10 @@ export class AppController {
       awaitingSessions: [...new Set([...this.pending.values()].map((p) => p.sessionId))],
       extensions: this.extensionsInfo(),
       memory: this.memoryInfo(),
+      mcp: {
+        servers: this.mcp.status(),
+        tokens: Object.fromEntries(this.settings.mcp.servers.map((s) => [s.id, this.secrets.has(mcpSecretId(s.id))])),
+      },
       paths: this.paths,
     }
   }

@@ -11,5 +11,6 @@ export { MemoryStore, type MemoryAccess, type MemoryScope } from './memory/store
 export { buildSystemPrompt, loadProjectInstructions } from './context/system-prompt.js'
 export { compactionSplit, estimateTokens } from './context/compact.js'
 export * from './extensions/loader.js'
+export { McpManager, mcpToolName, type McpManagerOptions, type McpServerStatus, type McpState } from './mcp/manager.js'
 export * from './loop/agent.js'
 export { loadAttachment, imageFromData, IMAGE_TYPES, MAX_IMAGE_BYTES, MAX_TEXT_BYTES } from './attachments/load.js'

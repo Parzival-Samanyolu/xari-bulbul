@@ -41,6 +41,10 @@ CI (`.github/workflows/ci.yml`) runs typecheck, test and build on macOS/Windows/
   - `readOnly` tools are always allowed.
   - `subject` is both the UI label and what permission rules like `bash(npm test*)` / `edit_file(src/**)` match against.
   - `edit_file` requires a prior `read_file` of the file in the same agent (`ctx.readFiles`).
+- **Destructive commands** (`permissions/destructive.ts`): `Permissions.check` returns `ask` for `rm`, `git reset --hard`, force pushes etc. in every mode unless a *settings* allow rule matches; `suggestRule()` returns `''` for them, which the UI/CLI treat as allow-once only. Toggle: `permissions.confirmDestructive`.
+- **End-of-turn review:** when the model stops calling tools, `Agent` pushes one `synthetic: 'review'` user message per turn if todos are unfinished or real tool calls failed (malformed calls and user denials don't count; a later success of the same call clears it).
+- **Memory** (`memory/store.ts`, `tools/memory.ts`): Markdown bullet lists in `<data>/memory/{global.md,projects/<sha256(NFC cwd)>.md}`, injected into the system prompt. `remember`/`forget` reach it through `ctx.memory`; subagents see memory but don't get the tools.
+- **MCP** (`mcp/manager.ts`, `McpManager`): `sync(settings.mcp.servers)` diffs config and (re)connects stdio / Streamable HTTP servers with `@modelcontextprotocol/sdk`; tools become `mcp__<server>__<tool>` with `source: 'mcp'` and `readOnly` from `annotations.readOnlyHint`. The desktop controller merges them after built-ins and extensions (`applyTools()`); HTTP bearer tokens are stored in `SecretStore` as `mcp:<id>`. Tests use `InMemoryTransport` plus a real stdio fixture (`test/fixtures/echo-mcp-server.mjs`).
 - **Extensions** (`extensions/loader.ts`): `~/.harness/{tools/*.mjs,commands/*.md}` and `<project>/.harness/...`. Project *tool code* loads only if `tools.loadProjectExtensions` is on.
 - **Storage:**
   - sessions are JSON files (`sessions/store.ts`)
@@ -56,6 +60,7 @@ CI (`.github/workflows/ci.yml`) runs typecheck, test and build on macOS/Windows/
   - `pushState()` sends a fresh `AppState` at turn start/end, on the first message, and on compaction.
   - Background completions and approvals trigger an Electron `Notification` (`main/index.ts`).
   - API keys use `safeStorage` (`main/secrets.ts`).
+  - `main/shell-path.ts` loads `PATH` from the login shell at startup, so `npx`/`uvx` MCP servers and `bash` find user-installed tools when launched from the Dock.
 - **Renderer** (`src/renderer/src`): React 19, plain CSS with OKLCH tokens in `styles.css` (no Tailwind).
   - `App.tsx`'s reducer keeps per-session `lives` (streaming text, live tool state, notices) and applies message and usage events to `app.session` only for the chat on screen.
   - Approvals render inline in the owning tool card (`Chat.tsx`, `owns()`), with a fallback block when no card matches.
