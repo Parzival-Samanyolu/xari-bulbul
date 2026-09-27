@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Xarı Bülbül ("Harness" internally) is a cross-platform Electron desktop AI coding agent. It is a pnpm monorepo (`node-linker=hoisted`, Node 22+, pnpm 10) and uses no agent framework or AI SDK: the provider adapter and agent loop are hand-written.
+Xarı Bülbül ("Harness" internally) is an Electron desktop AI coding agent for macOS and Linux (Windows builds are off; `win`/`nsis` config remains in `electron-builder.yml` but nothing builds it). It is a pnpm monorepo (`node-linker=hoisted`, Node 22+, pnpm 10) and uses no agent framework or AI SDK: the provider adapter and agent loop are hand-written.
 
 ## Commands
 
@@ -23,7 +23,14 @@ cd packages/core && npx vitest run -t "delegates to a read-only subagent"
 OPENROUTER_API_KEY=... pnpm cli --model openrouter:openrouter/free --mode ask
 ```
 
-CI (`.github/workflows/ci.yml`) runs typecheck, test and build on macOS and Linux (Windows builds are off). Pushing a `v*` tag runs `release.yml`, which publishes to GitHub Releases (the publish provider is passed as CLI flags, not in `electron-builder.yml`).
+CI (`.github/workflows/ci.yml`) runs typecheck, test and build on macOS and Linux. `release.yml` builds installers and publishes them to GitHub Releases (github.com/Parzival-Samanyolu/xari-bulbul; the publish provider is passed as CLI flags, not in `electron-builder.yml`). Push and tag events have not been triggering workflows in this repo, so start runs manually:
+
+```bash
+gh workflow run CI --ref main
+gh workflow run Release --ref v0.1.0   # tag must match "version" in apps/desktop/package.json
+```
+
+Commits must use the GitHub no-reply address (set in the repo's local git config); GitHub rejects pushes that expose the owner's private email.
 
 ## Architecture
 
@@ -68,6 +75,8 @@ CI (`.github/workflows/ci.yml`) runs typecheck, test and build on macOS and Linu
   - `productName` must stay ASCII (`Xari Bulbul`); a non-ASCII productName/CFBundleName makes the packaged macOS app SIGTRAP at launch. The display name `Xarı Bülbül` is set via `mac.extendInfo.CFBundleDisplayName`.
   - HTTP header values (e.g. OpenRouter `X-Title`) must also be ASCII.
   - Electron is pinned to an exact version, as electron-builder requires.
+  - Linux package names come from `deb.packageName` / `pacman.packageName` (`xari-bulbul`); without them fpm uses `productName`, and pacman rejects names with spaces. The pacman target needs `bsdtar` (installed in `release.yml` on Linux). `packaging/arch/PKGBUILD` needs `pkgver` and `sha256sums` updated for each release.
+  - A local `pnpm dist` puts a `.app` in `apps/desktop/release/`, which Launchpad shows as a second copy of the app; delete `release/` after local Mac builds.
 
 **`apps/cli`**: a minimal REPL over `@harness/core`, used for trying the engine without the UI.
 
