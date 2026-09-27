@@ -4,6 +4,7 @@ import { Permissions } from '../src/permissions/permissions.js'
 import { ProviderRegistry } from '../src/providers/registry.js'
 import { newSession } from '../src/sessions/store.js'
 import { BUILTIN_PROVIDERS, defaultSettings, parseSettings, PROVIDER_PRESETS, providerReady } from '../src/settings/schema.js'
+import { bashTool } from '../src/tools/bash.js'
 import { builtinTools } from '../src/tools/index.js'
 import { UsageTracker } from '../src/usage/tracker.js'
 import type { AgentEvent } from '../src/loop/agent.js'
@@ -32,7 +33,7 @@ describe('tool durations', () => {
   it('measure execution only, not time spent waiting for approval', async () => {
     const dir = tmpDir()
     const provider = new MockProvider([
-      [{ type: 'tool_call', call: { id: '1', name: 'bash', arguments: JSON.stringify({ command: 'echo hi' }) } }],
+      [{ type: 'tool_call', call: { id: '1', name: 'instant', arguments: '{}' } }],
       [{ type: 'text', delta: 'done' }],
     ])
     const registry = new ProviderRegistry([], () => undefined)
@@ -42,7 +43,8 @@ describe('tool durations', () => {
     const agent = new Agent({
       session: newSession(dir, { providerId: 'mock', modelId: 'm' }),
       registry,
-      tools: builtinTools(),
+      // A tool that needs approval but runs instantly (bash would measure shell startup, ~2s on Windows).
+      tools: [...builtinTools(), { ...bashTool, name: 'instant', execute: async () => ({ content: 'ok' }) }],
       settings,
       usage: new UsageTracker(null),
       permissions: new Permissions({ ...settings.permissions, mode: 'ask' }, dir),

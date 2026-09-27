@@ -119,7 +119,7 @@ describe('MCP over stdio', () => {
   it('explains a command that does not exist', async () => {
     const m = new McpManager()
     await m.sync([{ id: 'nope', name: 'nope', enabled: true, transport: 'stdio', command: 'definitely-not-a-command-xyz', args: [], env: {} }])
-    expect(m.status()[0]).toMatchObject({ state: 'error', error: expect.stringMatching(/ENOENT|not found/i) })
+    expect(m.status()[0]).toMatchObject({ state: 'error', error: expect.stringMatching(/ENOENT|not found|not recognized/i) })
     await m.close()
   }, 20_000)
 })

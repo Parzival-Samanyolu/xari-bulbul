@@ -236,6 +236,8 @@ function renderContent(c: any): string {
   }
 }
 
+/** The end of a server's stderr, which usually says why it failed (one message may span lines). */
 function lastLine(s: string): string {
-  return s.trim().split('\n').filter(Boolean).at(-1)?.slice(0, 300) ?? ''
+  const lines = s.trim().split(/\r?\n/).map((l) => l.trim()).filter(Boolean)
+  return lines.slice(-3).join(' ').slice(-300)
 }
