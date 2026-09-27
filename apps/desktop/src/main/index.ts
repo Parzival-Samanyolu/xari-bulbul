@@ -117,6 +117,8 @@ function registerIpc() {
     return true
   })
   handle('usage.clear', () => c.clearUsage())
+  handle('memory.remove', (scope, fact) => c.removeMemory(scope, fact))
+  handle('memory.clear', (scope) => c.clearMemory(scope))
   handle('extensions.reload', () => c.reloadExtensions())
   handle('extensions.openDir', async (which) => {
     const dir = c.extensionDir(which)

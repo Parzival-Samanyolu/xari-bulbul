@@ -140,6 +140,15 @@ export const SettingsSchema = z.object({
     })
     .prefault({}),
 
+  memory: z
+    .object({
+      /** Lets the agent save facts across chats (remember/forget tools) and shows them in the prompt. */
+      enabled: z.boolean().default(true),
+      /** Size limit per scope (project, global). */
+      maxChars: z.number().int().min(500).max(50_000).default(6000),
+    })
+    .prefault({}),
+
   usage: z
     .object({
       showCost: z.boolean().default(true),

@@ -22,6 +22,7 @@ const TABS = [
   { id: 'agent', label: 'Agent' },
   { id: 'permissions', label: 'Permissions' },
   { id: 'tools', label: 'Tools & Extensions' },
+  { id: 'memory', label: 'Memory' },
   { id: 'usage', label: 'Usage & Budgets' },
   { id: 'appearance', label: 'Appearance' },
   { id: 'data', label: 'Data & Updates' },
@@ -52,6 +53,7 @@ export function SettingsView({ app, tab, onTab, onState, onError, onClose, updat
         {tab === 'agent' && <AgentTab {...common} />}
         {tab === 'permissions' && <PermissionsTab {...common} />}
         {tab === 'tools' && <ToolsTab {...common} />}
+        {tab === 'memory' && <MemoryTab {...common} />}
         {tab === 'usage' && <UsageTab {...common} />}
         {tab === 'appearance' && <AppearanceTab {...common} />}
         {tab === 'data' && <DataTab {...common} update={update} />}
@@ -557,6 +559,55 @@ Review the uncommitted changes (git diff) for bugs and risky code. Focus on: $AR
           ))}
         </div>
       </Section>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------- Memory
+
+function MemoryTab({ app, save, onState, onError }: TabProps) {
+  const m = app.settings.memory
+  const info = app.memory
+  const scopes = [
+    { scope: 'project' as const, title: 'This project', facts: info.project, file: info.projectFile, empty: app.workspace ? 'Nothing saved for this folder yet.' : 'Open a folder to see its memories.' },
+    { scope: 'global' as const, title: 'All projects', facts: info.global, file: info.globalFile, empty: 'Nothing saved yet.' },
+  ]
+  return (
+    <>
+      <Section title="Memory" description="Facts the agent saves with the remember tool, such as your preferences or how to test a project. They're added to every chat. Stored in the app's data folder, never in your project.">
+        <Row label="Let the agent remember" hint="When off, saved memories are neither used nor updated">
+          <Toggle label="Let the agent remember" value={m.enabled} onChange={(v) => save((s) => ((s.memory.enabled = v), s))} />
+        </Row>
+        <Row label="Size limit" hint="Characters per list; the agent must remove or merge entries when it's full">
+          <NumberField label="Memory size limit" value={m.maxChars} min={500} max={50000} step={500} onChange={(v) => v && save((s) => ((s.memory.maxChars = v), s))} />
+        </Row>
+      </Section>
+      {scopes.map(({ scope, title, facts, file, empty }) => (
+        <Section key={scope} title={title}>
+          {facts.length === 0 ? (
+            <p className="muted small">{empty}</p>
+          ) : (
+            <div className="tool-list">
+              {facts.map((f) => (
+                <div key={f} className="tool-item memory-item">
+                  <span className="tool-desc">{f}</span>
+                  <button className="btn ghost" aria-label={`Delete memory: ${f}`} onClick={() => api.memory.remove(scope, f).then(onState, onError)}>
+                    Delete
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="inline">
+            <button className="btn" disabled={!file || facts.length === 0} onClick={() => file && api.app.openPath(file)}>
+              Open file
+            </button>
+            <button className="btn ghost danger" disabled={facts.length === 0} onClick={() => confirm(`Delete every memory in "${title}"?`) && api.memory.clear(scope).then(onState, onError)}>
+              Clear
+            </button>
+          </div>
+        </Section>
+      ))}
     </>
   )
 }

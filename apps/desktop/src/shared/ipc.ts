@@ -59,6 +59,13 @@ export interface ExtensionsInfo {
   projectDir: string | null
 }
 
+export interface MemoryInfo {
+  global: string[]
+  project: string[]
+  globalFile: string
+  projectFile: string | null
+}
+
 export interface AppState {
   version: string
   platform: NodeJS.Platform
@@ -80,6 +87,8 @@ export interface AppState {
   /** Chats waiting for you to approve a tool. */
   awaitingSessions: string[]
   extensions: ExtensionsInfo
+  /** Saved memories for the open folder and for every folder. */
+  memory: MemoryInfo
   paths: { data: string; sessions: string; usage: string }
 }
 
@@ -154,6 +163,10 @@ export interface HarnessApi {
   usage: {
     exportCsv(): Promise<boolean>
     clear(): Promise<AppState>
+  }
+  memory: {
+    remove(scope: 'project' | 'global', fact: string): Promise<AppState>
+    clear(scope: 'project' | 'global'): Promise<AppState>
   }
   extensions: {
     reload(): Promise<AppState>

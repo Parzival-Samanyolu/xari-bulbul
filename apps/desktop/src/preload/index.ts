@@ -36,6 +36,7 @@ const api: HarnessApi = {
   },
   files: { pick: call('files.pick') as any, pathFor: (file: File) => webUtils.getPathForFile(file) },
   usage: { exportCsv: call('usage.exportCsv') as any, clear: call('usage.clear') as any },
+  memory: { remove: call('memory.remove') as any, clear: call('memory.clear') as any },
   extensions: { reload: call('extensions.reload') as any, openDir: call('extensions.openDir') as any },
   app: {
     openExternal: call('app.openExternal') as any,

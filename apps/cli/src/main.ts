@@ -7,6 +7,7 @@ import readline from 'node:readline/promises'
 import { stdin, stdout } from 'node:process'
 import {
   Agent,
+  MemoryStore,
   Permissions,
   ProviderRegistry,
   SessionStore,
@@ -55,6 +56,7 @@ const agent = new Agent({
   settings,
   usage,
   permissions,
+  memory: new MemoryStore(path.join(dataDir, 'memory'), settings.memory.maxChars),
   onSave: (s) => store.save(s),
   askPermission: async (req) => {
     stdout.write('\n')

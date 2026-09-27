@@ -1,10 +1,12 @@
 import { compactionSplit, estimateTokens, summarize } from '../context/compact.js'
 import { buildSystemPrompt } from '../context/system-prompt.js'
+import type { MemoryStore } from '../memory/store.js'
 import type { Permissions, PermissionAnswer } from '../permissions/permissions.js'
 import type { ProviderRegistry } from '../providers/registry.js'
 import { ProviderError, type ChatRequest } from '../providers/types.js'
 import { newSession, titleFrom, type Session } from '../sessions/store.js'
 import { modelKey, type Settings } from '../settings/schema.js'
+import { FORGET_TOOL, REMEMBER_TOOL } from '../tools/memory.js'
 import { TASK_TOOL } from '../tools/task.js'
 import type { SubagentInput, Tool, ToolContext, ToolResult } from '../tools/types.js'
 import type { ChatMessage, FileAttachment, ImageAttachment, ModelRef, TodoItem, ToolCall, Usage } from '../types.js'
@@ -51,6 +53,8 @@ export interface AgentOptions {
   onEvent: (e: AgentEvent) => void
   /** Called whenever the session changes and should be persisted. */
   onSave?: (session: Session) => void
+  /** Where saved facts live; memory is off without it. */
+  memory?: MemoryStore
   /** Set for subagents: what they were asked to do, and whose usage/budget they count against. */
   subagent?: { description: string; parentSessionId: string }
 }
@@ -131,7 +135,13 @@ export class Agent {
     const plan = this.o.permissions.mode === 'plan'
     // Subagents never get the task tool, so delegation is one level deep.
     if (!this.settings.agent.subagents.enabled || this.o.subagent) disabled.add(TASK_TOOL)
+    // Subagents read memory but only the main agent saves to it.
+    if (!this.memoryOn || this.o.subagent) disabled.add(REMEMBER_TOOL).add(FORGET_TOOL)
     return this.tools.filter((t) => !disabled.has(t.name) && (!plan || t.readOnly))
+  }
+
+  private get memoryOn(): boolean {
+    return !!this.o.memory && this.settings.memory.enabled
   }
 
   private contextLength(): number {
@@ -164,7 +174,12 @@ export class Agent {
       override: this.settings.agent.systemPromptOverride,
       toolNames: tools.map((t) => t.name),
       subagent: this.o.subagent,
+      memory: this.memoryOn ? { global: this.memory('global'), project: this.memory('project') } : undefined,
     })
+  }
+
+  private memory(scope: 'global' | 'project'): string[] {
+    return this.o.memory?.list(scope, this.session.meta.cwd) ?? []
   }
 
   private recordUsage(ref: ModelRef, usage: Usage): UsageRecord {
@@ -370,6 +385,7 @@ export class Agent {
         this.emit({ type: 'todos', todos })
       },
       progress: (text) => this.emit({ type: 'tool_progress', callId, text }),
+      memory: this.memoryOn ? this.o.memory!.scoped(this.session.meta.cwd) : undefined,
       runSubagent: this.o.subagent ? undefined : (input) => this.runSubagent(callId, input, signal),
     }
   }
@@ -410,6 +426,7 @@ export class Agent {
       settings: { ...this.settings, agent: { ...this.settings.agent, maxStepsPerTurn: cfg.maxSteps } },
       usage: this.o.usage,
       permissions: this.o.permissions,
+      memory: this.o.memory,
       subagent: { description: input.description, parentSessionId: this.session.meta.id },
       // Approvals surface in the parent's task card; ids are prefixed to stay unique.
       askPermission: (req) =>

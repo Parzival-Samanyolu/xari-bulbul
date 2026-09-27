@@ -1814,3 +1814,9 @@ button.sb-item:hover {
   justify-content: space-between;
   gap: 12px;
 }
+
+.memory-item .tool-desc {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}

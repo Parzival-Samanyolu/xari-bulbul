@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import {
   Agent,
+  MemoryStore,
   Permissions,
   ProviderRegistry,
   SessionStore,
@@ -28,7 +29,7 @@ import {
   type Settings,
   type Tool,
 } from '@harness/core'
-import type { AppState, AttachmentInput, ExtensionsInfo, ProviderTestResult, SessionView, UiEvent } from '../shared/ipc'
+import type { AppState, AttachmentInput, ExtensionsInfo, MemoryInfo, ProviderTestResult, SessionView, UiEvent } from '../shared/ipc'
 import { SecretStore } from './secrets'
 
 const MAX_ATTACHMENTS = 10
@@ -61,6 +62,7 @@ export class AppController {
   private registry!: ProviderRegistry
   private readonly usage: UsageTracker
   private readonly store: SessionStore
+  private readonly memory: MemoryStore
   private ext: LoadedExtensions = { tools: [], commands: [], errors: [] }
   private tools: Tool[] = builtinTools()
   private workspace: string | null = null
@@ -88,6 +90,7 @@ export class AppController {
     this.secrets = new SecretStore(path.join(dataDir, 'secrets.json'))
     this.usage = new UsageTracker(this.paths.usage)
     this.store = new SessionStore(this.paths.sessions)
+    this.memory = new MemoryStore(path.join(dataDir, 'memory'), this.settings.memory.maxChars)
     this.buildRegistry()
   }
 
@@ -123,6 +126,7 @@ export class AppController {
     const prev = this.settings
     this.settings = parseSettings(next)
     this.saveSettings()
+    this.memory.maxChars = this.settings.memory.maxChars
     if (JSON.stringify(prev.providers) !== JSON.stringify(this.settings.providers) || prev.agent.requestRetries !== this.settings.agent.requestRetries) {
       this.buildRegistry()
     }
@@ -271,6 +275,7 @@ export class AppController {
       settings: this.settings,
       usage: this.usage,
       permissions,
+      memory: this.memory,
       onSave: (s) => {
         if (s.messages.length && !this.removed.has(id)) this.store.save(s)
       },
@@ -450,6 +455,28 @@ export class AppController {
     return { meta: s.meta, messages: s.messages, todos: s.todos, displays: s.displays ?? {}, denied: s.denied ?? [] }
   }
 
+  // ---------- memory ----------
+
+  private memoryInfo(): MemoryInfo {
+    const cwd = this.workspace ?? ''
+    return {
+      global: this.memory.list('global', cwd),
+      project: this.workspace ? this.memory.list('project', this.workspace) : [],
+      globalFile: this.memory.file('global', cwd),
+      projectFile: this.workspace ? this.memory.file('project', this.workspace) : null,
+    }
+  }
+
+  removeMemory(scope: 'project' | 'global', fact: string): AppState {
+    if (scope === 'global' || this.workspace) this.memory.delete(scope, this.workspace ?? '', fact)
+    return this.state()
+  }
+
+  clearMemory(scope: 'project' | 'global'): AppState {
+    if (scope === 'global' || this.workspace) this.memory.clear(scope, this.workspace ?? '')
+    return this.state()
+  }
+
   state(): AppState {
     const keys: Record<string, boolean> = {}
     const ready: Record<string, boolean> = {}
@@ -474,6 +501,7 @@ export class AppController {
       runningSessions: [...this.agents.entries()].filter(([, r]) => r.agent.running).map(([id]) => id),
       awaitingSessions: [...new Set([...this.pending.values()].map((p) => p.sessionId))],
       extensions: this.extensionsInfo(),
+      memory: this.memoryInfo(),
       paths: this.paths,
     }
   }
