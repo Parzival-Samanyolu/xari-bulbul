@@ -5,6 +5,8 @@ name: Release
 on:
   push:
     tags: ['v*']
+  # Manual re-run: pick the tag in "Use workflow from".
+  workflow_dispatch:
 
 permissions:
   contents: write
