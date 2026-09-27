@@ -86,7 +86,7 @@ describe('bash', () => {
     expect(r.content).toContain('hi')
     expect(r.content).toContain('[exit code: 3]')
     expect(r.isError).toBe(true)
-  })
+  }, 30_000) // PowerShell can take several seconds to start on CI machines
 
   it('kills on timeout', async () => {
     if (process.platform === 'win32') return
