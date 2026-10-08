@@ -1,0 +1,20 @@
+xb, the terminal app of Xarı Bülbül
+Copyright (c) Xarı Bülbül contributors. MIT License (see LICENSE at the repository root).
+
+The terminal layout and interaction model (inline history in the terminal scrollback, a bottom
+composer with a key-hint footer, a status line while working, condensed command cells, inline
+approval prompts, popups for commands and models) are modeled on OpenAI Codex CLI's TUI:
+
+  OpenAI Codex — https://github.com/openai/codex
+  Copyright 2025 OpenAI
+  Licensed under the Apache License, Version 2.0
+
+The behavior was studied from that source and reimplemented independently in TypeScript with
+Ink; no Codex source code or text is included in this package.
+
+Bundled third-party packages (inlined into dist/xb.js) keep their own licenses, among them
+Ink and its dependencies (MIT), React (MIT), the Model Context Protocol SDK (MIT), zod (MIT),
+fast-glob (MIT), ignore (MIT) and jsdiff (BSD-3-Clause).
+
+The orchid art is derived from a public-domain photograph of Ophrys caucasica by Nuvens
+(Wikimedia Commons); see docs/brand/README.md.

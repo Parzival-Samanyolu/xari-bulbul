@@ -204,6 +204,16 @@ export const SettingsSchema = z.object({
     })
     .prefault({}),
 
+  /** The terminal app (`xb`). */
+  cli: z
+    .object({
+      /** auto asks the terminal for its background colour. */
+      theme: z.enum(['auto', 'dark', 'light']).default('auto'),
+      /** The orchid in the welcome box. */
+      showLogo: z.boolean().default(true),
+    })
+    .prefault({}),
+
   app: z
     .object({
       autoUpdate: z.boolean().default(true),

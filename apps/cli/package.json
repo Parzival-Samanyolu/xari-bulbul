@@ -1,13 +1,46 @@
 {
-  "name": "@harness/cli",
-  "version": "0.1.1",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "start": "tsx src/main.ts",
-    "typecheck": "tsc -p tsconfig.json",
-    "test": "echo \"no cli tests\""
+  "name": "xari-bulbul-cli",
+  "version": "0.2.0",
+  "description": "xb — Xarı Bülbül in your terminal: an open coding agent for any model",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Parzival-Samanyolu/xari-bulbul.git",
+    "directory": "apps/cli"
   },
-  "dependencies": { "@harness/core": "workspace:*" },
-  "devDependencies": { "@types/node": "^22.19.0", "tsx": "^4.23.15", "typescript": "~5.9.3" }
+  "type": "module",
+  "bin": {
+    "xb": "dist/xb.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "NOTICE"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "tsx src/main.tsx",
+    "build": "node scripts/build.mjs",
+    "compile": "node scripts/build.mjs --compile",
+    "orchid": "node scripts/make-orchid.mjs",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "prepack": "node scripts/build.mjs"
+  },
+  "devDependencies": {
+    "@harness/core": "workspace:*",
+    "@types/node": "^22.19.0",
+    "@types/pngjs": "^6.0.5",
+    "@types/react": "^19.3.0",
+    "esbuild": "^0.28.2",
+    "ink": "^8.0.0",
+    "ink-testing-library": "^4.0.0",
+    "pngjs": "^7.0.0",
+    "react": "^19.3.0",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.11"
+  }
 }
