@@ -21,7 +21,7 @@ export function estimateTokens(messages: ChatMessage[]): number {
  * Keeps at least the last `keepTurns` user turns verbatim.
  */
 export function compactionSplit(messages: ChatMessage[], keepTurns = 2): number {
-  const userIdx = messages.flatMap((m, i) => (m.role === 'user' ? [i] : []))
+  const userIdx = messages.flatMap((m, i) => (m.role === 'user' && !m.synthetic ? [i] : []))
   if (userIdx.length <= keepTurns) {
     // One long turn: summarize the first half, splitting where a new assistant step begins.
     for (let i = Math.ceil(messages.length / 2); i < messages.length; i++) {

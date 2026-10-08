@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AppState, ModelInfo, ModelRef, Settings } from '../../../shared/ipc'
+import { displayName, matchesQuery, passesFilters, sortModels } from '@harness/core/catalog'
 import { api } from '../lib/api'
 import { perMillion, tokens } from '../lib/format'
 
@@ -26,23 +27,6 @@ const SORTS: { value: Sort; label: string }[] = [
   { value: 'context', label: 'Context' },
   { value: 'price', label: 'Price' },
 ]
-
-function sortModels(ms: ModelInfo[], sort: Sort): ModelInfo[] {
-  const out = [...ms]
-  if (sort === 'newest') out.sort((a, b) => (b.created ?? 0) - (a.created ?? 0) || a.id.localeCompare(b.id))
-  else if (sort === 'context') out.sort((a, b) => (b.contextLength ?? 0) - (a.contextLength ?? 0))
-  else if (sort === 'price') out.sort((a, b) => (a.pricing?.prompt ?? Infinity) - (b.pricing?.prompt ?? Infinity))
-  else out.sort((a, b) => a.name.localeCompare(b.name))
-  return out
-}
-
-/** "Qwen: Qwen3.8 27B (free)" → "Qwen3.8 27B"; the free badge and provider group say the rest. */
-function displayName(m: ModelInfo): string {
-  let n = m.name.replace(/\s*\(free\)\s*$/i, '')
-  const colon = n.indexOf(': ')
-  if (colon > 0 && colon < 24) n = n.slice(colon + 2)
-  return n
-}
 
 function price(m: ModelInfo): string {
   if (m.free) return 'free'
@@ -89,9 +73,8 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
 
   const rows = useMemo(() => {
     const terms = q.toLowerCase().split(/\s+/).filter(Boolean)
-    const match = (m: ModelInfo) => terms.every((t) => `${m.id} ${m.name} ${m.providerId} ${m.free ? 'free' : ''}`.toLowerCase().includes(t))
-    // Providers that report no pricing at all (e.g. Ollama) aren't hidden by "free only".
-    const passes = (m: ModelInfo, priced: boolean) => (!picker.toolsOnly || m.supportsTools) && (!picker.freeOnly || m.free || !priced)
+    const match = (m: ModelInfo) => matchesQuery(m, q)
+    const passes = (m: ModelInfo, priced: boolean) => passesFilters(m, picker, priced)
     const out: Row[] = []
     const pinned = new Set<string>()
     const pin = (header: string, section: Section, ms: ModelInfo[]) => {

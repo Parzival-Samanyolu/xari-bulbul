@@ -6,7 +6,9 @@ import { defineTool, resolvePath, toPosix, truncate } from './types.js'
 
 export const listDirTool = defineTool({
   name: 'list_dir',
-  description: 'List the entries of a directory (directories end with "/"). Honors .gitignore.',
+  description:
+    'List the entries of one directory; folders end with "/". Honors .gitignore. ' +
+    'For finding files by name across the project, glob is usually better.',
   input: z.object({ path: z.string().default('.').describe('Directory path; defaults to the workspace root') }),
   kind: 'read',
   readOnly: true,
@@ -30,7 +32,12 @@ export const listDirTool = defineTool({
 
 export const globTool = defineTool({
   name: 'glob',
-  description: 'Find files by glob pattern, e.g. "src/**/*.ts". Returns paths relative to the search directory.',
+  description: [
+    'Find files by name pattern, e.g. "src/**/*.ts" or "**/package.json".',
+    '- Returns paths relative to the search folder, honoring .gitignore (node_modules and .git are always skipped).',
+    '- Use it instead of `find` or `ls -R` in bash.',
+    '- Run several glob and grep calls in one response when they are independent; they run in parallel.',
+  ].join('\n'),
   input: z.object({
     pattern: z.string().describe('Glob pattern'),
     path: z.string().optional().describe('Directory to search in; defaults to the workspace root'),
@@ -50,9 +57,13 @@ export const globTool = defineTool({
 
 export const grepTool = defineTool({
   name: 'grep',
-  description:
-    'Search file contents with a JavaScript regular expression. Returns "path:line: text" matches. ' +
-    'Use include to filter files by glob (e.g. "**/*.ts").',
+  description: [
+    'Search file contents with a JavaScript regular expression; returns "path:line: text" matches.',
+    '- Use it instead of grep or rg in bash.',
+    '- Narrow the search with include (a glob such as "**/*.ts") and path. Escape regex characters: "foo\\(" to find "foo(".',
+    '- Skips binary files, files over 2 MB and anything ignored by .gitignore.',
+    '- For an open-ended search that may need many rounds, delegate it with the task tool instead.',
+  ].join('\n'),
   input: z.object({
     pattern: z.string().describe('Regular expression'),
     path: z.string().optional().describe('Directory to search; defaults to the workspace root'),

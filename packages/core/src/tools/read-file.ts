@@ -6,10 +6,14 @@ const MAX_LINES = 2000
 
 export const readFileTool = defineTool({
   name: 'read_file',
-  description:
-    'Read a text file. Returns lines prefixed with line numbers ("  12→text"). ' +
-    `Reads up to ${MAX_LINES} lines by default; use offset/limit for large files. ` +
-    'You must read a file before editing it.',
+  description: [
+    'Read a text file from the local filesystem.',
+    '- Output lines are numbered ("    12→text"). The number and arrow are not part of the file: never copy them into edit_file.',
+    `- Up to ${MAX_LINES} lines are returned by default. For long files, pass offset (1-based line) and limit to read a window; the result says where to continue.`,
+    '- Paths may be absolute or relative to the workspace. Binary files and directories are refused (use list_dir for directories).',
+    '- When you need several files, request them in the same response: independent reads run in parallel.',
+    '- You must read a file in this chat before you edit or overwrite it. Read it again if it may have changed since.',
+  ].join('\n'),
   input: z.object({
     path: z.string().describe('File path, absolute or relative to the workspace'),
     offset: z.number().int().min(1).optional().describe('1-based line to start from'),

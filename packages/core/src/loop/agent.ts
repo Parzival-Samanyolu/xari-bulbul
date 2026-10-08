@@ -1,5 +1,6 @@
 import { compactionSplit, estimateTokens, summarize } from '../context/compact.js'
-import { buildSystemPrompt } from '../context/system-prompt.js'
+import { buildSystemPrompt, gatherEnvironment, type PromptEnvironment } from '../context/system-prompt.js'
+import { Reminders } from './reminders.js'
 import type { MemoryStore } from '../memory/store.js'
 import type { Permissions, PermissionAnswer } from '../permissions/permissions.js'
 import type { ProviderRegistry } from '../providers/registry.js'
@@ -7,6 +8,7 @@ import { ProviderError, type ChatRequest } from '../providers/types.js'
 import { newSession, titleFrom, type Session } from '../sessions/store.js'
 import { modelKey, type Settings } from '../settings/schema.js'
 import { FORGET_TOOL, REMEMBER_TOOL } from '../tools/memory.js'
+import { JobRegistry } from '../tools/jobs.js'
 import { TASK_TOOL } from '../tools/task.js'
 import type { SubagentInput, Tool, ToolContext, ToolResult } from '../tools/types.js'
 import type { ChatMessage, FileAttachment, ImageAttachment, ModelRef, TodoItem, ToolCall, Usage } from '../types.js'
@@ -57,6 +59,26 @@ export interface AgentOptions {
   memory?: MemoryStore
   /** Set for subagents: what they were asked to do, and whose usage/budget they count against. */
   subagent?: { description: string; parentSessionId: string }
+  /** Background shell jobs; subagents share their parent's. */
+  jobs?: JobRegistry
+}
+
+/** A tiny counting semaphore: `await acquire()` returns the release function. */
+function semaphore(n: number): () => Promise<() => void> {
+  let free = n
+  const waiting: (() => void)[] = []
+  const release = () => {
+    const next = waiting.shift()
+    if (next) next()
+    else free++
+  }
+  return () =>
+    new Promise((resolve) => {
+      if (free > 0) {
+        free--
+        resolve(release)
+      } else waiting.push(() => resolve(release))
+    })
 }
 
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
@@ -80,9 +102,13 @@ export class Agent {
   private registry: ProviderRegistry
   /** Tool calls that failed (not denied, not retried successfully) this turn, for the end-of-turn review. */
   private failedCalls: string[] = []
+  readonly jobs: JobRegistry
+  private env: PromptEnvironment | undefined
+  private readonly reminders = new Reminders()
 
   constructor(private readonly o: AgentOptions) {
     this.session = o.session
+    this.jobs = o.jobs ?? new JobRegistry()
     this.settings = o.settings
     this.tools = o.tools
     this.registry = o.registry
@@ -119,6 +145,12 @@ export class Agent {
 
   stop(): void {
     this.abort?.abort(new Error('Interrupted by user'))
+  }
+
+  /** Stops the running turn and any background jobs. Call when the chat is closed. */
+  dispose(): void {
+    this.stop()
+    if (!this.o.jobs) this.jobs.dispose()
   }
 
   private emit(e: AgentEvent) {
@@ -179,6 +211,8 @@ export class Agent {
       override: this.settings.agent.systemPromptOverride,
       toolNames: tools.map((t) => t.name),
       subagent: this.o.subagent,
+      contextLength: this.contextLength(),
+      env: this.env,
       memory: this.memoryOn ? { global: this.memory('global'), project: this.memory('project') } : undefined,
     })
   }
@@ -219,6 +253,8 @@ export class Agent {
     this.push({ role: 'user', content: text, ...(files ? { files } : {}), ...(images ? { images } : {}) })
 
     let reason: TurnEndReason = 'max_steps'
+    this.env = gatherEnvironment(this.session.meta.cwd)
+    this.reminders.startTurn(this.o.permissions.mode)
     this.failedCalls = []
     let reviewed = false
     try {
@@ -235,6 +271,7 @@ export class Agent {
         }
 
         await this.maybeCompact(abort.signal)
+        this.injectReminders()
         const toolCalls = await this.step(abort.signal)
         if (!toolCalls.length) {
           const review = reviewed ? null : this.reviewPrompt()
@@ -253,10 +290,10 @@ export class Agent {
             for (const c of toolCalls.slice(i)) this.interrupted(c)
             break
           }
-          if (toolCalls[i].name === TASK_TOOL) {
-            // Consecutive subagent calls run in parallel.
-            let j = i
-            while (j < toolCalls.length && toolCalls[j].name === TASK_TOOL) j++
+          // Consecutive read-only calls (reads, searches, subagents) run in parallel.
+          let j = i
+          while (j < toolCalls.length && this.parallelSafe(toolCalls[j])) j++
+          if (j - i > 1) {
             await this.runParallel(toolCalls.slice(i, j), abort.signal)
             i = j
           } else await this.runTool(toolCalls[i++], abort.signal)
@@ -294,6 +331,31 @@ export class Agent {
 
   private unfinishedTodos(): TodoItem[] {
     return (this.session.todos ?? []).filter((t) => t.status !== 'completed')
+  }
+
+  /**
+   * Adds a hidden `<system-reminder>` note before the next request when something changed that the
+   * model should know: open todos going stale, files edited outside the agent, mode switches, budget
+   * or context running out. Only after tool results, so a user message is never followed by another.
+   */
+  private injectReminders() {
+    const last = this.session.messages.at(-1)
+    if (last?.role !== 'tool') return
+    const budget = this.settings.usage
+    const summary = this.o.usage.summary(this.usageId)
+    const notes = this.reminders.collect({
+      mode: this.o.permissions.mode,
+      todos: this.session.todos ?? [],
+      hasTodoTool: this.activeTools().some((t) => t.name === 'todo_write'),
+      budget: [
+        budget.sessionBudgetUsd != null ? { label: 'chat', spent: summary.session.cost, limit: budget.sessionBudgetUsd } : null,
+        budget.dailyBudgetUsd != null ? { label: 'daily', spent: summary.today.cost, limit: budget.dailyBudgetUsd } : null,
+      ].filter((b) => b !== null),
+      context: { used: this.session.lastPromptTokens ?? 0, length: this.contextLength() },
+    })
+    if (!notes.length) return
+    const content = notes.map((n) => `<system-reminder>\n${n}\n</system-reminder>`).join('\n')
+    this.push({ role: 'user', content, synthetic: 'reminder' })
   }
 
   /** What the model should account for before ending the turn, or null if nothing. */
@@ -391,6 +453,7 @@ export class Agent {
       },
       progress: (text) => this.emit({ type: 'tool_progress', callId, text }),
       memory: this.memoryOn ? this.o.memory!.scoped(this.session.meta.cwd) : undefined,
+      jobs: this.jobs,
       runSubagent: this.o.subagent ? undefined : (input) => this.runSubagent(callId, input, signal),
     }
   }
@@ -404,16 +467,40 @@ export class Agent {
     this.push({ role: 'tool', toolCallId: c.id, name: c.name, content: 'Interrupted by user before running.' })
   }
 
+  /** Read-only tools never ask, never change anything, so they can run side by side. */
+  private parallelSafe(call: ToolCall): boolean {
+    return !!this.activeTools().find((t) => t.name === call.name)?.readOnly
+  }
+
+  /**
+   * Runs calls concurrently (at most 8 at once, subagents limited to `subagents.maxParallel`),
+   * but adds their results to history in the order the model asked for them.
+   */
   private async runParallel(calls: ToolCall[], signal: AbortSignal) {
-    const queue = [...calls]
-    const worker = async () => {
-      for (let c = queue.shift(); c; c = queue.shift()) {
-        if (signal.aborted) this.interrupted(c)
-        else await this.runTool(c, signal)
-      }
-    }
-    const n = Math.min(this.settings.agent.subagents.maxParallel, calls.length)
-    await Promise.all(Array.from({ length: n }, worker))
+    const taskSlots = semaphore(this.settings.agent.subagents.maxParallel)
+    const anySlots = semaphore(8)
+    let prev: Promise<void> = Promise.resolve()
+    await Promise.all(
+      calls.map((c) => {
+        const before = prev
+        let done!: () => void
+        prev = new Promise<void>((r) => (done = r))
+        return (async () => {
+          const releaseAny = await anySlots()
+          const releaseTask = c.name === TASK_TOOL ? await taskSlots() : () => {}
+          try {
+            if (signal.aborted) {
+              await before
+              this.interrupted(c)
+            } else await this.runTool(c, signal, before)
+          } finally {
+            releaseTask()
+            releaseAny()
+            done()
+          }
+        })()
+      }),
+    )
   }
 
   /** Runs a delegated task in a fresh, unsaved session and returns its final report. */
@@ -433,6 +520,7 @@ export class Agent {
       permissions: this.o.permissions,
       memory: this.o.memory,
       subagent: { description: input.description, parentSessionId: this.session.meta.id },
+      jobs: this.jobs,
       // Approvals surface in the parent's task card; ids are prefixed to stay unique.
       askPermission: (req) =>
         this.o.askPermission({ ...req, callId: `${callId}/${req.callId}`, reason: `Subagent "${input.description}": ${req.reason}` }),
@@ -462,20 +550,26 @@ export class Agent {
     }
   }
 
-  private async runTool(call: ToolCall, signal: AbortSignal): Promise<void> {
+  /** `before` resolves when earlier calls of a parallel batch are in history, keeping results in order. */
+  private async runTool(call: ToolCall, signal: AbortSignal, before?: Promise<void>): Promise<void> {
     // Reset after approval so durations measure execution, not time spent waiting for the user.
     let started = Date.now()
     let label = ''
-    const finish = (result: ToolResult, denied = false) => {
+    let input: unknown
+    const tool = this.activeTools().find((t) => t.name === call.name)
+    const finish = async (result: ToolResult, denied = false) => {
+      const durationMs = Date.now() - started
+      await before
       // Only failures of real work count (not malformed calls), and a later success of the same call clears them.
       if (label) {
         const key = `${call.name} ${label.slice(0, 120)}`
         if (result.isError && !denied) this.failedCalls.push(key)
         else if (!result.isError) this.failedCalls = this.failedCalls.filter((f) => f !== key)
       }
+      if (!result.isError) this.reminders.afterTool(call.name, tool?.kind, input, this.session.meta.cwd)
       if (result.display) (this.session.displays ??= {})[call.id] = result.display
       if (denied) (this.session.denied ??= []).push(call.id)
-      this.emit({ type: 'tool_end', callId: call.id, name: call.name, result, durationMs: Date.now() - started, denied })
+      this.emit({ type: 'tool_end', callId: call.id, name: call.name, result, durationMs, denied })
       this.push({
         role: 'tool',
         toolCallId: call.id,
@@ -484,7 +578,6 @@ export class Agent {
       })
     }
 
-    const tool = this.activeTools().find((t) => t.name === call.name)
     let raw: unknown
     try {
       raw = call.arguments.trim() ? JSON.parse(call.arguments) : {}
@@ -496,7 +589,6 @@ export class Agent {
       this.emit({ type: 'tool_start', callId: call.id, name: call.name, subject: '', input: raw })
       return finish({ content: `Unknown or unavailable tool "${call.name}".`, isError: true })
     }
-    let input: unknown
     try {
       input = tool.parse(raw)
     } catch (e) {
@@ -531,11 +623,13 @@ export class Agent {
     }
 
     started = Date.now()
+    let result: ToolResult
     try {
-      finish(await tool.execute(input, this.toolContext(call.id, signal)))
+      result = await tool.execute(input, this.toolContext(call.id, signal))
     } catch (e) {
-      finish({ content: signal.aborted ? 'Interrupted by user.' : (e as Error).message, isError: true })
+      result = { content: signal.aborted ? 'Interrupted by user.' : (e as Error).message, isError: true }
     }
+    await finish(result)
   }
 
   private async maybeCompact(signal: AbortSignal) {

@@ -6,9 +6,13 @@ import { defineTool, resolvePath } from './types.js'
 
 export const writeFileTool = defineTool({
   name: 'write_file',
-  description:
-    'Create a new file or completely overwrite an existing one. Prefer edit_file for changing existing files. ' +
-    'Overwriting an existing file requires reading it first.',
+  description: [
+    'Create a file, or replace a whole file\'s content.',
+    '- Prefer edit_file for changes to existing files; use this for new files or complete rewrites.',
+    '- Overwriting an existing file requires reading it first in this chat.',
+    '- Parent folders are created as needed.',
+    '- Do not create documentation or README files unless the user asked for them.',
+  ].join('\n'),
   input: z.object({
     path: z.string().describe('File path, absolute or relative to the workspace'),
     content: z.string().describe('Full file content'),

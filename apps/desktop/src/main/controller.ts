@@ -9,15 +9,19 @@ import {
   SessionStore,
   USER_EXT_DIR,
   UsageTracker,
+  assembleTools,
   builtinTools,
   expandSlashCommand,
   imageFromData,
   loadAttachment,
   loadExtensions,
+  loadSettingsFile,
   newSession,
-  parseSettings,
   PROVIDER_PRESETS,
   providerReady,
+  pushRecent,
+  parseSettings,
+  saveSettingsFile,
   projectExtDir,
   type AgentEvent,
   type FileAttachment,
@@ -120,21 +124,12 @@ export class AppController {
 
   // ---------- settings ----------
 
-  private settingsFile() {
-    return path.join(this.dataDir, 'settings.json')
-  }
-
   private loadSettings(): Settings {
-    try {
-      return parseSettings(JSON.parse(fs.readFileSync(this.settingsFile(), 'utf8')))
-    } catch {
-      return parseSettings({})
-    }
+    return loadSettingsFile(this.dataDir)
   }
 
   private saveSettings() {
-    fs.mkdirSync(this.dataDir, { recursive: true })
-    fs.writeFileSync(this.settingsFile(), JSON.stringify(this.settings, null, 2))
+    saveSettingsFile(this.dataDir, this.settings)
   }
 
   getSettings(): Settings {
@@ -216,9 +211,8 @@ export class AppController {
           project: this.settings.tools.loadProjectExtensions,
         })
       : { tools: [], commands: [], errors: [] }
-    const names = new Set(builtinTools().map((t) => t.name))
-    for (const t of this.ext.tools) {
-      if (names.has(t.name)) this.ext.errors.push({ file: t.name, error: `Tool "${t.name}" conflicts with a built-in tool and was skipped.` })
+    for (const name of assembleTools(this.ext.tools).conflicts) {
+      this.ext.errors.push({ file: name, error: `Tool "${name}" conflicts with a built-in tool and was skipped.` })
     }
     this.applyTools()
     return this.state()
@@ -226,14 +220,7 @@ export class AppController {
 
   /** Built-in tools, then this folder's extensions, then MCP tools; later duplicates are skipped. */
   private applyTools() {
-    const tools = builtinTools()
-    const add = (list: Tool[]) => {
-      const names = new Set(tools.map((t) => t.name))
-      tools.push(...list.filter((t) => !names.has(t.name)))
-    }
-    add(this.ext.tools)
-    add(this.mcp.tools())
-    this.tools = tools
+    this.tools = assembleTools(this.ext.tools, this.mcp.tools()).tools
     for (const r of this.agents.values()) {
       // Extensions belong to a folder; chats in other folders keep theirs but get current MCP tools.
       if (r.agent.session.meta.cwd.normalize('NFC') === this.workspace) r.agent.updateSettings(this.settings, this.tools)
@@ -382,8 +369,13 @@ export class AppController {
 
   /** Keep a handful of idle chats warm (they remember "allow for this session" rules); drop the rest. */
   private prune(keep = 8) {
-    const idle = [...this.agents.entries()].filter(([id, r]) => id !== this.activeId && !r.agent.running && !this.awaiting(id))
-    for (const [id] of idle.slice(0, Math.max(0, idle.length - keep))) this.agents.delete(id)
+    const idle = [...this.agents.entries()].filter(
+      ([id, r]) => id !== this.activeId && !r.agent.running && !this.awaiting(id) && !r.agent.jobs.list().some((j) => !j.done),
+    )
+    for (const [id, r] of idle.slice(0, Math.max(0, idle.length - keep))) {
+      r.agent.dispose()
+      this.agents.delete(id)
+    }
   }
 
   private awaiting(sessionId: string): boolean {
@@ -440,7 +432,7 @@ export class AppController {
     const r = this.agents.get(id)
     this.removed.add(id)
     this.cancelPending(id)
-    r?.agent.stop()
+    r?.agent.dispose()
     this.agents.delete(id)
   }
 
@@ -508,8 +500,7 @@ export class AppController {
   setModel(ref: ModelRef): AppState {
     this.agent?.setModel(ref)
     this.registry.models(ref.providerId).catch(() => {})
-    const same = (r: ModelRef) => r.providerId === ref.providerId && r.modelId === ref.modelId
-    const recent = [ref, ...this.settings.models.recent.filter((r) => !same(r))].slice(0, 8)
+    const recent = pushRecent(this.settings.models.recent, ref)
     this.settings = { ...this.settings, models: { ...this.settings.models, recent } }
     this.saveSettings()
     return this.state()

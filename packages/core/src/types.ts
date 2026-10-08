@@ -16,7 +16,7 @@ export type ChatMessage =
       files?: FileAttachment[]
       images?: ImageAttachment[]
       /** Written by the engine, not the user (e.g. the end-of-turn review). Shown as a note. */
-      synthetic?: 'review'
+      synthetic?: 'review' | 'reminder'
     }
   | { role: 'assistant'; content: string; toolCalls?: ToolCall[]; reasoning?: string }
   | { role: 'tool'; toolCallId: string; name: string; content: string }

@@ -120,3 +120,36 @@ export function destructiveReason(command: string, depth = 0): string | null {
     .filter((r): r is string => !!r)
   return reasons.length ? [...new Set(reasons)].join('; ') : null
 }
+
+/** Where writes are harmless even though they are outside the project. */
+function scratchPath(p: string): boolean {
+  return /^\/dev\//.test(p) || /^\/(private\/)?tmp(\/|$)/.test(p) || /^\/var\/folders\//.test(p)
+}
+
+/**
+ * Why a shell command writes outside `cwd` (redirects, tee, cp/mv/install targets), or null.
+ * Like destructiveReason, a heuristic: it only sees literal absolute or ~ paths.
+ */
+export function outsideWriteReason(command: string, cwd: string, home = process.env.HOME ?? ''): string | null {
+  const root = cwd.replace(/\/+$/, '')
+  const outside = (raw: string): string | null => {
+    let p = raw.replace(/^["']|["']$/g, '')
+    if (p.startsWith('~')) p = home + p.slice(1)
+    if (!p.startsWith('/')) return null // relative paths: treated as inside (`..` is caught below)
+    const norm = p.replace(/\/+$/, '')
+    if (norm === root || norm.startsWith(root + '/') || scratchPath(norm)) return null
+    return raw
+  }
+  const targets: string[] = []
+  for (const seg of segments(command)) {
+    // Redirects: `> file`, `>> file`, `2> file`, `&> file`.
+    for (const m of seg.matchAll(/(?:^|[^<>&\d])(?:\d|&)?>>?\s*([^\s;|&<>]+)/g)) targets.push(m[1])
+    const w = words(seg)
+    const cmd = w.length ? baseName(w[0]) : ''
+    const ops = operands(w.slice(1))
+    if (cmd === 'tee') targets.push(...ops)
+    if ((cmd === 'cp' || cmd === 'mv' || cmd === 'install' || cmd === 'rsync' || cmd === 'ln') && ops.length >= 2) targets.push(ops[ops.length - 1])
+  }
+  const hits = targets.map((t) => (/(^|\/)\.\.(\/|$)/.test(t) && !t.startsWith('/') ? t : outside(t))).filter((t): t is string => !!t)
+  return hits.length ? describe([...new Set(hits)], 'Writes outside the project folder') : null
+}

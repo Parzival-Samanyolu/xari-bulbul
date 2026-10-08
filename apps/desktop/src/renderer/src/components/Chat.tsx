@@ -137,6 +137,8 @@ function EmptyChat({ app }: { app: AppState }) {
 
 function UserBubble({ message }: { message: Extract<ChatMessage, { role: 'user' }> }) {
   const text = message.content
+  // Reminders are notes for the model (mode switches, files changed on disk), not part of the chat.
+  if (message.synthetic === 'reminder') return null
   const summary = text.startsWith('[Summary of the earlier conversation]')
   if (summary) return <div className="user summary"><details><summary>Earlier conversation (summarized)</summary><Markdown text={text} /></details></div>
   if (message.synthetic === 'review')

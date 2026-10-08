@@ -99,6 +99,30 @@ export class UsageTracker {
     return s
   }
 
+  /** Totals per local calendar day (YYYY-MM-DD), newest first. */
+  byDay(): { day: string; totals: UsageTotals }[] {
+    const map = new Map<string, UsageTotals>()
+    for (const r of this.records) {
+      const d = new Date(r.ts)
+      const day = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+      if (!map.has(day)) map.set(day, emptyTotals())
+      add(map.get(day)!, r)
+    }
+    return [...map].map(([day, totals]) => ({ day, totals })).sort((a, b) => b.day.localeCompare(a.day))
+  }
+
+  /** Totals for one chat, broken down by model. */
+  bySession(sessionId: string): { total: UsageTotals; byModel: Record<string, UsageTotals> } {
+    const total = emptyTotals()
+    const byModel: Record<string, UsageTotals> = {}
+    for (const r of this.records) {
+      if (r.sessionId !== sessionId) continue
+      add(total, r)
+      add((byModel[`${r.providerId}:${r.modelId}`] ??= emptyTotals()), r)
+    }
+    return { total, byModel }
+  }
+
   all(): readonly UsageRecord[] {
     return this.records
   }

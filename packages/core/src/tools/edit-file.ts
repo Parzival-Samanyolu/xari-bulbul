@@ -5,10 +5,14 @@ import { defineTool, resolvePath } from './types.js'
 
 export const editFileTool = defineTool({
   name: 'edit_file',
-  description:
-    'Replace an exact piece of text in a file. old_string must match the file exactly (including whitespace and ' +
-    'indentation) and must be unique unless replace_all is true. Include enough surrounding context to make it unique. ' +
-    'You must read the file first. Do not include read_file line-number prefixes.',
+  description: [
+    'Replace an exact piece of text in an existing file.',
+    '- Read the file first in this chat; edits to unread files are refused.',
+    '- old_string must match the file byte for byte, including indentation and blank lines. Copy it from read_file output without the line-number prefix.',
+    '- old_string must occur exactly once. If it occurs more often, add surrounding lines until it is unique, or set replace_all to change every occurrence (useful for renames).',
+    '- Keep edits small and focused; make several edit_file calls rather than rewriting large blocks.',
+    '- Preserve the file\'s style: indentation, quotes, line endings. Do not add comments that only narrate the change.',
+  ].join('\n'),
   input: z.object({
     path: z.string().describe('File path, absolute or relative to the workspace'),
     old_string: z.string().describe('Exact text to replace'),

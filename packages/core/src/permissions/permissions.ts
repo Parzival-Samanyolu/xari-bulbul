@@ -1,6 +1,6 @@
 import path from 'node:path'
 import type { PermissionMode } from '../types.js'
-import { destructiveReason } from './destructive.js'
+import { destructiveReason, outsideWriteReason } from './destructive.js'
 import { isInside, resolvePath, toPosix, type Tool } from '../tools/types.js'
 
 export interface PermissionConfig {
@@ -105,6 +105,12 @@ export class Permissions {
     const outside =
       tool.kind === 'edit' && !this.config.allowOutsideWorkspace && !isInside(this.cwd, resolvePath(this.cwd, subject))
     if (outside) return { decision: 'ask', reason: 'Writes outside the workspace folder.' }
+    // Shell commands that write outside the project ask too, in every mode, once at a time.
+    const outsideExec = this.outsideExec(tool, subject)
+    if (outsideExec) {
+      if (allow.some((r) => ruleMatches(r, tool, subject, this.cwd))) return { decision: 'allow' }
+      return { decision: 'ask', reason: `${outsideExec}.` }
+    }
     // Destructive commands ask even in auto mode; only a rule the user wrote in Settings skips that.
     const destructive = this.destructive(tool, subject)
     if (destructive) {
@@ -122,15 +128,25 @@ export class Permissions {
     return destructiveReason(subject)
   }
 
+  private outsideExec(tool: Tool, subject: string): string | null {
+    if (tool.kind !== 'exec' || this.config.allowOutsideWorkspace) return null
+    return outsideWriteReason(subject, this.cwd)
+  }
+
+  /** Allowed once at a time only: destructive commands and shell writes outside the project. */
+  private onceOnly(tool: Tool, subject: string): boolean {
+    return !!(this.destructive(tool, subject) || this.outsideExec(tool, subject))
+  }
+
   /** The rule "always allow" would add, or '' when only a one-time allow is offered. */
   suggestRule(tool: Tool, subject: string): string {
-    return this.destructive(tool, subject) ? '' : ruleFor(tool, subject)
+    return this.onceOnly(tool, subject) ? '' : ruleFor(tool, subject)
   }
 
   /** Grants a session rule for "always allow". Destructive commands are only ever allowed once. */
   remember(tool: Tool, subject: string): string {
     const rule = ruleFor(tool, subject)
-    if (this.destructive(tool, subject)) return rule
+    if (this.onceOnly(tool, subject)) return rule
     if (!this.sessionAllow.includes(rule)) this.sessionAllow.push(rule)
     return rule
   }
