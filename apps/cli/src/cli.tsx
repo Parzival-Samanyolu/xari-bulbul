@@ -143,6 +143,7 @@ async function exec(args: CliArgs, io: Io): Promise<number> {
           usage: host.usage,
           permissions: new Permissions({ ...host.settings.permissions, mode }, session.meta.cwd),
           memory: host.memory,
+          secret: (id) => host.keys.get(id),
           onSave: (s) => host.store.save(s),
         },
         out: (s) => io.stdout.write(s),
@@ -201,6 +202,7 @@ async function login(args: CliArgs, io: Io): Promise<number> {
   try {
     const providers = host.settings.providers.filter((p) => p.requiresKey)
     const id = args.provider ?? host.settings.models.default.providerId
+    if (id === 'brave' || id === 'tavily') return loginSearch(host, id, io)
     const provider = host.provider(id)
     if (!provider) {
       io.stderr.write(`xb: unknown provider "${id}". Providers: ${host.settings.providers.map((p) => p.id).join(', ')}\n`)
@@ -225,6 +227,21 @@ async function login(args: CliArgs, io: Io): Promise<number> {
   } finally {
     await host.dispose()
   }
+}
+
+/** Web search keys: stored like API keys, then tested with one search. */
+async function loginSearch(host: Host, id: 'brave' | 'tavily', io: Io): Promise<number> {
+  const name = id === 'brave' ? 'Brave Search' : 'Tavily'
+  const key = await readSecret(io, `${name} API key (input hidden): `)
+  if (!key) {
+    io.stderr.write('No key entered; nothing changed.\n')
+    return EXIT.usage
+  }
+  host.setKey(id, key)
+  const res = await host.testSearch(id)
+  io.stdout.write(`${res.ok ? '✔' : '✗'} ${res.message}\n`)
+  if (res.ok && host.settings.tools.webSearch.backend !== id) io.stdout.write(`Search now uses ${name} (tools.webSearch.backend).\n`)
+  return res.ok ? 0 : EXIT.error
 }
 
 async function chat(args: CliArgs, io: Io): Promise<number> {

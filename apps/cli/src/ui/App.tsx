@@ -413,6 +413,12 @@ export function App(p: AppProps) {
         ['today', `${s.today.requests} requests · ${usd(s.today.cost, s.today.costPartial)}`],
         ['keys', keyRows.join(' · ')],
         ['instructions', instr.length ? instr.join(', ') : 'none (add AGENTS.md, or run /init)'],
+        ['web search', (() => {
+          const ws = host.settings.tools.webSearch
+          if (ws.backend === 'duckduckgo') return 'DuckDuckGo (no key)'
+          if (ws.backend === 'searxng') return `SearXNG ${ws.searxngUrl || '(no URL set)'}`
+          return `${ws.backend === 'brave' ? 'Brave' : 'Tavily'}: ${host.keys.has(ws.backend) ? 'key set' : 'no key, run /login ' + ws.backend}`
+        })()],
         ['mcp', mcp.length ? `${mcp.filter((m) => m.state === 'ready').length} of ${mcp.length} servers ready` : 'none configured'],
         ['extensions', `${host.ext.tools.length} tools · ${host.ext.commands.length} commands${host.ext.errors.length ? ` · ${host.ext.errors.length} errors` : ''}`],
         ['settings', path.join(host.dataDir, 'settings.json')],
@@ -553,7 +559,8 @@ export function App(p: AppProps) {
         return true
       case 'login': {
         const id = args.trim() || model.providerId
-        if (!host.provider(id)) notice('error', `Unknown provider "${id}". Providers: ${host.settings.providers.map((x) => x.id).join(', ')}`)
+        if (id === 'brave' || id === 'tavily') setPopup({ kind: 'login', providerId: id })
+        else if (!host.provider(id)) notice('error', `Unknown provider "${id}". Providers: ${host.settings.providers.map((x) => x.id).join(', ')}`)
         else setPopup({ kind: 'login', providerId: id })
         return true
       }
@@ -758,7 +765,8 @@ function LoginPrompt({ host, providerId, onDone }: { host: Host; providerId: str
   const t = useTheme()
   const [key, setKey] = useState('')
   const [busy, setBusy] = useState(false)
-  const provider = host.provider(providerId)!
+  const search = providerId === 'brave' || providerId === 'tavily'
+  const provider = host.provider(providerId) ?? { name: providerId === 'brave' ? 'Brave Search' : 'Tavily' }
   useInput((input, k) => {
     if (busy) return
     if (k.escape || (k.ctrl && input === 'c')) return onDone('Login cancelled.', true)
@@ -770,7 +778,8 @@ function LoginPrompt({ host, providerId, onDone }: { host: Host; providerId: str
       } catch (e) {
         return onDone((e as Error).message, false)
       }
-      void host.testProvider(providerId).then((r) => onDone(`${provider.name}: key saved (${host.keys.storage}). ${r.message}`, r.ok))
+      if (search) void host.testSearch(providerId as 'brave' | 'tavily').then((r) => onDone(`${provider.name}: ${r.message}`, r.ok))
+      else void host.testProvider(providerId).then((r) => onDone(`${provider.name}: key saved (${host.keys.storage}). ${r.message}`, r.ok))
       return
     }
     if (k.backspace || k.delete) return setKey((s) => s.slice(0, -1))

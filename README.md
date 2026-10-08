@@ -12,7 +12,7 @@ Built to be owned and extended. The engine is small, readable TypeScript with no
 ## Features
 
 - **Claude Code–style agent loop:**
-  - tools for read, edit (exact-match replace), write, list, glob, grep, shell, web fetch and a todo list
+  - tools for read, edit (exact-match replace), write, list, glob, grep, shell, web search, web fetch and a todo list
   - a diff for every edit
   - live streaming, Stop / Esc, and resumable chats
 - **One-step model switching:** press ⌘/Ctrl+K to switch models, even mid-conversation. The switcher:
@@ -28,6 +28,7 @@ Built to be owned and extended. The engine is small, readable TypeScript with no
   - a per-model breakdown, CSV export, and per-chat or daily budgets (warn or stop)
 - **Permission modes:** Ask / Auto-edit / Plan (read-only) / Full auto, plus allow and deny rules like `bash(npm test*)` or `edit_file(src/**)`. Writes outside the project folder always ask.
 - **Destructive commands always ask:** `rm`, `git reset --hard`, force pushes and similar need your approval even in Full auto, and are only ever allowed once. Before a turn ends, the agent checks for unfinished checklist steps and failed tool calls and must report anything it skipped.
+- **Web search:** works out of the box with DuckDuckGo, no key needed. For heavier use, switch to Brave Search, Tavily or your own SearXNG instance in **Settings → Tools** (or `tools.webSearch` in settings.json). Brave and Tavily keys are kept in the OS keychain (`xb login brave`), or set `BRAVE_API_KEY` / `TAVILY_API_KEY`.
 - **MCP servers:** connect local (command) or remote (URL) Model Context Protocol servers in **Settings → MCP Servers**. Their tools follow your permission rules as `mcp__<server>__<tool>`.
 - **Memory:** the agent can remember facts across chats (your preferences, how to test a project) with the `remember` / `forget` tools. Memories live in the app's data folder, and you can review or delete them in **Settings → Memory**.
 - **Detailed settings:**
@@ -61,7 +62,7 @@ xb                         # start a chat in the current folder
 xb "fix the failing test"  # start with a first message
 xb -c                      # continue the latest chat in this folder
 xb --resume                # pick an earlier chat (or: xb --resume <id>)
-xb login                   # save an API key in the OS keychain and test it
+xb login                   # save an API key in the OS keychain and test it (also: xb login brave|tavily)
 xb -p "summarize the README" --output-format json   # one turn, no UI
 ```
 

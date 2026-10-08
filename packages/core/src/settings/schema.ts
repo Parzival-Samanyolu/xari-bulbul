@@ -163,6 +163,13 @@ export const SettingsSchema = z.object({
       /** Project tool code runs on open, so it's opt-in (a cloned repo could contain anything). */
       loadProjectExtensions: z.boolean().default(false),
       loadUserExtensions: z.boolean().default(true),
+      webSearch: z
+        .object({
+          /** duckduckgo needs no key; brave and tavily need one (stored like API keys); searxng needs a URL. */
+          backend: z.enum(['duckduckgo', 'brave', 'tavily', 'searxng']).default('duckduckgo'),
+          searxngUrl: z.string().default(''),
+        })
+        .prefault({}),
     })
     .prefault({}),
 

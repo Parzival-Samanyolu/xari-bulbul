@@ -7,15 +7,17 @@ import { taskTool } from './task.js'
 import { todoTool } from './todo.js'
 import type { Tool } from './types.js'
 import { webFetchTool } from './web-fetch.js'
+import { webSearchTool } from './web-search.js'
 import { writeFileTool } from './write-file.js'
 
 export function builtinTools(): Tool[] {
-  return [readFileTool, writeFileTool, editFileTool, listDirTool, globTool, grepTool, bashTool, bashOutputTool, killJobTool, webFetchTool, todoTool, taskTool, rememberTool, forgetTool]
+  return [readFileTool, writeFileTool, editFileTool, listDirTool, globTool, grepTool, bashTool, bashOutputTool, killJobTool, webSearchTool, webFetchTool, todoTool, taskTool, rememberTool, forgetTool]
 }
 
 export * from './types.js'
 export { makeDiff } from './diff.js'
 export { defaultShell } from './bash.js'
 export { JobRegistry, type Job } from './jobs.js'
+export { SEARCH_KEY_ID, parseDuckDuckGo, search, type SearchBackend, type SearchResult, type WebSearchConfig } from './web-search.js'
 export { TASK_TOOL } from './task.js'
 export { FORGET_TOOL, REMEMBER_TOOL } from './memory.js'

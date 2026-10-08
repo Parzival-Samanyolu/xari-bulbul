@@ -12,7 +12,7 @@ export const BUILTIN_COMMANDS: CommandInfo[] = [
   { name: 'memory', description: 'What Xarı Bülbül remembers about you and this project' },
   { name: 'mcp', description: 'MCP servers and their tools' },
   { name: 'init', description: 'Write an AGENTS.md describing this project' },
-  { name: 'login', description: 'Save an API key in the OS keychain and test it', args: '[provider]' },
+  { name: 'login', description: 'Save an API key (provider, brave or tavily) in the OS keychain and test it', args: '[provider]' },
   { name: 'help', description: 'Commands, keys and where to customize things' },
   { name: 'exit', description: 'Quit (the chat is saved; xb --continue resumes it)' },
 ]

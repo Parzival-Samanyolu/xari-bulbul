@@ -164,6 +164,7 @@ const VERB: Record<string, string> = {
   glob: 'Searched files',
   grep: 'Searched',
   web_fetch: 'Fetched',
+  web_search: 'Searched the web',
   task: 'Delegated',
   remember: 'Remembered',
   forget: 'Forgot',
@@ -374,6 +375,10 @@ function summarize(tool: ToolCellData): string {
       return /^No files/.test(c) ? 'no files' : `${n} file${n === 1 ? '' : 's'}`
     case 'list_dir':
       return c === '(empty directory)' ? 'empty' : `${n} entries`
+    case 'web_search': {
+      const k = (c.match(/^\d+\. /gm) ?? []).length
+      return k ? `${k} result${k === 1 ? '' : 's'}` : 'no results'
+    }
     case 'web_fetch':
       return `${tokens(c.length)} chars`
     case 'task':

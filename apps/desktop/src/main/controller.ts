@@ -6,6 +6,7 @@ import {
   MemoryStore,
   Permissions,
   ProviderRegistry,
+  SEARCH_KEY_ID,
   SessionStore,
   USER_EXT_DIR,
   UsageTracker,
@@ -351,6 +352,7 @@ export class AppController {
       usage: this.usage,
       permissions,
       memory: this.memory,
+      secret: (id) => this.secrets.get(id),
       onSave: (s) => {
         if (s.messages.length && !this.removed.has(id)) this.store.save(s)
       },
@@ -578,6 +580,8 @@ export class AppController {
       keys[p.id] = this.secrets.has(p.id)
       ready[p.id] = providerReady(p, keys[p.id])
     }
+    // Web search keys live next to API keys.
+    for (const id of Object.values(SEARCH_KEY_ID)) keys[id] = this.secrets.has(id)
     return {
       version: this.version,
       platform: process.platform,

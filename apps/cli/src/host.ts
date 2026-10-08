@@ -20,6 +20,7 @@ import {
   pushRecent,
   resolveDataDir,
   saveSettingsFile,
+  search,
   type AgentEvent,
   type LoadedExtensions,
   type ModelInfo,
@@ -192,6 +193,17 @@ export class Host {
     }
   }
 
+  /** Runs one search with a just-saved key and, if it works, makes that backend the default. */
+  async testSearch(id: 'brave' | 'tavily'): Promise<{ ok: boolean; message: string }> {
+    try {
+      const results = await search('Ophrys caucasica', 1, { backend: id, searxngUrl: '', key: this.keys.get(id) }, AbortSignal.timeout(15_000))
+      this.updateSettings((s) => ({ ...s, tools: { ...s.tools, webSearch: { ...s.tools.webSearch, backend: id } } }))
+      return { ok: true, message: `Key saved (${this.keys.storage}); a test search returned ${results.length} result${results.length === 1 ? '' : 's'}.` }
+    } catch (e) {
+      return { ok: false, message: `Key saved, but the test search failed: ${(e as Error).message}` }
+    }
+  }
+
   async models(providerId: string, refresh = false): Promise<ModelInfo[]> {
     return this.registry.models(providerId, { refresh })
   }
@@ -227,6 +239,7 @@ export class Host {
       usage: this.usage,
       permissions,
       memory: this.memory,
+      secret: (id) => this.keys.get(id),
       onSave: (s) => {
         if (s.messages.length) this.store.save(s)
       },

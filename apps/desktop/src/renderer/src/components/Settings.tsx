@@ -497,6 +497,7 @@ function ToolsTab({ app, save, onState, onError }: TabProps) {
           ))}
         </div>
       </Section>
+      <WebSearchSection app={app} save={save} onState={onState} onError={onError} />
       <Section
         title="Extensions"
         description={
@@ -570,6 +571,76 @@ Review the uncommitted changes (git diff) for bugs and risky code. Focus on: $AR
 type McpServer = Settings['mcp']['servers'][number]
 
 /** `npx -y "@scope/server" --flag` → ['npx', '-y', '@scope/server', '--flag'] */
+const SEARCH_BACKENDS = [
+  { value: 'duckduckgo', label: 'DuckDuckGo (no key needed)' },
+  { value: 'brave', label: 'Brave Search (API key)' },
+  { value: 'tavily', label: 'Tavily (API key)' },
+  { value: 'searxng', label: 'SearXNG (your instance)' },
+] as const
+
+const SEARCH_KEY_LINKS: Record<string, string> = { brave: 'https://brave.com/search/api/', tavily: 'https://app.tavily.com/' }
+
+function WebSearchSection({ app, save, onState, onError }: TabProps) {
+  const ws = app.settings.tools.webSearch
+  const [key, setKey] = useState('')
+  const [url, setUrl] = useState(ws.searxngUrl)
+  const keyed = ws.backend === 'brave' || ws.backend === 'tavily'
+  return (
+    <Section title="Web search" description="The web_search tool. DuckDuckGo works without a key; the others are more reliable for heavy use.">
+      <Row label="Search with">
+        <Select label="Search with" value={ws.backend} options={[...SEARCH_BACKENDS]} onChange={(v) => save((s) => ((s.tools.webSearch.backend = v), s))} />
+      </Row>
+      {keyed && (
+        <Row
+          label="API key"
+          hint={
+            <>
+              Stored in your OS keychain.{' '}
+              <button className="link small" onClick={() => api.app.openExternal(SEARCH_KEY_LINKS[ws.backend])}>
+                Get a key
+              </button>
+              . {ws.backend.toUpperCase()}_API_KEY also works.
+            </>
+          }
+          labelFor="search-key"
+        >
+          <div className="key-row">
+            <input
+              id="search-key"
+              type="password"
+              className="mono"
+              autoComplete="off"
+              placeholder={app.keys[ws.backend] ? '•••••••• (saved)' : 'Paste API key'}
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+            />
+            <button className="btn primary" disabled={!key.trim()} onClick={() => api.keys.set(ws.backend, key).then((s) => (onState(s), setKey('')), onError)}>
+              Save
+            </button>
+            {app.keys[ws.backend] && (
+              <button className="btn ghost" onClick={() => api.keys.set(ws.backend, null).then(onState, onError)}>
+                Remove key
+              </button>
+            )}
+          </div>
+        </Row>
+      )}
+      {ws.backend === 'searxng' && (
+        <Row label="SearXNG URL" hint="The instance must allow JSON output (search.formats includes json)." labelFor="searxng-url">
+          <input
+            id="searxng-url"
+            className="mono"
+            placeholder="https://searx.example.org"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            onBlur={() => url !== ws.searxngUrl && save((s) => ((s.tools.webSearch.searxngUrl = url.trim()), s))}
+          />
+        </Row>
+      )}
+    </Section>
+  )
+}
+
 function splitCommand(line: string): string[] {
   const out: string[] = []
   const re = /"((?:\\.|[^"])*)"|'([^']*)'|(\S+)/g

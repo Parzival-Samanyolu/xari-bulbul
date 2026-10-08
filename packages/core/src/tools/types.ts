@@ -2,6 +2,7 @@ import path from 'node:path'
 import { z } from 'zod'
 import type { MemoryAccess } from '../memory/store.js'
 import type { JobRegistry } from './jobs.js'
+import type { WebSearchConfig } from './web-search.js'
 import type { JsonSchema, TodoItem } from '../types.js'
 
 export type ToolKind = 'read' | 'edit' | 'exec' | 'network' | 'other'
@@ -19,6 +20,8 @@ export interface ToolContext {
   progress(text: string): void
   /** Saved facts for this workspace; absent when memory is off. */
   memory?: MemoryAccess
+  /** Which search backend web_search uses, with its key. Defaults to DuckDuckGo. */
+  webSearch?: WebSearchConfig
   /** Background shell jobs owned by this agent. */
   jobs?: JobRegistry
   /** Runs a subagent; provided by the agent loop when subagents are enabled. */

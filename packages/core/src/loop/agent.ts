@@ -9,6 +9,7 @@ import { newSession, titleFrom, type Session } from '../sessions/store.js'
 import { modelKey, type Settings } from '../settings/schema.js'
 import { FORGET_TOOL, REMEMBER_TOOL } from '../tools/memory.js'
 import { JobRegistry } from '../tools/jobs.js'
+import { SEARCH_KEY_ID, type WebSearchConfig } from '../tools/web-search.js'
 import { TASK_TOOL } from '../tools/task.js'
 import type { SubagentInput, Tool, ToolContext, ToolResult } from '../tools/types.js'
 import type { ChatMessage, FileAttachment, ImageAttachment, ModelRef, TodoItem, ToolCall, Usage } from '../types.js'
@@ -61,6 +62,8 @@ export interface AgentOptions {
   subagent?: { description: string; parentSessionId: string }
   /** Background shell jobs; subagents share their parent's. */
   jobs?: JobRegistry
+  /** Looks up stored secrets (web search keys). */
+  secret?: (id: string) => string | undefined
 }
 
 /** A tiny counting semaphore: `await acquire()` returns the release function. */
@@ -454,8 +457,15 @@ export class Agent {
       progress: (text) => this.emit({ type: 'tool_progress', callId, text }),
       memory: this.memoryOn ? this.o.memory!.scoped(this.session.meta.cwd) : undefined,
       jobs: this.jobs,
+      webSearch: this.webSearchConfig(),
       runSubagent: this.o.subagent ? undefined : (input) => this.runSubagent(callId, input, signal),
     }
+  }
+
+  private webSearchConfig(): WebSearchConfig {
+    const ws = this.settings.tools.webSearch
+    const keyId = SEARCH_KEY_ID[ws.backend]
+    return { backend: ws.backend, searxngUrl: ws.searxngUrl, key: keyId ? this.o.secret?.(keyId) : undefined }
   }
 
   /** Subagents count toward their parent chat's usage and budget. */
@@ -521,6 +531,7 @@ export class Agent {
       memory: this.o.memory,
       subagent: { description: input.description, parentSessionId: this.session.meta.id },
       jobs: this.jobs,
+      secret: this.o.secret,
       // Approvals surface in the parent's task card; ids are prefixed to stay unique.
       askPermission: (req) =>
         this.o.askPermission({ ...req, callId: `${callId}/${req.callId}`, reason: `Subagent "${input.description}": ${req.reason}` }),
