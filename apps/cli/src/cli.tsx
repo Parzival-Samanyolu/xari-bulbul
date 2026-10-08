@@ -240,7 +240,6 @@ async function loginSearch(host: Host, id: 'brave' | 'tavily', io: Io): Promise<
   host.setKey(id, key)
   const res = await host.testSearch(id)
   io.stdout.write(`${res.ok ? '✔' : '✗'} ${res.message}\n`)
-  if (res.ok && host.settings.tools.webSearch.backend !== id) io.stdout.write(`Search now uses ${name} (tools.webSearch.backend).\n`)
   return res.ok ? 0 : EXIT.error
 }
 

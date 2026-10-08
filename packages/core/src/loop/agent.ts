@@ -465,7 +465,8 @@ export class Agent {
   private webSearchConfig(): WebSearchConfig {
     const ws = this.settings.tools.webSearch
     const keyId = SEARCH_KEY_ID[ws.backend]
-    return { backend: ws.backend, searxngUrl: ws.searxngUrl, key: keyId ? this.o.secret?.(keyId) : undefined }
+    const keys = { brave: this.o.secret?.('brave'), tavily: this.o.secret?.('tavily') }
+    return { backend: ws.backend, searxngUrl: ws.searxngUrl, key: keyId ? this.o.secret?.(keyId) : undefined, keys }
   }
 
   /** Subagents count toward their parent chat's usage and budget. */

@@ -197,8 +197,9 @@ export class Host {
   async testSearch(id: 'brave' | 'tavily'): Promise<{ ok: boolean; message: string }> {
     try {
       const results = await search('Ophrys caucasica', 1, { backend: id, searxngUrl: '', key: this.keys.get(id) }, AbortSignal.timeout(15_000))
-      this.updateSettings((s) => ({ ...s, tools: { ...s.tools, webSearch: { ...s.tools.webSearch, backend: id } } }))
-      return { ok: true, message: `Key saved (${this.keys.storage}); a test search returned ${results.length} result${results.length === 1 ? '' : 's'}.` }
+      // Automatic mode already uses the key first; only a keyless-only setup is switched over.
+      if (this.settings.tools.webSearch.backend === 'duckduckgo') this.updateSettings((s) => ({ ...s, tools: { ...s.tools, webSearch: { ...s.tools.webSearch, backend: 'auto' } } }))
+      return { ok: true, message: `Key saved (${this.keys.storage}); a test search returned ${results.length} result${results.length === 1 ? '' : 's'}. Web search now uses it first.` }
     } catch (e) {
       return { ok: false, message: `Key saved, but the test search failed: ${(e as Error).message}` }
     }

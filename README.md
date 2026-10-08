@@ -28,7 +28,12 @@ Built to be owned and extended. The engine is small, readable TypeScript with no
   - a per-model breakdown, CSV export, and per-chat or daily budgets (warn or stop)
 - **Permission modes:** Ask / Auto-edit / Plan (read-only) / Full auto, plus allow and deny rules like `bash(npm test*)` or `edit_file(src/**)`. Writes outside the project folder always ask.
 - **Destructive commands always ask:** `rm`, `git reset --hard`, force pushes and similar need your approval even in Full auto, and are only ever allowed once. Before a turn ends, the agent checks for unfinished checklist steps and failed tool calls and must report anything it skipped.
-- **Web search:** works out of the box with DuckDuckGo, no key needed. For heavier use, switch to Brave Search, Tavily or your own SearXNG instance in **Settings → Tools** (or `tools.webSearch` in settings.json). Brave and Tavily keys are kept in the OS keychain (`xb login brave`), or set `BRAVE_API_KEY` / `TAVILY_API_KEY`.
+- **Web search:**
+  - **No key needed:** DuckDuckGo first, then Brave's free search when DuckDuckGo is busy. Results unrelated to the query are rejected.
+  - **Free keys (optional):** a Brave Search key (2,000 searches a month) or a Tavily key (1,000 a month) is used first in automatic mode. Add one in **Settings → Tools**, with `xb login brave`, or by setting `BRAVE_API_KEY` / `TAVILY_API_KEY`.
+  - **Your own SearXNG:** also supported.
+  - **Filters:** searches can be limited to certain sites and to recent results.
+  - **Reading pages:** `web_fetch` returns a page's main content as Markdown, in parts for long pages.
 - **MCP servers:** connect local (command) or remote (URL) Model Context Protocol servers in **Settings → MCP Servers**. Their tools follow your permission rules as `mcp__<server>__<tool>`.
 - **Memory:** the agent can remember facts across chats (your preferences, how to test a project) with the `remember` / `forget` tools. Memories live in the app's data folder, and you can review or delete them in **Settings → Memory**.
 - **Detailed settings:**

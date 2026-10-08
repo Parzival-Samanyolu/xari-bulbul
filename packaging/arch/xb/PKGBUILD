@@ -3,7 +3,7 @@
 #   makepkg -si
 pkgname=xari-bulbul-cli-bin
 _pkgname=xari-bulbul-cli
-pkgver=0.2.0
+pkgver=0.2.1
 pkgrel=1
 pkgdesc='xb: Xarı Bülbül coding agent in the terminal, for OpenRouter, Ollama and any OpenAI-compatible provider'
 arch=('x86_64')

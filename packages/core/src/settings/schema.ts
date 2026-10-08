@@ -165,8 +165,11 @@ export const SettingsSchema = z.object({
       loadUserExtensions: z.boolean().default(true),
       webSearch: z
         .object({
-          /** duckduckgo needs no key; brave and tavily need one (stored like API keys); searxng needs a URL. */
-          backend: z.enum(['duckduckgo', 'brave', 'tavily', 'searxng']).default('duckduckgo'),
+          /**
+           * auto: Brave/Tavily APIs if you added a (free-tier) key, else keyless DuckDuckGo, then Brave's public page.
+           * duckduckgo: keyless only. brave/tavily: that API only (key). searxng: your instance (URL).
+           */
+          backend: z.enum(['auto', 'duckduckgo', 'brave', 'tavily', 'searxng']).default('auto'),
           searxngUrl: z.string().default(''),
         })
         .prefault({}),

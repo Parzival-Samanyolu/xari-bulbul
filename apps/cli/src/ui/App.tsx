@@ -415,7 +415,9 @@ export function App(p: AppProps) {
         ['instructions', instr.length ? instr.join(', ') : 'none (add AGENTS.md, or run /init)'],
         ['web search', (() => {
           const ws = host.settings.tools.webSearch
-          if (ws.backend === 'duckduckgo') return 'DuckDuckGo (no key)'
+          const free = (['brave', 'tavily'] as const).filter((k) => host.keys.has(k))
+          if (ws.backend === 'auto') return `automatic: ${free.length ? `${free.join(', ')} (your keys), then ` : ''}keyless DuckDuckGo and Brave${free.length ? '' : ' · add a free key with /login brave or /login tavily'}`
+          if (ws.backend === 'duckduckgo') return 'keyless only (DuckDuckGo, then Brave)'
           if (ws.backend === 'searxng') return `SearXNG ${ws.searxngUrl || '(no URL set)'}`
           return `${ws.backend === 'brave' ? 'Brave' : 'Tavily'}: ${host.keys.has(ws.backend) ? 'key set' : 'no key, run /login ' + ws.backend}`
         })()],

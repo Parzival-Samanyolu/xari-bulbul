@@ -572,9 +572,10 @@ type McpServer = Settings['mcp']['servers'][number]
 
 /** `npx -y "@scope/server" --flag` → ['npx', '-y', '@scope/server', '--flag'] */
 const SEARCH_BACKENDS = [
-  { value: 'duckduckgo', label: 'DuckDuckGo (no key needed)' },
-  { value: 'brave', label: 'Brave Search (API key)' },
-  { value: 'tavily', label: 'Tavily (API key)' },
+  { value: 'auto', label: 'Automatic (your free keys first, then keyless)' },
+  { value: 'duckduckgo', label: 'Keyless only (DuckDuckGo)' },
+  { value: 'brave', label: 'Brave Search API only (free key: 2,000/month)' },
+  { value: 'tavily', label: 'Tavily only (free key: 1,000/month)' },
   { value: 'searxng', label: 'SearXNG (your instance)' },
 ] as const
 
@@ -582,49 +583,51 @@ const SEARCH_KEY_LINKS: Record<string, string> = { brave: 'https://brave.com/sea
 
 function WebSearchSection({ app, save, onState, onError }: TabProps) {
   const ws = app.settings.tools.webSearch
-  const [key, setKey] = useState('')
+  const [keys, setKeys] = useState<Record<string, string>>({})
   const [url, setUrl] = useState(ws.searxngUrl)
-  const keyed = ws.backend === 'brave' || ws.backend === 'tavily'
+  // In automatic mode both free-tier keys can be added; otherwise only the chosen API's.
+  const keyIds = ws.backend === 'auto' ? (['brave', 'tavily'] as const) : ws.backend === 'brave' || ws.backend === 'tavily' ? [ws.backend] : []
   return (
-    <Section title="Web search" description="The web_search tool. DuckDuckGo works without a key; the others are more reliable for heavy use.">
+    <Section title="Web search" description="The web_search tool. It works without any key. Free keys from Brave Search or Tavily make it more reliable: in automatic mode they are used first, and the keyless engines take over if they fail or run out.">
       <Row label="Search with">
         <Select label="Search with" value={ws.backend} options={[...SEARCH_BACKENDS]} onChange={(v) => save((s) => ((s.tools.webSearch.backend = v), s))} />
       </Row>
-      {keyed && (
+      {keyIds.map((id) => (
         <Row
-          label="API key"
+          key={id}
+          label={id === 'brave' ? 'Brave Search key' : 'Tavily key'}
           hint={
             <>
-              Stored in your OS keychain.{' '}
-              <button className="link small" onClick={() => api.app.openExternal(SEARCH_KEY_LINKS[ws.backend])}>
+              {ws.backend === 'auto' ? 'Optional. ' : ''}Free tier: {id === 'brave' ? '2,000' : '1,000'} searches a month. Stored in your OS keychain.{' '}
+              <button className="link small" onClick={() => api.app.openExternal(SEARCH_KEY_LINKS[id])}>
                 Get a key
               </button>
-              . {ws.backend.toUpperCase()}_API_KEY also works.
+              . {id.toUpperCase()}_API_KEY also works.
             </>
           }
-          labelFor="search-key"
+          labelFor={`search-key-${id}`}
         >
           <div className="key-row">
             <input
-              id="search-key"
+              id={`search-key-${id}`}
               type="password"
               className="mono"
               autoComplete="off"
-              placeholder={app.keys[ws.backend] ? '•••••••• (saved)' : 'Paste API key'}
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
+              placeholder={app.keys[id] ? '•••••••• (saved)' : 'Paste API key'}
+              value={keys[id] ?? ''}
+              onChange={(e) => setKeys((k) => ({ ...k, [id]: e.target.value }))}
             />
-            <button className="btn primary" disabled={!key.trim()} onClick={() => api.keys.set(ws.backend, key).then((s) => (onState(s), setKey('')), onError)}>
+            <button className="btn primary" disabled={!keys[id]?.trim()} onClick={() => api.keys.set(id, keys[id]).then((st) => (onState(st), setKeys((k) => ({ ...k, [id]: '' }))), onError)}>
               Save
             </button>
-            {app.keys[ws.backend] && (
-              <button className="btn ghost" onClick={() => api.keys.set(ws.backend, null).then(onState, onError)}>
+            {app.keys[id] && (
+              <button className="btn ghost" onClick={() => api.keys.set(id, null).then(onState, onError)}>
                 Remove key
               </button>
             )}
           </div>
         </Row>
-      )}
+      ))}
       {ws.backend === 'searxng' && (
         <Row label="SearXNG URL" hint="The instance must allow JSON output (search.formats includes json)." labelFor="searxng-url">
           <input

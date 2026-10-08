@@ -1,6 +1,6 @@
 {
   "name": "xari-bulbul-cli",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "xb — Xarı Bülbül in your terminal: an open coding agent for any model",
   "license": "MIT",
   "repository": {
