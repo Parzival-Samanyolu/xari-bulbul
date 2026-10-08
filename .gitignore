@@ -6,3 +6,11 @@ release/
 .DS_Store
 .env
 coverage/
+
+# Local notes and agent instructions, kept out of the public repo
+PLAN.md
+PLAN-CLI.md
+PRODUCT.md
+CLAUDE.md
+docs/superpowers/
+.impeccable/
