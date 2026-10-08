@@ -2,6 +2,7 @@ name: Release
 
 # Push a tag like v0.1.0 to build installers for all platforms and publish them
 # to a GitHub Release. The installed app auto-updates from these releases.
+# The `xb` job then adds the terminal app: single binaries per platform and an npm tarball.
 on:
   push:
     tags: ['v*']
@@ -41,3 +42,53 @@ jobs:
           # CSC_LINK / CSC_KEY_PASSWORD (macOS .p12 or Windows cert)
           # APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID (macOS notarization)
           CSC_IDENTITY_AUTO_DISCOVERY: false
+
+  xb:
+    # After the desktop job has created the release, add the terminal app to it.
+    needs: build
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # macOS binaries are built on macOS so Bun can sign them (Apple silicon refuses unsigned code).
+          - os: macos-latest
+            targets: bun-darwin-arm64,bun-darwin-x64
+          - os: ubuntu-latest
+            targets: bun-linux-x64
+            npm: true
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: oven-sh/setup-bun@v2
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter xari-bulbul-cli test
+      - name: Build binaries
+        working-directory: apps/cli
+        run: node scripts/build.mjs --compile --targets=${{ matrix.targets }}
+      - name: Package
+        working-directory: apps/cli
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          # Smoke-test the binary this runner can execute.
+          native="xb-$(uname -s | tr '[:upper:]' '[:lower:]')-$(uname -m | sed 's/x86_64/x64/;s/aarch64/arm64/')"
+          "release/$native/xb" --version
+          mkdir -p upload
+          for dir in release/xb-*; do
+            tar -czf "upload/xb-$version-${dir#release/xb-}.tar.gz" -C "$dir" xb
+          done
+          if [ "${{ matrix.npm }}" = "true" ]; then
+            pnpm pack --pack-destination upload
+            mv upload/xari-bulbul-cli-*.tgz "upload/xb-$version.tgz"
+          fi
+          (cd upload && shasum -a 256 * > "SHA256SUMS-xb-${{ runner.os }}.txt")
+          ls -la upload
+      - name: Upload to the release
+        working-directory: apps/cli
+        run: gh release upload "$GITHUB_REF_NAME" upload/* --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

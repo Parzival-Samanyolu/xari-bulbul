@@ -104,7 +104,7 @@ function ProvidersTab({ app, save, onState, onError }: TabProps) {
         title="Providers & API keys"
         description={
           <>
-            Keys are encrypted with your OS keychain (
+            Keys are stored in your OS keychain, shared with the xb terminal app (
             {app.keyStorage === 'os' ? 'secure storage active' : <span className="warn">no keyring found, so keys are only obfuscated</span>}) and never shown again.
             Environment variables like <code>OPENROUTER_API_KEY</code> also work.
           </>
@@ -649,7 +649,7 @@ function McpTab({ app, save, onState, onError }: TabProps) {
               </div>
               {state === 'error' && st?.error && <div className="notice notice-error small">{st.error}</div>}
               {srv.transport === 'http' && (
-                <Row label="Bearer token" hint="Optional. Sent as Authorization: Bearer …, stored encrypted like API keys" labelFor={`mcp-token-${srv.id}`}>
+                <Row label="Bearer token" hint="Optional. Sent as Authorization: Bearer …, stored in the keychain like API keys" labelFor={`mcp-token-${srv.id}`}>
                   <div className="key-row">
                     <input
                       id={`mcp-token-${srv.id}`}

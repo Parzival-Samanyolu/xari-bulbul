@@ -1,7 +1,7 @@
 {
   "name": "harness",
   "private": true,
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Cross-platform desktop AI coding agent with any-model support",
   "license": "MIT",
   "homepage": "https://github.com/Parzival-Samanyolu/xari-bulbul",
@@ -15,10 +15,11 @@
   },
   "scripts": {
     "dev": "pnpm --filter @harness/desktop dev",
-    "cli": "pnpm --filter @harness/cli start",
+    "cli": "pnpm --filter xari-bulbul-cli start",
     "build": "pnpm --filter @harness/desktop build",
     "dist": "pnpm --filter @harness/desktop dist",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "xb": "pnpm --filter xari-bulbul-cli start"
   }
 }

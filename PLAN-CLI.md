@@ -187,3 +187,37 @@ Structure under `apps/cli/src/`:
 - Data dir confirmed on disk: `~/Library/Application Support/Xarı Bülbül` (Electron `userData` after `app.setName`).
 - Keys: the user chose one shared OS keychain store for desktop and `xb`; desktop migrates `secrets.json` on first launch.
 - Release: the user chose to cut v0.2.0 with `xb` binaries. npm: package prepared, not published.
+
+## Codex study: what `xb` takes, and how it differs
+Codex CLI's TUI (`codex-rs/tui`, Apache-2.0) was read from a shallow clone. Nothing was built or run, and no code or text was copied; `apps/cli/NOTICE` credits it.
+
+| Codex | `xb` |
+|---|---|
+| Finished cells go into the terminal scrollback, and only the bottom pane redraws. Streaming text is committed at newlines. | Ink `<Static>` for finished cells. Streaming text is committed at block boundaries outside code fences (`splitCommittable`). |
+| Session header: originally a rounded box; upstream is now borderless. | A rounded box with the orchid, name, version, model, provider, folder and mode. The orchid is dropped under 60 columns. The header stays in scrollback, so it is gone after the first turn. |
+| Composer: a shaded block with a `›` prompt. Footer hints like "? for shortcuts" and "N% context left". | Same shape. The shade is the `panel-2` token, used only when truecolor and the background is known. The footer always shows the mode, model, context %, tokens and cost. |
+| Large pastes become an atomic `[Pasted Content N chars]`. | `[Pasted N lines]` / `[Pasted N chars]`, expanded on send. The transcript keeps the label. |
+| The `/` popup uses exact then prefix matching; the `@` popup is fuzzy. Up to 8 rows. | Both are fuzzy, ranked as prefix, then substring, then subsequence. Up to 8 rows, with matched characters in the accent colour. |
+| `• Working (0s • esc to interrupt)`. | `• Working (12s · esc to interrupt)`, with a breathing plum dot. Queued follow-ups are listed under it. |
+| Exec cells: `• Ran cmd`, then `└` output, limited to a few rows plus "+N lines". | Same structure: 2 head lines and 3 tail lines, exit code in red, duration. Ctrl+O prints the full output. |
+| Diffs: `• Edited path (+A -R)` with a line-number gutter and tinted lines. | Same, using the `add-bg` / `del-bg` tokens. |
+| Approval: "Yes", "Yes and don't ask again", "No, tell Codex…". | "Yes, once", "Yes, and allow `rule` for the rest of this chat" (left out for destructive commands and writes outside the project), and "No, and tell Xarı Bülbül what to do instead". Esc stops the turn. |
+| Accent colour: blue. | Velvet plum (hue 350). Green and red are used only for success and failure. |
+
+Not taken: the alt-screen transcript pager (Ctrl+T), Esc-Esc backtracking, and reasoning-effort keys.
+
+## Status (v0.2.0)
+
+**Done:** everything in Parts A–C, with these refinements:
+- Desktop keys are migrated to the keychain and verified end to end with a temporary profile.
+- `xb` runs from source, as an esbuild bundle (npm tarball) and as a Bun single binary.
+- The TUI was driven in a pseudo-terminal at 80×24, 90 and 100 columns, in dark, light, 256-colour and `NO_COLOR`.
+
+**Decisions made during the build:**
+- 256- and 16-colour fallbacks are computed at runtime: Ink/chalk downsample hex for 256 colours, and named colours are used for 16. Only the orchid image is pre-generated.
+- The shaded composer is skipped at 256 colours, where it rounds to a loud grey.
+- macOS binaries are built on a macOS runner so Bun can sign them ad hoc. Apple silicon refuses unsigned code, which rules out cross-compiling.
+- Reminders are saved in the session as hidden `synthetic: 'reminder'` user messages, rather than added only to the outgoing request. This keeps history consistent across requests, and the desktop app hides them.
+- A separate profile (`HARNESS_DATA_DIR`) uses its own keychain service, so test profiles never see real keys.
+
+**Not done:** the transcript pager, Esc-Esc backtrack, and syntax highlighting inside diffs and code blocks.

@@ -1,0 +1,22 @@
+# Maintainer: Xarı Bülbül contributors
+# xb, the terminal app, as a prebuilt single binary from the GitHub release. Build and install with:
+#   makepkg -si
+pkgname=xari-bulbul-cli-bin
+_pkgname=xari-bulbul-cli
+pkgver=0.2.0
+pkgrel=1
+pkgdesc='xb: Xarı Bülbül coding agent in the terminal, for OpenRouter, Ollama and any OpenAI-compatible provider'
+arch=('x86_64')
+url='https://github.com/Parzival-Samanyolu/xari-bulbul'
+license=('MIT')
+optdepends=('libsecret: store API keys in the system keyring (secret-tool)')
+provides=("$_pkgname" 'xb')
+conflicts=("$_pkgname")
+# The binary carries its JavaScript payload; stripping it would break it.
+options=('!strip' '!debug')
+source=("xb-$pkgver-linux-x64.tar.gz::$url/releases/download/v$pkgver/xb-$pkgver-linux-x64.tar.gz")
+sha256sums=('SKIP')
+
+package() {
+  install -Dm755 "$srcdir/xb" "$pkgdir/usr/bin/xb"
+}
