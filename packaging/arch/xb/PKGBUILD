@@ -15,7 +15,7 @@ conflicts=("$_pkgname")
 # The binary carries its JavaScript payload; stripping it would break it.
 options=('!strip' '!debug')
 source=("xb-$pkgver-linux-x64.tar.gz::$url/releases/download/v$pkgver/xb-$pkgver-linux-x64.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('2a0b124688cb7c1fac7ada7d6d5d7e373b5786af01a48a98d9766bd1b2757700')
 
 package() {
   install -Dm755 "$srcdir/xb" "$pkgdir/usr/bin/xb"
