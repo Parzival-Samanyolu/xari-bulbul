@@ -47,10 +47,11 @@ export class OpenAICompatProvider implements Provider {
     const json = (await res.json()) as { data?: RawModel[] }
     return (json.data ?? [])
       .flatMap((m) => {
-        // Google lists `models/gemini-2.5-flash` next to embedding, image, video and audio models.
+        // Google lists `models/gemini-3.5-flash` next to embedding, image, video and audio models,
+        // and still lists Gemini 2.x, which answers 404 "no longer available to new users".
         if (!m.id.startsWith('models/')) return [m]
         const id = m.id.slice('models/'.length)
-        return NON_CHAT_GOOGLE.test(id) ? [] : [{ ...m, id, name: m.name ?? id }]
+        return NON_CHAT_GOOGLE.test(id) || RETIRED_GOOGLE.test(id) ? [] : [{ ...m, id, name: m.name ?? id }]
       })
       .map((m) => toModelInfo(this.id, m))
       .sort((a, b) => a.id.localeCompare(b.id))
@@ -227,6 +228,8 @@ export function toWireMessage(m: ChatMessage): Record<string, unknown> {
 
 const NON_CHAT_GOOGLE =
   /embedding|imagen|image|nano-banana|veo|tts|aqa|audio|live|lyria|transcribe|translate|robotics|computer-use|deep-research|antigravity/
+
+const RETIRED_GOOGLE = /^gemini-[12]\./
 
 interface RawModel {
   id: string

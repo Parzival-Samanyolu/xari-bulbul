@@ -85,11 +85,12 @@ describe('OpenAICompatProvider', () => {
     expect(models[0]).toMatchObject({ free: true, created: 1700000000, supportsTools: true })
   })
 
-  it('lists Google chat models without the models/ prefix', async () => {
+  it('lists Google chat models without the models/ prefix or retired Gemini 2.x', async () => {
     const fetch = (async () =>
       new Response(
         JSON.stringify({
           data: [
+            { id: 'models/gemini-3.5-flash', object: 'model' },
             { id: 'models/gemini-2.5-flash', object: 'model' },
             { id: 'models/gemini-embedding-001', object: 'model' },
             { id: 'models/imagen-4.0-generate-001', object: 'model' },
@@ -98,7 +99,7 @@ describe('OpenAICompatProvider', () => {
         }),
       )) as unknown as typeof globalThis.fetch
     const p = new OpenAICompatProvider({ config: BUILTIN_PROVIDERS.find((c) => c.id === 'google')!, apiKey: 'k', fetch })
-    expect((await p.listModels()).map((m) => [m.id, m.name])).toEqual([['gemini-2.5-flash', 'gemini-2.5-flash']])
+    expect((await p.listModels()).map((m) => [m.id, m.name])).toEqual([['gemini-3.5-flash', 'gemini-3.5-flash']])
   })
 
   it('keeps index-less tool calls apart and round-trips Gemini thought signatures', async () => {
