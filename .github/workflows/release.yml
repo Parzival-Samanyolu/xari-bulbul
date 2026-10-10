@@ -49,6 +49,8 @@ jobs:
           security import "$RUNNER_TEMP/cert.p12" -k "$kc" -P "$MAC_CERT_PASSWORD" -T /usr/bin/codesign
           rm "$RUNNER_TEMP/cert.p12"
           security set-key-partition-list -S apple-tool:,apple: -s -k ci "$kc" > /dev/null
+          # codesign only finds identities in keychains on the search list.
+          security list-keychains -d user -s "$kc" $(security list-keychains -d user | tr -d '"')
           id=$(security find-identity -p codesigning "$kc" | awk '/Xari Bulbul Self-Signed/ { print $2; exit }')
           [ -n "$id" ] || { echo "Certificate not found in keychain"; exit 1; }
           echo "XB_SIGN_KEYCHAIN=$kc" >> "$GITHUB_ENV"

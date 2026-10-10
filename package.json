@@ -1,7 +1,7 @@
 {
   "name": "harness",
   "private": true,
-  "version": "0.2.4",
+  "version": "0.2.5",
   "description": "Cross-platform desktop AI coding agent with any-model support",
   "license": "MIT",
   "homepage": "https://github.com/Parzival-Samanyolu/xari-bulbul",
