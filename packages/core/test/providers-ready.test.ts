@@ -27,6 +27,17 @@ describe('provider readiness', () => {
     expect(PROVIDER_PRESETS.find((p) => p.id === 'ollama-local')?.requiresKey).toBe(false)
     expect(defaultSettings().models.picker.freeOnly).toBe(true)
   })
+
+  it('adds built-in providers missing from saved settings, keeping custom ones', () => {
+    const s = parseSettings({ providers: [{ ...BUILTIN_PROVIDERS[0], enabled: false }, { id: 'x', name: 'X', baseUrl: 'https://x.dev/v1' }] })
+    expect(s.providers.map((p) => p.id)).toEqual(['openrouter', 'x', 'ollama-cloud', 'google'])
+    expect(s.providers[0].enabled).toBe(false)
+  })
+
+  it("points a Google provider saved with the API root at its OpenAI-compatible path", () => {
+    const s = parseSettings({ providers: [{ id: 'google', name: 'Google AI', baseUrl: 'https://generativelanguage.googleapis.com' }] })
+    expect(s.providers.filter((p) => p.id === 'google').map((p) => p.baseUrl)).toEqual(['https://generativelanguage.googleapis.com/v1beta/openai'])
+  })
 })
 
 describe('tool durations', () => {

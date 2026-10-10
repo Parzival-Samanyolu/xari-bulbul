@@ -6,6 +6,8 @@ export interface ToolCall {
   name: string
   /** Raw JSON string exactly as produced by the model. */
   arguments: string
+  /** Provider data that must be sent back with the call (Gemini's `extra_content.google.thought_signature`). */
+  extra?: Record<string, unknown>
 }
 
 export type ChatMessage =

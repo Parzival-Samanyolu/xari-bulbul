@@ -36,6 +36,15 @@ export const BUILTIN_PROVIDERS: ProviderConfig[] = [
     requestUsageCost: false,
     requiresKey: true,
   },
+  {
+    id: 'google',
+    name: 'Google AI Studio',
+    baseUrl: 'https://generativelanguage.googleapis.com/v1beta/openai',
+    enabled: true,
+    headers: {},
+    requestUsageCost: false,
+    requiresKey: true,
+  },
 ]
 
 /** One-click presets for common OpenAI-compatible servers. */
@@ -45,6 +54,12 @@ export const PROVIDER_PRESETS: Omit<ProviderConfig, 'enabled' | 'headers' | 'req
   { id: 'groq', name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', requiresKey: true },
   { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', requiresKey: true },
 ]
+
+/** Google's native API root 404s for OpenAI-style requests; only its `/v1beta/openai` path speaks that protocol. */
+function fixGoogleUrl(p: ProviderConfig): ProviderConfig {
+  const google = 'https://generativelanguage.googleapis.com'
+  return p.baseUrl.startsWith(google) && !/\/openai\/?$/.test(p.baseUrl) ? { ...p, baseUrl: `${google}/v1beta/openai` } : p
+}
 
 /** A provider can be used when it's enabled and either has a key or doesn't need one. */
 export function providerReady(config: ProviderConfig | undefined, hasKey: boolean): boolean {
@@ -87,7 +102,11 @@ export const ModelOverrideSchema = z.object({
 })
 
 export const SettingsSchema = z.object({
-  providers: z.array(ProviderConfigSchema).default(BUILTIN_PROVIDERS),
+  providers: z
+    .array(ProviderConfigSchema)
+    .default(BUILTIN_PROVIDERS)
+    // Saved settings predate newer built-ins; add any that are missing (built-ins can't be removed).
+    .transform((list) => [...list.map(fixGoogleUrl), ...BUILTIN_PROVIDERS.filter((b) => !list.some((p) => p.id === b.id))]),
 
   models: z
     .object({

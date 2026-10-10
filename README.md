@@ -5,7 +5,7 @@
 *Xarı bülbül* is a flower from Karabakh, and this is an AI coding agent.
 
 An AI coding agent for **macOS and Linux** that works directly in your project, as a desktop app or in your terminal (`xb`).
-It reads, searches, edits and runs code, and it can use **any model** on OpenRouter, Ollama Cloud, or any OpenAI-compatible API.
+It reads, searches, edits and runs code, and it can use **any model** on OpenRouter, Ollama Cloud, Google AI Studio (Gemini), or any OpenAI-compatible API.
 
 Built to be owned and extended. The engine is small, readable TypeScript with no agent framework and no AI SDK.
 
@@ -116,7 +116,7 @@ Exit codes:
 `--output-format json` prints one result object with the answer, exact usage and cost, and denied actions. `stream-json` prints every event as a JSON line.
 
 **Keys and data:**
-- **Keys:** `<PROVIDER>_API_KEY` environment variables (`OPENROUTER_API_KEY`, `OLLAMA_CLOUD_API_KEY`, …) override stored keys.
+- **Keys:** `<PROVIDER>_API_KEY` environment variables (`OPENROUTER_API_KEY`, `OLLAMA_CLOUD_API_KEY`, `GOOGLE_API_KEY`, …) override stored keys.
 - **Data:** stored in the desktop app's data folder: `~/Library/Application Support/Xarı Bülbül` on macOS, `~/.config/Xarı Bülbül` on Linux.
 - **Separate profile:** `HARNESS_DATA_DIR` selects a separate profile, which also gets its own keychain entries.
 
@@ -129,7 +129,7 @@ pnpm install
 pnpm dev          # launches the desktop app with hot reload
 ```
 
-1. Open **Settings → Providers & Keys** and paste an [OpenRouter](https://openrouter.ai/keys) or [Ollama Cloud](https://ollama.com/settings/keys) key, then click **Test**.
+1. Open **Settings → Providers & Keys** and paste an [OpenRouter](https://openrouter.ai/keys) or [Ollama Cloud](https://ollama.com/settings/keys) or [Google AI Studio](https://aistudio.google.com/apikey) key, then click **Test**.
 2. Open a project folder and start asking.
 
 | Shortcut | Action |

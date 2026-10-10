@@ -74,6 +74,7 @@ interface TabProps {
 const KEY_LINKS: Record<string, string> = {
   openrouter: 'https://openrouter.ai/keys',
   'ollama-cloud': 'https://ollama.com/settings/keys',
+  google: 'https://aistudio.google.com/apikey',
 }
 
 // ---------------------------------------------------------------- Providers
@@ -82,7 +83,7 @@ function ProvidersTab({ app, save, onState, onError }: TabProps) {
   const [keys, setKeys] = useState<Record<string, string>>({})
   const [tests, setTests] = useState<Record<string, ProviderTestResult | 'running'>>({})
   const [custom, setCustom] = useState({ id: '', name: '', baseUrl: '', requiresKey: true })
-  const builtin = new Set(['openrouter', 'ollama-cloud'])
+  const builtin = new Set(['openrouter', 'ollama-cloud', 'google'])
   const existing = new Set(app.settings.providers.map((p) => p.id))
 
   const test = (id: string) => {

@@ -29,7 +29,7 @@ Usage
   xb login [provider]         save an API key in the OS keychain and test it
 
 Options
-  -m, --model <p:model>       model, e.g. openrouter:openrouter/free or ollama-cloud:glm-5.3
+  -m, --model <p:model>       model, e.g. openrouter:openrouter/free, ollama-cloud:glm-5.3 or google:gemini-3.8-flash
       --mode <mode>           ask | auto-edit | plan | full-auto
   -c, --continue              continue the latest chat in this folder
   -r, --resume [id]           resume a chat (pick one if no id is given)

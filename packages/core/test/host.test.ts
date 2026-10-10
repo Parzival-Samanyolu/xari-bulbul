@@ -66,6 +66,7 @@ describe('data dir and settings', () => {
 
   it('maps provider ids to env var names', () => {
     expect(envKeyName('ollama-cloud')).toBe('OLLAMA_CLOUD_API_KEY')
+    expect(envKeyName('google')).toBe('GOOGLE_API_KEY')
     expect(envKey('openrouter', { OPENROUTER_API_KEY: ' sk ' })).toBe('sk')
     expect(envKey('openrouter', {})).toBeUndefined()
   })

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { OpenAICompatProvider } from '../src/providers/openai-compat.js'
+import { OpenAICompatProvider, toWireMessage } from '../src/providers/openai-compat.js'
 import { BUILTIN_PROVIDERS } from '../src/settings/schema.js'
 import type { StreamEvent } from '../src/providers/types.js'
 import { sseResponse } from './helpers.js'
@@ -83,5 +83,43 @@ describe('OpenAICompatProvider', () => {
     expect(models[1].pricing).toEqual({ prompt: 0.000001, completion: 0.000002 })
     expect(models[1].free).toBe(false)
     expect(models[0]).toMatchObject({ free: true, created: 1700000000, supportsTools: true })
+  })
+
+  it('lists Google chat models without the models/ prefix', async () => {
+    const fetch = (async () =>
+      new Response(
+        JSON.stringify({
+          data: [
+            { id: 'models/gemini-2.5-flash', object: 'model' },
+            { id: 'models/gemini-embedding-001', object: 'model' },
+            { id: 'models/imagen-4.0-generate-001', object: 'model' },
+            { id: 'models/gemini-2.5-flash-preview-tts', object: 'model' },
+          ],
+        }),
+      )) as unknown as typeof globalThis.fetch
+    const p = new OpenAICompatProvider({ config: BUILTIN_PROVIDERS.find((c) => c.id === 'google')!, apiKey: 'k', fetch })
+    expect((await p.listModels()).map((m) => [m.id, m.name])).toEqual([['gemini-2.5-flash', 'gemini-2.5-flash']])
+  })
+
+  it('keeps index-less tool calls apart and round-trips Gemini thought signatures', async () => {
+    const sig = { google: { thought_signature: 'abc' } }
+    const fetch = (async () =>
+      sseResponse([
+        { choices: [{ delta: { tool_calls: [{ id: 'a', type: 'function', function: { name: 'read_file', arguments: '{"path":"x"}' }, extra_content: sig }] } }] },
+        { choices: [{ delta: { tool_calls: [{ id: 'b', type: 'function', function: { name: 'read_file', arguments: '{"path":"y"}' } }] } }] },
+        { choices: [{ delta: {}, finish_reason: 'tool_calls' }] },
+        '[DONE]',
+      ])) as typeof globalThis.fetch
+    const p = new OpenAICompatProvider({ config, apiKey: 'k', fetch })
+    const calls = (await collect(p.chat({ model: 'x', messages: [{ role: 'user', content: 'hi' }] })))
+      .filter((e) => e.type === 'tool_call')
+      .map((e: any) => e.call)
+    expect(calls).toEqual([
+      { id: 'a', name: 'read_file', arguments: '{"path":"x"}', extra: sig },
+      { id: 'b', name: 'read_file', arguments: '{"path":"y"}' },
+    ])
+    const wire = toWireMessage({ role: 'assistant', content: '', toolCalls: calls }) as any
+    expect(wire.tool_calls[0].extra_content).toEqual(sig)
+    expect(wire.tool_calls[1]).not.toHaveProperty('extra_content')
   })
 })

@@ -2,7 +2,7 @@
   "name": "@harness/desktop",
   "productName": "Xari Bulbul",
   "desktopName": "xari-bulbul.desktop",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Xarı Bülbül — desktop AI coding agent",
   "author": "Xarı Bülbül contributors",
   "license": "MIT",

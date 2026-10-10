@@ -45,7 +45,15 @@ export class OpenAICompatProvider implements Provider {
   async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
     const res = await this.request(this.url('/models'), { method: 'GET', headers: this.headers(), signal })
     const json = (await res.json()) as { data?: RawModel[] }
-    return (json.data ?? []).map((m) => toModelInfo(this.id, m)).sort((a, b) => a.id.localeCompare(b.id))
+    return (json.data ?? [])
+      .flatMap((m) => {
+        // Google lists `models/gemini-2.5-flash` next to embedding, image, video and audio models.
+        if (!m.id.startsWith('models/')) return [m]
+        const id = m.id.slice('models/'.length)
+        return NON_CHAT_GOOGLE.test(id) ? [] : [{ ...m, id, name: m.name ?? id }]
+      })
+      .map((m) => toModelInfo(this.id, m))
+      .sort((a, b) => a.id.localeCompare(b.id))
   }
 
   async *chat(req: ChatRequest): AsyncIterable<StreamEvent> {
@@ -100,9 +108,12 @@ export class OpenAICompatProvider implements Provider {
       const reasoning = d.reasoning ?? d.reasoning_content
       if (reasoning) yield { type: 'reasoning', delta: reasoning }
       for (const [pos, tc] of (d.tool_calls ?? []).entries()) {
-        const idx = tc.index ?? pos
+        let idx = tc.index ?? pos
+        // Gemini sends each call whole, in its own chunk, without `index`: a new id is a new call.
+        if (tc.index == null && tc.id) while (calls.get(idx)?.id && calls.get(idx)?.id !== tc.id) idx++
         const cur = calls.get(idx) ?? { id: '', name: '', arguments: '' }
         if (tc.id) cur.id = tc.id
+        if (tc.extra_content) cur.extra = tc.extra_content
         if (tc.function?.name) cur.name += tc.function.name
         if (tc.function?.arguments) cur.arguments += tc.function.arguments
         calls.set(idx, cur)
@@ -204,6 +215,7 @@ export function toWireMessage(m: ChatMessage): Record<string, unknown> {
                 id: c.id,
                 type: 'function',
                 function: { name: c.name, arguments: c.arguments || '{}' },
+                ...(c.extra ? { extra_content: c.extra } : {}),
               })),
             }
           : {}),
@@ -212,6 +224,9 @@ export function toWireMessage(m: ChatMessage): Record<string, unknown> {
       return { role: 'tool', tool_call_id: m.toolCallId, content: m.content }
   }
 }
+
+const NON_CHAT_GOOGLE =
+  /embedding|imagen|image|nano-banana|veo|tts|aqa|audio|live|lyria|transcribe|translate|robotics|computer-use|deep-research|antigravity/
 
 interface RawModel {
   id: string
@@ -265,7 +280,12 @@ interface RawChunk {
       content?: string | null
       reasoning?: string | null
       reasoning_content?: string | null
-      tool_calls?: { index?: number; id?: string; function?: { name?: string; arguments?: string } }[]
+      tool_calls?: {
+        index?: number
+        id?: string
+        function?: { name?: string; arguments?: string }
+        extra_content?: Record<string, unknown>
+      }[]
     }
     finish_reason?: string | null
   }[]
