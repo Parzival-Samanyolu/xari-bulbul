@@ -1055,6 +1055,11 @@ function DataTab({ app, save, onState, onError, update }: TabProps & { update: U
           <Toggle label="Check for updates automatically" value={app.settings.app.autoUpdate} onChange={(v) => save((s) => ((s.app.autoUpdate = v), s))} />
         </Row>
         <Row label={`Version ${app.version}`} hint={updateText(update)}>
+          {update.state === 'manual' && (
+            <button className="btn" onClick={() => api.app.openExternal(update.url)}>
+              Download {update.version}
+            </button>
+          )}
           <button className="btn" onClick={() => api.app.checkForUpdates()}>
             Check now
           </button>
@@ -1076,6 +1081,8 @@ function updateText(u: UpdateStatus): string {
       return `Downloading… ${u.percent ?? 0}%`
     case 'ready':
       return `Version ${u.version} ready — restart to install.`
+    case 'manual':
+      return `Version ${u.version} is available. This build can't install updates itself, so download it from GitHub.`
     case 'error':
       return u.message
     default:

@@ -9,6 +9,7 @@ directories:
 files:
   - out/**
   - package.json
+afterSign: scripts/self-sign.cjs
 asarUnpack:
   - resources/**
 mac:
@@ -23,6 +24,7 @@ mac:
       arch: [universal]
   # Ad-hoc signature ("-") until a Developer ID is configured (CSC_LINK / APPLE_ID ...).
   # A complete ad-hoc signature keeps macOS from reporting the app as damaged.
+  # Release builds are then re-signed with a self-signed certificate (scripts/self-sign.cjs).
   identity: '-'
   # Hardened runtime is only needed for notarization (Developer ID); with ad-hoc signing it can block launch.
   hardenedRuntime: false

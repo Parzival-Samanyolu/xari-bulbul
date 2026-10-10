@@ -104,6 +104,8 @@ export type UpdateStatus =
   | { state: 'idle' | 'checking' | 'none' }
   | { state: 'available' | 'downloading' | 'ready'; version?: string; percent?: number }
   | { state: 'error'; message: string }
+  /** A new version exists but this build can't install it itself (ad-hoc signed macOS builds). */
+  | { state: 'manual'; version: string; url: string }
 
 export type UiEvent =
   | { type: 'agent'; sessionId: string; event: AgentEvent }

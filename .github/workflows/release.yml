@@ -32,13 +32,34 @@ jobs:
         # bsdtar builds the Arch Linux (.pacman) package.
         run: sudo apt-get update && sudo apt-get install -y libarchive-tools
       - run: pnpm test
+      - name: Signing certificate (macOS)
+        if: runner.os == 'macOS'
+        # A self-signed certificate gives every release the same signing identity, which the
+        # macOS auto-updater requires. Without the secrets the app stays ad-hoc signed.
+        env:
+          MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: |
+          if [ -z "$MAC_CERT_P12" ]; then echo "No MAC_CERT_P12 secret; building ad-hoc."; exit 0; fi
+          kc="$RUNNER_TEMP/sign.keychain-db"
+          security create-keychain -p ci "$kc"
+          security set-keychain-settings "$kc"
+          security unlock-keychain -p ci "$kc"
+          echo "$MAC_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$kc" -P "$MAC_CERT_PASSWORD" -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k ci "$kc" > /dev/null
+          id=$(security find-identity -p codesigning "$kc" | awk '/Xari Bulbul Self-Signed/ { print $2; exit }')
+          [ -n "$id" ] || { echo "Certificate not found in keychain"; exit 1; }
+          echo "XB_SIGN_KEYCHAIN=$kc" >> "$GITHUB_ENV"
+          echo "XB_SIGN_IDENTITY=$id" >> "$GITHUB_ENV"
       - name: Build and publish
         working-directory: apps/desktop
         # Owner/repo come from GITHUB_REPOSITORY; this also bakes the auto-update feed into the app.
         run: pnpm exec electron-vite build && pnpm exec electron-builder --publish always -c.publish.provider=github -c.publish.releaseType=release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Optional code signing — add these repository secrets when ready:
+          # Optional Developer ID signing — add these repository secrets when ready:
           # CSC_LINK / CSC_KEY_PASSWORD (macOS .p12 or Windows cert)
           # APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID (macOS notarization)
           CSC_IDENTITY_AUTO_DISCOVERY: false

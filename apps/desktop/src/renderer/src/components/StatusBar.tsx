@@ -58,6 +58,11 @@ export function StatusBar({ app, live, onOpenPicker, onUsage, update }: Props) {
           Restart to update {update.version}
         </button>
       )}
+      {update.state === 'manual' && (
+        <button className="sb-item accent" onClick={() => api.app.openExternal(update.url)}>
+          Download update {update.version}
+        </button>
+      )}
       {update.state === 'downloading' && <span className="sb-item muted">Downloading update {update.percent}%</span>}
     </footer>
   )
