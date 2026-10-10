@@ -16,7 +16,7 @@ conflicts=("$_pkgname")
 options=('!strip' '!debug')
 source=("XariBulbul-$pkgver-linux-x64.pacman::$url/releases/download/v$pkgver/XariBulbul-$pkgver-linux-x64.pacman")
 noextract=("XariBulbul-$pkgver-linux-x64.pacman")
-sha256sums=('afbcc002c14dfbb20dae1b6c9d2f3cb21d95c42c52587fa240ec473f93423253')
+sha256sums=('30669df78ae3d28b9837519d969378fe4ca3210914558f1bf01d72f85a564814')
 
 package() {
   bsdtar -xf "$srcdir/XariBulbul-$pkgver-linux-x64.pacman" -C "$pkgdir" --exclude '.PKGINFO' --exclude '.MTREE' --exclude '.INSTALL' --exclude '.BUILDINFO'
