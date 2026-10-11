@@ -18,6 +18,7 @@
     "build": "pnpm --filter @harness/desktop build",
     "dist": "pnpm --filter @harness/desktop dist",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "test": "pnpm -r test",
+    "bench": "pnpm --filter @harness/bench bench"
   }
 }

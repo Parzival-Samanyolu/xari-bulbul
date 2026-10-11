@@ -1,6 +1,7 @@
 packages:
   - packages/*
   - apps/*
+  - bench
 onlyBuiltDependencies:
   - electron
   - esbuild

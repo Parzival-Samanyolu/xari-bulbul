@@ -1,0 +1,18 @@
+{
+  "name": "@harness/bench",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "bench": "tsx run.ts",
+    "report": "tsx report.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@harness/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3"
+  }
+}

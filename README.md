@@ -34,7 +34,7 @@ Built to be owned and extended. The engine is small, readable TypeScript with no
   - **Your own SearXNG:** also supported.
   - **Filters:** searches can be limited to certain sites and to recent results.
   - **Reading pages:** `web_fetch` returns a page's main content as Markdown, in parts for long pages.
-- **MCP servers:** connect local (command) or remote (URL) Model Context Protocol servers in **Settings → MCP Servers**. Their tools follow your permission rules as `mcp__<server>__<tool>`.
+- **MCP servers:** connect local (command) or remote (URL) Model Context Protocol servers in **Settings → MCP Servers**. Their tools follow your permission rules as `mcp__<server>__<tool>`. GitHub's hosted server is one click: **Add GitHub**, then paste a token.
 - **Memory:** the agent can remember facts across chats (your preferences, how to test a project) with the `remember` / `forget` tools. Memories live in the app's data folder, and you can review or delete them in **Settings → Memory**.
 - **Detailed settings:**
   - Providers & keys: stored in the OS keychain (macOS Keychain, libsecret on Linux)
@@ -122,6 +122,7 @@ packages/core/          the engine: no UI, fully tested
   src/memory/           facts saved across chats
   src/settings/         the settings schema (zod) with defaults
 apps/desktop/           Electron app: main process (controller, IPC, keys, updater) + React UI
+bench/                  model benchmark: tasks, runner, published results
 ```
 
 To add a built-in tool, create one file in `packages/core/src/tools/` using `defineTool(...)` and register it in `tools/index.ts`.
@@ -132,6 +133,10 @@ To add a built-in tool, create one file in `packages/core/src/tools/` using `def
 pnpm test         # vitest: engine (mock provider, prompt snapshots, headless runs)
 pnpm typecheck
 ```
+
+## Model benchmark
+
+[`bench/`](bench) runs agent tasks (coding, tool use, GitHub MCP) through the real engine and checks the results. See [the latest results](bench/README.md#latest-results), also published as the Hugging Face dataset [Parizival/xari-bulbul-bench](https://huggingface.co/datasets/Parizival/xari-bulbul-bench). Run `pnpm bench` to benchmark your own favorite models.
 
 ## Building installers and releasing
 

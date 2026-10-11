@@ -1,0 +1,461 @@
+{
+  "date": "2026-10-11T11:55:16.428Z",
+  "reps": 2,
+  "tasks": 10,
+  "summary": [
+    {
+      "model": "openrouter:nvidia/nemotron-3.5-lightning:free",
+      "runs": 11,
+      "passed": 9,
+      "passRate": 82,
+      "byCategory": {
+        "coding": {
+          "passed": 4,
+          "runs": 6
+        },
+        "tools": {
+          "passed": 2,
+          "runs": 2
+        },
+        "github-mcp": {
+          "passed": 3,
+          "runs": 3
+        }
+      },
+      "medianWallSec": 25.8,
+      "medianTtftSec": 0.92,
+      "medianRequests": 5,
+      "outputTokensPerSec": 30,
+      "tokensPerRun": 34625,
+      "toolCallErrorRate": 0,
+      "providerErrors": 2,
+      "costUsd": 0
+    },
+    {
+      "model": "google:gemini-flash-lite-latest",
+      "runs": 20,
+      "passed": 16,
+      "passRate": 80,
+      "byCategory": {
+        "coding": {
+          "passed": 7,
+          "runs": 10
+        },
+        "tools": {
+          "passed": 4,
+          "runs": 4
+        },
+        "github-mcp": {
+          "passed": 5,
+          "runs": 6
+        }
+      },
+      "medianWallSec": 4.4,
+      "medianTtftSec": 0.96,
+      "medianRequests": 4.5,
+      "outputTokensPerSec": 45,
+      "tokensPerRun": 22852,
+      "toolCallErrorRate": 4,
+      "providerErrors": 4,
+      "costUsd": null
+    },
+    {
+      "model": "ollama-cloud:gpt-oss:120b",
+      "runs": 20,
+      "passed": 16,
+      "passRate": 80,
+      "byCategory": {
+        "coding": {
+          "passed": 9,
+          "runs": 10
+        },
+        "tools": {
+          "passed": 2,
+          "runs": 4
+        },
+        "github-mcp": {
+          "passed": 5,
+          "runs": 6
+        }
+      },
+      "medianWallSec": 4.6,
+      "medianTtftSec": 0.45,
+      "medianRequests": 4,
+      "outputTokensPerSec": 122,
+      "tokensPerRun": 34065,
+      "toolCallErrorRate": 23,
+      "providerErrors": 0,
+      "costUsd": null
+    },
+    {
+      "model": "groq:openai/gpt-oss-120b",
+      "runs": 11,
+      "passed": 3,
+      "passRate": 27,
+      "byCategory": {
+        "coding": {
+          "passed": 2,
+          "runs": 6
+        },
+        "tools": {
+          "passed": 1,
+          "runs": 2
+        },
+        "github-mcp": {
+          "passed": 0,
+          "runs": 3
+        }
+      },
+      "medianWallSec": 108.3,
+      "medianTtftSec": 18.6,
+      "medianRequests": 6,
+      "outputTokensPerSec": 4,
+      "tokensPerRun": 16408,
+      "toolCallErrorRate": 0,
+      "providerErrors": 8,
+      "costUsd": null
+    }
+  ],
+  "perTask": [
+    {
+      "task": "fix-off-by-one",
+      "title": "Fix an off-by-one bug",
+      "category": "coding",
+      "results": {
+        "google:gemini-flash-lite-latest": [
+          true,
+          false
+        ],
+        "ollama-cloud:gpt-oss:120b": [
+          true,
+          true
+        ],
+        "openrouter:nvidia/nemotron-3.5-lightning:free": [
+          true,
+          true
+        ],
+        "groq:openai/gpt-oss-120b": [
+          true,
+          true
+        ]
+      }
+    },
+    {
+      "task": "implement-slugify",
+      "title": "Implement a function from tests",
+      "category": "coding",
+      "results": {
+        "google:gemini-flash-lite-latest": [
+          true,
+          true
+        ],
+        "ollama-cloud:gpt-oss:120b": [
+          true,
+          true
+        ],
+        "openrouter:nvidia/nemotron-3.5-lightning:free": [
+          true
+        ],
+        "groq:openai/gpt-oss-120b": [
+          false
+        ]
+      }
+    },
+    {
+      "task": "parse-duration",
+      "title": "Write a parser to a spec",
+      "category": "coding",
+      "results": {
+        "google:gemini-flash-lite-latest": [
+          true,
+          true
+        ],
+        "ollama-cloud:gpt-oss:120b": [
+          true,
+          true
+        ],
+        "openrouter:nvidia/nemotron-3.5-lightning:free": [
+          false
+        ],
+        "groq:openai/gpt-oss-120b": [
+          false
+        ]
+      }
+    },
+    {
+      "task": "rename-across-files",
+      "title": "Rename a function across files",
+      "category": "coding",
+      "results": {
+        "google:gemini-flash-lite-latest": [
+          true,
+          false
+        ],
+        "ollama-cloud:gpt-oss:120b": [
+          false,
+          true
+        ],
+        "openrouter:nvidia/nemotron-3.5-lightning:free": [
+          false
+        ],
+        "groq:openai/gpt-oss-120b": [
+          false
+        ]
+      }
+    },
+    {
+      "task": "json-edit",
+      "title": "Edit package.json precisely",
+      "category": "coding",
+      "results": {
+        "google:gemini-flash-lite-latest": [
+          false,
+          true
+        ],
+        "ollama-cloud:gpt-oss:120b": [
+          true,
+          true
+        ],
+        "openrouter:nvidia/nemotron-3.5-lightning:free": [
+          true
+        ],
+        "groq:openai/gpt-oss-120b": [
+          false
+        ]
+      }
+    },
+    {
+      "task": "count-todos",
+      "title": "Search the project and report a number",
+      "category": "tools",
+      "results": {
+        "google:gemini-flash-lite-latest": [
+          true,
+          true
+        ],
+        "ollama-cloud:gpt-oss:120b": [
+          false,
+          true
+        ],
+        "openrouter:nvidia/nemotron-3.5-lightning:free": [
+          true
+        ],
+        "groq:openai/gpt-oss-120b": [
+          false
+        ]
+      }
+    },
+    {
+      "task": "run-and-capture",
+      "title": "Run a script and save its output",
+      "category": "tools",
+      "results": {
+        "google:gemini-flash-lite-latest": [
+          true,
+          true
+        ],
+        "ollama-cloud:gpt-oss:120b": [
+          true,
+          false
+        ],
+        "openrouter:nvidia/nemotron-3.5-lightning:free": [
+          true
+        ],
+        "groq:openai/gpt-oss-120b": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "gh-repo-facts",
+      "title": "Look up a repo on GitHub",
+      "category": "github-mcp",
+      "results": {
+        "google:gemini-flash-lite-latest": [
+          true,
+          true
+        ],
+        "ollama-cloud:gpt-oss:120b": [
+          true,
+          true
+        ],
+        "openrouter:nvidia/nemotron-3.5-lightning:free": [
+          true
+        ],
+        "groq:openai/gpt-oss-120b": [
+          false
+        ]
+      }
+    },
+    {
+      "task": "gh-find-file",
+      "title": "Find code in a GitHub repo",
+      "category": "github-mcp",
+      "results": {
+        "google:gemini-flash-lite-latest": [
+          true,
+          false
+        ],
+        "ollama-cloud:gpt-oss:120b": [
+          true,
+          false
+        ],
+        "openrouter:nvidia/nemotron-3.5-lightning:free": [
+          true
+        ],
+        "groq:openai/gpt-oss-120b": [
+          false
+        ]
+      }
+    },
+    {
+      "task": "gh-read-file",
+      "title": "Read a file from GitHub",
+      "category": "github-mcp",
+      "results": {
+        "google:gemini-flash-lite-latest": [
+          true,
+          true
+        ],
+        "ollama-cloud:gpt-oss:120b": [
+          true,
+          true
+        ],
+        "openrouter:nvidia/nemotron-3.5-lightning:free": [
+          true
+        ],
+        "groq:openai/gpt-oss-120b": [
+          false
+        ]
+      }
+    }
+  ],
+  "failures": [
+    {
+      "model": "ollama-cloud:gpt-oss:120b",
+      "task": "rename-across-files",
+      "rep": 1,
+      "reason": "done",
+      "detail": "/private/var/folders/rk/jj0rsh1j62d7fkt95fc1rxzm0000gn/T/xb-bench-rename-across-files-zLG65m/greet.js:2 module.exports = (id) => `Hello, ${getUsr(id)?.name ?? 'stranger'}`                          ^"
+    },
+    {
+      "model": "ollama-cloud:gpt-oss:120b",
+      "task": "count-todos",
+      "rep": 1,
+      "reason": "done",
+      "detail": "expected 5, last line: 4"
+    },
+    {
+      "model": "google:gemini-flash-lite-latest",
+      "task": "json-edit",
+      "rep": 1,
+      "reason": "error",
+      "detail": "ended: error (Google AI error 429: [{\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For)"
+    },
+    {
+      "model": "ollama-cloud:gpt-oss:120b",
+      "task": "run-and-capture",
+      "rep": 2,
+      "reason": "done",
+      "detail": "out.txt: missing"
+    },
+    {
+      "model": "ollama-cloud:gpt-oss:120b",
+      "task": "gh-find-file",
+      "rep": 2,
+      "reason": "done",
+      "detail": "expected packages/core/src/mcp/manager.ts, got: "
+    },
+    {
+      "model": "google:gemini-flash-lite-latest",
+      "task": "fix-off-by-one",
+      "rep": 2,
+      "reason": "error",
+      "detail": "ended: error (Google AI error 429: [{\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For)"
+    },
+    {
+      "model": "google:gemini-flash-lite-latest",
+      "task": "rename-across-files",
+      "rep": 2,
+      "reason": "error",
+      "detail": "ended: error (Google AI error 429: [{\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For)"
+    },
+    {
+      "model": "groq:openai/gpt-oss-120b",
+      "task": "implement-slugify",
+      "rep": 1,
+      "reason": "timeout",
+      "detail": "ended: timeout"
+    },
+    {
+      "model": "openrouter:nvidia/nemotron-3.5-lightning:free",
+      "task": "parse-duration",
+      "rep": 1,
+      "reason": "timeout",
+      "detail": "ended: timeout"
+    },
+    {
+      "model": "google:gemini-flash-lite-latest",
+      "task": "gh-find-file",
+      "rep": 2,
+      "reason": "timeout",
+      "detail": "ended: timeout"
+    },
+    {
+      "model": "groq:openai/gpt-oss-120b",
+      "task": "parse-duration",
+      "rep": 1,
+      "reason": "timeout",
+      "detail": "ended: timeout"
+    },
+    {
+      "model": "openrouter:nvidia/nemotron-3.5-lightning:free",
+      "task": "rename-across-files",
+      "rep": 1,
+      "reason": "timeout",
+      "detail": "ended: timeout"
+    },
+    {
+      "model": "groq:openai/gpt-oss-120b",
+      "task": "rename-across-files",
+      "rep": 1,
+      "reason": "error",
+      "detail": "ended: error (Groq: the model's provider failed partway through its reply (Parsing failed. The model generated output that could not be parsed. Please adjust your p)"
+    },
+    {
+      "model": "groq:openai/gpt-oss-120b",
+      "task": "json-edit",
+      "rep": 1,
+      "reason": "error",
+      "detail": "ended: error (Groq: the model's provider failed partway through its reply (Parsing failed. The model generated output that could not be parsed. Please adjust your p)"
+    },
+    {
+      "model": "groq:openai/gpt-oss-120b",
+      "task": "count-todos",
+      "rep": 1,
+      "reason": "error",
+      "detail": "ended: error (Groq: the model's provider failed partway through its reply (Tool call validation failed: tool call validation failed: parameters for tool grep did no)"
+    },
+    {
+      "model": "groq:openai/gpt-oss-120b",
+      "task": "gh-repo-facts",
+      "rep": 1,
+      "reason": "error",
+      "detail": "ended: error (Groq error 413: Request too large for model `openai/gpt-oss-120b` in organization `org_[redacted]` service tier `on_demand` on tokens )"
+    },
+    {
+      "model": "groq:openai/gpt-oss-120b",
+      "task": "gh-find-file",
+      "rep": 1,
+      "reason": "error",
+      "detail": "ended: error (Groq error 413: Request too large for model `openai/gpt-oss-120b` in organization `org_[redacted]` service tier `on_demand` on tokens )"
+    },
+    {
+      "model": "groq:openai/gpt-oss-120b",
+      "task": "gh-read-file",
+      "rep": 1,
+      "reason": "error",
+      "detail": "ended: error (Groq error 413: Request too large for model `openai/gpt-oss-120b` in organization `org_[redacted]` service tier `on_demand` on tokens )"
+    }
+  ]
+}
