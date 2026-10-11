@@ -105,7 +105,7 @@ function ProvidersTab({ app, save, onState, onError }: TabProps) {
         title="Providers & API keys"
         description={
           <>
-            Keys are stored in your OS keychain, shared with the xb terminal app (
+            Keys are stored in your OS keychain (
             {app.keyStorage === 'os' ? 'secure storage active' : <span className="warn">no keyring found, so keys are only obfuscated</span>}) and never shown again.
             Environment variables like <code>OPENROUTER_API_KEY</code> also work.
           </>

@@ -4,8 +4,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { envKey, resolveDataDir } from './paths.js'
 
-// API keys and MCP tokens, shared by the desktop app and `xb`. Stored in the OS keychain
-// through its command-line tools (no native modules, so a single-file binary still works):
+// API keys and MCP tokens, used by the desktop app. Stored in the OS keychain
+// through its command-line tools (no native modules):
 // macOS `security`, Linux `secret-tool` (libsecret). Without a keychain, a 0600 file.
 
 export const KEYCHAIN_SERVICE = 'xari-bulbul'

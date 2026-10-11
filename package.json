@@ -15,11 +15,9 @@
   },
   "scripts": {
     "dev": "pnpm --filter @harness/desktop dev",
-    "cli": "pnpm --filter xari-bulbul-cli start",
     "build": "pnpm --filter @harness/desktop build",
     "dist": "pnpm --filter @harness/desktop dist",
     "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test",
-    "xb": "pnpm --filter xari-bulbul-cli start"
+    "test": "pnpm -r test"
   }
 }

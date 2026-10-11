@@ -207,14 +207,14 @@ async function keyless(engine: KeylessEngine, query: string, o: SearchOptions, s
 async function searchOnce(query: string, o: SearchOptions, cfg: WebSearchConfig, signal: AbortSignal): Promise<SearchResult[]> {
   switch (cfg.backend) {
     case 'brave': {
-      if (!cfg.key) throw new Error('No Brave Search key. Add one in Settings → Tools (desktop), with `xb login brave`, or set BRAVE_API_KEY.')
+      if (!cfg.key) throw new Error('No Brave Search key. Add one in Settings → Tools or set BRAVE_API_KEY.')
       const params = new URLSearchParams({ q: withSites(query, o), count: String(o.max) })
       if (o.recency) params.set('freshness', `p${o.recency[0]}`)
       const j = await getJson(`https://api.search.brave.com/res/v1/web/search?${params}`, { headers: { accept: 'application/json', 'x-subscription-token': cfg.key } }, signal)
       return (j.web?.results ?? []).map((r: any) => ({ title: decode(r.title ?? ''), url: r.url, snippet: decode(r.description ?? '') }))
     }
     case 'tavily': {
-      if (!cfg.key) throw new Error('No Tavily key. Add one in Settings → Tools (desktop), with `xb login tavily`, or set TAVILY_API_KEY.')
+      if (!cfg.key) throw new Error('No Tavily key. Add one in Settings → Tools or set TAVILY_API_KEY.')
       const body: Record<string, unknown> = { query, max_results: o.max }
       if (o.recency) body.time_range = o.recency
       if (o.allowedDomains?.length) body.include_domains = o.allowedDomains
@@ -261,7 +261,7 @@ async function searchOnce(query: string, o: SearchOptions, cfg: WebSearchConfig,
       } catch (e) {
         if (signal.aborted) throw e
         if (e instanceof Blocked && (first === null || first instanceof Blocked)) {
-          throw new Error('The free search engines (DuckDuckGo, Brave) are blocking searches from this network right now. Try again in a few minutes, or add a Brave Search or Tavily key, or your own SearXNG (Settings → Tools, `xb login brave`, or tools.webSearch).')
+          throw new Error('The free search engines (DuckDuckGo, Brave) are blocking searches from this network right now. Try again in a few minutes, or add a Brave Search or Tavily key, or your own SearXNG (Settings → Tools or tools.webSearch).')
         }
         throw e
       }

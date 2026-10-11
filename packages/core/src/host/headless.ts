@@ -3,7 +3,7 @@ import type { UsageTotals } from '../usage/tracker.js'
 
 export type HeadlessFormat = 'text' | 'json' | 'stream-json'
 
-/** Process exit codes for `xb -p`. */
+/** Exit codes for a headless run. */
 export const EXIT = { ok: 0, error: 1, usage: 2, budget: 3, maxSteps: 4, interrupted: 130 } as const
 
 export function exitCodeFor(reason: TurnEndReason): number {

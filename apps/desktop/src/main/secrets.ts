@@ -55,8 +55,7 @@ function readSafeStorageFile(file: string): Record<string, string> {
 }
 
 /**
- * API keys and MCP tokens, in the OS keychain (macOS Keychain, libsecret on Linux) shared with
- * the `xb` terminal app. Keys never leave the main process; the renderer only learns whether a
+ * API keys and MCP tokens, in the OS keychain (macOS Keychain, libsecret on Linux). Keys never leave the main process; the renderer only learns whether a
  * key is set. `<PROVIDER>_API_KEY` env vars win over stored keys.
  */
 export class SecretStore {
