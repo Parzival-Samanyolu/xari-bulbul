@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { MCP_PRESETS, presetServer } from '@harness/core/mcp-presets'
 import type { AppState, McpServerStatus, ModelRef, ProviderTestResult, Settings, UpdateStatus } from '../../../shared/ipc'
 import { api } from '../lib/api'
 import { cost, modelLabel, tokens } from '../lib/format'
@@ -691,6 +692,7 @@ function McpTab({ app, save, onState, onError }: TabProps) {
     save((st) => ((st.mcp.servers = [...st.mcp.servers, server]), st))
     setDraft({ name: '', transport: draft.transport, target: '' })
   }
+  const presets = MCP_PRESETS.filter((p) => !servers.some((s) => s.transport === 'http' && p.server.transport === 'http' && s.url === p.server.url))
 
   return (
     <>
@@ -724,7 +726,14 @@ function McpTab({ app, save, onState, onError }: TabProps) {
               </div>
               {state === 'error' && st?.error && <div className="notice notice-error small">{st.error}</div>}
               {srv.transport === 'http' && (
-                <Row label="Bearer token" hint="Optional. Sent as Authorization: Bearer …, stored in the keychain like API keys" labelFor={`mcp-token-${srv.id}`}>
+                <Row
+                  label="Bearer token"
+                  hint={
+                    MCP_PRESETS.find((p) => p.server.transport === 'http' && p.server.url === srv.url)?.token?.hint ??
+                    'Optional. Sent as Authorization: Bearer …, stored in the keychain like API keys'
+                  }
+                  labelFor={`mcp-token-${srv.id}`}
+                >
                   <div className="key-row">
                     <input
                       id={`mcp-token-${srv.id}`}
@@ -786,6 +795,27 @@ function McpTab({ app, save, onState, onError }: TabProps) {
         })}
       </Section>
       <Section title="Add a server" description="Local servers run as a command on this computer; remote ones are reached by URL.">
+        {presets.map((p) => (
+          <div key={p.id} className="mcp-preset">
+            <div>
+              <b>{p.label}</b>
+              <div className="muted small">
+                {p.description}
+                {p.token && (
+                  <>
+                    {' '}
+                    <button className="link small" onClick={() => api.app.openExternal(p.token!.url)}>
+                      Get a token
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+            <button className="btn" onClick={() => save((st) => ((st.mcp.servers = [...st.mcp.servers, presetServer(p, st.mcp.servers)]), st))}>
+              Add {p.label}
+            </button>
+          </div>
+        ))}
         <div className="custom-provider">
           <label>
             <span className="small muted">Name</span>

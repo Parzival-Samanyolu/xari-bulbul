@@ -1770,6 +1770,16 @@ button.sb-item:hover {
   gap: 8px;
   margin-bottom: 14px;
 }
+.mcp-preset {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-block: 8px 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
 .custom-provider {
   display: flex;
   flex-wrap: wrap;

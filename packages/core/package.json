@@ -7,7 +7,8 @@
   "types": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./catalog": "./src/providers/catalog.ts"
+    "./catalog": "./src/providers/catalog.ts",
+    "./mcp-presets": "./src/mcp/presets.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
