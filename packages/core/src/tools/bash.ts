@@ -34,7 +34,7 @@ export const bashTool = defineTool({
   ].join('\n'),
   input: z.object({
     command: z.string().describe('The command to run'),
-    timeout_sec: z.number().int().min(1).max(3600).optional().describe('Override the default timeout'),
+    timeout_sec: z.number().int().min(1).max(3600).optional().describe('Timeout in seconds (not milliseconds), up to 3600; overrides the default from Settings'),
     run_in_background: z.boolean().optional().describe('Start the command and return a job id at once; read its output later with bash_output'),
   }),
   kind: 'exec',

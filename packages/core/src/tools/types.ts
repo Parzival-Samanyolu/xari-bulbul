@@ -78,7 +78,9 @@ export function defineTool<S extends z.ZodType>(def: {
     kind: def.kind,
     readOnly: def.readOnly,
     parse: (input) => {
-      const res = def.input.safeParse(input)
+      let res = def.input.safeParse(input)
+      const clamped = res.success ? null : clampNumbers(input, res.error.issues)
+      if (clamped) res = def.input.safeParse(clamped)
       if (!res.success) throw new Error(`Invalid input: ${z.prettifyError(res.error)}`)
       return res.data
     },
@@ -86,6 +88,28 @@ export function defineTool<S extends z.ZodType>(def: {
     execute: def.execute,
     source: 'builtin',
   }
+}
+
+/**
+ * When every problem is a number out of range, a copy of `input` with those numbers moved to the
+ * nearest allowed value. Models often overshoot limits (gpt-oss sends `timeout_sec: 10000`, as if
+ * it were milliseconds); running the call with the limit beats failing it. Otherwise null.
+ */
+export function clampNumbers(input: unknown, issues: z.core.$ZodIssue[]): unknown {
+  if (!issues.length || typeof input !== 'object' || input === null) return null
+  const copy = structuredClone(input) as Record<PropertyKey, unknown>
+  for (const issue of issues) {
+    if ((issue.code !== 'too_big' && issue.code !== 'too_small') || issue.origin !== 'number' || !issue.path.length) return null
+    const bound = Number(issue.code === 'too_big' ? issue.maximum : issue.minimum)
+    let parent: Record<PropertyKey, unknown> = copy
+    for (const key of issue.path.slice(0, -1)) parent = parent[key] as Record<PropertyKey, unknown>
+    const key = issue.path[issue.path.length - 1]
+    if (typeof parent?.[key] !== 'number') return null
+    // An exclusive bound can't be reached; integers step by one, anything else is left to fail.
+    if (!issue.inclusive) return null
+    parent[key] = bound
+  }
+  return copy
 }
 
 export function resolvePath(cwd: string, p: string): string {

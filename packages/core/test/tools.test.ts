@@ -94,3 +94,17 @@ describe('bash', () => {
     expect(r.content).toContain('timeout')
   })
 })
+
+describe('tool input', () => {
+  it('clamps numbers that overshoot a limit instead of failing the call', () => {
+    expect(bashTool.parse({ command: 'node test.js', timeout_sec: 10000 })).toEqual({ command: 'node test.js', timeout_sec: 3600 })
+    expect(bashTool.parse({ command: 'x', timeout_sec: 0 })).toMatchObject({ timeout_sec: 1 })
+    expect(grepTool.parse({ pattern: 'TODO', max_results: 10000 })).toMatchObject({ max_results: 2000 })
+  })
+
+  it('still rejects anything else that is invalid', () => {
+    expect(() => bashTool.parse({ timeout_sec: 10000 })).toThrow(/Invalid input/)
+    expect(() => bashTool.parse({ command: 'x', timeout_sec: 1.5 })).toThrow(/Invalid input/)
+    expect(() => editFileTool.parse({ old_string: 'a', new_string: 'b' })).toThrow(/path/)
+  })
+})

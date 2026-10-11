@@ -37,6 +37,7 @@ Notes:
 - **Groq:** its free tier allows 8,000 tokens per minute. With the GitHub MCP tools, each request is about 8,800 tokens, so every GitHub task fails with "413 Request too large". Groq also failed some runs with "Parsing failed" errors from its side.
 - **Gemini:** 3 failures are free-tier quota errors (429), not wrong answers.
 - **Rescoring:** one `count-todos` answer ("There are 5 TODO comments. 5") was rescored after the checker was fixed to accept it.
+- **Since this run:** tools now clamp out-of-range numbers instead of rejecting the call. gpt-oss sent `bash` `timeout_sec: 10000` (it read it as milliseconds) and `grep` `max_results: 10000`, which caused most of its tool errors. A rerun of 6 tasks × 3 with the fix: Ollama tool errors 22% → 9%, passes 14/18 → 16/18.
 <!-- results:end -->
 
 ## Tasks

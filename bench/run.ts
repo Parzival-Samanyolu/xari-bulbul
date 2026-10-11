@@ -62,6 +62,8 @@ export interface RunResult {
   requests: number
   toolCalls: number
   toolErrors: number
+  /** The failed tool calls: tool, input and the start of the error. */
+  toolErrorSamples: { tool: string; input: string; error: string }[]
   promptTokens: number
   completionTokens: number
   cost: number | null
@@ -118,12 +120,14 @@ async function runOne(model: ModelRef, task: Task, rep: number): Promise<RunResu
     requests: 0,
     toolCalls: 0,
     toolErrors: 0,
+    toolErrorSamples: [] as RunResult['toolErrorSamples'],
     promptTokens: 0,
     completionTokens: 0,
     cost: 0 as number | null,
     startedAt: new Date().toISOString(),
   }
   let toolMs = 0
+  const inputs = new Map<string, unknown>()
   let error: string | undefined
   const started = Date.now()
   const agent = new Agent({
@@ -140,10 +144,14 @@ async function runOne(model: ModelRef, task: Task, rep: number): Promise<RunResu
       if (e.type === 'text') trace.text += e.delta
       if (e.type === 'stream_reset') trace.text = ''
       if (e.type === 'message' && e.message.role === 'assistant') trace.text = ''
+      if (e.type === 'tool_start') inputs.set(e.callId, e.input)
       if (e.type === 'tool_end') {
         trace.tools.push({ name: e.name, ok: !e.result.isError })
         r.toolCalls++
-        if (e.result.isError) r.toolErrors++
+        if (e.result.isError) {
+          r.toolErrors++
+          r.toolErrorSamples.push({ tool: e.name, input: JSON.stringify(inputs.get(e.callId) ?? null).slice(0, 200), error: e.result.content.slice(0, 300) })
+        }
         toolMs += e.durationMs
       }
       if (e.type === 'usage') {
