@@ -56,6 +56,8 @@ jobs:
           echo "XB_SIGN_IDENTITY=$id" >> "$GITHUB_ENV"
       - name: Build and publish
         working-directory: apps/desktop
+        # PowerShell splits `-c.publish.x=y` at the dot, so use bash on Windows too.
+        shell: bash
         # Owner/repo come from GITHUB_REPOSITORY; this also bakes the auto-update feed into the app.
         run: pnpm exec electron-vite build && pnpm exec electron-builder --publish always -c.publish.provider=github -c.publish.releaseType=release
         env:
