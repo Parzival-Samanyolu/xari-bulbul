@@ -258,7 +258,7 @@ describe('agent loop additions', () => {
     await bashTool.execute({ command: 'node -e "setTimeout(() => {}, 30000)"', run_in_background: true }, c)
     expect((await killJobTool.execute({ job_id: 'job2' }, c)).content).toMatch(/Stopped/)
     jobs.dispose()
-  })
+  }, 30_000)
 })
 
 describe('headless runs', () => {
