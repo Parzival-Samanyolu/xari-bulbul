@@ -47,10 +47,11 @@ function fakeExec(kind: 'mac' | 'linux') {
 
 describe('data dir and settings', () => {
   it('follows Electron userData per platform, and HARNESS_DATA_DIR wins', () => {
-    expect(resolveDataDir({}, 'darwin', '/Users/a')).toBe('/Users/a/Library/Application Support/Xarı Bülbül')
-    expect(resolveDataDir({}, 'linux', '/home/a')).toBe('/home/a/.config/Xarı Bülbül')
-    expect(resolveDataDir({ XDG_CONFIG_HOME: '/x' }, 'linux', '/home/a')).toBe('/x/Xarı Bülbül')
-    expect(resolveDataDir({ HARNESS_DATA_DIR: '/tmp/p' }, 'darwin', '/Users/a')).toBe('/tmp/p')
+    expect(resolveDataDir({}, 'darwin', '/Users/a')).toBe(path.join('/Users/a', 'Library', 'Application Support', 'Xarı Bülbül'))
+    expect(resolveDataDir({}, 'linux', '/home/a')).toBe(path.join('/home/a', '.config', 'Xarı Bülbül'))
+    expect(resolveDataDir({ XDG_CONFIG_HOME: '/x' }, 'linux', '/home/a')).toBe(path.join('/x', 'Xarı Bülbül'))
+    expect(resolveDataDir({ APPDATA: 'C:\\Users\\a\\AppData\\Roaming' }, 'win32', 'C:\\Users\\a')).toBe(path.join('C:\\Users\\a\\AppData\\Roaming', 'Xarı Bülbül'))
+    expect(resolveDataDir({ HARNESS_DATA_DIR: '/tmp/p' }, 'darwin', '/Users/a')).toBe(path.resolve('/tmp/p'))
   })
 
   it('round-trips settings and survives a corrupt file', () => {
@@ -119,7 +120,7 @@ describe('keychain', () => {
     expect(backend).toBeInstanceOf(FileSecrets)
     backend.set('groq', 'gsk')
     const file = path.join(dir, 'xb-secrets.json')
-    expect(fs.statSync(file).mode & 0o777).toBe(0o600)
+    if (process.platform !== 'win32') expect(fs.statSync(file).mode & 0o777).toBe(0o600)
     expect(new FileSecrets(file).get('groq')).toBe('gsk')
   })
 

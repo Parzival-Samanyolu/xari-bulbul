@@ -52,8 +52,9 @@ async function setup(script: ConstructorParameters<typeof MockProvider>[0], o: {
 }
 
 describe('permissions edge cases', () => {
+  const proj = process.platform === 'win32' ? 'C:\\work\\proj' : '/work/proj'
   const p = (mode: Settings['permissions']['mode'], extra: Partial<Settings['permissions']> = {}) =>
-    new Permissions({ ...defaultSettings().permissions, mode, ...extra }, '/work/proj')
+    new Permissions({ ...defaultSettings().permissions, mode, ...extra }, proj)
 
   it('asks before destructive commands even in Full auto, and never offers "always"', () => {
     for (const cmd of ['rm -rf build', 'git reset --hard HEAD~1', 'git push --force origin main', 'sudo rm x', 'bash -c "git clean -fd"']) {
@@ -91,6 +92,35 @@ describe('permissions edge cases', () => {
     expect(outsideWriteReason('cmd 2>/dev/null', '/work/proj')).toBeNull()
     expect(outsideWriteReason('sort a > /tmp/sorted', '/work/proj')).toBeNull()
     expect(p('auto').check(bashTool, 'npm test > out.log').decision).toBe('allow')
+  })
+
+  it('understands Windows paths and PowerShell writes in a Windows project', () => {
+    const win = 'C:\\work\\proj'
+    const home = 'C:\\Users\\me'
+    const flagged = [
+      'echo hi > C:\\Windows\\x.txt',
+      'echo hi > D:/other/x.txt',
+      'echo hi > \\\\server\\share\\x.txt',
+      'npm test | tee ~\\log.txt',
+      'Set-Content -Path C:\\Users\\me\\x.txt -Value hi',
+      'Out-File C:\\x.txt',
+      'Copy-Item dist\\app.exe -Destination C:\\tools\\app.exe',
+      'copy dist\\app.exe C:\\tools /y',
+      'Move-Item a.txt ..\\other\\a.txt',
+      'cmd /c "copy a.txt C:\\x.txt"',
+    ]
+    for (const cmd of flagged) expect(outsideWriteReason(cmd, win, home), cmd).toMatch(/Writes outside/)
+    const fine = [
+      'npm test > out.log 2>&1',
+      'echo x > c:\\WORK\\proj\\a.txt',
+      'echo x > C:/work/proj/sub/a.txt',
+      'cmd 2>nul',
+      'cmd 2>$null',
+      'Set-Content -Path src\\a.ts -Value hi',
+      'Copy-Item a.txt b.txt',
+      'sort a > /tmp/sorted',
+    ]
+    for (const cmd of fine) expect(outsideWriteReason(cmd, win, home), cmd).toBeNull()
   })
 
   it('edits auto-apply in Auto-edit while commands still ask', () => {
@@ -207,7 +237,7 @@ describe('agent loop additions', () => {
     const dir = tmpDir()
     const jobs = new JobRegistry()
     const c = ctx(dir, { jobs })
-    const started = await bashTool.execute({ command: 'echo first; sleep 0.3; echo second', run_in_background: true }, c)
+    const started = await bashTool.execute({ command: `node -e "console.log('first'); setTimeout(() => console.log('second'), 300)"`, run_in_background: true }, c)
     expect(started.content).toMatch(/job1/)
     await new Promise((r) => setTimeout(r, 100))
     expect((await bashOutputTool.execute({ job_id: 'job1' }, c)).content).toMatch(/first[\s\S]*running/)
@@ -216,7 +246,7 @@ describe('agent loop additions', () => {
     expect(after.content).toMatch(/second/)
     expect(after.content).not.toMatch(/first/)
     expect(after.content).toMatch(/exited with code 0/)
-    await bashTool.execute({ command: 'sleep 30', run_in_background: true }, c)
+    await bashTool.execute({ command: 'node -e "setTimeout(() => {}, 30000)"', run_in_background: true }, c)
     expect((await killJobTool.execute({ job_id: 'job2' }, c)).content).toMatch(/Stopped/)
     jobs.dispose()
   })

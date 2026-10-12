@@ -136,6 +136,16 @@ function registerIpc() {
 }
 
 app.setName('Xarı Bülbül')
+// Windows attributes notifications and taskbar grouping to this id (the installer's appId).
+if (process.platform === 'win32') app.setAppUserModelId('dev.xaribulbul.app')
+// One copy at a time: a second launch focuses the open window instead.
+if (!app.requestSingleInstanceLock()) app.quit()
+app.on('second-instance', () => {
+  if (!win || win.isDestroyed()) return
+  if (win.isMinimized()) win.restore()
+  win.show()
+  win.focus()
+})
 // Separate profile for development/testing: HARNESS_DATA_DIR=/tmp/harness pnpm dev
 if (process.env.HARNESS_DATA_DIR) app.setPath('userData', path.resolve(process.env.HARNESS_DATA_DIR))
 

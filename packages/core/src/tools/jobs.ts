@@ -1,4 +1,4 @@
-import { spawn, type ChildProcess } from 'node:child_process'
+import { spawn, spawnSync, type ChildProcess } from 'node:child_process'
 
 /** How much output a background job keeps (the tail matters most). */
 const MAX_BUFFER = 1_000_000
@@ -18,7 +18,8 @@ export interface Job {
 export function killTree(pid: number | undefined) {
   if (!pid) return
   try {
-    if (process.platform === 'win32') spawn('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true })
+    // Synchronous, so it still runs from the process 'exit' hook.
+    if (process.platform === 'win32') spawnSync('taskkill', ['/pid', String(pid), '/T', '/F'], { windowsHide: true, timeout: 5000 })
     else process.kill(-pid, 'SIGKILL')
   } catch {
     /* already gone */

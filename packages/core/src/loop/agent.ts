@@ -256,7 +256,7 @@ export class Agent {
     this.push({ role: 'user', content: text, ...(files ? { files } : {}), ...(images ? { images } : {}) })
 
     let reason: TurnEndReason = 'max_steps'
-    this.env = gatherEnvironment(this.session.meta.cwd)
+    this.env = gatherEnvironment(this.session.meta.cwd, { shell: this.settings.agent.shell })
     this.reminders.startTurn(this.o.permissions.mode)
     this.failedCalls = []
     let reviewed = false

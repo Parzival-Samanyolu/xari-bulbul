@@ -4,7 +4,7 @@
 
 *Xarı bülbül* is a flower from Karabakh, and this is an AI coding agent.
 
-An AI coding agent for **macOS and Linux** that works directly in your project, as a desktop app.
+An AI coding agent for **macOS, Windows and Linux** that works directly in your project, as a desktop app.
 It reads, searches, edits and runs code, and it can use **any model** on OpenRouter, Ollama Cloud, Google AI Studio (Gemini), or any OpenAI-compatible API.
 
 Built to be owned and extended. The engine is small, readable TypeScript with no agent framework and no AI SDK.
@@ -37,7 +37,7 @@ Built to be owned and extended. The engine is small, readable TypeScript with no
 - **MCP servers:** connect local (command) or remote (URL) Model Context Protocol servers in **Settings → MCP Servers**. Their tools follow your permission rules as `mcp__<server>__<tool>`. GitHub's hosted server is one click: **Add GitHub**, then paste a token.
 - **Memory:** the agent can remember facts across chats (your preferences, how to test a project) with the `remember` / `forget` tools. Memories live in the app's data folder, and you can review or delete them in **Settings → Memory**.
 - **Detailed settings:**
-  - Providers & keys: stored in the OS keychain (macOS Keychain, libsecret on Linux)
+  - Providers & keys: stored in the OS keychain (macOS Keychain, libsecret on Linux), or encrypted with your Windows account (DPAPI)
   - Models: defaults, per-model overrides, reasoning effort
   - Agent: custom instructions, system prompt override, compaction, timeouts, shell
   - Tools, Usage, Appearance, and settings import/export for your team
@@ -54,6 +54,7 @@ Download the latest installer from [Releases](https://github.com/Parzival-Samany
 | System | File |
 |---|---|
 | macOS (Apple silicon and Intel) | `.dmg` |
+| Windows (x64) | `.exe` |
 | Arch Linux / Manjaro | `.pacman`: `sudo pacman -U XariBulbul-*-linux-x64.pacman` |
 | Debian / Ubuntu | `.deb` |
 | Other Linux | `.AppImage` |
@@ -144,14 +145,16 @@ pnpm typecheck
 pnpm dist         # builds installers for the current OS into apps/desktop/release/
 ```
 
-Pushing a tag like `v0.1.0` runs `.github/workflows/release.yml`. It builds on macOS and Linux and publishes these files to a GitHub Release, which installed apps auto-update from:
+Pushing a tag like `v0.1.0` runs `.github/workflows/release.yml`. It builds on macOS, Windows and Linux and publishes these files to a GitHub Release, which installed apps auto-update from:
 - macOS: `.dmg` and `.zip`
+- Windows: `.exe`
 - Linux: `.AppImage`, `.deb` and `.pacman` (Arch Linux)
 
 On Arch Linux, install the `.pacman` file with `sudo pacman -U XariBulbul-<version>-linux-x64.pacman`, or use the `PKGBUILD` in [`packaging/arch`](packaging/arch).
 
 Builds are **unsigned** until you add signing secrets (see the comments in the workflow). Without signing:
 - On macOS, right-click the app and choose **Open** the first time.
+- On Windows, SmartScreen asks you to click **More info → Run anyway**.
 
 ## Roadmap
 

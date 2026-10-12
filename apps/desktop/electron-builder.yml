@@ -29,9 +29,10 @@ mac:
   # Hardened runtime is only needed for notarization (Developer ID); with ad-hoc signing it can block launch.
   hardenedRuntime: false
 win:
+  icon: build/icon.png
   target:
     - target: nsis
-      arch: [x64, arm64]
+      arch: [x64]
 nsis:
   shortcutName: Xarı Bülbül
   oneClick: false

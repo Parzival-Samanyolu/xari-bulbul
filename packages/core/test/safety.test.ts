@@ -34,11 +34,17 @@ describe('destructive command detection', () => {
     ['Remove-Item -Recurse .\\dist', /Deletes files/],
     ['del notes.txt', /Deletes files/],
     ['/bin/rm x', /Deletes files: x/],
+    ['rmdir /s /q build', /Deletes files/],
+    ['Clear-Content notes.txt', /Empties files/],
+    ['Move-Item -Force a.txt b.txt', /Overwrites/],
+    ['cmd /c "rd /s /q build"', /Deletes files/],
+    ['powershell -NoProfile -Command Remove-Item -Recurse dist', /Deletes files/],
+    ['pwsh -c "git reset --hard"', /git reset --hard/],
   ])('flags %s', (cmd, re) => {
     expect(destructiveReason(cmd)).toMatch(re)
   })
 
-  it.each(['ls -la', 'echo rm -rf /', 'npm run rm-dist', 'git status', 'git push origin main', 'grep -r "rm " .', 'mv a b', 'cat readme'])(
+  it.each(['ls -la', 'echo rm -rf /', 'npm run rm-dist', 'git status', 'git push origin main', 'grep -r "rm " .', 'mv a b', 'cat readme', 'cmd /c dir', 'powershell -Command Get-ChildItem'])(
     'does not flag %s',
     (cmd) => {
       expect(destructiveReason(cmd)).toBeNull()

@@ -260,7 +260,7 @@ function ModelsTab({ app, save, onState, onError }: TabProps) {
   return (
     <>
       <Section title="Model selection">
-        <Row label="Default model" hint="Used for new chats. Switch any time with ⌘/Ctrl+K.">
+        <Row label="Default model" hint={`Used for new chats. Switch any time with ${app.platform === 'darwin' ? '⌘K' : 'Ctrl+K'}.`}>
           <button className="btn" onClick={() => setPicking('default')}>
             {ref(m.default)}
           </button>
@@ -1038,7 +1038,7 @@ function AppearanceTab({ app, save }: TabProps) {
       <Row label="Show model reasoning" hint="For thinking models that stream their reasoning">
         <Toggle label="Show model reasoning" value={a.showReasoning} onChange={(v) => save((s) => ((s.appearance.showReasoning = v), s))} />
       </Row>
-      <Row label="Enter sends message" hint="Off: Enter adds a newline, ⌘/Ctrl+Enter sends">
+      <Row label="Enter sends message" hint={`Off: Enter adds a newline, ${app.platform === 'darwin' ? '⌘Enter' : 'Ctrl+Enter'} sends`}>
         <Toggle label="Enter sends message" value={a.sendWithEnter} onChange={(v) => save((s) => ((s.appearance.sendWithEnter = v), s))} />
       </Row>
     </Section>

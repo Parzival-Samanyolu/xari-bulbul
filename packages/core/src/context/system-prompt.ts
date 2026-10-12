@@ -51,13 +51,21 @@ function git(cwd: string, args: string[]): string | null {
   return r.status === 0 ? r.stdout : null
 }
 
+/** The shell `bash` runs commands in: the Shell setting, else the platform default. */
+function shellName(setting = ''): string {
+  if (!setting) return process.platform === 'win32' ? 'PowerShell' : path.basename(process.env.SHELL || 'bash')
+  const base = path.win32.basename(setting).replace(/\.exe$/i, '')
+  const lower = base.toLowerCase()
+  return lower === 'powershell' || lower === 'pwsh' ? 'PowerShell' : lower === 'cmd' ? 'cmd.exe' : base
+}
+
 /** Date, OS, shell and git state, captured once per turn. */
-export function gatherEnvironment(cwd: string, opts: { git?: boolean } = {}): PromptEnvironment {
+export function gatherEnvironment(cwd: string, opts: { git?: boolean; shell?: string } = {}): PromptEnvironment {
   const env: PromptEnvironment = {
     date: new Date().toISOString().slice(0, 10),
     platform: process.platform,
     osRelease: os.release(),
-    shell: process.platform === 'win32' ? 'PowerShell' : path.basename(process.env.SHELL || 'bash'),
+    shell: shellName(opts.shell),
   }
   if (opts.git !== false) {
     const branch = git(cwd, ['rev-parse', '--abbrev-ref', 'HEAD'])

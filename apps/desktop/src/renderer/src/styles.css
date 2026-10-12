@@ -304,6 +304,10 @@ kbd {
 [data-platform='darwin'] .sidebar-drag {
   height: 38px;
 }
+/* Windows has a native title bar, so there is nothing to drag here. */
+[data-platform='win32'] .sidebar-drag {
+  display: none;
+}
 
 .workspace {
   position: relative;
