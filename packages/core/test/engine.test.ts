@@ -237,15 +237,24 @@ describe('agent loop additions', () => {
     const dir = tmpDir()
     const jobs = new JobRegistry()
     const c = ctx(dir, { jobs })
-    const started = await bashTool.execute({ command: `node -e "console.log('first'); setTimeout(() => console.log('second'), 300)"`, run_in_background: true }, c)
+    // Shells start slowly on Windows CI, so poll instead of sleeping a fixed time.
+    const until = async (re: RegExp) => {
+      let seen = ''
+      for (let i = 0; i < 100 && !re.test(seen); i++) {
+        await new Promise((r) => setTimeout(r, 100))
+        seen += (await bashOutputTool.execute({ job_id: 'job1' }, c)).content + '\n'
+      }
+      return seen
+    }
+    const started = await bashTool.execute({ command: `node -e "console.log('first'); setTimeout(() => console.log('second'), 1500)"`, run_in_background: true }, c)
     expect(started.content).toMatch(/job1/)
-    await new Promise((r) => setTimeout(r, 100))
-    expect((await bashOutputTool.execute({ job_id: 'job1' }, c)).content).toMatch(/first[\s\S]*running/)
-    await new Promise((r) => setTimeout(r, 500))
-    const after = await bashOutputTool.execute({ job_id: 'job1' }, c)
-    expect(after.content).toMatch(/second/)
-    expect(after.content).not.toMatch(/first/)
-    expect(after.content).toMatch(/exited with code 0/)
+    const before = await until(/first/)
+    expect(before).toMatch(/first[\s\S]*running/)
+    expect(before).not.toMatch(/second/)
+    const after = await until(/exited/)
+    expect(after).toMatch(/second/)
+    expect(after).not.toMatch(/first/)
+    expect(after).toMatch(/exited with code 0/)
     await bashTool.execute({ command: 'node -e "setTimeout(() => {}, 30000)"', run_in_background: true }, c)
     expect((await killJobTool.execute({ job_id: 'job2' }, c)).content).toMatch(/Stopped/)
     jobs.dispose()
