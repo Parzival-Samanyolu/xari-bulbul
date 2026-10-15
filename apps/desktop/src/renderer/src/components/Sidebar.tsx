@@ -77,7 +77,7 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
         >
           <span className="session-title">{s.title}</span>
           {awaiting ? (
-            <span className="session-meta session-status awaiting">Needs approval</span>
+            <span className="session-meta session-status awaiting">{app.questions.some((q) => q.sessionId === s.id) ? 'Has a question' : 'Needs approval'}</span>
           ) : working ? (
             <span className="session-meta session-status">
               <span className="spinner" aria-hidden />

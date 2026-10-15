@@ -45,10 +45,15 @@ export function Chat({ app, live, onDismiss, onSettings, approval, question, onR
 
   const messages = session?.messages
   // Rebuilt only when history changes, so memoized rows skip re-rendering while text streams in.
-  const results = useMemo(() => {
+  // Keyed by the asking message's index too: providers reuse call ids ("call_0") across turns.
+  const { results, lastCalls } = useMemo(() => {
     const map = new Map<string, ToolMessage>()
-    for (const m of messages ?? []) if (m.role === 'tool') map.set(m.toolCallId, m)
-    return map
+    let asker = -1
+    ;(messages ?? []).forEach((m, i) => {
+      if (m.role === 'assistant' && m.toolCalls?.length) asker = i
+      else if (m.role === 'tool') map.set(`${asker}:${m.toolCallId}`, m)
+    })
+    return { results: map, lastCalls: asker }
   }, [messages])
   const denied = useMemo(() => new Set(session?.denied), [session?.denied])
   const turns = useMemo(() => turnLayout(messages ?? [], session?.checkpoints ?? []), [messages, session?.checkpoints])
@@ -67,7 +72,9 @@ export function Chat({ app, live, onDismiss, onSettings, approval, question, onR
   // The turn in progress can't be reverted or edited until it ends.
   const lastTurn = turns.starts.at(-1) ?? -1
   const settled = (at: number) => !app.running || at !== lastTurn
-  const owned = (calls: AssistantMessageT['toolCalls']) => calls?.some((c) => (approval && owns(c.id, approval.request)) || question?.request.callId === c.id)
+  // Pending approvals and questions belong to the latest request's tool calls.
+  const owned = (i: number, calls: AssistantMessageT['toolCalls']) =>
+    i === lastCalls && calls?.some((c) => (approval && owns(c.id, approval.request)) || question?.request.callId === c.id)
 
   return (
     <div className="chat" ref={scroller} onScroll={onScroll}>
@@ -96,6 +103,7 @@ export function Chat({ app, live, onDismiss, onSettings, approval, question, onR
               <AssistantMessage
                 key={i}
                 message={m}
+                index={i}
                 tools={live.tools}
                 results={results}
                 displays={session.displays}
@@ -103,8 +111,8 @@ export function Chat({ app, live, onDismiss, onSettings, approval, question, onR
                 showReasoning={appearance.showReasoning}
                 expandDefault={appearance.expandToolCalls}
                 // Only the row that owns the pending approval or question gets it (and re-renders for it).
-                approval={owned(m.toolCalls) ? approval : undefined}
-                question={owned(m.toolCalls) ? question : undefined}
+                approval={owned(i, m.toolCalls) ? approval : undefined}
+                question={owned(i, m.toolCalls) ? question : undefined}
                 checkpoint={cpOfTurn && settled(cpOfTurn.at) ? cpOfTurn : undefined}
                 onRevert={onRevert}
               />,
@@ -113,7 +121,7 @@ export function Chat({ app, live, onDismiss, onSettings, approval, question, onR
           }
           return bar || null
         })}
-        {approval && !session.messages.some((m) => m.role === 'assistant' && m.toolCalls?.some((c) => owns(c.id, approval.request))) && (
+        {approval && !owned(lastCalls, (session.messages[lastCalls] as AssistantMessageT | undefined)?.toolCalls) && (
           // Fallback: the tool card isn't rendered yet, so show the approval on its own.
           <div className={`tool tool-awaiting`}>
             <div className="tool-head static">
@@ -331,6 +339,7 @@ const UserBubble = memo(function UserBubble({
 
 const AssistantMessage = memo(function AssistantMessage(props: {
   message: AssistantMessageT
+  index: number
   tools: LiveState['tools']
   results: Map<string, ToolMessage>
   displays: Record<string, ToolDisplay>
@@ -355,7 +364,7 @@ const AssistantMessage = memo(function AssistantMessage(props: {
             key={c.id}
             call={c}
             live={tools[c.id]}
-            result={results.get(c.id)}
+            result={results.get(`${props.index}:${c.id}`)}
             display={display}
             denied={denied.has(c.id) || tools[c.id]?.denied}
             expandDefault={props.expandDefault}
@@ -497,7 +506,8 @@ function AskUserCard({ input, result, question }: { input: Record<string, unknow
     <div className={`tool ${question ? 'tool-awaiting' : 'tool-ok'} ask`}>
       <div className="tool-head static">
         <span className="tool-name">question</span>
-        <span className="tool-subject">{String(input.question ?? '')}</span>
+        {/* While open, the question is shown in full below. */}
+        <span className="tool-subject">{question ? '' : String(input.question ?? '')}</span>
         <span className="tool-state">{question ? 'needs an answer' : result ? '' : <span className="spinner" aria-label="Waiting" />}</span>
       </div>
       {question ? (
