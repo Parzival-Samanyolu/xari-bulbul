@@ -21,7 +21,7 @@ const median = (xs: number[]) => {
 }
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0)
 const pct = (n: number, d: number) => (d ? Math.round((100 * n) / d) : 0)
-const CATS = ['coding', 'tools', 'github-mcp'] as const
+const CATS = ['coding', 'tools', 'github-mcp', 'speed'] as const
 
 const models = [...new Set(runs.map((r) => r.model))]
 const summary = models.map((model) => {
@@ -59,17 +59,36 @@ const perTask = TASKS.filter((t) => runs.some((r) => r.task === t.id)).map((t) =
   results: Object.fromEntries(models.map((m) => [m, runs.filter((r) => r.task === t.id && r.model === m).map((r) => r.pass)])),
 }))
 
+// The speed tasks are one or two requests each, so their timings mean one thing.
+const speed = models.map((model) => {
+  const done = (task: string) => runs.filter((r) => r.model === model && r.task === task && r.reason === 'done')
+  const ping = done('speed-ping')
+  const ttfts = ping.flatMap((r) => (r.ttftMs === null ? [] : [r.ttftMs]))
+  const long = done('speed-long-output').filter((r) => r.modelMs > 0)
+  const trip = done('speed-tool-roundtrip')
+  const sec = (ms: number | null, digits = 1) => (ms === null ? null : +(ms / 1000).toFixed(digits))
+  return {
+    model,
+    pingSec: sec(median(ping.map((r) => r.wallMs)), 2),
+    pingTtftSec: sec(median(ttfts), 2),
+    longOutputTokPerSec: long.length ? Math.round(median(long.map((r) => r.completionTokens / (r.modelMs / 1000)))!) : null,
+    longOutputSec: sec(median(long.map((r) => r.wallMs))),
+    toolRoundtripSec: sec(median(trip.map((r) => r.wallMs)), 2),
+  }
+})
+const hasSpeed = runs.some((r) => r.category === 'speed')
+
 const failures = runs.filter((r) => !r.pass).map((r) => ({ model: r.model, task: r.task, rep: r.rep, reason: r.reason, detail: r.detail }))
 const reps = Math.max(...runs.map((r) => r.rep))
 const started = runs.map((r) => r.startedAt).sort()[0]
 
-fs.writeFileSync(path.join(dir, 'summary.json'), JSON.stringify({ date: started, reps, tasks: perTask.length, summary, perTask, failures }, null, 2) + '\n')
+fs.writeFileSync(path.join(dir, 'summary.json'), JSON.stringify({ date: started, reps, tasks: perTask.length, summary, ...(hasSpeed && { speed }), perTask, failures }, null, 2) + '\n')
 
 const n = (v: number | null, unit = '') => (v === null ? '–' : `${v}${unit}`)
 const short = (m: string) => m.replace(/:free$/, '')
 const md = [
-  `| Model | Pass | Coding | Tools | GitHub MCP | Median time | First token | Output tok/s | Tokens/run | Tool errors | Cost |`,
-  `|---|---|---|---|---|---|---|---|---|---|---|`,
+  `| Model | Pass | Coding | Tools | GitHub MCP | Speed | Median time | First token | Output tok/s | Tokens/run | Tool errors | Cost |`,
+  `|---|---|---|---|---|---|---|---|---|---|---|---|`,
   ...summary.map((s) =>
     [
       `\`${short(s.model)}\``,
@@ -83,6 +102,16 @@ const md = [
       s.costUsd === null ? 'free tier' : `$${s.costUsd}`,
     ].join(' | ').replace(/^/, '| ').replace(/$/, ' |'),
   ),
+  ...(hasSpeed
+    ? [
+        '',
+        `| Model | Ping (one word) | Ping first token | Long answer tok/s | Long answer time | One tool call |`,
+        `|---|---|---|---|---|---|`,
+        ...speed.map((s) =>
+          `| \`${short(s.model)}\` | ${n(s.pingSec, ' s')} | ${n(s.pingTtftSec, ' s')} | ${n(s.longOutputTokPerSec)} | ${n(s.longOutputSec, ' s')} | ${n(s.toolRoundtripSec, ' s')} |`,
+        ),
+      ]
+    : []),
   '',
   `| Task | ${models.map((m) => `\`${short(m).split(':')[0]}\``).join(' | ')} |`,
   `|---|${models.map(() => '---').join('|')}|`,

@@ -49,11 +49,24 @@ Notes:
 | `parse-duration` | coding | a parser written from a prose spec passes hidden tests, including error cases |
 | `rename-across-files` | coding | `getUsr` is renamed in 3 files (one in a subfolder) and the tests pass |
 | `json-edit` | coding | `package.json` has the minor bump, the new script and the removed dependency, and nothing else changed |
+| `debug-stack-trace` | coding | a crash is fixed at its cause (a misspelled config key), not with a guard where it throws |
+| `fix-async-bug` | coding | `forEach(async …)` is fixed so results arrive complete and in order |
+| `large-file-edit` | coding | one function near line 450 of a 700-line file changes, and no other line does |
+| `add-cli-flag` | coding | a `--json` flag works before or after the file name, and the table output is unchanged |
 | `count-todos` | tools | the reply has the exact number of `TODO`s in `src/**/*.js` (with decoys outside it) |
 | `run-and-capture` | tools | `out.txt` holds exactly what a script prints |
+| `find-config-value` | tools | the production port, traced through a config loader, a JSON override and an env file (with decoys) |
+| `background-job` | tools | a long-running process is started, its token reported, and the process is gone when the turn ends |
 | `gh-repo-facts` | github-mcp | the latest release tag and license of a repo, looked up with the GitHub tools |
 | `gh-find-file` | github-mcp | the path of the file that defines a class, found with GitHub code search |
 | `gh-read-file` | github-mcp | a value read from a file in a repo on GitHub |
+| `speed-ping` | speed | the reply is just `pong`, with no tools |
+| `speed-long-output` | speed | a 400-word answer with no tools (at least 250 words) |
+| `speed-tool-roundtrip` | speed | one `read_file`, then the file's contents as the reply |
+
+The speed tasks take one or two requests each, so their timings aren't mixed with tool time or
+long agent loops. The report gives them their own table: one-word reply time and first token,
+output tokens per second on the long answer, and the time for one tool call.
 
 GitHub answers only count if a GitHub MCP tool call succeeded, so a model can't pass by guessing.
 

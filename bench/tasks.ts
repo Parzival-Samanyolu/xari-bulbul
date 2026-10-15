@@ -10,7 +10,7 @@ export interface Trace {
 
 export interface Task {
   id: string
-  category: 'coding' | 'tools' | 'github-mcp'
+  category: 'coding' | 'tools' | 'github-mcp' | 'speed'
   title: string
   prompt: string
   /** Files written into an empty folder before the run. */
@@ -44,6 +44,33 @@ function githubAnswer(t: Trace, ok: boolean, expected: string) {
   if (!usedGithub(t)) return { pass: false, detail: 'no successful GitHub MCP call' }
   return { pass: ok, detail: ok ? 'correct' : `expected ${expected}, got: ${t.text.trim().slice(-120)}` }
 }
+
+/** A ~600-line file of small functions; `clampPercent` sits near line 450. */
+const BIG_UTILS = (() => {
+  const fns: string[] = []
+  for (let i = 0; i < 100; i++)
+    fns.push(`// Scales n by ${i + 2} and adds ${i}.
+function scale${i}(n) {
+  const k = ${i + 2}
+  return n * k + ${i}
+}
+`)
+  fns.splice(
+    75,
+    0,
+    `// Clamps x to 0..100 and drops the fraction.
+function clampPercent(x) {
+  const c = Math.min(100, Math.max(0, x))
+  return Math.floor(c)
+}
+`,
+  )
+  const names = [...fns.join('').matchAll(/^function (\w+)/gm)].map((m) => m[1])
+  return `'use strict'\n\n${fns.join('\n')}\nmodule.exports = {\n${names.map((n) => `  ${n},`).join('\n')}\n}\n`
+})()
+const withoutClamp = (s: string) => s.replace(/function clampPercent\(x\) \{[\s\S]*?\n\}\n/, '').replace(/\/\/ Clamps x[^\n]*\n/, '')
+
+const CSV_TABLE = (rows: { name: string; qty: number }[]) => rows.map((r) => r.name.padEnd(8) + String(r.qty).padStart(3)).join('\n')
 
 export const TASKS: Task[] = [
   {
@@ -173,6 +200,157 @@ console.log('ok')
     },
   },
   {
+    id: 'debug-stack-trace',
+    category: 'coding',
+    title: 'Fix the root cause of a crash',
+    prompt: `\`node app.js\` crashes with:
+
+\`\`\`
+TypeError: Cannot read properties of undefined (reading 'symbol')
+    at module.exports (format.js:2:22)
+    at Object.<anonymous> (app.js:3:13)
+\`\`\`
+
+Find the root cause and fix it there. Don't paper over it with a guard where it throws.`,
+    files: {
+      'config.js': `module.exports = {\n  curency: { code: 'EUR', symbol: '€' },\n  decimals: 2,\n}\n`,
+      'format.js': `module.exports = (amount, cfg) =>\n  cfg.currency.symbol + amount.toFixed(cfg.decimals) + ' ' + cfg.currency.code\n`,
+      'app.js': `const cfg = require('./config')\nconst format = require('./format')\nconsole.log(format(12.5, cfg))\n`,
+    },
+    check: (dir) => {
+      if (read(dir, 'format.js') !== `module.exports = (amount, cfg) =>\n  cfg.currency.symbol + amount.toFixed(cfg.decimals) + ' ' + cfg.currency.code\n`)
+        return { pass: false, detail: 'format.js was changed instead of the cause' }
+      try {
+        const out = execFileSync(process.execPath, ['app.js'], { cwd: dir, stdio: 'pipe', timeout: 20_000 }).toString().trim()
+        return { pass: out === '€12.50 EUR', detail: out === '€12.50 EUR' ? 'correct' : `output: ${out.slice(0, 80)}` }
+      } catch (e) {
+        return { pass: false, detail: (e as Error).message.slice(0, 200) }
+      }
+    },
+  },
+  {
+    id: 'fix-async-bug',
+    category: 'coding',
+    title: 'Fix an async bug',
+    prompt: '`node test.js` fails: `runAll` in jobs.js returns an empty array. Fix jobs.js so the test passes. Do not change test.js.',
+    files: {
+      'jobs.js': `const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
+
+async function work(id) {
+  await sleep(60 - id * 10)
+  return id * id
+}
+
+async function runAll(ids) {
+  const results = []
+  ids.forEach(async (id) => {
+    results.push(await work(id))
+  })
+  return results
+}
+
+module.exports = { runAll, work }
+`,
+      'test.js': `const assert = require('node:assert')
+const { runAll } = require('./jobs')
+;(async () => {
+  assert.deepStrictEqual(await runAll([1, 2, 3, 4, 5]), [1, 4, 9, 16, 25])
+  assert.deepStrictEqual(await runAll([]), [])
+  console.log('ok')
+})().catch((e) => {
+  console.error(e.message)
+  process.exit(1)
+})
+`,
+    },
+    check: (dir) => {
+      const r = nodeTest(dir)
+      if (r.pass && !read(dir, 'test.js')?.includes('[1, 4, 9, 16, 25]')) return { pass: false, detail: 'test.js was changed' }
+      return r
+    },
+  },
+  {
+    id: 'large-file-edit',
+    category: 'coding',
+    title: 'Change one function in a long file',
+    prompt: 'In utils.js, `clampPercent` drops the fraction. It should round to the nearest integer instead (still clamped to 0..100). Change only that function; leave the rest of the file exactly as it is.',
+    files: { 'utils.js': BIG_UTILS },
+    check: (dir) => {
+      const now = read(dir, 'utils.js') ?? ''
+      if (withoutClamp(now) !== withoutClamp(BIG_UTILS)) return { pass: false, detail: 'other lines of utils.js changed' }
+      fs.writeFileSync(
+        path.join(dir, '.bench-test.js'),
+        `const assert = require('node:assert')
+const u = require('./utils')
+assert.strictEqual(u.clampPercent(12.6), 13)
+assert.strictEqual(u.clampPercent(12.4), 12)
+assert.strictEqual(u.clampPercent(49.5), 50)
+assert.strictEqual(u.clampPercent(150), 100)
+assert.strictEqual(u.clampPercent(-3.7), 0)
+assert.strictEqual(u.scale70(1), 142)
+`,
+      )
+      return nodeTest(dir, '.bench-test.js')
+    },
+  },
+  {
+    id: 'add-cli-flag',
+    category: 'coding',
+    title: 'Add a flag to a small CLI',
+    prompt: 'Add a `--json` flag to cli.js: `node cli.js --json data.csv` prints the rows as a JSON array like `[{"name":"apple","qty":3}]` instead of the table. The flag may come before or after the file name. Without the flag the output must stay exactly the same.',
+    files: {
+      'cli.js': `const fs = require('node:fs')
+const { parseCsv } = require('./lib/parse')
+const { renderTable } = require('./lib/render')
+
+const file = process.argv[2]
+const rows = parseCsv(fs.readFileSync(file, 'utf8'))
+console.log(renderTable(rows))
+`,
+      'lib/parse.js': `function parseCsv(text) {
+  const [head, ...lines] = text.trim().split('\\n')
+  const cols = head.split(',')
+  return lines.map((l) => {
+    const cells = l.split(',')
+    return { [cols[0]]: cells[0], [cols[1]]: Number(cells[1]) }
+  })
+}
+module.exports = { parseCsv }
+`,
+      'lib/render.js': `function renderTable(rows) {
+  return rows.map((r) => r.name.padEnd(8) + String(r.qty).padStart(3)).join('\\n')
+}
+module.exports = { renderTable }
+`,
+      'data.csv': 'name,qty\napple,3\npear,12\nfig,7\n',
+    },
+    check: (dir) => {
+      const rows = [
+        { name: 'apple', qty: 3 },
+        { name: 'pear', qty: 12 },
+        { name: 'fig', qty: 7 },
+      ]
+      const run = (args: string[]) => execFileSync(process.execPath, ['cli.js', ...args], { cwd: dir, stdio: 'pipe', timeout: 20_000 }).toString().trim()
+      try {
+        const plain = run(['data.csv'])
+        if (plain !== CSV_TABLE(rows)) return { pass: false, detail: `table output changed: ${JSON.stringify(plain).slice(0, 160)}` }
+        for (const args of [['--json', 'data.csv'], ['data.csv', '--json']]) {
+          const out = run(args)
+          let parsed: unknown
+          try {
+            parsed = JSON.parse(out)
+          } catch {
+            return { pass: false, detail: `${args.join(' ')}: not JSON: ${out.slice(0, 80)}` }
+          }
+          if (JSON.stringify(parsed) !== JSON.stringify(rows)) return { pass: false, detail: `${args.join(' ')}: ${out.slice(0, 80)}` }
+        }
+        return { pass: true, detail: 'correct' }
+      } catch (e) {
+        return { pass: false, detail: (e as Error).message.slice(0, 200) }
+      }
+    },
+  },
+  {
     id: 'count-todos',
     category: 'tools',
     title: 'Search the project and report a number',
@@ -204,11 +382,88 @@ console.log('ok')
     },
   },
   {
+    id: 'find-config-value',
+    category: 'tools',
+    title: 'Trace a config value through files',
+    prompt: 'Which port does the API server listen on in production (NODE_ENV=production, deployed with deploy/prod.env)? Read how the config is loaded. Reply with just the number on the last line.',
+    files: {
+      'src/config.js': `// Loads config/default.json, then merges config/<NODE_ENV>.json over it.
+// String values like "\${VAR:-fallback}" are replaced with the environment variable VAR, or the fallback.
+const fs = require('node:fs')
+const read = (f) => (fs.existsSync(f) ? JSON.parse(fs.readFileSync(f, 'utf8')) : {})
+const merge = (a, b) => {
+  const out = { ...a }
+  for (const [k, v] of Object.entries(b)) out[k] = v && typeof v === 'object' ? merge(a[k] ?? {}, v) : v
+  return out
+}
+const expand = (v) =>
+  typeof v === 'string' ? v.replace(/\\$\\{(\\w+):-([^}]*)\\}/g, (_, name, fb) => process.env[name] ?? fb)
+  : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, expand(x)]))
+  : v
+module.exports = expand(merge(read('config/default.json'), read(\`config/\${process.env.NODE_ENV}.json\`)))
+`,
+      'config/default.json': JSON.stringify({ api: { host: '127.0.0.1', port: '${API_PORT:-3000}' }, db: { port: '${DB_PORT:-5432}' } }, null, 2),
+      'config/production.json': JSON.stringify({ api: { host: '0.0.0.0' }, log: { level: 'warn' } }, null, 2),
+      'config/test.json': JSON.stringify({ api: { port: 3999 } }, null, 2),
+      'deploy/prod.env': 'NODE_ENV=production\n# API_PORT=8080  (old load balancer, removed in March)\nAPI_PORT=8443\nDB_PORT=6432\n',
+      'deploy/staging.env': 'NODE_ENV=staging\nAPI_PORT=8444\n',
+      'examples/production.json': JSON.stringify({ api: { port: 9000 } }, null, 2),
+      'docker-compose.yml': 'services:\n  api:\n    build: .\n    ports:\n      - "3000:3000"\n',
+    },
+    check: (_dir, t) => {
+      const last = t.text.trim().split('\n').pop() ?? ''
+      const nums = last.match(/\d+/g) ?? []
+      const ok = nums.length > 0 && nums.every((x) => x === '8443')
+      return { pass: ok, detail: ok ? 'correct' : `expected 8443, last line: ${last.slice(0, 80)}` }
+    },
+  },
+  {
+    id: 'background-job',
+    category: 'tools',
+    title: 'Start, read and stop a background process',
+    prompt: 'server.js is a long-running process. Start it, wait for the line that starts with "ready", tell me its token, then stop the process. Reply with the token on the last line.',
+    files: {
+      'server.js': `require('node:fs').writeFileSync(__dirname + '/server.pid', String(process.pid))
+console.log('starting…')
+setTimeout(() => {
+  let t = 7
+  for (let i = 0; i < 1000; i++) t = (t * 31 + i) % 1000003
+  console.log('ready token=' + t.toString(36))
+}, 3000)
+setInterval(() => {}, 1000)
+`,
+    },
+    check: (dir, t) => {
+      // "Then stop it" is checked directly: the process must be gone when the turn ends.
+      let running = false
+      const pid = Number(read(dir, 'server.pid'))
+      const alive = () => {
+        try {
+          return process.kill(pid, 0)
+        } catch {
+          return false
+        }
+      }
+      // A process that was just signalled can take a moment to exit.
+      for (let i = 0; pid && i < 10 && alive(); i++) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 100)
+      if (pid && alive()) {
+        running = true
+        process.kill(pid)
+      }
+      let tok = 7
+      for (let i = 0; i < 1000; i++) tok = (tok * 31 + i) % 1000003
+      const want = tok.toString(36)
+      const last = t.text.trim().split('\n').pop() ?? ''
+      if (!last.includes(want)) return { pass: false, detail: `expected ${want}, last line: ${last.slice(0, 80)}` }
+      return { pass: !running, detail: running ? 'right token, but the process was left running' : 'correct' }
+    },
+  },
+  {
     id: 'gh-repo-facts',
     category: 'github-mcp',
     title: 'Look up a repo on GitHub',
     prompt: 'Use the GitHub tools to find the latest release tag of Parzival-Samanyolu/xari-bulbul and the SPDX id of its license. Answer on the last line as: TAG=<tag> LICENSE=<spdx>',
-    check: (_dir, t) => githubAnswer(t, /TAG=v?0\.2\.5\b/.test(t.text) && /LICENSE=MIT\b/.test(t.text), 'TAG=v0.2.5 LICENSE=MIT'),
+    check: (_dir, t) => githubAnswer(t, /TAG=v?0\.2\.6\b/.test(t.text) && /LICENSE=MIT\b/.test(t.text), 'TAG=v0.2.6 LICENSE=MIT'),
   },
   {
     id: 'gh-find-file',
@@ -223,5 +478,37 @@ console.log('ok')
     title: 'Read a file from GitHub',
     prompt: 'Use the GitHub tools to read packaging/arch/PKGBUILD in Parzival-Samanyolu/xari-bulbul (main branch). What is the value of pkgname? Reply with just the value on the last line.',
     check: (_dir, t) => githubAnswer(t, /^\W*xari-bulbul-bin\W*$/.test(t.text.trim().split('\n').pop() ?? ''), 'xari-bulbul-bin'),
+  },
+  {
+    id: 'speed-ping',
+    category: 'speed',
+    title: 'Speed: one-word reply',
+    prompt: 'Reply with exactly the word pong and nothing else. Do not use any tools.',
+    check: (_dir, t) => {
+      const ok = t.text.trim().replace(/[`*.!"']/g, '').toLowerCase() === 'pong' && !t.tools.length
+      return { pass: ok, detail: ok ? 'correct' : `reply: ${t.text.trim().slice(0, 80)}` }
+    },
+  },
+  {
+    id: 'speed-long-output',
+    category: 'speed',
+    title: 'Speed: long answer, no tools',
+    prompt: 'Without using any tools, write a 400-word explanation of how a hash map handles collisions (chaining and open addressing). Plain prose, no code.',
+    check: (_dir, t) => {
+      const words = t.text.trim().split(/\s+/).filter(Boolean).length
+      const ok = words >= 250 && !t.tools.length
+      return { pass: ok, detail: ok ? `${words} words` : `${words} words, ${t.tools.length} tool calls` }
+    },
+  },
+  {
+    id: 'speed-tool-roundtrip',
+    category: 'speed',
+    title: 'Speed: one tool call',
+    prompt: 'Read value.txt and reply with just its contents.',
+    files: { 'value.txt': 'kestrel-4127\n' },
+    check: (_dir, t) => {
+      const ok = (t.text.trim().split('\n').pop() ?? '').includes('kestrel-4127')
+      return { pass: ok, detail: ok ? 'correct' : `reply: ${t.text.trim().slice(0, 80)}` }
+    },
   },
 ]
