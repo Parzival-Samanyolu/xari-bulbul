@@ -26,6 +26,18 @@ export interface ToolContext {
   jobs?: JobRegistry
   /** Runs a subagent; provided by the agent loop when subagents are enabled. */
   runSubagent?(input: SubagentInput): Promise<ToolResult>
+  /** Asks the user a question and waits for the answer; absent where nobody can answer (headless, subagents). */
+  askUser?(question: UserQuestion): Promise<string>
+  /** Records a file's content before an edit tool changes it, so the turn can be reverted. `null` = it didn't exist. */
+  checkpoint?(abs: string, before: string | null): void
+  /** Run a quick syntax/lint check on files after editing them. */
+  checkAfterEdit?: boolean
+}
+
+export interface UserQuestion {
+  question: string
+  options: string[]
+  multiSelect?: boolean
 }
 
 export interface SubagentInput {

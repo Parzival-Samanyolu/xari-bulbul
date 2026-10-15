@@ -188,7 +188,8 @@ function midStreamError(provider: string, message: string | undefined, code: num
 /** The user's text followed by any attached files, as the model sees it. */
 export function userText(m: Extract<ChatMessage, { role: 'user' }>): string {
   const files = (m.files ?? []).map((f) => `<file name="${f.path ?? f.name}">\n${f.text}\n</file>`)
-  return [m.content, ...files].filter((s) => s.trim()).join('\n\n')
+  const note = m.note ? `<system-reminder>\n${m.note}\n</system-reminder>` : ''
+  return [m.content, ...files, note].filter((s) => s.trim()).join('\n\n')
 }
 
 export function toWireMessage(m: ChatMessage): Record<string, unknown> {

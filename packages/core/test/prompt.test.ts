@@ -36,7 +36,7 @@ describe('system prompt', () => {
   }
 
   it('matches the snapshot for a subagent', () => {
-    const toolNames = base.toolNames.filter((n) => !['task', 'todo_write', 'remember', 'forget'].includes(n))
+    const toolNames = base.toolNames.filter((n) => !['task', 'todo_write', 'remember', 'forget', 'ask_user'].includes(n))
     expect(buildSystemPrompt({ ...base, toolNames, subagent: { description: 'Find config loaders' } })).toMatchSnapshot()
   })
 

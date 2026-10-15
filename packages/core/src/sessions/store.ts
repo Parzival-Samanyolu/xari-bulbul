@@ -22,8 +22,19 @@ export interface Session {
   displays?: Record<string, ToolDisplay>
   /** Tool calls the user denied. */
   denied?: string[]
+  /** Files as they were before each turn's edits, so a turn can be reverted. */
+  checkpoints?: Checkpoint[]
+  /** A note for the model, sent with the next user message (e.g. files the user reverted). */
+  pendingNote?: string
   /** Usage of the last request, used to decide when to compact. */
   lastPromptTokens?: number
+}
+
+export interface Checkpoint {
+  /** Index in `messages` of the user message that started the turn. */
+  at: number
+  /** Absolute path → content before the turn's first edit, or null if the turn created the file. */
+  files: Record<string, string | null>
 }
 
 export function newSession(cwd: string, model: ModelRef): Session {

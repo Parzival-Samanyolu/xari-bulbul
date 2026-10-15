@@ -1,6 +1,7 @@
 import fs from 'node:fs/promises'
 import path from 'node:path'
 import { z } from 'zod'
+import { withCheck } from './check.js'
 import { makeDiff } from './diff.js'
 import { defineTool, resolvePath } from './types.js'
 
@@ -26,13 +27,15 @@ export const writeFileTool = defineTool({
     if (before !== null && !ctx.readFiles.has(abs)) {
       return { content: `${abs} already exists. Read it before overwriting.`, isError: true }
     }
+    ctx.checkpoint?.(abs, before)
     await fs.mkdir(path.dirname(abs), { recursive: true })
     await fs.writeFile(abs, input.content, 'utf8')
     ctx.readFiles.add(abs)
     const display = makeDiff(abs, before ?? '', input.content)
-    return {
-      content: before === null ? `Created ${abs}` : `Overwrote ${abs} (+${display.added} -${display.removed})`,
-      display,
-    }
+    return withCheck(
+      { content: before === null ? `Created ${abs}` : `Overwrote ${abs} (+${display.added} -${display.removed})`, display },
+      abs,
+      ctx,
+    )
   },
 })

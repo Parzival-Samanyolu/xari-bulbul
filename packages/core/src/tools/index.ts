@@ -1,5 +1,6 @@
 import { bashOutputTool, bashTool, killJobTool } from './bash.js'
-import { editFileTool } from './edit-file.js'
+import { askUserTool } from './ask-user.js'
+import { editFileTool, multiEditTool } from './edit-file.js'
 import { forgetTool, rememberTool } from './memory.js'
 import { readFileTool } from './read-file.js'
 import { globTool, grepTool, listDirTool } from './search.js'
@@ -11,7 +12,7 @@ import { webSearchTool } from './web-search.js'
 import { writeFileTool } from './write-file.js'
 
 export function builtinTools(): Tool[] {
-  return [readFileTool, writeFileTool, editFileTool, listDirTool, globTool, grepTool, bashTool, bashOutputTool, killJobTool, webSearchTool, webFetchTool, todoTool, taskTool, rememberTool, forgetTool]
+  return [readFileTool, writeFileTool, editFileTool, multiEditTool, listDirTool, globTool, grepTool, bashTool, bashOutputTool, killJobTool, webSearchTool, webFetchTool, todoTool, askUserTool, taskTool, rememberTool, forgetTool]
 }
 
 export * from './types.js'
@@ -20,4 +21,7 @@ export { defaultShell } from './bash.js'
 export { JobRegistry, type Job } from './jobs.js'
 export { SEARCH_KEY_ID, parseDuckDuckGo, search, type SearchBackend, type SearchResult, type WebSearchConfig } from './web-search.js'
 export { TASK_TOOL } from './task.js'
+export { ASK_USER_TOOL } from './ask-user.js'
+export { applyEdit } from './edit-file.js'
+export { checkFile } from './check.js'
 export { FORGET_TOOL, REMEMBER_TOOL } from './memory.js'

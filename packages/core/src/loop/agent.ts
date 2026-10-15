@@ -1,3 +1,5 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import { compactionSplit, estimateTokens, summarize } from '../context/compact.js'
 import { buildSystemPrompt, gatherEnvironment, type PromptEnvironment } from '../context/system-prompt.js'
 import { Reminders } from './reminders.js'
@@ -5,13 +7,14 @@ import type { MemoryStore } from '../memory/store.js'
 import type { Permissions, PermissionAnswer } from '../permissions/permissions.js'
 import type { ProviderRegistry } from '../providers/registry.js'
 import { ProviderError, type ChatRequest } from '../providers/types.js'
-import { newSession, titleFrom, type Session } from '../sessions/store.js'
+import { newSession, titleFrom, type Checkpoint, type Session } from '../sessions/store.js'
 import { modelKey, type Settings } from '../settings/schema.js'
 import { FORGET_TOOL, REMEMBER_TOOL } from '../tools/memory.js'
 import { JobRegistry } from '../tools/jobs.js'
 import { SEARCH_KEY_ID, type WebSearchConfig } from '../tools/web-search.js'
 import { TASK_TOOL } from '../tools/task.js'
-import type { SubagentInput, Tool, ToolContext, ToolResult } from '../tools/types.js'
+import { ASK_USER_TOOL } from '../tools/ask-user.js'
+import type { SubagentInput, Tool, ToolContext, ToolResult, UserQuestion } from '../tools/types.js'
 import type { ChatMessage, FileAttachment, ImageAttachment, ModelRef, TodoItem, ToolCall, Usage } from '../types.js'
 import { checkBudget, computeCost, type UsageRecord, type UsageSummary, type UsageTracker } from '../usage/tracker.js'
 
@@ -45,6 +48,13 @@ export interface PermissionRequest {
   suggestedRule: string
 }
 
+export interface QuestionRequest extends UserQuestion {
+  callId: string
+}
+
+/** Files larger than this aren't kept for undo. */
+const MAX_CHECKPOINT_BYTES = 2_000_000
+
 export interface AgentOptions {
   session: Session
   registry: ProviderRegistry
@@ -53,6 +63,8 @@ export interface AgentOptions {
   usage: UsageTracker
   permissions: Permissions
   askPermission: (req: PermissionRequest) => Promise<PermissionAnswer>
+  /** Shows an ask_user question and resolves with the answer ('' if dismissed). Without it the tool is hidden. */
+  askUser?: (req: QuestionRequest) => Promise<string>
   onEvent: (e: AgentEvent) => void
   /** Called whenever the session changes and should be persisted. */
   onSave?: (session: Session) => void
@@ -108,6 +120,10 @@ export class Agent {
   readonly jobs: JobRegistry
   private env: PromptEnvironment | undefined
   private readonly reminders = new Reminders()
+  /** Index of the user message that started the running turn (where its checkpoint attaches). */
+  private turnAt = -1
+  private warnedNoTools = false
+  private saveFailed = false
 
   constructor(private readonly o: AgentOptions) {
     this.session = o.session
@@ -160,8 +176,16 @@ export class Agent {
     this.o.onEvent(e)
   }
 
+  /** Persists the session. A failed write (full disk, permissions) warns once instead of ending the turn. */
   private save() {
-    this.o.onSave?.(this.session)
+    try {
+      this.o.onSave?.(this.session)
+      this.saveFailed = false
+    } catch (err) {
+      if (this.saveFailed) return
+      this.saveFailed = true
+      this.emit({ type: 'notice', level: 'warn', text: `Couldn't save this chat: ${(err as Error).message}` })
+    }
   }
 
   private push(message: ChatMessage) {
@@ -177,6 +201,8 @@ export class Agent {
     if (!this.settings.agent.subagents.enabled || this.o.subagent) disabled.add(TASK_TOOL)
     // Subagents read memory but only the main agent saves to it.
     if (!this.memoryOn || this.o.subagent) disabled.add(REMEMBER_TOOL).add(FORGET_TOOL)
+    // Questions need someone to answer them.
+    if (!this.o.askUser || this.o.subagent) disabled.add(ASK_USER_TOOL)
     return this.tools.filter((t) => !disabled.has(t.name) && (!plan || t.readOnly))
   }
 
@@ -253,9 +279,104 @@ export class Agent {
     if (images && this.registry.cachedModel(this.model.providerId, this.model.modelId)?.supportsImages === false) {
       this.emit({ type: 'notice', level: 'warn', text: `${this.model.modelId} doesn't accept images, so the request may fail. Pick a vision model with ⌘/Ctrl+K.` })
     }
-    this.push({ role: 'user', content: text, ...(files ? { files } : {}), ...(images ? { images } : {}) })
+    const note = this.session.pendingNote
+    this.session.pendingNote = undefined
+    this.push({ role: 'user', content: text, ...(files ? { files } : {}), ...(images ? { images } : {}), ...(note ? { note } : {}) })
+    this.turnAt = this.session.messages.length - 1
+    return this.run(abort)
+  }
 
+  /**
+   * Runs the last request again after it failed: drops a reply that broke off and continues from
+   * the last user message or tool result, without adding a message.
+   */
+  async retry(): Promise<TurnEndReason> {
+    if (this.abort) throw new Error('Agent is already running')
+    const last = this.session.messages.at(-1)
+    if (last?.role === 'assistant' && !last.toolCalls?.length && last.content.endsWith('[interrupted]')) this.session.messages.pop()
+    const end = this.session.messages.at(-1)
+    if (!end || end.role === 'assistant') throw new Error('Nothing to retry: the last request finished.')
+    const abort = (this.abort = new AbortController())
+    this.emit({ type: 'turn_start' })
+    this.turnAt = this.session.messages.findLastIndex((m) => m.role === 'user' && !m.synthetic)
+    this.save()
+    return this.run(abort)
+  }
+
+  /**
+   * Replaces the user message at `index` with `text` and runs from there; later messages are
+   * dropped. With `revert`, files changed by the dropped turns are restored first.
+   */
+  async editAndResend(index: number, text: string, opts: { revert?: boolean } = {}): Promise<TurnEndReason> {
+    if (this.abort) throw new Error('Agent is already running')
+    const m = this.session.messages[index]
+    if (m?.role !== 'user' || m.synthetic) throw new Error('Only your own messages can be edited.')
+    const dropped = (this.session.checkpoints ?? []).filter((c) => c.at >= index)
+    if (opts.revert) for (const c of [...dropped].sort((a, b) => b.at - a.at)) this.restore(c.files)
+    this.session.checkpoints = (this.session.checkpoints ?? []).filter((c) => c.at < index)
+    this.session.messages = this.session.messages.slice(0, index)
+    this.session.lastPromptTokens = undefined
+    this.save()
+    return this.send(text, { files: m.files, images: m.images })
+  }
+
+  /** Turns that changed files, with the files they changed. */
+  get checkpoints(): Checkpoint[] {
+    return this.session.checkpoints ?? []
+  }
+
+  /**
+   * Puts the files a turn changed back the way they were before it (or just `file`). The model is
+   * told with the next message. Returns the paths restored.
+   */
+  revert(at: number, file?: string): string[] {
+    if (this.abort) throw new Error('Wait for the turn to finish, or stop it, before reverting.')
+    const cp = this.checkpoints.find((c) => c.at === at)
+    if (!cp) return []
+    const files = file ? (file in cp.files ? { [file]: cp.files[file] } : {}) : cp.files
+    const restored = this.restore(files)
+    for (const f of Object.keys(files)) delete cp.files[f]
+    if (!Object.keys(cp.files).length) this.session.checkpoints = this.checkpoints.filter((c) => c !== cp)
+    if (restored.length) {
+      const list = restored.map((f) => `- ${f}`).join('\n')
+      const note = `The user reverted your changes to these files; they are back to how they were before that turn:\n${list}\nRe-read them before editing.`
+      this.session.pendingNote = [this.session.pendingNote, note].filter(Boolean).join('\n\n')
+      for (const f of restored) this.readFiles.delete(f)
+    }
+    this.save()
+    return restored
+  }
+
+  private restore(files: Record<string, string | null>): string[] {
+    const done: string[] = []
+    for (const [file, content] of Object.entries(files)) {
+      try {
+        if (content === null) fs.rmSync(file, { force: true })
+        else {
+          fs.mkdirSync(path.dirname(file), { recursive: true })
+          fs.writeFileSync(file, content)
+        }
+        done.push(file)
+      } catch (err) {
+        this.emit({ type: 'notice', level: 'warn', text: `Couldn't restore ${file}: ${(err as Error).message}` })
+      }
+    }
+    return done
+  }
+
+  /** Keeps a file's content from before the running turn first touched it. */
+  private checkpoint(abs: string, before: string | null) {
+    if (this.o.subagent || this.turnAt < 0) return
+    if (before !== null && Buffer.byteLength(before) > MAX_CHECKPOINT_BYTES) return
+    const list = (this.session.checkpoints ??= [])
+    let cp = list.find((c) => c.at === this.turnAt)
+    if (!cp) list.push((cp = { at: this.turnAt, files: {} }))
+    if (!(abs in cp.files)) cp.files[abs] = before
+  }
+
+  private async run(abort: AbortController): Promise<TurnEndReason> {
     let reason: TurnEndReason = 'max_steps'
+    this.warnedNoTools = false
     this.env = gatherEnvironment(this.session.meta.cwd, { shell: this.settings.agent.shell })
     this.reminders.startTurn(this.o.permissions.mode)
     this.failedCalls = []
@@ -381,7 +502,8 @@ export class Agent {
     const provider = this.registry.get(ref.providerId)
     const tools = this.activeTools()
     const info = this.registry.cachedModel(ref.providerId, ref.modelId)
-    if (info && !info.supportsTools) {
+    if (info && !info.supportsTools && !this.warnedNoTools) {
+      this.warnedNoTools = true
       this.emit({ type: 'notice', level: 'warn', text: `${ref.modelId} doesn't advertise tool support; it may not be able to act.` })
     }
 
@@ -459,6 +581,9 @@ export class Agent {
       jobs: this.jobs,
       webSearch: this.webSearchConfig(),
       runSubagent: this.o.subagent ? undefined : (input) => this.runSubagent(callId, input, signal),
+      askUser: this.o.askUser && !this.o.subagent ? (q) => this.o.askUser!({ ...q, callId }) : undefined,
+      checkpoint: (abs, before) => this.checkpoint(abs, before),
+      checkAfterEdit: this.settings.tools.checkAfterEdit,
     }
   }
 
@@ -668,6 +793,10 @@ export class Agent {
       ...this.session.messages.slice(split),
     ]
     this.session.lastPromptTokens = undefined
+    // Two messages (summary + acknowledgement) replace the first `split`.
+    const shift = (at: number) => (at >= split ? at - split + 2 : -1)
+    this.session.checkpoints = this.checkpoints.map((c) => ({ ...c, at: shift(c.at) })).filter((c) => c.at >= 0)
+    if (this.turnAt >= 0) this.turnAt = Math.max(0, shift(this.turnAt))
     this.emit({ type: 'compacted', removedMessages: split })
     this.save()
     return true

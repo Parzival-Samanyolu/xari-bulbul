@@ -182,6 +182,8 @@ export const SettingsSchema = z.object({
       /** Project tool code runs on open, so it's opt-in (a cloned repo could contain anything). */
       loadProjectExtensions: z.boolean().default(false),
       loadUserExtensions: z.boolean().default(true),
+      /** After an edit, check the file with the project's linter or a syntax check and show the model any problems. */
+      checkAfterEdit: z.boolean().default(true),
       webSearch: z
         .object({
           /**

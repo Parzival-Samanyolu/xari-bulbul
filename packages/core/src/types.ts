@@ -19,6 +19,8 @@ export type ChatMessage =
       images?: ImageAttachment[]
       /** Written by the engine, not the user (e.g. the end-of-turn review). Shown as a note. */
       synthetic?: 'review' | 'reminder'
+      /** Sent to the model after the text but not shown (e.g. "the user reverted these files"). */
+      note?: string
     }
   | { role: 'assistant'; content: string; toolCalls?: ToolCall[]; reasoning?: string }
   | { role: 'tool'; toolCallId: string; name: string; content: string }
