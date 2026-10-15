@@ -26,6 +26,8 @@ export interface Notice {
   text: string
   /** A settings tab that fixes the problem, shown as a button. */
   fix?: 'providers' | 'usage' | 'agent'
+  /** The turn failed; offer to run the request again. */
+  retry?: boolean
 }
 
 /** Point notices at the settings tab that resolves them. */
@@ -68,8 +70,8 @@ function withLive(m: Model, id: string, fn: (l: LiveState) => LiveState): Model 
   return { ...m, lives: { ...m.lives, [id]: fn(m.lives[id] ?? emptyLive) } }
 }
 
-function addNotice(l: LiveState, level: Notice['level'], text: string): LiveState {
-  const notice: Notice = { id: ++noticeId, level, text, fix: fixFor(text) }
+function addNotice(l: LiveState, level: Notice['level'], text: string, retry?: boolean): LiveState {
+  const notice: Notice = { id: ++noticeId, level, text, fix: fixFor(text), ...(retry && { retry }) }
   return { ...l, notices: [...l.notices, notice].slice(-5) }
 }
 
@@ -144,7 +146,7 @@ function reducer(m: Model, a: Action): Model {
     case 'notice':
       return setLive(addNotice(live, e.level, e.text))
     case 'error':
-      return setLive(addNotice(live, 'error', e.message))
+      return setLive(addNotice(live, 'error', e.message, true))
     case 'turn_end':
       return setLive({ ...live, streamText: '', streamReasoning: '' }, running(false))
   }
@@ -197,6 +199,14 @@ export function App() {
   const live = lives[activeId(app)] ?? emptyLive
   // Each chat's approvals stay with that chat; only the one on screen can be answered.
   const approval = pending.find((p) => p.sessionId === activeId(app))?.request
+  const question = app?.questions.find((q) => q.sessionId === activeId(app))?.request
+  const answerQuestion = (text: string) => {
+    if (question) api.agent.answer(activeId(app), question.callId, text).then(setState, fail)
+  }
+  // Stable, so memoized chat rows don't re-render on every streamed token.
+  const onRetry = useCallback(() => void api.agent.retry().catch(fail), [fail])
+  const onRevert = useCallback((at: number, file?: string) => void api.agent.revert(at, file).then(setState, fail), [setState, fail])
+  const onEdit = useCallback((index: number, text: string, revert: boolean) => void api.agent.editMessage(index, text, revert).catch(fail), [fail])
   const answer = (a: PermissionAnswer) => {
     if (!approval) return
     const sessionId = activeId(app)
@@ -262,6 +272,10 @@ export function App() {
               onDismiss={(id) => dispatch({ type: 'dismiss', id })}
               onSettings={openSettings}
               approval={approval ? { request: approval, onAnswer: answer } : undefined}
+              question={question ? { request: question, onAnswer: answerQuestion } : undefined}
+              onRetry={onRetry}
+              onRevert={onRevert}
+              onEdit={onEdit}
             />
             <Composer app={app} onState={setState} onError={fail} onOpenPicker={() => setPickerOpen(true)} />
           </>

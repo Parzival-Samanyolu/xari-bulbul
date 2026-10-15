@@ -1911,3 +1911,85 @@ button.sb-item:hover {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* ---------- edit, revert, questions ---------- */
+
+.user-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: 85%;
+}
+.user-row .user {
+  max-width: none;
+}
+/* Edit appears on hover or keyboard focus, so finished chats stay quiet. */
+.user-edit-btn {
+  opacity: 0;
+  margin-top: 6px;
+}
+.user-turn:hover .user-edit-btn,
+.user-edit-btn:focus-visible {
+  opacity: 1;
+}
+.user-edit {
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.user-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.user-edit-actions label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: auto;
+}
+.revert-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: -4px;
+}
+.tool-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 4px 8px 0;
+}
+.question-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.question-option {
+  white-space: normal;
+  text-align: left;
+}
+label.question-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+label.question-option.on {
+  border-color: var(--accent);
+}
+.question .approval-actions .approval-note {
+  flex: 1;
+  width: auto;
+}
+.ask-answer {
+  border-top: 1px solid var(--border);
+  padding: 8px 12px;
+}

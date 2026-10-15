@@ -109,6 +109,10 @@ function registerIpc() {
   handle('agent.setMode', (mode) => c.setMode(mode))
   handle('agent.compact', () => c.compact())
   handle('agent.respond', (sessionId, id, answer) => c.respond(sessionId, id, answer))
+  handle('agent.answer', (sessionId, id, text) => c.answer(sessionId, id, text))
+  handle('agent.retry', () => c.retry())
+  handle('agent.revert', (at, file) => c.revert(at, file))
+  handle('agent.editMessage', (index, text, revert) => c.editMessage(index, text, revert))
   handle('usage.exportCsv', async () => {
     const r = await dialog.showSaveDialog(win!, { defaultPath: 'harness-usage.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] })
     if (r.canceled || !r.filePath) return false

@@ -498,6 +498,9 @@ function ToolsTab({ app, save, onState, onError }: TabProps) {
             </div>
           ))}
         </div>
+        <Row label="Check files after edits" hint="Runs the project's eslint or ruff, or a syntax check, on each edited file and shows the agent any problems.">
+          <Toggle label="Check files after edits" value={t.checkAfterEdit} onChange={(v) => save((s) => ((s.tools.checkAfterEdit = v), s))} />
+        </Row>
       </Section>
       <WebSearchSection app={app} save={save} onState={onState} onError={onError} />
       <Section

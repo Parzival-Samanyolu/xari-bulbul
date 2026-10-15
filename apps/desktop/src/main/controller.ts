@@ -31,7 +31,9 @@ import {
   type ModelRef,
   type PermissionAnswer,
   type PermissionMode,
+  type QuestionRequest,
   type Session,
+  type SessionMeta,
   type Settings,
   type Tool,
 } from '@harness/core'
@@ -83,6 +85,10 @@ export class AppController {
   private removed = new Set<string>()
   private mode: PermissionMode
   private pending = new Map<string, { sessionId: string; resolve: (a: PermissionAnswer) => void }>()
+  /** Open ask_user questions, keyed like approvals. */
+  private questions = new Map<string, { sessionId: string; request: QuestionRequest; resolve: (text: string) => void }>()
+  /** Every saved chat's metadata, read from disk once and then kept current, so state pushes don't re-read every file. */
+  private index: Map<string, SessionMeta> | null = null
   readonly paths: AppState['paths']
 
   constructor(
@@ -247,7 +253,13 @@ export class AppController {
     return this.state()
   }
 
+  /** Stops running chats (so partial replies are saved) and MCP servers. */
   async dispose() {
+    this.cancelPending()
+    for (const r of this.agents.values()) r.agent.stop()
+    const deadline = Date.now() + 1500
+    while ([...this.agents.values()].some((r) => r.agent.running) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50))
+    for (const r of this.agents.values()) r.agent.dispose()
     await this.mcp.close()
   }
 
@@ -354,7 +366,9 @@ export class AppController {
       memory: this.memory,
       secret: (id) => this.secrets.get(id),
       onSave: (s) => {
-        if (s.messages.length && !this.removed.has(id)) this.store.save(s)
+        if (!s.messages.length || this.removed.has(id)) return
+        this.store.save(s)
+        this.index?.set(id, { ...s.meta })
       },
       onEvent: (event) => this.onAgentEvent(id, event),
       askPermission: (request) =>
@@ -363,6 +377,12 @@ export class AppController {
           this.pending.set(`${id}:${request.callId}`, { sessionId: id, resolve })
           this.send({ type: 'permission', sessionId: id, request })
           if (id !== this.activeId) this.notify({ sessionId: id, title: agent.session.meta.title, body: `Needs approval: ${request.tool} ${request.subject}`.trim() })
+          this.pushState()
+        }),
+      askUser: (request) =>
+        new Promise<string>((resolve) => {
+          this.questions.set(`${id}:${request.callId}`, { sessionId: id, request, resolve })
+          if (id !== this.activeId) this.notify({ sessionId: id, title: agent.session.meta.title, body: `Has a question: ${request.question}` })
           this.pushState()
         }),
     })
@@ -381,7 +401,7 @@ export class AppController {
   }
 
   private awaiting(sessionId: string): boolean {
-    for (const p of this.pending.values()) if (p.sessionId === sessionId) return true
+    for (const p of [...this.pending.values(), ...this.questions.values()]) if (p.sessionId === sessionId) return true
     return false
   }
 
@@ -408,6 +428,11 @@ export class AppController {
       this.pending.delete(key)
       p.resolve({ type: 'deny', feedback: 'Cancelled.' })
       this.send({ type: 'permission_cancelled', sessionId: p.sessionId, callId: key.slice(p.sessionId.length + 1) })
+    }
+    for (const [key, q] of this.questions) {
+      if (sessionId && q.sessionId !== sessionId) continue
+      this.questions.delete(key)
+      q.resolve('')
     }
   }
 
@@ -436,6 +461,7 @@ export class AppController {
     this.cancelPending(id)
     r?.agent.dispose()
     this.agents.delete(id)
+    this.index?.delete(id)
   }
 
   removeSession(id: string): AppState {
@@ -453,6 +479,7 @@ export class AppController {
     const model = this.agent?.model ?? this.settings.models.default
     for (const id of [...this.agents.keys()]) this.discard(id)
     this.store.deleteAll()
+    this.index = null
     this.activeId = null
     if (this.workspace) this.activate(newSession(this.workspace, model))
     return this.state()
@@ -460,7 +487,8 @@ export class AppController {
 
   // ---------- agent ----------
 
-  async sendMessage(text: string, attachments: AttachmentInput[] = []): Promise<void> {
+  /** The chat on screen, after checking its provider can take a request. */
+  private readyAgent(): Agent {
     if (!this.agent) throw new Error('Open a folder first.')
     // Check before the prompt is posted, so a missing key never leaves an orphaned message.
     const { providerId } = this.agent.model
@@ -468,6 +496,33 @@ export class AppController {
     if (!config) throw new Error(`The provider "${providerId}" no longer exists. Pick another model (⌘/Ctrl+K).`)
     if (!config.enabled) throw new Error(`${config.name} is turned off. Turn it on in Settings → Providers & Keys, or pick another model.`)
     if (!this.isReady(providerId)) throw new Error(`${config.name} needs an API key. Add one in Settings → Providers & Keys.`)
+    return this.agent
+  }
+
+  async retry(): Promise<void> {
+    await this.readyAgent().retry()
+  }
+
+  async editMessage(index: number, text: string, revert: boolean): Promise<void> {
+    const agent = this.readyAgent()
+    await agent.editAndResend(index, expandSlashCommand(text, this.ext.commands) ?? text, { revert })
+  }
+
+  revert(at: number, file?: string): AppState {
+    this.agent?.revert(at, file)
+    return this.state()
+  }
+
+  answer(sessionId: string, callId: string, text: string): AppState {
+    const key = `${sessionId}:${callId}`
+    const q = this.questions.get(key)
+    this.questions.delete(key)
+    q?.resolve(text)
+    return this.state()
+  }
+
+  async sendMessage(text: string, attachments: AttachmentInput[] = []): Promise<void> {
+    this.readyAgent()
     if (attachments.length > MAX_ATTACHMENTS) throw new Error(`Attach up to ${MAX_ATTACHMENTS} files at a time.`)
     // Read everything first so one bad file fails the send without posting a half message.
     const files: FileAttachment[] = []
@@ -481,7 +536,7 @@ export class AppController {
       }
     }
     const expanded = expandSlashCommand(text, this.ext.commands) ?? text
-    await this.agent.send(expanded, { files, images })
+    await this.agent!.send(expanded, { files, images })
   }
 
   /** Stops the chat shown in the window; other chats keep going. */
@@ -535,7 +590,7 @@ export class AppController {
   private sessionView(): SessionView | null {
     if (!this.agent) return null
     const s = this.agent.session
-    return { meta: s.meta, messages: s.messages, todos: s.todos, displays: s.displays ?? {}, denied: s.denied ?? [] }
+    return { meta: s.meta, messages: s.messages, todos: s.todos, displays: s.displays ?? {}, denied: s.denied ?? [], checkpoints: s.checkpoints ?? [] }
   }
 
   // ---------- memory ----------
@@ -562,8 +617,9 @@ export class AppController {
 
   /** Chats for every open folder, from one pass over the store. */
   private sessionLists(): Pick<AppState, 'sessions' | 'folders'> {
+    this.index ??= new Map(this.store.list().map((m) => [m.id, m]))
     const byFolder = new Map<string, AppState['sessions']>()
-    for (const meta of this.store.list()) {
+    for (const meta of [...this.index.values()].sort((a, b) => b.updatedAt - a.updatedAt)) {
       const cwd = meta.cwd.normalize('NFC')
       byFolder.set(cwd, [...(byFolder.get(cwd) ?? []), meta])
     }
@@ -597,7 +653,8 @@ export class AppController {
       mode: this.mode,
       running: this.agent?.running ?? false,
       runningSessions: [...this.agents.entries()].filter(([, r]) => r.agent.running).map(([id]) => id),
-      awaitingSessions: [...new Set([...this.pending.values()].map((p) => p.sessionId))],
+      awaitingSessions: [...new Set([...this.pending.values(), ...this.questions.values()].map((p) => p.sessionId))],
+      questions: [...this.questions.values()].map(({ sessionId, request }) => ({ sessionId, request })),
       extensions: this.extensionsInfo(),
       memory: this.memoryInfo(),
       mcp: {

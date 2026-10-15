@@ -2,12 +2,14 @@
 import type {
   AgentEvent,
   ChatMessage,
+  Checkpoint,
   McpServerStatus,
   ModelInfo,
   ModelRef,
   PermissionAnswer,
   PermissionMode,
   PermissionRequest,
+  QuestionRequest,
   SessionMeta,
   Settings,
   TodoItem,
@@ -18,12 +20,14 @@ import type {
 export type {
   AgentEvent,
   ChatMessage,
+  Checkpoint,
   McpServerStatus,
   ModelInfo,
   ModelRef,
   PermissionAnswer,
   PermissionMode,
   PermissionRequest,
+  QuestionRequest,
   SessionMeta,
   Settings,
   TodoItem,
@@ -37,6 +41,8 @@ export interface SessionView {
   todos: TodoItem[]
   displays: Record<string, ToolDisplay>
   denied: string[]
+  /** Turns that changed files and can still be reverted. */
+  checkpoints: Checkpoint[]
 }
 
 export interface CommandInfo {
@@ -90,8 +96,10 @@ export interface AppState {
   running: boolean
   /** Every chat with a turn in progress, in any folder. */
   runningSessions: string[]
-  /** Chats waiting for you to approve a tool. */
+  /** Chats waiting for you to approve a tool or answer a question. */
   awaitingSessions: string[]
+  /** Open ask_user questions, in every chat. */
+  questions: { sessionId: string; request: QuestionRequest }[]
   extensions: ExtensionsInfo
   /** Connection state of each configured MCP server, and which have a stored token. */
   mcp: { servers: McpServerStatus[]; tokens: Record<string, boolean> }
@@ -166,6 +174,14 @@ export interface HarnessApi {
     setMode(mode: PermissionMode): Promise<AppState>
     compact(): Promise<boolean>
     respond(sessionId: string, callId: string, answer: PermissionAnswer): Promise<void>
+    /** Answers an ask_user question ('' dismisses it). */
+    answer(sessionId: string, callId: string, text: string): Promise<AppState>
+    /** Runs the failed request of the chat on screen again. */
+    retry(): Promise<void>
+    /** Restores the files a turn changed (or just `file`), in the chat on screen. */
+    revert(at: number, file?: string): Promise<AppState>
+    /** Replaces an earlier message of the chat on screen and runs from there. */
+    editMessage(index: number, text: string, revert: boolean): Promise<void>
   }
   files: {
     /** Native file picker for attachments. */
