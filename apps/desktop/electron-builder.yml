@@ -28,19 +28,24 @@ mac:
   identity: '-'
   # Hardened runtime is only needed for notarization (Developer ID); with ad-hoc signing it can block launch.
   hardenedRuntime: false
+# Releases carry one download per platform. The .zip stays because the macOS updater installs
+# from it; blockmaps (for partial update downloads) are left out, so updates download in full.
+dmg:
+  writeUpdateInfo: false
 win:
   icon: build/icon.png
   target:
     - target: nsis
       arch: [x64]
 nsis:
+  differentialPackage: false
   shortcutName: Xarı Bülbül
   oneClick: false
   allowToChangeInstallationDirectory: true
 linux:
   category: Development
-  # pacman = Arch Linux / Manjaro / EndeavourOS (install with `sudo pacman -U file.pacman`)
-  target: [AppImage, deb, pacman]
+  # AppImage runs on every distro and updates itself; packaging/arch/PKGBUILD repackages it for Arch.
+  target: [AppImage]
   maintainer: Xarı Bülbül contributors
   # Used for the .desktop file and the package name on Linux (must be lowercase ASCII).
   executableName: xari-bulbul
@@ -50,11 +55,5 @@ linux:
     entry:
       Name: Xarı Bülbül
       StartupWMClass: Xari Bulbul
-# Package names may not contain spaces or capitals, so they don't follow productName.
-deb:
-  packageName: xari-bulbul
-pacman:
-  packageName: xari-bulbul
-  depends: [gtk3, nss, alsa-lib, libxss, libxtst, xdg-utils, at-spi2-core, libsecret]
 # Publishing (GitHub Releases + auto-update feed) is configured by the release workflow,
 # where GitHub provides the repository. Local builds (`pnpm dist`) never publish.

@@ -30,10 +30,6 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: Linux packaging tools
-        if: runner.os == 'Linux'
-        # bsdtar builds the Arch Linux (.pacman) package.
-        run: sudo apt-get update && sudo apt-get install -y libarchive-tools
       - run: pnpm test
       - name: Signing certificate (macOS)
         if: runner.os == 'macOS'
@@ -70,4 +66,9 @@ jobs:
           # CSC_LINK / CSC_KEY_PASSWORD (macOS .p12 or Windows cert)
           # APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID (macOS notarization)
           CSC_IDENTITY_AUTO_DISCOVERY: false
-
+      - name: Drop the macOS zip blockmap
+        if: runner.os == 'macOS'
+        # electron-builder always writes one for the update .zip; without it the updater downloads the zip in full.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release delete-asset "$GITHUB_REF_NAME" "XariBulbul-${GITHUB_REF_NAME#v}-mac-universal.zip.blockmap" --yes || true

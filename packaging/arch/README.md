@@ -1,11 +1,12 @@
 # Arch Linux
 
-Each GitHub release includes a native Arch package, `XariBulbul-<version>-linux-x64.pacman`:
+Each GitHub release includes an AppImage, `XariBulbul-<version>-linux-x86_64.AppImage`, which runs on Arch as is and updates itself:
 
 ```bash
-sudo pacman -U XariBulbul-0.1.0-linux-x64.pacman
+chmod +x XariBulbul-*-linux-x86_64.AppImage
+./XariBulbul-*-linux-x86_64.AppImage
 ```
 
-It installs to `/opt/Xari Bulbul`, adds `xari-bulbul` to your PATH and a desktop entry. Remove it with `sudo pacman -R xari-bulbul`.
+The `PKGBUILD` here installs the same AppImage as a regular package (for example, to publish it on the AUR as `xari-bulbul-bin`): it goes to `/opt/Xari Bulbul`, adds `xari-bulbul` to your PATH and a desktop entry. Remove it with `sudo pacman -R xari-bulbul-bin`. A package install does not update itself; update it with `makepkg -si` from a newer PKGBUILD.
 
-The `PKGBUILD` here installs the same release through `makepkg` (for example, to publish it on the AUR as `xari-bulbul-bin`). After each release, update `pkgver` and update `sha256sums` with the new file's checksum (`sha256sum XariBulbul-<version>-linux-x64.pacman`).
+After each release, update `pkgver` and `_appimage`, and put the AppImage's checksum in `sha256sums` (`sha256sum XariBulbul-<version>-linux-x86_64.AppImage`).

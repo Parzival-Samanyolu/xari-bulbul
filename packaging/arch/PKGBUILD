@@ -1,10 +1,10 @@
 # Maintainer: Xarı Bülbül contributors
-# AUR-style package that installs the prebuilt release. Build and install with:
+# AUR-style package that repackages the release AppImage. Build and install with:
 #   makepkg -si
-# Or install the release file directly: sudo pacman -U XariBulbul-<version>-linux-x64.pacman
 pkgname=xari-bulbul-bin
 _pkgname=xari-bulbul
-pkgver=0.2.7
+_appimage="XariBulbul-0.2.8-linux-x86_64.AppImage"
+pkgver=0.2.8
 pkgrel=1
 pkgdesc='Desktop AI coding agent for OpenRouter, Ollama and any OpenAI-compatible provider'
 arch=('x86_64')
@@ -14,14 +14,35 @@ depends=('gtk3' 'nss' 'alsa-lib' 'libxss' 'libxtst' 'xdg-utils' 'at-spi2-core' '
 provides=("$_pkgname")
 conflicts=("$_pkgname")
 options=('!strip' '!debug')
-source=("XariBulbul-$pkgver-linux-x64.pacman::$url/releases/download/v$pkgver/XariBulbul-$pkgver-linux-x64.pacman")
-noextract=("XariBulbul-$pkgver-linux-x64.pacman")
-sha256sums=('43513bb2ff3a2308914af8f894949965f720c0b41a48d9cf81450051ca516129')
+source=("$_appimage::$url/releases/download/v$pkgver/$_appimage")
+noextract=("$_appimage")
+sha256sums=('SKIP')
+
+prepare() {
+  cd "$srcdir"
+  chmod +x "$srcdir/$_appimage"
+  rm -rf squashfs-root
+  "./$_appimage" --appimage-extract > /dev/null
+}
 
 package() {
-  bsdtar -xf "$srcdir/XariBulbul-$pkgver-linux-x64.pacman" -C "$pkgdir" --exclude '.PKGINFO' --exclude '.MTREE' --exclude '.INSTALL' --exclude '.BUILDINFO'
+  cd "$srcdir/squashfs-root"
+  local opt="$pkgdir/opt/Xari Bulbul"
+  install -dm755 "$opt"
+  # The AppImage runtime files and its bundled old libraries stay out; the system provides them.
+  cp -a --no-preserve=ownership chrome_*.pak chrome_crashpad_handler chrome-sandbox icudtl.dat lib*.so* \
+    LICENSE* locales resources resources.pak snapshot_blob.bin v8_context_snapshot.bin vk_swiftshader_icd.json \
+    xari-bulbul "$opt/"
+  # The extracted tree is owner-only (0700); make it readable for every user.
+  chmod -R u+rwX,go+rX,go-w "$opt"
+  # Electron's sandbox helper must be setuid on kernels without unprivileged user namespaces.
+  chmod 4755 "$opt/chrome-sandbox"
+
   install -dm755 "$pkgdir/usr/bin"
   ln -s "/opt/Xari Bulbul/xari-bulbul" "$pkgdir/usr/bin/$_pkgname"
-  # Electron's sandbox helper must be setuid on kernels without unprivileged user namespaces.
-  chmod 4755 "$pkgdir/opt/Xari Bulbul/chrome-sandbox"
+  install -Dm644 usr/share/icons/hicolor/1024x1024/apps/xari-bulbul.png \
+    "$pkgdir/usr/share/icons/hicolor/1024x1024/apps/$_pkgname.png"
+  sed -e "s|^Exec=.*|Exec=/usr/bin/$_pkgname %U|" -e '/^X-AppImage-/d' xari-bulbul.desktop |
+    install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/$_pkgname.desktop"
+  install -Dm644 LICENSE.electron.txt "$pkgdir/usr/share/licenses/$pkgname/LICENSE.electron.txt"
 }

@@ -55,9 +55,9 @@ Download the latest installer from [Releases](https://github.com/Parzival-Samany
 |---|---|
 | macOS (Apple silicon and Intel) | `.dmg` |
 | Windows (x64) | `.exe` |
-| Arch Linux / Manjaro | `.pacman`: `sudo pacman -U XariBulbul-*-linux-x64.pacman` |
-| Debian / Ubuntu | `.deb` |
-| Other Linux | `.AppImage` |
+| Linux (x64, any distro) | `.AppImage`: `chmod +x XariBulbul-*.AppImage` and run it |
+
+Arch Linux users can also build a package from the [`PKGBUILD`](packaging/arch).
 
 ## Quick start (from source)
 
@@ -146,11 +146,12 @@ pnpm dist         # builds installers for the current OS into apps/desktop/relea
 ```
 
 Pushing a tag like `v0.1.0` runs `.github/workflows/release.yml`. It builds on macOS, Windows and Linux and publishes these files to a GitHub Release, which installed apps auto-update from:
-- macOS: `.dmg` and `.zip`
+- macOS: `.dmg` (plus the `.zip` the updater installs from)
 - Windows: `.exe`
-- Linux: `.AppImage`, `.deb` and `.pacman` (Arch Linux)
+- Linux: `.AppImage`
+- the `latest*.yml` files the updater reads
 
-On Arch Linux, install the `.pacman` file with `sudo pacman -U XariBulbul-<version>-linux-x64.pacman`, or use the `PKGBUILD` in [`packaging/arch`](packaging/arch).
+On Arch Linux, the `PKGBUILD` in [`packaging/arch`](packaging/arch) repackages the AppImage.
 
 Builds are **unsigned** until you add signing secrets (see the comments in the workflow). Without signing:
 - On macOS, right-click the app and choose **Open** the first time.
