@@ -415,7 +415,7 @@ function AgentTab({ app, save }: TabProps) {
         <Row label="Command timeout">
           <NumberField label="Command timeout" value={a.bashTimeoutSec} min={1} max={3600} suffix="seconds" onChange={(v) => save((s) => ((s.agent.bashTimeoutSec = v ?? 120), s))} />
         </Row>
-        <Row label="Shell" hint={app.platform === 'win32' ? 'Empty = PowerShell. Try pwsh or C:\\Program Files\\Git\\bin\\bash.exe' : 'Empty = $SHELL or /bin/bash'}>
+        <Row label="Shell" hint={app.platform === 'win32' ? 'Empty = Git Bash if installed, else PowerShell. Or enter pwsh, powershell or a path' : 'Empty = /bin/bash'}>
           <TextField label="Shell" mono value={a.shell} placeholder="(default)" onChange={(v) => save((s) => ((s.agent.shell = v), s))} />
         </Row>
         <Row label="Request retries" hint="On rate limits (429) and server errors">

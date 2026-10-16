@@ -2,7 +2,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import { z } from 'zod'
 import { findFiles, loadGitignore } from './fs-walk.js'
-import { defineTool, resolvePath, toPosix, truncate } from './types.js'
+import { defineTool, fsErrorText, resolvePath, toPosix, truncate } from './types.js'
 
 export const listDirTool = defineTool({
   name: 'list_dir',
@@ -15,8 +15,12 @@ export const listDirTool = defineTool({
   subject: (i) => i.path,
   async execute(input, ctx) {
     const abs = resolvePath(ctx.cwd, input.path)
-    const entries = await fs.readdir(abs, { withFileTypes: true }).catch(() => null)
-    if (!entries) return { content: `Directory not found: ${abs}`, isError: true }
+    let entries
+    try {
+      entries = await fs.readdir(abs, { withFileTypes: true })
+    } catch (e) {
+      return { content: fsErrorText(e, abs, 'Directory'), isError: true }
+    }
     const ig = await loadGitignore(ctx.cwd)
     const lines = entries
       .filter((e) => e.name !== '.git' && e.name !== 'node_modules')

@@ -5,6 +5,7 @@ import { bashTool } from '../src/tools/bash.js'
 import { editFileTool } from '../src/tools/edit-file.js'
 import { readFileTool } from '../src/tools/read-file.js'
 import { globTool, grepTool, listDirTool } from '../src/tools/search.js'
+import { resolveShell, type ShellProbe } from '../src/tools/shell.js'
 import { writeFileTool } from '../src/tools/write-file.js'
 import { ctx, tmpDir } from './helpers.js'
 
@@ -81,8 +82,8 @@ describe('search tools', () => {
 describe('bash', () => {
   it('runs commands and reports exit codes', async () => {
     const dir = tmpDir()
-    const cmd = process.platform === 'win32' ? 'Write-Output hi; exit 3' : 'echo hi; exit 3'
-    const r = await bashTool.execute(bashTool.parse({ command: cmd }), ctx(dir))
+    // Valid in bash and in PowerShell, whichever the platform default turns out to be.
+    const r = await bashTool.execute(bashTool.parse({ command: 'echo hi; exit 3' }), ctx(dir))
     expect(r.content).toContain('hi')
     expect(r.content).toContain('[exit code: 3]')
     expect(r.isError).toBe(true)
@@ -92,6 +93,60 @@ describe('bash', () => {
     if (process.platform === 'win32') return
     const r = await bashTool.execute(bashTool.parse({ command: 'sleep 5', timeout_sec: 1 }), ctx(tmpDir()))
     expect(r.content).toContain('timeout')
+  })
+})
+
+describe('shell choice', () => {
+  const probe = (platform: NodeJS.Platform, files: string[], env: NodeJS.ProcessEnv = {}): ShellProbe => ({
+    platform,
+    env,
+    exists: (f) => files.includes(f),
+  })
+  const win = { ProgramFiles: 'C:\\Program Files', PATH: 'C:\\Windows\\System32;C:\\Tools' }
+
+  it('uses bash on macOS and Linux, whatever the login shell', () => {
+    const s = resolveShell('', probe('darwin', ['/bin/bash'], { SHELL: '/bin/zsh' }))
+    expect([s.cmd, s.name, s.args('ls')]).toEqual(['/bin/bash', 'bash', ['-c', 'ls']])
+    expect(resolveShell('', probe('linux', [], { SHELL: '/usr/bin/fish' })).name).toBe('fish')
+  })
+
+  it('prefers Git Bash on Windows, never WSL bash, then PowerShell 7, then 5.1', () => {
+    const gitBash = 'C:\\Program Files\\Git\\bin\\bash.exe'
+    expect(resolveShell('', probe('win32', [gitBash, 'C:\\Windows\\System32\\bash.exe'], win))).toMatchObject({ cmd: gitBash, name: 'Git Bash' })
+    // A user install found through git.exe on PATH.
+    const userGit = probe('win32', ['D:\\Git\\cmd\\git.exe', 'D:\\Git\\bin\\bash.exe'], { PATH: 'D:\\Git\\cmd' })
+    expect(resolveShell('', userGit).cmd).toBe('D:\\Git\\bin\\bash.exe')
+    expect(resolveShell('', probe('win32', ['C:\\Tools\\pwsh.exe', 'C:\\Windows\\System32\\bash.exe'], win)).name).toBe('PowerShell 7')
+    const ps = resolveShell('', probe('win32', [], win))
+    expect(ps.name).toBe('PowerShell 5.1')
+    // UTF-8 output and npm.ps1-style shims allowed.
+    expect(ps.args('npm test')).toEqual(expect.arrayContaining(['-ExecutionPolicy', 'Bypass']))
+    expect(ps.args('npm test').at(-1)).toMatch(/UTF8;.*npm test$/)
+  })
+
+  it('honors the Shell setting', () => {
+    expect(resolveShell('pwsh', probe('win32', [], win)).name).toBe('PowerShell 7')
+    expect(resolveShell('cmd', probe('win32', [], win)).args('dir')).toEqual(['/d', '/s', '/c', 'dir'])
+    expect(resolveShell('/bin/zsh', probe('darwin', ['/bin/bash'])).name).toBe('zsh')
+    expect(resolveShell('C:\\Program Files\\Git\\bin\\bash.exe', probe('win32', [], win)).name).toBe('Git Bash')
+  })
+})
+
+describe('file errors', () => {
+  it('says permission denied rather than not found', async () => {
+    if (process.platform === 'win32' || process.getuid?.() === 0) return
+    const dir = tmpDir()
+    const locked = path.join(dir, 'locked')
+    fs.mkdirSync(locked)
+    fs.chmodSync(locked, 0)
+    try {
+      const r = await listDirTool.execute(listDirTool.parse({ path: 'locked' }), ctx(dir))
+      expect(r).toMatchObject({ isError: true, content: expect.stringContaining('Permission denied') })
+      const missing = await listDirTool.execute(listDirTool.parse({ path: 'nope' }), ctx(dir))
+      expect(missing.content).toContain('Directory not found')
+    } finally {
+      fs.chmodSync(locked, 0o755)
+    }
   })
 })
 

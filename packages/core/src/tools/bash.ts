@@ -1,32 +1,17 @@
 import { spawn } from 'node:child_process'
 import { z } from 'zod'
 import { killTree } from './jobs.js'
+import { resolveShell } from './shell.js'
 import { defineTool, truncate } from './types.js'
-
-export function defaultShell(): { cmd: string; args: (command: string) => string[] } {
-  if (process.platform === 'win32') {
-    return { cmd: 'powershell.exe', args: (c) => ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', c] }
-  }
-  return { cmd: process.env.SHELL || '/bin/bash', args: (c) => ['-c', c] }
-}
-
-function shellFor(setting: string) {
-  if (!setting) return defaultShell()
-  const lower = setting.toLowerCase()
-  if (lower.includes('powershell') || lower.includes('pwsh'))
-    return { cmd: setting, args: (c: string) => ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', c] }
-  if (lower.endsWith('cmd.exe') || lower === 'cmd') return { cmd: setting, args: (c: string) => ['/d', '/s', '/c', c] }
-  return { cmd: setting, args: (c: string) => ['-c', c] }
-}
 
 export const bashTool = defineTool({
   name: 'bash',
   description: [
     'Run a shell command in the workspace folder and return its combined output and exit code.',
-    '- Each call starts a fresh shell in the workspace folder: `cd` does not carry over. Use absolute paths or `cd dir && cmd` in one call.',
+    '- Each call starts a fresh shell in the workspace folder: `cd` does not carry over. Use absolute paths, or change directory within the same call.',
     '- Do not use it to read, search or edit files: read_file, grep, glob and edit_file are faster, safer and shown better to the user.',
     '- Avoid interactive commands (editors, pagers, prompts); they hang until the timeout. Pass flags like --yes or CI=1 where needed.',
-    '- Quote paths that contain spaces. Chain dependent steps with &&.',
+    '- Commands run in the shell named under Environment; write them for that shell. Quote paths that contain spaces, and chain dependent steps so a failure stops the rest.',
     '- Long-running processes (dev servers, watchers) go in the background with run_in_background; then check them with bash_output and stop them with kill_job.',
     '- The default timeout is set in Settings; raise it with timeout_sec for slow builds or test suites.',
     '- Never run destructive commands (rm -rf, git reset --hard, force push) unless the user asked; they always need the user\'s approval.',
@@ -41,7 +26,7 @@ export const bashTool = defineTool({
   readOnly: false,
   subject: (i) => i.command,
   execute(input, ctx) {
-    const shell = shellFor(ctx.shell)
+    const shell = resolveShell(ctx.shell)
     const env = { ...process.env, TERM: 'dumb', NO_COLOR: '1', GIT_PAGER: 'cat', PAGER: 'cat' }
     if (input.run_in_background) {
       if (!ctx.jobs) return Promise.resolve({ content: 'Background jobs are not available here.', isError: true })

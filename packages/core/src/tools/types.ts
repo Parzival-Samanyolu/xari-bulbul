@@ -145,3 +145,13 @@ export function truncate(text: string, max: number): string {
 export function toPosix(p: string): string {
   return p.split(path.sep).join('/')
 }
+
+/** A file system error as a tool result: "not found" only when it really is missing. */
+export function fsErrorText(err: unknown, abs: string, kind: 'File' | 'Directory'): string {
+  const code = (err as NodeJS.ErrnoException)?.code
+  if (code === 'ENOENT' || code === 'ENOTDIR') return `${kind} not found: ${abs}`
+  if ((code === 'EPERM' || code === 'EACCES') && process.platform === 'darwin')
+    return `Permission denied: ${abs}. macOS blocks this app from the folder; the user can allow it in System Settings → Privacy & Security → Files and Folders.`
+  if (code === 'EPERM' || code === 'EACCES') return `Permission denied: ${abs}`
+  return `Cannot read ${abs}: ${(err as Error)?.message ?? String(err)}`
+}

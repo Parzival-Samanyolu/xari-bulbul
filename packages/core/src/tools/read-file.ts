@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises'
 import { z } from 'zod'
-import { defineTool, resolvePath, truncate } from './types.js'
+import { defineTool, fsErrorText, resolvePath, truncate } from './types.js'
 
 const MAX_LINES = 2000
 
@@ -24,10 +24,19 @@ export const readFileTool = defineTool({
   subject: (i) => i.path,
   async execute(input, ctx) {
     const abs = resolvePath(ctx.cwd, input.path)
-    const stat = await fs.stat(abs).catch(() => null)
-    if (!stat) return { content: `File not found: ${abs}`, isError: true }
+    let stat
+    try {
+      stat = await fs.stat(abs)
+    } catch (e) {
+      return { content: fsErrorText(e, abs, 'File'), isError: true }
+    }
     if (stat.isDirectory()) return { content: `${abs} is a directory. Use list_dir instead.`, isError: true }
-    const buf = await fs.readFile(abs)
+    let buf
+    try {
+      buf = await fs.readFile(abs)
+    } catch (e) {
+      return { content: fsErrorText(e, abs, 'File'), isError: true }
+    }
     if (buf.subarray(0, 8000).includes(0)) return { content: `${abs} looks like a binary file.`, isError: true }
     ctx.readFiles.add(abs)
     const lines = buf.toString('utf8').split(/\r?\n/)

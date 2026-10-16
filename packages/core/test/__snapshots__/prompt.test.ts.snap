@@ -59,7 +59,8 @@ The user approves each edit and command before it runs. A denial comes back with
 # Environment
 Working directory: /work/proj
 Platform: darwin (25.0.0)
-Shell: zsh
+Shell: bash
+macOS has BSD tools and bash 3.2, not GNU: \`sed -i ''\` needs the empty argument, and GNU-only flags such as \`grep -P\`, \`cat -A\` or \`date -d\` fail.
 Date: 2026-10-08
 Model: openrouter/free (context window 200,000 tokens)
 Git branch: main
@@ -138,7 +139,8 @@ File edits inside the project are applied without asking. Shell commands still n
 # Environment
 Working directory: /work/proj
 Platform: darwin (25.0.0)
-Shell: zsh
+Shell: bash
+macOS has BSD tools and bash 3.2, not GNU: \`sed -i ''\` needs the empty argument, and GNU-only flags such as \`grep -P\`, \`cat -A\` or \`date -d\` fail.
 Date: 2026-10-08
 Model: openrouter/free (context window 200,000 tokens)
 Git branch: main
@@ -219,7 +221,8 @@ The user approves each edit and command before it runs. A denial comes back with
 # Environment
 Working directory: /work/proj
 Platform: darwin (25.0.0)
-Shell: zsh
+Shell: bash
+macOS has BSD tools and bash 3.2, not GNU: \`sed -i ''\` needs the empty argument, and GNU-only flags such as \`grep -P\`, \`cat -A\` or \`date -d\` fail.
 Date: 2026-10-08
 Model: openrouter/free (context window 200,000 tokens)
 Git branch: main
@@ -300,7 +303,8 @@ Edits and commands run without asking, so be careful: you are trusted to act. De
 # Environment
 Working directory: /work/proj
 Platform: darwin (25.0.0)
-Shell: zsh
+Shell: bash
+macOS has BSD tools and bash 3.2, not GNU: \`sed -i ''\` needs the empty argument, and GNU-only flags such as \`grep -P\`, \`cat -A\` or \`date -d\` fail.
 Date: 2026-10-08
 Model: openrouter/free (context window 200,000 tokens)
 Git branch: main
@@ -381,7 +385,8 @@ You are in Plan mode. Only read-only tools are available; nothing may be changed
 # Environment
 Working directory: /work/proj
 Platform: darwin (25.0.0)
-Shell: zsh
+Shell: bash
+macOS has BSD tools and bash 3.2, not GNU: \`sed -i ''\` needs the empty argument, and GNU-only flags such as \`grep -P\`, \`cat -A\` or \`date -d\` fail.
 Date: 2026-10-08
 Model: openrouter/free (context window 200,000 tokens)
 Git branch: main

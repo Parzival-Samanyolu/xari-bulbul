@@ -11,7 +11,7 @@ const env = {
   date: '2026-10-08',
   platform: 'darwin',
   osRelease: '25.0.0',
-  shell: 'zsh',
+  shell: 'bash',
   git: { branch: 'main', status: [' M src/app.ts', '?? notes.md'], truncated: 0 },
 }
 
@@ -38,6 +38,14 @@ describe('system prompt', () => {
   it('matches the snapshot for a subagent', () => {
     const toolNames = base.toolNames.filter((n) => !['task', 'todo_write', 'remember', 'forget', 'ask_user'].includes(n))
     expect(buildSystemPrompt({ ...base, toolNames, subagent: { description: 'Find config loaders' } })).toMatchSnapshot()
+  })
+
+  it('tells the model how the shell differs from GNU bash', () => {
+    const forShell = (platform: string, shell: string) => buildSystemPrompt({ ...base, env: { ...env, platform, shell } })
+    expect(forShell('win32', 'PowerShell 5.1')).toContain('`&&` and `||` are syntax errors')
+    expect(forShell('win32', 'PowerShell 7')).toContain('`&&` and `||` work')
+    expect(forShell('win32', 'Git Bash')).toContain('Commands run in Git Bash')
+    expect(forShell('linux', 'bash')).not.toMatch(/BSD|PowerShell/)
   })
 
   it('names itself Xarı Bülbül and never another product', () => {

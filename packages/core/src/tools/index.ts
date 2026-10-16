@@ -17,7 +17,7 @@ export function builtinTools(): Tool[] {
 
 export * from './types.js'
 export { makeDiff } from './diff.js'
-export { defaultShell } from './bash.js'
+export { resolveShell, type Shell } from './shell.js'
 export { JobRegistry, type Job } from './jobs.js'
 export { SEARCH_KEY_ID, parseDuckDuckGo, search, type SearchBackend, type SearchResult, type WebSearchConfig } from './web-search.js'
 export { TASK_TOOL } from './task.js'

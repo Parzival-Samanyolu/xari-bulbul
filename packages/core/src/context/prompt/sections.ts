@@ -163,6 +163,25 @@ The user approves each edit and command before it runs. A denial comes back with
   },
 }
 
+/** What the model gets wrong in each shell; models default to GNU bash. */
+function shellNotes(platform: string, shell: string): string[] {
+  if (shell === 'PowerShell 5.1' || shell === 'PowerShell 7') {
+    return [
+      shell === 'PowerShell 5.1'
+        ? 'Commands run in Windows PowerShell 5.1, not bash: `&&` and `||` are syntax errors. Chain with `;`, or `cmd1; if ($?) { cmd2 }` when the second step depends on the first.'
+        : 'Commands run in PowerShell 7, not bash. `&&` and `||` work.',
+      'Use cmdlets (Get-ChildItem, Get-Content, Select-String, Remove-Item, New-Item) rather than Unix tools; `ls`, `cat` and `rm` are aliases that reject Unix flags such as -la or -rf. Set variables with `$env:NAME = "value"`, discard output with `2>$null` or `| Out-Null`. There are no heredocs.',
+    ]
+  }
+  if (shell === 'cmd.exe') return ['Commands run in cmd.exe: use dir, type, findstr and %NAME% variables, not Unix tools.']
+  if (shell === 'Git Bash') return ['Commands run in Git Bash on Windows: POSIX tools and `&&` work. Write Windows paths as C:/Users/… or /c/Users/….']
+  if (platform === 'darwin')
+    return [
+      `macOS has BSD tools${shell === 'bash' ? ' and bash 3.2' : ''}, not GNU: \`sed -i ''\` needs the empty argument, and GNU-only flags such as \`grep -P\`, \`cat -A\` or \`date -d\` fail.`,
+    ]
+  return []
+}
+
 export const environment: PromptSection = {
   id: 'environment',
   render: (c) => {
@@ -171,6 +190,7 @@ export const environment: PromptSection = {
       `Working directory: ${c.cwd}`,
       `Platform: ${c.env.platform} (${c.env.osRelease})`,
       `Shell: ${c.env.shell}`,
+      ...shellNotes(c.env.platform, c.env.shell),
       `Date: ${c.env.date}`,
       `Model: ${c.model}${c.contextLength ? ` (context window ${c.contextLength.toLocaleString('en-US')} tokens)` : ''}`,
     ]

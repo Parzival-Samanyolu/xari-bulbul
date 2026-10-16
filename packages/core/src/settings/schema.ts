@@ -145,7 +145,7 @@ export const SettingsSchema = z.object({
       compactionThreshold: z.number().min(0.3).max(0.98).default(0.8),
       toolOutputMaxChars: z.number().int().min(1000).default(30_000),
       bashTimeoutSec: z.number().int().min(1).max(3600).default(120),
-      /** Empty = platform default (PowerShell on Windows, $SHELL or /bin/bash elsewhere). */
+      /** Empty = platform default: /bin/bash; on Windows Git Bash, else PowerShell 7, else Windows PowerShell. */
       shell: z.string().default(''),
       projectInstructionFiles: z.array(z.string()).default(['AGENTS.md', 'HARNESS.md', 'CLAUDE.md']),
       requestRetries: z.number().int().min(0).max(10).default(3),
