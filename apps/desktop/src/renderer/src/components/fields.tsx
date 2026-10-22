@@ -1,11 +1,11 @@
 import { useEffect, useId, useState, type ReactNode } from 'react'
 
-export function Section({ title, description, children }: { title: string; description?: ReactNode; children: ReactNode }) {
+export function Section({ title, description, children }: { title: string; description?: ReactNode; children?: ReactNode }) {
   return (
     <section className="s-section">
       <h3>{title}</h3>
       {description && <p className="muted small">{description}</p>}
-      <div className="s-rows">{children}</div>
+      {children && <div className="s-rows">{children}</div>}
     </section>
   )
 }

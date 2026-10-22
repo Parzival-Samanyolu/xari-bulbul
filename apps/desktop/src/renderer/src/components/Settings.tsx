@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { MCP_PRESETS, presetServer } from '@harness/core/mcp-presets'
+import { RECOMMENDED, TIER_LABELS, refKey, type RecommendedTier } from '@harness/core/catalog'
 import type { AppState, McpServerStatus, ModelRef, ProviderTestResult, Settings, UpdateStatus } from '../../../shared/ipc'
 import { api } from '../lib/api'
 import { cost, modelLabel, tokens } from '../lib/format'
@@ -22,6 +23,7 @@ const TABS = [
   { id: 'models', label: 'Models' },
   { id: 'agent', label: 'Agent' },
   { id: 'permissions', label: 'Permissions' },
+  { id: 'hooks', label: 'Hooks' },
   { id: 'tools', label: 'Tools & Extensions' },
   { id: 'mcp', label: 'MCP Servers' },
   { id: 'memory', label: 'Memory' },
@@ -34,7 +36,7 @@ type Save = (fn: (s: Settings) => Settings) => void
 
 export function SettingsView({ app, tab, onTab, onState, onError, onClose, update }: Props) {
   const save: Save = (fn) => api.settings.set(fn(structuredClone(app.settings))).then(onState, onError)
-  const common = { app, save, onState, onError }
+  const common = { app, save, onState, onError, onTab }
   return (
     <div className="settings">
       <nav className="s-tabs">
@@ -54,6 +56,7 @@ export function SettingsView({ app, tab, onTab, onState, onError, onClose, updat
         {tab === 'models' && <ModelsTab {...common} />}
         {tab === 'agent' && <AgentTab {...common} />}
         {tab === 'permissions' && <PermissionsTab {...common} />}
+        {tab === 'hooks' && <HooksTab {...common} />}
         {tab === 'tools' && <ToolsTab {...common} />}
         {tab === 'mcp' && <McpTab {...common} />}
         {tab === 'memory' && <MemoryTab {...common} />}
@@ -70,12 +73,15 @@ interface TabProps {
   save: Save
   onState: (s: AppState) => void
   onError: (e: unknown) => void
+  onTab?: (t: string) => void
 }
 
 const KEY_LINKS: Record<string, string> = {
   openrouter: 'https://openrouter.ai/keys',
   'ollama-cloud': 'https://ollama.com/settings/keys',
   google: 'https://aistudio.google.com/apikey',
+  anthropic: 'https://console.anthropic.com/settings/keys',
+  openai: 'https://platform.openai.com/api-keys',
 }
 
 // ---------------------------------------------------------------- Providers
@@ -84,7 +90,7 @@ function ProvidersTab({ app, save, onState, onError }: TabProps) {
   const [keys, setKeys] = useState<Record<string, string>>({})
   const [tests, setTests] = useState<Record<string, ProviderTestResult | 'running'>>({})
   const [custom, setCustom] = useState({ id: '', name: '', baseUrl: '', requiresKey: true })
-  const builtin = new Set(['openrouter', 'ollama-cloud', 'google'])
+  const builtin = new Set(['openrouter', 'ollama-cloud', 'google', 'anthropic', 'openai'])
   const existing = new Set(app.settings.providers.map((p) => p.id))
 
   const test = (id: string) => {
@@ -93,7 +99,7 @@ function ProvidersTab({ app, save, onState, onError }: TabProps) {
   }
   const addProvider = (p: { id: string; name: string; baseUrl: string; requiresKey: boolean }) =>
     api.settings
-      .set({ ...app.settings, providers: [...app.settings.providers, { ...p, enabled: true, headers: {}, requestUsageCost: false }] })
+      .set({ ...app.settings, providers: [...app.settings.providers, { ...p, enabled: true, headers: {}, requestUsageCost: false, api: 'openai' as const }] })
       .then((s) => {
         onState(s)
         // Keyless servers can be checked right away; keyed ones after the key is saved.
@@ -237,6 +243,65 @@ function ProvidersTab({ app, save, onState, onError }: TabProps) {
 
 // ---------------------------------------------------------------- Models
 
+const TRI_STATE = [
+  { value: '', label: 'Auto' },
+  { value: 'on', label: 'On' },
+  { value: 'off', label: 'Off' },
+]
+
+const PROMPT_STYLES = [
+  { value: 'auto', label: 'Auto (short for free models)' },
+  { value: 'full', label: 'Full' },
+  { value: 'lean', label: 'Short' },
+]
+
+function RecommendedModels({ app, save, onState, onError, onTab }: TabProps) {
+  const favorites = new Set(app.settings.models.favorites.map(refKey))
+  const current = refKey(app.settings.models.default)
+  const use = (ref: ModelRef) => {
+    save((s) => ((s.models.default = ref), s))
+    if (app.session) api.agent.setModel(ref).then(onState, onError)
+  }
+  const favorite = (ref: ModelRef) => save((s) => (s.models.favorites.some((f) => refKey(f) === refKey(ref)) || s.models.favorites.push(ref), s))
+  return (
+    <Section title="Recommended models" description="Models that work well for coding here. Use sets the default for new chats and switches the open chat.">
+      {(Object.keys(TIER_LABELS) as RecommendedTier[]).map((tier) => (
+        <div key={tier} className="rec-tier">
+          <h4 className="rec-tier-title">{TIER_LABELS[tier]}</h4>
+          {RECOMMENDED.filter((r) => r.tier === tier).map((r) => {
+            const k = refKey(r.ref)
+            const provider = app.settings.providers.find((p) => p.id === r.ref.providerId)
+            const ready = !!app.ready[r.ref.providerId]
+            return (
+              <div key={k} className="rec-row">
+                <div className="rec-text">
+                  <div className="rec-name">
+                    {r.name} <span className="muted small">· {provider?.name ?? r.ref.providerId}</span>
+                  </div>
+                  <div className="muted small">{r.note}</div>
+                </div>
+                {ready ? (
+                  <span className="badge ok">ready</span>
+                ) : (
+                  <button className="badge rec-key" onClick={() => onTab?.('providers')} title={`Add a ${provider?.name ?? r.ref.providerId} key`}>
+                    needs key
+                  </button>
+                )}
+                <button className="btn" disabled={favorites.has(k)} onClick={() => favorite(r.ref)}>
+                  {favorites.has(k) ? 'In favorites' : 'Add to favorites'}
+                </button>
+                <button className="btn primary" disabled={current === k} onClick={() => use(r.ref)}>
+                  {current === k ? 'In use' : 'Use'}
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      ))}
+    </Section>
+  )
+}
+
 const EFFORTS = [
   { value: '', label: 'Provider default' },
   { value: 'none', label: 'None' },
@@ -245,7 +310,7 @@ const EFFORTS = [
   { value: 'high', label: 'High' },
 ]
 
-function ModelsTab({ app, save, onState, onError }: TabProps) {
+function ModelsTab({ app, save, onState, onError, onTab }: TabProps) {
   const [picking, setPicking] = useState<null | 'default' | 'compaction' | 'subagent' | 'override' | 'favorite'>(null)
   const m = app.settings.models
   const ref = (r: ModelRef | null) => (r ? `${modelLabel(r.modelId)} · ${r.providerId}` : 'Same as active model')
@@ -259,6 +324,7 @@ function ModelsTab({ app, save, onState, onError }: TabProps) {
   }
   return (
     <>
+      <RecommendedModels app={app} save={save} onState={onState} onError={onError} onTab={onTab} />
       <Section title="Model selection">
         <Row label="Default model" hint={`Used for new chats. Switch any time with ${app.platform === 'darwin' ? '⌘K' : 'Ctrl+K'}.`}>
           <button className="btn" onClick={() => setPicking('default')}>
@@ -347,6 +413,18 @@ function ModelsTab({ app, save, onState, onError }: TabProps) {
                 Reasoning
                 <Select value={(o.reasoningEffort ?? '') as string} options={EFFORTS} onChange={(v) => save((s) => ((s.models.overrides[k].reasoningEffort = (v || undefined) as never), s))} />
               </label>
+              <label title="Send the model's reasoning back during a tool loop. Auto = on, except OpenAI's own API.">
+                Replay reasoning
+                <Select value={o.replayReasoning == null ? '' : o.replayReasoning ? 'on' : 'off'} options={TRI_STATE} onChange={(v) => save((s) => ((s.models.overrides[k].replayReasoning = v ? v === 'on' : undefined), s))} />
+              </label>
+              <label>
+                Prompt
+                <Select
+                  value={o.promptStyle ?? ''}
+                  options={[{ value: '', label: 'Agent setting' }, ...PROMPT_STYLES.slice(1)]}
+                  onChange={(v) => save((s) => ((s.models.overrides[k].promptStyle = (v || undefined) as never), s))}
+                />
+              </label>
             </div>
           </div>
         ))}
@@ -367,7 +445,10 @@ function AgentTab({ app, save }: TabProps) {
     <>
       <Section title="Behavior">
         <Row label="Max steps per message" hint="Model requests per message before pausing (safety net against loops)">
-          <NumberField label="Max steps per message" value={a.maxStepsPerTurn} min={1} max={500} onChange={(v) => save((s) => ((s.agent.maxStepsPerTurn = v ?? 50), s))} />
+          <NumberField label="Max steps per message" value={a.maxStepsPerTurn} min={1} max={1000} onChange={(v) => save((s) => ((s.agent.maxStepsPerTurn = v ?? 200), s))} />
+        </Row>
+        <Row label="System prompt" hint="Short drops the detailed guidance; small models follow it better. Auto uses it for free models.">
+          <Select label="System prompt" value={a.promptStyle} options={PROMPT_STYLES as { value: typeof a.promptStyle; label: string }[]} onChange={(v) => save((s) => ((s.agent.promptStyle = v), s))} />
         </Row>
         <Row label="Custom instructions" hint="Added to every conversation, in every project" wide>
           <TextField label="Custom instructions" multiline rows={5} value={a.customInstructions} placeholder="e.g. Always use pnpm. Prefer small commits. Write tests with vitest." onChange={(v) => save((s) => ((s.agent.customInstructions = v), s))} />
@@ -395,7 +476,7 @@ function AgentTab({ app, save }: TabProps) {
               <NumberField label="Subagents at once" value={a.subagents.maxParallel} min={1} max={8} onChange={(v) => save((s) => ((s.agent.subagents.maxParallel = v ?? 3), s))} />
             </Row>
             <Row label="Max steps per subagent">
-              <NumberField label="Max steps per subagent" value={a.subagents.maxSteps} min={1} max={200} onChange={(v) => save((s) => ((s.agent.subagents.maxSteps = v ?? 25), s))} />
+              <NumberField label="Max steps per subagent" value={a.subagents.maxSteps} min={1} max={500} onChange={(v) => save((s) => ((s.agent.subagents.maxSteps = v ?? 50), s))} />
             </Row>
           </>
         )}
@@ -422,6 +503,61 @@ function AgentTab({ app, save }: TabProps) {
           <NumberField label="Request retries" value={a.requestRetries} min={0} max={10} onChange={(v) => save((s) => ((s.agent.requestRetries = v ?? 3), s))} />
         </Row>
       </Section>
+    </>
+  )
+}
+
+// ---------------------------------------------------------------- Hooks
+
+type HookKind = 'preTool' | 'postTool'
+
+function HooksTab({ app, save }: TabProps) {
+  const h = app.settings.hooks
+  const list = (kind: HookKind, title: string, description: string) => (
+    <Section title={title} description={description}>
+      {h[kind].map((rule, i) => (
+        <div key={i} className="override">
+          <div className="provider-head">
+            <Toggle label="Enabled" value={rule.enabled} onChange={(v) => save((s) => ((s.hooks[kind][i].enabled = v), s))} />
+            <span className="muted small">{rule.enabled ? 'On' : 'Off'}</span>
+            <div className="spacer" />
+            <button className="link danger small" onClick={() => save((s) => (s.hooks[kind].splice(i, 1), s))}>
+              remove
+            </button>
+          </div>
+          <div className="hook-grid">
+            <label>
+              Match
+              <TextField label="Match" mono value={rule.match} placeholder="bash(git commit*)" onChange={(v) => save((s) => ((s.hooks[kind][i].match = v), s))} />
+            </label>
+            <label>
+              Command
+              <TextField label="Command" mono value={rule.command} placeholder="./scripts/check.sh" onChange={(v) => save((s) => ((s.hooks[kind][i].command = v), s))} />
+            </label>
+            <label>
+              Time limit
+              <NumberField label="Time limit" value={rule.timeoutSec} min={1} max={600} suffix="s" onChange={(v) => save((s) => ((s.hooks[kind][i].timeoutSec = v ?? 30), s))} />
+            </label>
+          </div>
+        </div>
+      ))}
+      <button className="btn" onClick={() => save((s) => (s.hooks[kind].push({ match: '*', command: '', timeoutSec: 30, enabled: true }), s))}>
+        + Add hook
+      </button>
+    </Section>
+  )
+  return (
+    <>
+      <Section
+        title="How hooks work"
+        description={
+          <>
+            A hook is a shell command that runs around the agent's tool calls, in the project folder. <b>Match</b> uses the permission rule format (<code>bash(npm *)</code>, <code>edit_file(src/**)</code>), or <code>*</code> for every call. The command gets the call as JSON on stdin and <code>HARNESS_TOOL</code>, <code>HARNESS_SUBJECT</code> and <code>HARNESS_CWD</code> in its environment. Hooks run with your permissions and without asking.
+          </>
+        }
+      />
+      {list('preTool', 'Before a tool runs', 'Exit code 2 blocks the call, and what the command printed to stderr is shown to the agent as the reason.')}
+      {list('postTool', 'After a tool runs', "What the command prints is added to the tool's result. Exit code 2 adds its stderr as feedback for the agent.")}
     </>
   )
 }
@@ -501,6 +637,11 @@ function ToolsTab({ app, save, onState, onError }: TabProps) {
         <Row label="Check files after edits" hint="Runs the project's eslint or ruff, or a syntax check, on each edited file and shows the agent any problems.">
           <Toggle label="Check files after edits" value={t.checkAfterEdit} onChange={(v) => save((s) => ((s.tools.checkAfterEdit = v), s))} />
         </Row>
+        {t.checkAfterEdit && (
+          <Row label="Check time limit" hint="A slower check is stopped, and the agent is told to run it itself.">
+            <NumberField label="Check time limit" value={t.checkTimeoutSec} min={5} max={300} suffix="seconds" onChange={(v) => save((s) => ((s.tools.checkTimeoutSec = v ?? 30), s))} />
+          </Row>
+        )}
       </Section>
       <WebSearchSection app={app} save={save} onState={onState} onError={onError} />
       <Section

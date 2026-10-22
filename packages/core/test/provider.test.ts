@@ -123,4 +123,51 @@ describe('OpenAICompatProvider', () => {
     expect(wire.tool_calls[0].extra_content).toEqual(sig)
     expect(wire.tool_calls[1]).not.toHaveProperty('extra_content')
   })
+
+  it('sends reasoning back on the current tool loop only, and not to OpenAI', async () => {
+    const bodies: any[] = []
+    const fetch = (async (_url: string, init: RequestInit) => {
+      bodies.push(JSON.parse(init.body as string))
+      return sseResponse([
+        { choices: [{ delta: { reasoning: 'think', reasoning_details: [{ type: 'reasoning.text', text: 'think' }] } }] },
+        { choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] },
+        '[DONE]',
+      ])
+    }) as typeof globalThis.fetch
+    const calls = [{ id: 'c', name: 'read_file', arguments: '{}' }]
+    const messages = [
+      { role: 'user' as const, content: 'old' },
+      { role: 'assistant' as const, content: '', toolCalls: calls, reasoning: 'old thought' },
+      { role: 'tool' as const, toolCallId: 'c', name: 'read_file', content: 'x' },
+      { role: 'user' as const, content: 'new' },
+      { role: 'assistant' as const, content: '', toolCalls: calls, reasoning: 'new thought', extra: { openai: { reasoning_details: [{ type: 'reasoning.text', text: 'new thought' }] } } },
+      { role: 'tool' as const, toolCallId: 'c', name: 'read_file', content: 'y' },
+    ]
+    const p = new OpenAICompatProvider({ config, apiKey: 'k', fetch })
+    const events = await collect(p.chat({ model: 'x', messages }))
+    expect(events).toContainEqual({ type: 'extra', extra: { openai: { reasoning_details: [{ type: 'reasoning.text', text: 'think' }] } } })
+    expect(bodies[0].messages[1]).not.toHaveProperty('reasoning_content')
+    expect(bodies[0].messages[4]).toMatchObject({ reasoning_content: 'new thought', reasoning_details: [{ text: 'new thought' }] })
+
+    await collect(p.chat({ model: 'x', messages, replayReasoning: false }))
+    expect(bodies[1].messages[4]).not.toHaveProperty('reasoning_content')
+    const openai = new OpenAICompatProvider({ config: BUILTIN_PROVIDERS.find((c) => c.id === 'openai')!, apiKey: 'k', fetch })
+    await collect(openai.chat({ model: 'x', messages }))
+    expect(bodies[2].messages[4]).not.toHaveProperty('reasoning_content')
+  })
+
+  it('lists only OpenAI chat models and sends max_completion_tokens', async () => {
+    let sentBody: any
+    const fetch = (async (url: string, init: RequestInit) => {
+      if (url.endsWith('/models'))
+        return new Response(JSON.stringify({ data: ['gpt-5.5', 'whisper-1', 'text-embedding-3-small', 'gpt-image-1', 'tts-1'].map((id) => ({ id })) }))
+      sentBody = JSON.parse(init.body as string)
+      return sseResponse([{ choices: [{ delta: { content: 'ok' } }] }, '[DONE]'])
+    }) as typeof globalThis.fetch
+    const p = new OpenAICompatProvider({ config: BUILTIN_PROVIDERS.find((c) => c.id === 'openai')!, apiKey: 'k', fetch })
+    expect((await p.listModels()).map((m) => m.id)).toEqual(['gpt-5.5'])
+    await collect(p.chat({ model: 'gpt-5.5', maxTokens: 50, messages: [{ role: 'user', content: 'hi' }] }))
+    expect(sentBody.max_completion_tokens).toBe(50)
+    expect(sentBody).not.toHaveProperty('max_tokens')
+  })
 })

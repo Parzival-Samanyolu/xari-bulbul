@@ -58,6 +58,8 @@ export async function summarize(
   model: string,
   messages: ChatMessage[],
   signal?: AbortSignal,
+  /** Most recent characters of transcript to send; keep it well inside the summarizer's window. */
+  maxChars = 400_000,
 ): Promise<{ summary: string; usage?: import('../types.js').Usage }> {
   let summary = ''
   let usage
@@ -66,7 +68,7 @@ export async function summarize(
     signal,
     messages: [
       { role: 'system', content: SUMMARY_PROMPT },
-      { role: 'user', content: transcript(messages).slice(-400_000) },
+      { role: 'user', content: transcript(messages).slice(-maxChars) },
     ],
   })) {
     if (ev.type === 'text') summary += ev.delta

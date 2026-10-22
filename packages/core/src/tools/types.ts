@@ -32,6 +32,8 @@ export interface ToolContext {
   checkpoint?(abs: string, before: string | null): void
   /** Run a quick syntax/lint check on files after editing them. */
   checkAfterEdit?: boolean
+  /** How long that check may run. */
+  checkTimeoutSec?: number
 }
 
 export interface UserQuestion {

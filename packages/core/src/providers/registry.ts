@@ -1,5 +1,6 @@
 import type { ModelInfo } from '../types.js'
 import type { ProviderConfig } from '../settings/schema.js'
+import { AnthropicProvider } from './anthropic.js'
 import { OpenAICompatProvider } from './openai-compat.js'
 import type { Provider } from './types.js'
 
@@ -17,10 +18,8 @@ export class ProviderRegistry {
   ) {
     for (const config of configs) {
       if (!config.enabled) continue
-      this.providers.set(
-        config.id,
-        new OpenAICompatProvider({ config, apiKey: getKey(config.id), retries: opts.retries, fetch: opts.fetch }),
-      )
+      const o = { config, apiKey: getKey(config.id), retries: opts.retries, fetch: opts.fetch }
+      this.providers.set(config.id, config.api === 'anthropic' ? new AnthropicProvider(o) : new OpenAICompatProvider(o))
     }
   }
 

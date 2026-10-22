@@ -86,6 +86,8 @@ export interface SystemPromptInput {
   contextLength?: number
   /** Captured environment; gathered (without git) when absent. */
   env?: PromptEnvironment
+  /** Use the short prompt for small models. */
+  lean?: boolean
 }
 
 /** Joins the sections that apply. A non-empty `override` replaces the base sections (identity … git). */
@@ -101,6 +103,7 @@ export function buildSystemPrompt(i: SystemPromptInput): string {
     instructions: loadProjectInstructions(i.cwd, i.instructionFiles),
     memory: i.memory,
     customInstructions: i.customInstructions,
+    lean: i.lean,
   }
   const override = i.override.trim()
   const out: string[] = []

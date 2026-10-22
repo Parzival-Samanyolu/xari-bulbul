@@ -3,9 +3,11 @@ import path from 'node:path'
 import { compactionSplit, estimateTokens, summarize } from '../context/compact.js'
 import { buildSystemPrompt, gatherEnvironment, type PromptEnvironment } from '../context/system-prompt.js'
 import { Reminders } from './reminders.js'
+import { runHooks, type HookOutcome } from './hooks.js'
 import type { MemoryStore } from '../memory/store.js'
 import type { Permissions, PermissionAnswer } from '../permissions/permissions.js'
 import type { ProviderRegistry } from '../providers/registry.js'
+import { isContextOverflow } from '../providers/http.js'
 import { ProviderError, type ChatRequest } from '../providers/types.js'
 import { newSession, titleFrom, type Checkpoint, type Session } from '../sessions/store.js'
 import { modelKey, type Settings } from '../settings/schema.js'
@@ -210,6 +212,20 @@ export class Agent {
     return !!this.o.memory && this.settings.memory.enabled
   }
 
+  private modelInfoTried = new Set<string>()
+
+  /** The context window and price come from the model list; fetch it once if nothing has yet. */
+  private async loadModelInfo(): Promise<void> {
+    const ref = this.model
+    const key = modelKey(ref)
+    if (this.modelInfoTried.has(key) || this.registry.cachedModel(ref.providerId, ref.modelId)) return
+    this.modelInfoTried.add(key)
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const timeout = new Promise<void>((resolve) => (timer = setTimeout(resolve, 5000)))
+    await Promise.race([this.registry.models(ref.providerId).catch(() => undefined), timeout])
+    clearTimeout(timer)
+  }
+
   private contextLength(): number {
     const ref = this.model
     const override = this.settings.models.overrides[modelKey(ref)]?.contextLength
@@ -220,13 +236,14 @@ export class Agent {
     )
   }
 
-  private requestParams(): Pick<ChatRequest, 'temperature' | 'maxTokens' | 'reasoningEffort'> {
+  private requestParams(): Pick<ChatRequest, 'temperature' | 'maxTokens' | 'reasoningEffort' | 'replayReasoning'> {
     const m = this.settings.models
     const o = m.overrides[modelKey(this.model)] ?? {}
     return {
       temperature: o.temperature ?? m.temperature ?? undefined,
       maxTokens: o.maxTokens ?? m.maxTokens ?? undefined,
       reasoningEffort: o.reasoningEffort ?? m.reasoningEffort ?? undefined,
+      replayReasoning: o.replayReasoning,
     }
   }
 
@@ -242,8 +259,17 @@ export class Agent {
       subagent: this.o.subagent,
       contextLength: this.contextLength(),
       env: this.env,
+      lean: this.leanPrompt(),
       memory: this.memoryOn ? { global: this.memory('global'), project: this.memory('project') } : undefined,
     })
+  }
+
+  /** Small and free models follow a short prompt better than the full one. */
+  private leanPrompt(): boolean {
+    const style = this.settings.models.overrides[modelKey(this.model)]?.promptStyle ?? this.settings.agent.promptStyle
+    if (style !== 'auto') return style === 'lean'
+    const id = this.model.modelId
+    return id === 'openrouter/free' || id.endsWith(':free') || !!this.registry.cachedModel(this.model.providerId, id)?.free
   }
 
   private memory(scope: 'global' | 'project'): string[] {
@@ -380,6 +406,7 @@ export class Agent {
     this.env = gatherEnvironment(this.session.meta.cwd, { shell: this.settings.agent.shell })
     this.reminders.startTurn(this.o.permissions.mode)
     this.failedCalls = []
+    await this.loadModelInfo()
     let reviewed = false
     try {
       for (let step = 0; step < this.settings.agent.maxStepsPerTurn; step++) {
@@ -511,12 +538,15 @@ export class Agent {
     let reasoning = ''
     let calls: ToolCall[] = []
     let usage: Usage | undefined
+    let extra: Record<string, unknown> | undefined
     const retries = this.settings.agent.requestRetries
+    let compactedForOverflow = false
     for (let attempt = 0; ; attempt++) {
       content = ''
       reasoning = ''
       calls = []
       usage = undefined
+      extra = undefined
       try {
         for await (const ev of provider.chat({
           model: ref.modelId,
@@ -533,6 +563,7 @@ export class Agent {
             this.emit(ev)
           } else if (ev.type === 'tool_call') calls.push(ev.call)
           else if (ev.type === 'usage') usage = ev.usage
+          else if (ev.type === 'extra') extra = ev.extra
         }
         break
       } catch (err) {
@@ -543,13 +574,20 @@ export class Agent {
           await sleep(1000 * 2 ** attempt, signal)
           continue
         }
+        // Too long for the model: summarize older history once and try again.
+        if (isContextOverflow(err) && !compactedForOverflow && !signal.aborted) {
+          compactedForOverflow = true
+          this.emit({ type: 'stream_reset' })
+          this.emit({ type: 'notice', level: 'info', text: 'The conversation no longer fits the model. Summarizing older messages and retrying…' })
+          if (await this.compact(signal)) continue
+        }
         // Keep whatever was streamed before the interruption.
         if (content.trim()) this.push({ role: 'assistant', content: content + '\n\n[interrupted]' })
         throw err
       }
     }
 
-    this.push({ role: 'assistant', content, ...(calls.length ? { toolCalls: calls } : {}), ...(reasoning ? { reasoning } : {}) })
+    this.push({ role: 'assistant', content, ...(calls.length ? { toolCalls: calls } : {}), ...(reasoning ? { reasoning } : {}), ...(extra ? { extra } : {}) })
     if (usage) {
       const record = this.recordUsage(ref, usage)
       this.session.lastPromptTokens = usage.promptTokens + usage.completionTokens
@@ -584,6 +622,7 @@ export class Agent {
       askUser: this.o.askUser && !this.o.subagent ? (q) => this.o.askUser!({ ...q, callId }) : undefined,
       checkpoint: (abs, before) => this.checkpoint(abs, before),
       checkAfterEdit: this.settings.tools.checkAfterEdit,
+      checkTimeoutSec: this.settings.tools.checkTimeoutSec,
     }
   }
 
@@ -736,6 +775,9 @@ export class Agent {
     label = subject
     this.emit({ type: 'tool_start', callId: call.id, name: call.name, subject, input })
 
+    const pre = await this.hooks('pre', tool, subject, input, signal)
+    if (pre?.block) return finish({ content: `Blocked by a hook: ${pre.block}`, isError: true }, true)
+
     const verdict = this.o.permissions.check(tool, subject)
     if (verdict.decision === 'deny') return finish({ content: `Permission denied: ${verdict.reason}`, isError: true }, true)
     if (verdict.decision === 'ask') {
@@ -766,7 +808,26 @@ export class Agent {
     } catch (e) {
       result = { content: signal.aborted ? 'Interrupted by user.' : (e as Error).message, isError: true }
     }
+    const post = signal.aborted ? null : await this.hooks('post', tool, subject, input, signal, result)
+    if (post?.append) result = { ...result, content: `${result.content}\n\n${post.append}` }
     await finish(result)
+  }
+
+  /** Runs the user's pre/post tool hooks from settings, reporting failures as notices. */
+  private async hooks(
+    kind: 'pre' | 'post',
+    tool: Tool,
+    subject: string,
+    input: unknown,
+    signal: AbortSignal,
+    result?: ToolResult,
+  ): Promise<HookOutcome | null> {
+    const rules = kind === 'pre' ? this.settings.hooks.preTool : this.settings.hooks.postTool
+    if (!rules.some((r) => r.enabled)) return null
+    const ctx = { cwd: this.session.meta.cwd, shell: this.settings.agent.shell, signal, maxChars: this.settings.agent.toolOutputMaxChars }
+    const outcome = await runHooks(kind, rules, tool, subject, input, ctx, result)
+    for (const w of outcome.warnings) this.emit({ type: 'notice', level: 'warn', text: w })
+    return outcome
   }
 
   private async maybeCompact(signal: AbortSignal) {
@@ -784,7 +845,9 @@ export class Agent {
     const ref = this.settings.models.compaction ?? this.model
     const provider = this.registry.get(ref.providerId)
     const old = this.session.messages.slice(0, split)
-    const { summary, usage } = await summarize(provider, ref.modelId, old, signal)
+    const window = this.registry.cachedModel(ref.providerId, ref.modelId)?.contextLength ?? this.contextLength()
+    // ~4 characters per token; leave room for the prompt and the summary itself.
+    const { summary, usage } = await summarize(provider, ref.modelId, old, signal, Math.min(400_000, Math.floor(window * 0.6 * 4)))
     if (usage) this.recordUsage(ref, usage)
     if (!summary) return false
     this.session.messages = [

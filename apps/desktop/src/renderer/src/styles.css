@@ -1631,7 +1631,7 @@ button.sb-item:hover {
 }
 .override-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
   margin-top: 10px;
 }
@@ -1644,6 +1644,61 @@ button.sb-item:hover {
 }
 .override-grid .num input {
   width: 100%;
+}
+
+.hook-grid {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto;
+  gap: 12px;
+  margin-top: 10px;
+}
+.hook-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85em;
+  color: var(--muted);
+}
+.hook-grid input {
+  width: 100%;
+}
+
+.rec-tier + .rec-tier {
+  margin-top: 16px;
+}
+.rec-tier-title {
+  margin: 0 0 4px;
+  font-size: 0.78em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.rec-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.rec-row:last-child {
+  border-bottom: none;
+}
+.rec-text {
+  flex: 1;
+  min-width: 0;
+}
+.rec-name {
+  font-weight: 550;
+}
+button.badge.rec-key {
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.72em;
+}
+button.badge.rec-key:hover {
+  color: var(--text);
+  border-color: var(--accent);
 }
 
 

@@ -195,9 +195,16 @@ export class AppController {
     if (config.requiresKey && !this.secrets.has(providerId)) return { ok: false, message: 'No API key set.' }
     try {
       const models = await this.registry.models(providerId, { refresh: true })
-      // The model list is often public; a tiny completion proves the key works.
+      // Anthropic and OpenAI refuse to list models without a valid key, so the list proves it
+      // and the test costs nothing.
+      if (config.api === 'anthropic' || /^https:\/\/api\.openai\.com\//.test(config.baseUrl)) {
+        return { ok: true, message: `Connected. Key accepted; ${models.length} models available. No paid request was sent.`, models: models.length }
+      }
+      // Elsewhere the model list is often public; a tiny completion proves the key works, on a free model when there is one.
       const model = this.settings.models.favorites.find((f) => f.providerId === providerId)?.modelId ??
-        (this.settings.models.default.providerId === providerId ? this.settings.models.default.modelId : models[0]?.id)
+        (this.settings.models.default.providerId === providerId
+          ? this.settings.models.default.modelId
+          : (models.find((m) => m.free) ?? models[0])?.id)
       if (!model) return { ok: true, message: `Connected, but no models listed.`, models: 0 }
       const provider = this.registry.get(providerId)
       for await (const _ of provider.chat({ model, maxTokens: 5, messages: [{ role: 'user', content: 'Say OK' }] })) {

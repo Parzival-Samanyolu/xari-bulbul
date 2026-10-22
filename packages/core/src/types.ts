@@ -22,7 +22,14 @@ export type ChatMessage =
       /** Sent to the model after the text but not shown (e.g. "the user reverted these files"). */
       note?: string
     }
-  | { role: 'assistant'; content: string; toolCalls?: ToolCall[]; reasoning?: string }
+  | {
+      role: 'assistant'
+      content: string
+      toolCalls?: ToolCall[]
+      reasoning?: string
+      /** Provider data replayed with this turn (Anthropic's content blocks with thinking signatures). */
+      extra?: Record<string, unknown>
+    }
   | { role: 'tool'; toolCallId: string; name: string; content: string }
 
 /** A text file the user attached; its contents go to the model after the message text. */

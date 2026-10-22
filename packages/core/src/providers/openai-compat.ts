@@ -1,5 +1,6 @@
 import type { ChatMessage, ModelInfo, ToolCall, Usage } from '../types.js'
 import type { ProviderConfig } from '../settings/schema.js'
+import { midStreamError, requestWithRetry } from './http.js'
 import { readSseData } from './sse.js'
 import { ProviderError, type ChatRequest, type Provider, type StreamEvent } from './types.js'
 
@@ -36,6 +37,10 @@ export class OpenAICompatProvider implements Provider {
     return this.config.baseUrl.replace(/\/+$/, '') + path
   }
 
+  private isOpenAI(): boolean {
+    return /^https:\/\/api\.openai\.com\//.test(this.config.baseUrl)
+  }
+
   private headers(): Record<string, string> {
     const h: Record<string, string> = { 'content-type': 'application/json', ...this.config.headers }
     if (this.apiKey) h.authorization = `Bearer ${this.apiKey}`
@@ -46,6 +51,7 @@ export class OpenAICompatProvider implements Provider {
     const res = await this.request(this.url('/models'), { method: 'GET', headers: this.headers(), signal })
     const json = (await res.json()) as { data?: RawModel[] }
     return (json.data ?? [])
+      .filter((m) => !this.isOpenAI() || !NON_CHAT_OPENAI.test(m.id))
       .flatMap((m) => {
         // Google lists `models/gemini-3.5-flash` next to embedding, image, video and audio models,
         // and still lists Gemini 2.x, which answers 404 "no longer available to new users".
@@ -63,7 +69,7 @@ export class OpenAICompatProvider implements Provider {
     }
     const body: Record<string, unknown> = {
       model: req.model,
-      messages: req.messages.map(toWireMessage),
+      messages: wireMessages(req.messages, req.replayReasoning ?? !this.isOpenAI()),
       stream: true,
       stream_options: { include_usage: true },
     }
@@ -74,7 +80,8 @@ export class OpenAICompatProvider implements Provider {
       }))
     }
     if (req.temperature != null) body.temperature = req.temperature
-    if (req.maxTokens != null) body.max_tokens = req.maxTokens
+    // OpenAI's reasoning models reject `max_tokens`.
+    if (req.maxTokens != null) body[this.isOpenAI() ? 'max_completion_tokens' : 'max_tokens'] = req.maxTokens
     if (req.reasoningEffort) body.reasoning_effort = req.reasoningEffort
     if (this.config.requestUsageCost) body.usage = { include: true }
 
@@ -89,6 +96,7 @@ export class OpenAICompatProvider implements Provider {
     const calls = new Map<number, ToolCall>()
     let finishReason = 'stop'
     let usage: Usage | undefined
+    const details: unknown[] = []
 
     for await (const data of readSseData(res.body)) {
       if (data === '[DONE]') break
@@ -108,6 +116,7 @@ export class OpenAICompatProvider implements Provider {
       if (d.content) yield { type: 'text', delta: d.content }
       const reasoning = d.reasoning ?? d.reasoning_content
       if (reasoning) yield { type: 'reasoning', delta: reasoning }
+      if (d.reasoning_details?.length) details.push(...d.reasoning_details)
       for (const [pos, tc] of (d.tool_calls ?? []).entries()) {
         let idx = tc.index ?? pos
         // Gemini sends each call whole, in its own chunk, without `index`: a new id is a new call.
@@ -127,62 +136,14 @@ export class OpenAICompatProvider implements Provider {
       if (!call.id) call.id = `call_${Date.now().toString(36)}_${idx}`
       yield { type: 'tool_call', call }
     }
+    if (details.length) yield { type: 'extra', extra: { openai: { reasoning_details: details } } }
     if (usage) yield { type: 'usage', usage }
     yield { type: 'finish', reason: finishReason }
   }
 
-  /** fetch with retry on network errors, 408/409/429/5xx (only before the stream starts). */
-  private async request(url: string, init: RequestInit): Promise<Response> {
-    let attempt = 0
-    while (true) {
-      let res: Response
-      try {
-        res = await this.fetchImpl(url, init)
-      } catch (err) {
-        if (init.signal?.aborted) throw err
-        if (attempt++ >= this.retries) throw new ProviderError(`Network error: ${(err as Error).message}`)
-        await sleep(backoff(attempt), init.signal)
-        continue
-      }
-      if (res.ok) return res
-      const retryable = [408, 409, 429].includes(res.status) || res.status >= 500
-      const text = await res.text().catch(() => '')
-      if (retryable && attempt++ < this.retries) {
-        const retryAfter = Number(res.headers.get('retry-after'))
-        await sleep(retryAfter > 0 ? retryAfter * 1000 : backoff(attempt), init.signal)
-        continue
-      }
-      throw new ProviderError(`${this.name} error ${res.status}: ${extractError(text)}`, res.status, retryable)
-    }
+  private request(url: string, init: RequestInit): Promise<Response> {
+    return requestWithRetry(this.fetchImpl, this.name, this.retries, url, init)
   }
-}
-
-function backoff(attempt: number): number {
-  return Math.min(1000 * 2 ** (attempt - 1), 15_000) + Math.random() * 250
-}
-
-function sleep(ms: number, signal?: AbortSignal | null): Promise<void> {
-  return new Promise((resolve, reject) => {
-    if (signal?.aborted) return reject(signal.reason)
-    const t = setTimeout(resolve, ms)
-    signal?.addEventListener('abort', () => (clearTimeout(t), reject(signal.reason)), { once: true })
-  })
-}
-
-function extractError(text: string): string {
-  try {
-    const j = JSON.parse(text)
-    return j.error?.message ?? j.message ?? text
-  } catch {
-    return text.slice(0, 500) || 'unknown error'
-  }
-}
-
-function midStreamError(provider: string, message: string | undefined, code: number | undefined): ProviderError {
-  // Client errors (bad request, context too long) won't fix themselves; everything else is worth a retry.
-  const retryable = code == null || code === 408 || code === 429 || code >= 500
-  const detail = message && !/injected into SSE stream/i.test(message) ? ` (${message})` : ''
-  return new ProviderError(`${provider}: the model's provider failed partway through its reply${detail}.`, code, retryable)
 }
 
 /** The user's text followed by any attached files, as the model sees it. */
@@ -192,7 +153,27 @@ export function userText(m: Extract<ChatMessage, { role: 'user' }>): string {
   return [m.content, ...files, note].filter((s) => s.trim()).join('\n\n')
 }
 
-export function toWireMessage(m: ChatMessage): Record<string, unknown> {
+/**
+ * Reasoning models (DeepSeek, Kimi, gpt-oss, Qwen thinking) expect their reasoning back on the
+ * assistant messages of the tool loop in progress; without it they lose the thread after each call.
+ * Only messages after the last user-typed message get it, so old turns stay light.
+ */
+export function wireMessages(messages: ChatMessage[], replayReasoning: boolean): Record<string, unknown>[] {
+  let from = messages.length
+  if (replayReasoning) {
+    from = 0
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i]!
+      if (m.role === 'user' && !m.synthetic) {
+        from = i + 1
+        break
+      }
+    }
+  }
+  return messages.map((m, i) => toWireMessage(m, i >= from))
+}
+
+export function toWireMessage(m: ChatMessage, replayReasoning = false): Record<string, unknown> {
   switch (m.role) {
     case 'system':
       return { role: m.role, content: m.content }
@@ -221,14 +202,27 @@ export function toWireMessage(m: ChatMessage): Record<string, unknown> {
               })),
             }
           : {}),
+        ...(replayReasoning && m.toolCalls?.length ? replayedReasoning(m) : {}),
       }
     case 'tool':
       return { role: 'tool', tool_call_id: m.toolCallId, content: m.content }
   }
 }
 
+function replayedReasoning(m: Extract<ChatMessage, { role: 'assistant' }>): Record<string, unknown> {
+  const details = (m.extra?.openai as { reasoning_details?: unknown[] } | undefined)?.reasoning_details
+  return {
+    ...(m.reasoning ? { reasoning_content: m.reasoning } : {}),
+    ...(details?.length ? { reasoning_details: details } : {}),
+  }
+}
+
 const NON_CHAT_GOOGLE =
   /embedding|imagen|image|nano-banana|veo|tts|aqa|audio|live|lyria|transcribe|translate|robotics|computer-use|deep-research|antigravity/
+
+/** OpenAI lists image, audio, embedding and legacy completion models next to chat ones. */
+const NON_CHAT_OPENAI =
+  /embedding|whisper|tts|dall-e|gpt-image|image|audio|realtime|transcribe|moderation|search|sora|davinci|babbage|codex-mini/
 
 const RETIRED_GOOGLE = /^gemini-[12]\./
 
@@ -284,6 +278,7 @@ interface RawChunk {
       content?: string | null
       reasoning?: string | null
       reasoning_content?: string | null
+      reasoning_details?: unknown[]
       tool_calls?: {
         index?: number
         id?: string

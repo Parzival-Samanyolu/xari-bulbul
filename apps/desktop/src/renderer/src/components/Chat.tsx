@@ -15,6 +15,8 @@ interface Props {
   approval?: { request: PermissionRequest; onAnswer: (a: PermissionAnswer) => void }
   question?: { request: QuestionRequest; onAnswer: (text: string) => void }
   onRetry: () => void
+  /** Sends "continue" after the step limit. */
+  onContinue: () => void
   onRevert: (at: number, file?: string) => void
   onEdit: (index: number, text: string, revert: boolean) => void
 }
@@ -25,7 +27,7 @@ type ToolMessage = Extract<ChatMessage, { role: 'tool' }>
 
 const FIX_LABEL = { providers: 'Open Providers & Keys', usage: 'Open Usage & Budgets', agent: 'Open Agent settings' } as const
 
-export function Chat({ app, live, onDismiss, onSettings, approval, question, onRetry, onRevert, onEdit }: Props) {
+export function Chat({ app, live, onDismiss, onSettings, approval, question, onRetry, onContinue, onRevert, onEdit }: Props) {
   const session = app.session
   const scroller = useRef<HTMLDivElement>(null)
   const stick = useRef(true)
@@ -146,6 +148,17 @@ export function Chat({ app, live, onDismiss, onSettings, approval, question, onR
                 }}
               >
                 Retry
+              </button>
+            )}
+            {n.resume && !app.running && (
+              <button
+                className="btn primary"
+                onClick={() => {
+                  onDismiss(n.id)
+                  onContinue()
+                }}
+              >
+                Continue
               </button>
             )}
             {n.fix && (

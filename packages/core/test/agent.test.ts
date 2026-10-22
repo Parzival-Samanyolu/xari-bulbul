@@ -45,6 +45,18 @@ async function setup(script: ConstructorParameters<typeof MockProvider>[0], opts
 }
 
 describe('Agent loop', () => {
+  it('stores provider extra data on the assistant message and sends it back next step', async () => {
+    const extra = { anthropic: { model: 'm', content: [{ type: 'thinking', thinking: 't', signature: 's' }] } }
+    const { agent, provider } = await setup([
+      [call('1', 'read_file', { path: 'app.txt' }), { type: 'extra', extra }],
+      [{ type: 'text', delta: 'Done.' }],
+    ])
+    await agent.send('read it')
+    expect(agent.session.messages[1]).toMatchObject({ role: 'assistant', extra })
+    expect(provider.requests[1].messages.find((m) => m.role === 'assistant')).toMatchObject({ extra })
+    expect(agent.session.messages.at(-1)).not.toHaveProperty('extra')
+  })
+
   it('runs tools until the model stops, tracking usage and cost', async () => {
     const { dir, agent, provider, events, usageTracker } = await setup([
       [call('1', 'read_file', { path: 'app.txt' }), usage(100, 10)],
@@ -189,5 +201,77 @@ describe('Mid-reply failures', () => {
     const { ProviderError } = await import('../src/providers/types.js')
     const { agent } = await setup([{ events: [], fail: new ProviderError('context too long', 400, false) }])
     expect(await agent.send('hi')).toBe('error')
+  })
+})
+
+describe('Context overflow', () => {
+  const overflow = async () => {
+    const { ProviderError } = await import('../src/providers/types.js')
+    return { events: [], fail: new ProviderError("Mock error 400: This model's maximum context length is 8192 tokens", 400, false) }
+  }
+
+  it('summarizes older history once and retries the step', async () => {
+    const { agent, provider, events } = await setup([
+      [{ type: 'text', delta: 'First answer.' }],
+      [{ type: 'text', delta: 'Second answer.' }],
+      [{ type: 'text', delta: 'Third answer.' }],
+      await overflow(),
+      [{ type: 'text', delta: 'Summary of earlier work.' }],
+      [{ type: 'text', delta: 'Fourth answer.' }],
+    ])
+    await agent.send('one')
+    await agent.send('two')
+    await agent.send('three')
+    expect(await agent.send('four')).toBe('done')
+    expect(events.some((e) => e.type === 'compacted')).toBe(true)
+    expect(agent.session.messages[0]).toMatchObject({ role: 'user', content: expect.stringContaining('Summary of earlier work.') })
+    expect(agent.session.messages.at(-1)).toMatchObject({ role: 'assistant', content: 'Fourth answer.' })
+    expect(provider.requests).toHaveLength(6)
+  })
+
+  it('gives up when the retry overflows too', async () => {
+    const { agent } = await setup([
+      [{ type: 'text', delta: 'a' }],
+      [{ type: 'text', delta: 'b' }],
+      [{ type: 'text', delta: 'c' }],
+      await overflow(),
+      [{ type: 'text', delta: 'Summary.' }],
+      await overflow(),
+    ])
+    await agent.send('one')
+    await agent.send('two')
+    await agent.send('three')
+    expect(await agent.send('four')).toBe('error')
+  })
+})
+
+describe('Hooks', () => {
+  const rule = (match: string, command: string) => ({ match, command, timeoutSec: 10, enabled: true })
+
+  it('a pre hook that exits 2 blocks the call and the model sees why', async () => {
+    const { agent, provider, settings } = await setup([[call('1', 'bash', { command: 'echo hi' })], [{ type: 'text', delta: 'ok' }]])
+    agent.updateSettings({ ...settings, hooks: { preTool: [rule('bash(echo *)', 'echo "no echo here" >&2; exit 2')], postTool: [] } })
+    await agent.send('go')
+    const result = provider.requests[1].messages.find((m) => m.role === 'tool')
+    expect(result).toMatchObject({ content: expect.stringContaining('Blocked by a hook: no echo here') })
+  })
+
+  it('a post hook adds its output; non-matching hooks are skipped', async () => {
+    const { agent, provider, settings } = await setup([[call('1', 'read_file', { path: 'app.txt' })], [{ type: 'text', delta: 'ok' }]])
+    agent.updateSettings({
+      ...settings,
+      hooks: { preTool: [rule('bash', 'exit 2')], postTool: [rule('*', 'cat >/dev/null; echo "tool=$HARNESS_TOOL"')] },
+    })
+    await agent.send('go')
+    const result = provider.requests[1].messages.find((m) => m.role === 'tool')!
+    expect(result.content).toContain('hello world')
+    expect(result.content).toContain('Hook output:\ntool=read_file')
+  })
+
+  it('a hook that runs too long is killed and reported', async () => {
+    const { agent, events, settings } = await setup([[call('1', 'list_dir', {})], [{ type: 'text', delta: 'ok' }]])
+    agent.updateSettings({ ...settings, hooks: { preTool: [{ ...rule('*', 'sleep 5'), timeoutSec: 1 }], postTool: [] } })
+    expect(await agent.send('go')).toBe('done')
+    expect(events.find((e) => e.type === 'notice' && /timed out/.test(e.text))).toBeTruthy()
   })
 })

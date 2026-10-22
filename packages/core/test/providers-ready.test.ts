@@ -30,7 +30,7 @@ describe('provider readiness', () => {
 
   it('adds built-in providers missing from saved settings, keeping custom ones', () => {
     const s = parseSettings({ providers: [{ ...BUILTIN_PROVIDERS[0], enabled: false }, { id: 'x', name: 'X', baseUrl: 'https://x.dev/v1' }] })
-    expect(s.providers.map((p) => p.id)).toEqual(['openrouter', 'x', 'ollama-cloud', 'google'])
+    expect(s.providers.map((p) => p.id)).toEqual(['openrouter', 'x', 'ollama-cloud', 'google', 'anthropic', 'openai'])
     expect(s.providers[0].enabled).toBe(false)
   })
 

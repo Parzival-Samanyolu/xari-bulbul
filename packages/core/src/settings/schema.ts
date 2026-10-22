@@ -14,6 +14,8 @@ export const ProviderConfigSchema = z.object({
   requestUsageCost: z.boolean().default(false),
   /** Local servers (Ollama, LM Studio, vLLM) usually need no key. */
   requiresKey: z.boolean().default(true),
+  /** Wire protocol: OpenAI chat completions, or Anthropic's Messages API. */
+  api: z.enum(['openai', 'anthropic']).default('openai'),
 })
 export type ProviderConfig = z.infer<typeof ProviderConfigSchema>
 
@@ -26,6 +28,7 @@ export const BUILTIN_PROVIDERS: ProviderConfig[] = [
     headers: { 'HTTP-Referer': 'https://github.com/Parzival-Samanyolu/xari-bulbul', 'X-Title': 'Xari Bulbul' },
     requestUsageCost: true,
     requiresKey: true,
+    api: 'openai',
   },
   {
     id: 'ollama-cloud',
@@ -35,6 +38,7 @@ export const BUILTIN_PROVIDERS: ProviderConfig[] = [
     headers: {},
     requestUsageCost: false,
     requiresKey: true,
+    api: 'openai',
   },
   {
     id: 'google',
@@ -44,11 +48,32 @@ export const BUILTIN_PROVIDERS: ProviderConfig[] = [
     headers: {},
     requestUsageCost: false,
     requiresKey: true,
+    api: 'openai',
+  },
+  {
+    id: 'anthropic',
+    name: 'Anthropic',
+    baseUrl: 'https://api.anthropic.com/v1',
+    enabled: true,
+    headers: {},
+    requestUsageCost: false,
+    requiresKey: true,
+    api: 'anthropic',
+  },
+  {
+    id: 'openai',
+    name: 'OpenAI',
+    baseUrl: 'https://api.openai.com/v1',
+    enabled: true,
+    headers: {},
+    requestUsageCost: false,
+    requiresKey: true,
+    api: 'openai',
   },
 ]
 
 /** One-click presets for common OpenAI-compatible servers. */
-export const PROVIDER_PRESETS: Omit<ProviderConfig, 'enabled' | 'headers' | 'requestUsageCost'>[] = [
+export const PROVIDER_PRESETS: Omit<ProviderConfig, 'enabled' | 'headers' | 'requestUsageCost' | 'api'>[] = [
   { id: 'ollama-local', name: 'Ollama (local)', baseUrl: 'http://localhost:11434/v1', requiresKey: false },
   { id: 'lmstudio', name: 'LM Studio', baseUrl: 'http://localhost:1234/v1', requiresKey: false },
   { id: 'groq', name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', requiresKey: true },
@@ -99,7 +124,20 @@ export const ModelOverrideSchema = z.object({
   maxTokens: z.number().int().positive().optional(),
   reasoningEffort: z.enum(['none', 'low', 'medium', 'high']).optional(),
   contextLength: z.number().int().positive().optional(),
+  /** Send reasoning back on the current tool loop's assistant messages. Unset = on, except api.openai.com. */
+  replayReasoning: z.boolean().optional(),
+  /** Unset = the agent setting. */
+  promptStyle: z.enum(['full', 'lean']).optional(),
 })
+
+/** A shell command run before or after tool calls whose subject matches `match` (permission-rule syntax). */
+export const HookRuleSchema = z.object({
+  match: z.string().min(1),
+  command: z.string().min(1),
+  timeoutSec: z.number().int().min(1).max(600).default(30),
+  enabled: z.boolean().default(true),
+})
+export type HookRule = z.infer<typeof HookRuleSchema>
 
 export const SettingsSchema = z.object({
   providers: z
@@ -137,7 +175,9 @@ export const SettingsSchema = z.object({
 
   agent: z
     .object({
-      maxStepsPerTurn: z.number().int().min(1).max(500).default(50),
+      maxStepsPerTurn: z.number().int().min(1).max(1000).default(200),
+      /** lean: a short system prompt that small models follow better. auto = lean for free models. */
+      promptStyle: z.enum(['auto', 'full', 'lean']).default('auto'),
       customInstructions: z.string().default(''),
       /** Replace the built-in system prompt entirely (advanced). */
       systemPromptOverride: z.string().default(''),
@@ -155,7 +195,7 @@ export const SettingsSchema = z.object({
           enabled: z.boolean().default(true),
           /** null = the chat's own model. A cheaper or free model is a good fit for searching. */
           model: ModelRefSchema.nullable().default(null),
-          maxSteps: z.number().int().min(1).max(200).default(25),
+          maxSteps: z.number().int().min(1).max(500).default(50),
           /** How many subagents may run at the same time. */
           maxParallel: z.number().int().min(1).max(8).default(3),
           /** Allow "general" subagents that edit and run commands (still subject to permissions). */
@@ -184,6 +224,8 @@ export const SettingsSchema = z.object({
       loadUserExtensions: z.boolean().default(true),
       /** After an edit, check the file with the project's linter or a syntax check and show the model any problems. */
       checkAfterEdit: z.boolean().default(true),
+      /** How long the after-edit check may run before it gives up. */
+      checkTimeoutSec: z.number().int().min(5).max(300).default(30),
       webSearch: z
         .object({
           /**
@@ -203,6 +245,16 @@ export const SettingsSchema = z.object({
       enabled: z.boolean().default(true),
       /** Size limit per scope (project, global). */
       maxChars: z.number().int().min(500).max(50_000).default(6000),
+    })
+    .prefault({}),
+
+  /** Shell commands run around tool calls. Settings only, never from project files. */
+  hooks: z
+    .object({
+      /** Exit code 2 blocks the call; stderr is the reason the model sees. */
+      preTool: z.array(HookRuleSchema).default([]),
+      /** Stdout is added to the tool result; exit code 2 adds stderr as feedback. */
+      postTool: z.array(HookRuleSchema).default([]),
     })
     .prefault({}),
 

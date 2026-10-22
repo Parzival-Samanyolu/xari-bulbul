@@ -28,6 +28,8 @@ export interface Notice {
   fix?: 'providers' | 'usage' | 'agent'
   /** The turn failed; offer to run the request again. */
   retry?: boolean
+  /** The turn hit the step limit; offer to let the agent keep going. */
+  resume?: boolean
 }
 
 /** Point notices at the settings tab that resolves them. */
@@ -147,8 +149,12 @@ function reducer(m: Model, a: Action): Model {
       return setLive(addNotice(live, e.level, e.text))
     case 'error':
       return setLive(addNotice(live, 'error', e.message, true))
-    case 'turn_end':
-      return setLive({ ...live, streamText: '', streamReasoning: '' }, running(false))
+    case 'turn_end': {
+      let notices = live.notices
+      // The step-limit notice comes right before turn_end: give it a Continue button.
+      if (e.reason === 'max_steps' && notices.length) notices = [...notices.slice(0, -1), { ...notices.at(-1)!, resume: true }]
+      return setLive({ ...live, notices, streamText: '', streamReasoning: '' }, running(false))
+    }
   }
   return m
 }
@@ -205,6 +211,7 @@ export function App() {
   }
   // Stable, so memoized chat rows don't re-render on every streamed token.
   const onRetry = useCallback(() => void api.agent.retry().catch(fail), [fail])
+  const onContinue = useCallback(() => void api.agent.send('continue').catch(fail), [fail])
   const onRevert = useCallback((at: number, file?: string) => void api.agent.revert(at, file).then(setState, fail), [setState, fail])
   const onEdit = useCallback((index: number, text: string, revert: boolean) => void api.agent.editMessage(index, text, revert).catch(fail), [fail])
   const answer = (a: PermissionAnswer) => {
@@ -274,6 +281,7 @@ export function App() {
               approval={approval ? { request: approval, onAnswer: answer } : undefined}
               question={question ? { request: question, onAnswer: answerQuestion } : undefined}
               onRetry={onRetry}
+              onContinue={onContinue}
               onRevert={onRevert}
               onEdit={onEdit}
             />

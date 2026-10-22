@@ -2,7 +2,7 @@ import { execFile } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
-const TIMEOUT_MS = 10_000
+const DEFAULT_TIMEOUT_SEC = 30
 const MAX_LINES = 20
 const ESLINT_CONFIGS = ['eslint.config.js', 'eslint.config.mjs', 'eslint.config.cjs', 'eslint.config.ts', '.eslintrc', '.eslintrc.js', '.eslintrc.cjs', '.eslintrc.json', '.eslintrc.yml', '.eslintrc.yaml']
 
@@ -11,11 +11,15 @@ interface Run {
   out: string
 }
 
-function run(cmd: string, args: string[], cwd: string, signal?: AbortSignal): Promise<Run | null> {
-  return new Promise((resolve) => {
-    execFile(cmd, args, { cwd, timeout: TIMEOUT_MS, signal, windowsHide: true, maxBuffer: 1 << 20 }, (err, stdout, stderr) => {
+class CheckTimeout extends Error {}
+
+function runCheck(cmd: string, args: string[], cwd: string, signal: AbortSignal | undefined, timeoutMs: number): Promise<Run | null> {
+  return new Promise((resolve, reject) => {
+    execFile(cmd, args, { cwd, timeout: timeoutMs, signal, windowsHide: true, maxBuffer: 1 << 20 }, (err, stdout, stderr) => {
       const e = err as (NodeJS.ErrnoException & { code?: number | string; killed?: boolean }) | null
-      // Not installed, timed out or aborted: no verdict.
+      // Too slow: say so, so the model knows the file wasn't checked.
+      if (e?.killed && !signal?.aborted) return reject(new CheckTimeout())
+      // Not installed or aborted: no verdict.
       if (e && (typeof e.code === 'string' || e.killed)) return resolve(null)
       resolve({ code: e ? (typeof e.code === 'number' ? e.code : 1) : 0, out: `${stdout}${stderr}`.trim() })
     })
@@ -48,7 +52,8 @@ function clip(text: string): string {
  * language's own syntax check. Returns the problems, or null when the file is clean or nothing
  * could check it. Never throws.
  */
-export async function checkFile(abs: string, root: string, signal?: AbortSignal): Promise<string | null> {
+export async function checkFile(abs: string, root: string, signal?: AbortSignal, timeoutSec = DEFAULT_TIMEOUT_SEC): Promise<string | null> {
+  const run = (cmd: string, args: string[], cwd: string, sig?: AbortSignal) => runCheck(cmd, args, cwd, sig, timeoutSec * 1000)
   try {
     const ext = path.extname(abs).toLowerCase()
     if (ext === '.json') {
@@ -82,15 +87,23 @@ export async function checkFile(abs: string, root: string, signal?: AbortSignal)
       return null
     }
     return null
-  } catch {
+  } catch (e) {
+    if (e instanceof CheckTimeout) return `${TIMED_OUT_PREFIX}${timeoutSec}s; run the project's lint or typecheck yourself.`
     return null
   }
 }
 
+const TIMED_OUT_PREFIX = 'Checks timed out after '
+
 /** Appends a file's problems to an edit result, when checks are on and there are any. */
-export async function withCheck<T extends { content: string }>(result: T, abs: string, ctx: { cwd: string; signal: AbortSignal; checkAfterEdit?: boolean }): Promise<T> {
+export async function withCheck<T extends { content: string }>(
+  result: T,
+  abs: string,
+  ctx: { cwd: string; signal: AbortSignal; checkAfterEdit?: boolean; checkTimeoutSec?: number },
+): Promise<T> {
   if (!ctx.checkAfterEdit) return result
-  const problems = await checkFile(abs, ctx.cwd, ctx.signal)
+  const problems = await checkFile(abs, ctx.cwd, ctx.signal, ctx.checkTimeoutSec)
   if (!problems) return result
+  if (problems.startsWith(TIMED_OUT_PREFIX)) return { ...result, content: `${result.content}\n\n${problems}` }
   return { ...result, content: `${result.content}\n\nThe file has problems after this edit (fix them if your change caused them):\n${problems}` }
 }

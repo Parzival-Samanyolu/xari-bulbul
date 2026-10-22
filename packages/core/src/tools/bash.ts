@@ -1,7 +1,6 @@
-import { spawn } from 'node:child_process'
 import { z } from 'zod'
-import { killTree } from './jobs.js'
 import { resolveShell } from './shell.js'
+import { runShell } from './spawn.js'
 import { defineTool, truncate } from './types.js'
 
 export const bashTool = defineTool({
@@ -34,45 +33,28 @@ export const bashTool = defineTool({
       return Promise.resolve({ content: `Started in the background as ${job.id}. Check it with bash_output, stop it with kill_job.` })
     }
     const timeoutMs = (input.timeout_sec ?? ctx.bashTimeoutSec) * 1000
-    return new Promise((resolve) => {
-      const child = spawn(shell.cmd, shell.args(input.command), {
-        cwd: ctx.cwd,
-        env,
-        detached: process.platform !== 'win32',
-        windowsHide: true,
-        stdio: ['ignore', 'pipe', 'pipe'],
-      })
-      let out = ''
-      let killedFor: 'timeout' | 'abort' | null = null
-      const onData = (b: Buffer) => {
-        const s = b.toString('utf8')
-        // Cap memory: keep at most 4x the output budget, the tail matters most.
-        out = (out + s).slice(-ctx.toolOutputMaxChars * 4)
-        ctx.progress(s)
+    return runShell(input.command, {
+      shell: ctx.shell,
+      cwd: ctx.cwd,
+      env,
+      timeoutMs,
+      signal: ctx.signal,
+      onData: ctx.progress,
+      // Cap memory: keep at most 4x the output budget, the tail matters most.
+      maxChars: ctx.toolOutputMaxChars * 4,
+    }).then((r) => {
+      if (r.error) return { content: `Failed to start shell: ${r.error.message}`, isError: true }
+      const text = truncate(r.out.trimEnd(), ctx.toolOutputMaxChars)
+      const note =
+        r.killedFor === 'timeout'
+          ? `\n[killed after ${timeoutMs / 1000}s timeout]`
+          : r.killedFor === 'abort'
+            ? '\n[interrupted by user]'
+            : ''
+      return {
+        content: `${text || '(no output)'}${note}\n[exit code: ${r.code ?? 'killed'}]`,
+        isError: r.code !== 0,
       }
-      child.stdout.on('data', onData)
-      child.stderr.on('data', onData)
-      const timer = setTimeout(() => ((killedFor = 'timeout'), killTree(child.pid)), timeoutMs)
-      const onAbort = () => ((killedFor = 'abort'), killTree(child.pid))
-      ctx.signal.addEventListener('abort', onAbort, { once: true })
-      const finish = (code: number | null, err?: Error) => {
-        clearTimeout(timer)
-        ctx.signal.removeEventListener('abort', onAbort)
-        const text = truncate(out.trimEnd(), ctx.toolOutputMaxChars)
-        if (err) return resolve({ content: `Failed to start shell: ${err.message}`, isError: true })
-        const note =
-          killedFor === 'timeout'
-            ? `\n[killed after ${timeoutMs / 1000}s timeout]`
-            : killedFor === 'abort'
-              ? '\n[interrupted by user]'
-              : ''
-        resolve({
-          content: `${text || '(no output)'}${note}\n[exit code: ${code ?? 'killed'}]`,
-          isError: code !== 0,
-        })
-      }
-      child.on('error', (e) => finish(null, e))
-      child.on('close', (code) => finish(code))
     })
   },
 })
