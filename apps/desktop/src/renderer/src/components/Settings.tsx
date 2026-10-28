@@ -7,6 +7,7 @@ import { cost, modelLabel, tokens } from '../lib/format'
 import { MODES } from './Composer'
 import { ListField, NumberField, Row, Section, Select, Slider, TextField, Toggle } from './fields'
 import { ModelPicker } from './ModelPicker'
+import { ProviderLogo } from './ProviderLogo'
 
 interface Props {
   app: AppState
@@ -82,6 +83,13 @@ const KEY_LINKS: Record<string, string> = {
   google: 'https://aistudio.google.com/apikey',
   anthropic: 'https://console.anthropic.com/settings/keys',
   openai: 'https://platform.openai.com/api-keys',
+  mistral: 'https://console.mistral.ai/api-keys',
+  xai: 'https://console.x.ai',
+  groq: 'https://console.groq.com/keys',
+  cerebras: 'https://cloud.cerebras.ai',
+  nvidia: 'https://build.nvidia.com/settings/api-keys',
+  zai: 'https://z.ai/manage-apikey/apikey-list',
+  deepseek: 'https://platform.deepseek.com/api_keys',
 }
 
 // ---------------------------------------------------------------- Providers
@@ -90,7 +98,7 @@ function ProvidersTab({ app, save, onState, onError }: TabProps) {
   const [keys, setKeys] = useState<Record<string, string>>({})
   const [tests, setTests] = useState<Record<string, ProviderTestResult | 'running'>>({})
   const [custom, setCustom] = useState({ id: '', name: '', baseUrl: '', requiresKey: true })
-  const builtin = new Set(['openrouter', 'ollama-cloud', 'google', 'anthropic', 'openai'])
+  const builtin = new Set(app.builtinProviders)
   const existing = new Set(app.settings.providers.map((p) => p.id))
 
   const test = (id: string) => {
@@ -121,11 +129,20 @@ function ProvidersTab({ app, save, onState, onError }: TabProps) {
         {app.settings.providers.map((p, i) => {
           const t = tests[p.id]
           const ready = app.ready[p.id]
+          const folded = app.settings.app.collapsedProviders.includes(p.id)
+          const fold = () =>
+            save((s) => ((s.app.collapsedProviders = folded ? s.app.collapsedProviders.filter((x) => x !== p.id) : [...s.app.collapsedProviders, p.id]), s))
           return (
-            <div key={p.id} className="provider-card">
+            <div key={p.id} className={`provider-card ${folded ? 'folded' : ''}`}>
               <div className="provider-head">
                 <Toggle label={`Enable ${p.name}`} value={p.enabled} onChange={(v) => save((s) => ((s.providers[i].enabled = v), s))} />
-                <b>{p.name}</b>
+                <button className="provider-fold" aria-expanded={!folded} title={folded ? `Show ${p.name} settings` : `Hide ${p.name} settings`} onClick={fold}>
+                  <span className="fold-caret" aria-hidden>
+                    {folded ? '▸' : '▾'}
+                  </span>
+                  <ProviderLogo id={p.id} name={p.name} size={16} />
+                  <b>{p.name}</b>
+                </button>
                 <span className={`badge ${ready ? 'ok' : ''}`}>{!p.enabled ? 'off' : ready ? (p.requiresKey ? 'key set' : 'no key needed') : 'needs key'}</span>
                 {KEY_LINKS[p.id] && (
                   <button className="link small" onClick={() => api.app.openExternal(KEY_LINKS[p.id])}>
@@ -139,7 +156,7 @@ function ProvidersTab({ app, save, onState, onError }: TabProps) {
                   </button>
                 )}
               </div>
-              {p.requiresKey && (
+              {!folded && p.requiresKey && (
                 <Row label="API key" labelFor={`key-${p.id}`}>
                   <div className="key-row">
                     <input
@@ -173,28 +190,32 @@ function ProvidersTab({ app, save, onState, onError }: TabProps) {
                   </div>
                 </Row>
               )}
-              <div className="provider-foot">
-                <button className="btn" disabled={!ready || t === 'running'} onClick={() => test(p.id)}>
-                  {t === 'running' ? 'Testing…' : 'Test connection'}
-                </button>
-                {t && t !== 'running' && (
-                  <span className={`small ${t.ok ? 'okc' : 'warn'}`} role="status">
-                    {t.message}
-                  </span>
-                )}
-              </div>
-              <details className="advanced">
-                <summary>Advanced</summary>
-                <Row label="Base URL" hint="OpenAI-compatible endpoint" labelFor={`url-${p.id}`}>
-                  <TextField label="Base URL" id={`url-${p.id}`} mono value={p.baseUrl} onChange={(v) => save((s) => ((s.providers[i].baseUrl = v), s))} />
-                </Row>
-                <Row label="Needs an API key" hint="Turn off for local servers like Ollama or LM Studio">
-                  <Toggle label="Needs an API key" value={p.requiresKey} onChange={(v) => save((s) => ((s.providers[i].requiresKey = v), s))} />
-                </Row>
-                <Row label="Report exact cost" hint="Asks the provider to include the cost of each request (supported by OpenRouter)">
-                  <Toggle label="Report exact cost" value={p.requestUsageCost} onChange={(v) => save((s) => ((s.providers[i].requestUsageCost = v), s))} />
-                </Row>
-              </details>
+              {!folded && (
+                <>
+                  <div className="provider-foot">
+                    <button className="btn" disabled={!ready || t === 'running'} onClick={() => test(p.id)}>
+                      {t === 'running' ? 'Testing…' : 'Test connection'}
+                    </button>
+                    {t && t !== 'running' && (
+                      <span className={`small ${t.ok ? 'okc' : 'warn'}`} role="status">
+                        {t.message}
+                      </span>
+                    )}
+                  </div>
+                  <details className="advanced">
+                    <summary>Advanced</summary>
+                    <Row label="Base URL" hint="OpenAI-compatible endpoint" labelFor={`url-${p.id}`}>
+                      <TextField label="Base URL" id={`url-${p.id}`} mono value={p.baseUrl} onChange={(v) => save((s) => ((s.providers[i].baseUrl = v), s))} />
+                    </Row>
+                    <Row label="Needs an API key" hint="Turn off for local servers like Ollama or LM Studio">
+                      <Toggle label="Needs an API key" value={p.requiresKey} onChange={(v) => save((s) => ((s.providers[i].requiresKey = v), s))} />
+                    </Row>
+                    <Row label="Report exact cost" hint="Asks the provider to include the cost of each request (supported by OpenRouter)">
+                      <Toggle label="Report exact cost" value={p.requestUsageCost} onChange={(v) => save((s) => ((s.providers[i].requestUsageCost = v), s))} />
+                    </Row>
+                  </details>
+                </>
+              )}
             </div>
           )
         })}
@@ -203,7 +224,7 @@ function ProvidersTab({ app, save, onState, onError }: TabProps) {
         <div className="presets">
           {app.providerPresets.map((p) => (
             <button key={p.id} className="btn" disabled={existing.has(p.id)} onClick={() => addProvider(p)} title={p.baseUrl}>
-              + {p.name}
+              + <ProviderLogo id={p.id} name={p.name} /> {p.name}
               <span className="muted small">{p.requiresKey ? 'key' : 'no key'}</span>
             </button>
           ))}
@@ -276,7 +297,10 @@ function RecommendedModels({ app, save, onState, onError, onTab }: TabProps) {
               <div key={k} className="rec-row">
                 <div className="rec-text">
                   <div className="rec-name">
-                    {r.name} <span className="muted small">· {provider?.name ?? r.ref.providerId}</span>
+                    {r.name}{' '}
+                    <span className="muted small">
+                      · <ProviderLogo id={r.ref.providerId} name={provider?.name} size={12} /> {provider?.name ?? r.ref.providerId}
+                    </span>
                   </div>
                   <div className="muted small">{r.note}</div>
                 </div>
@@ -360,7 +384,9 @@ function ModelsTab({ app, save, onState, onError, onTab }: TabProps) {
             {m.favorites.map((f) => (
               <div key={`${f.providerId}:${f.modelId}`} className="list-item">
                 <code>{f.modelId}</code>
-                <span className="muted small">{f.providerId}</span>
+                <span className="muted small">
+                  <ProviderLogo id={f.providerId} size={12} /> {f.providerId}
+                </span>
                 <button className="link danger" onClick={() => save((s) => ((s.models.favorites = s.models.favorites.filter((x) => !(x.providerId === f.providerId && x.modelId === f.modelId))), s))}>
                   remove
                 </button>
@@ -501,6 +527,9 @@ function AgentTab({ app, save }: TabProps) {
         </Row>
         <Row label="Request retries" hint="On rate limits (429) and server errors">
           <NumberField label="Request retries" value={a.requestRetries} min={0} max={10} onChange={(v) => save((s) => ((s.agent.requestRetries = v ?? 3), s))} />
+        </Row>
+        <Row label="Stall timeout (seconds)" hint="Stop waiting when a hosted provider sends nothing for this long. 0 waits forever.">
+          <NumberField label="Stall timeout" value={a.stallTimeoutSec} min={0} max={3600} onChange={(v) => save((s) => ((s.agent.stallTimeoutSec = v ?? 90), s))} />
         </Row>
       </Section>
     </>

@@ -1,6 +1,7 @@
 import type { ModelInfo } from '../types.js'
 import type { ProviderConfig } from '../settings/schema.js'
 import { AnthropicProvider } from './anthropic.js'
+import { contextIndex, fillContext, publicContextIndex } from './context-catalog.js'
 import { OpenAICompatProvider } from './openai-compat.js'
 import type { Provider } from './types.js'
 
@@ -14,7 +15,12 @@ export class ProviderRegistry {
   constructor(
     configs: ProviderConfig[],
     getKey: KeyLookup,
-    opts: { retries?: number; fetch?: typeof fetch } = {},
+    private readonly opts: {
+      retries?: number
+      fetch?: typeof fetch
+      /** Fill context sizes a provider doesn't report from OpenRouter's public model list. */
+      fillContext?: boolean
+    } = {},
   ) {
     for (const config of configs) {
       if (!config.enabled) continue
@@ -39,11 +45,18 @@ export class ProviderRegistry {
   }
 
   async models(providerId: string, opts: { refresh?: boolean; maxAgeMs?: number } = {}): Promise<ModelInfo[]> {
+    const provider = this.get(providerId)
+    const visible = (ms: ModelInfo[]) => (provider.unavailable ? ms.filter((m) => !provider.unavailable!(m.id)) : ms)
     const hit = this.modelCache.get(providerId)
-    if (hit && !opts.refresh && Date.now() - hit.at < (opts.maxAgeMs ?? 30 * 60_000)) return hit.models
-    const models = await this.get(providerId).listModels()
+    if (hit && !opts.refresh && Date.now() - hit.at < (opts.maxAgeMs ?? 30 * 60_000)) return visible(hit.models)
+    let models = await provider.listModels()
+    if (this.opts.fillContext && providerId !== 'openrouter' && models.some((m) => !m.contextLength)) {
+      const own = this.modelCache.get('openrouter')?.models
+      const index = own ? contextIndex(own) : await publicContextIndex(this.opts.fetch)
+      if (index) models = fillContext(models, index)
+    }
     this.modelCache.set(providerId, { at: Date.now(), models })
-    return models
+    return visible(models)
   }
 
   /** Cached lookup only — never hits the network. */

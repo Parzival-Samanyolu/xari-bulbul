@@ -3,6 +3,7 @@ import type { AppState, ModelInfo, ModelRef, Settings } from '../../../shared/ip
 import { displayName, matchesQuery, passesFilters, sortModels } from '@harness/core/catalog'
 import { api } from '../lib/api'
 import { perMillion, tokens } from '../lib/format'
+import { MakerLogo, ProviderLogo } from './ProviderLogo'
 
 interface Props {
   app: AppState
@@ -16,7 +17,7 @@ interface Props {
 
 type Sort = Settings['models']['picker']['sort']
 type Section = 'current' | 'fav' | 'recent' | 'all'
-type Row = { header: string; providerId?: string; shown?: number; total?: number } | { model: ModelInfo; section: Section }
+type Row = { header: string; providerId?: string; shown?: number; total?: number; collapsed?: boolean } | { model: ModelInfo; section: Section }
 
 const key = (r: ModelRef) => `${r.providerId}:${r.modelId}`
 const refOf = (m: ModelInfo): ModelRef => ({ providerId: m.providerId, modelId: m.id })
@@ -44,7 +45,9 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
   const list = useRef<HTMLDivElement>(null)
   const dialog = useRef<HTMLDivElement>(null)
   const { favorites, recent, picker } = app.settings.models
-  const providers = app.settings.providers.filter((p) => p.enabled)
+  const enabled = app.settings.providers.filter((p) => p.enabled)
+  // Providers without a key would each add an empty "needs an API key" group; show them only when nothing is set up yet.
+  const providers = enabled.some((p) => app.ready[p.id]) ? enabled.filter((p) => app.ready[p.id]) : enabled
   const current = onPick ? undefined : app.session?.meta.model
   const favSet = new Set(favorites.map(key))
 
@@ -96,8 +99,10 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
       const shown = sortModels(all.filter((m) => passes(m, priced) && match(m) && !pinned.has(key(refOf(m)))), picker.sort)
       // Hide empty groups unless they have something to say (loading, error, missing key).
       if (!shown.length && (terms.length || (app.ready[p.id] && !loading[p.id] && !errors[p.id] && all.length))) continue
-      out.push({ header: p.name, providerId: p.id, shown: shown.length, total: all.length })
-      shown.forEach((m) => out.push({ model: m, section: 'all' }))
+      // Folded groups open up while searching, so matches are never hidden.
+      const collapsed = !terms.length && picker.collapsed.includes(p.id)
+      out.push({ header: p.name, providerId: p.id, shown: shown.length, total: all.length, collapsed })
+      if (!collapsed) shown.forEach((m) => out.push({ model: m, section: 'all' }))
     }
     return out
   }, [q, models, favorites, recent, picker, current?.providerId, current?.modelId, loading, errors])
@@ -199,7 +204,22 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
               const id = r.providerId
               return (
                 <div key={`h${i}`} className="picker-group" role="presentation">
-                  <span>{r.header}</span>
+                  {id ? (
+                    <button
+                      className="picker-fold"
+                      aria-expanded={!r.collapsed}
+                      title={r.collapsed ? `Show ${r.header} models` : `Hide ${r.header} models`}
+                      onClick={() => savePicker({ collapsed: r.collapsed ? picker.collapsed.filter((x) => x !== id) : [...picker.collapsed, id] })}
+                    >
+                      <span className="fold-caret" aria-hidden>
+                        {r.collapsed ? '▸' : '▾'}
+                      </span>
+                      <ProviderLogo id={id} name={r.header} />
+                      <span>{r.header}</span>
+                    </button>
+                  ) : (
+                    <span>{r.header}</span>
+                  )}
                   {id && (
                     <>
                       {r.total ? <span className="muted small">{r.shown === r.total ? r.total : `${r.shown} of ${r.total}`}</span> : null}
@@ -239,9 +259,15 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
                   ★
                 </button>
                 <span className="picker-name" title={m.id}>
+                  <MakerLogo modelId={m.id} providerId={m.providerId} size={13} />
                   {displayName(m)}
                   <span className="muted picker-id"> {m.id}</span>
-                  {r.section !== 'all' && <span className="badge">{m.providerId}</span>}
+                  {r.section !== 'all' && (
+                    <span className="badge">
+                      <ProviderLogo id={m.providerId} size={11} />
+                      {m.providerId}
+                    </span>
+                  )}
                 </span>
                 <span className="muted">{m.contextLength ? tokens(m.contextLength) : '—'}</span>
                 <span className={m.free ? 'okc' : 'muted'}>{price(m)}</span>

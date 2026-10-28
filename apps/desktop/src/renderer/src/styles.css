@@ -1125,6 +1125,62 @@ kbd {
   gap: 8px;
   flex-wrap: wrap;
 }
+.provider-logo {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  color: var(--text);
+}
+.provider-logo svg {
+  width: 100%;
+  height: 100%;
+}
+.provider-logo.letter {
+  border-radius: 4px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-weight: 600;
+  line-height: 1;
+}
+.badge .provider-logo {
+  display: inline-flex;
+  vertical-align: -1px;
+  margin-right: 4px;
+}
+
+.provider-fold,
+.picker-fold {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: inherit;
+  font: inherit;
+  font-weight: inherit;
+  padding: 2px 4px;
+  margin-left: -4px;
+  border-radius: 6px;
+}
+.provider-fold:hover,
+.picker-fold:hover {
+  background: var(--panel-2);
+}
+.fold-caret {
+  width: 10px;
+  color: var(--muted);
+  font-size: 0.8em;
+}
+.provider-card.folded {
+  padding-bottom: 12px;
+}
+.picker-name .provider-logo {
+  display: inline-flex;
+  vertical-align: -2px;
+  margin-right: 6px;
+}
+
 .chip {
   display: inline-flex;
   align-items: center;

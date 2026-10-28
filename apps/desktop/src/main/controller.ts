@@ -19,6 +19,8 @@ import {
   loadSettingsFile,
   newSession,
   PROVIDER_PRESETS,
+  ProviderError,
+  BUILTIN_PROVIDERS,
   providerReady,
   pushRecent,
   parseSettings,
@@ -170,6 +172,7 @@ export class AppController {
     const snapshot = this.registry?.cacheSnapshot()
     this.registry = new ProviderRegistry(this.settings.providers, (id) => this.secrets.get(id), {
       retries: this.settings.agent.requestRetries,
+      fillContext: true,
     })
     if (snapshot) this.registry.restoreCache(snapshot)
     for (const r of this.agents.values()) r.agent.setRegistry(this.registry)
@@ -207,8 +210,14 @@ export class AppController {
           : (models.find((m) => m.free) ?? models[0])?.id)
       if (!model) return { ok: true, message: `Connected, but no models listed.`, models: 0 }
       const provider = this.registry.get(providerId)
-      for await (const _ of provider.chat({ model, maxTokens: 5, messages: [{ role: 'user', content: 'Say OK' }] })) {
-        /* drain */
+      try {
+        for await (const _ of provider.chat({ model, maxTokens: 5, messages: [{ role: 'user', content: 'Say OK' }] })) {
+          /* drain */
+        }
+      } catch (e) {
+        // A 404 for the model comes after the key was checked, so the key works; the model just isn't served.
+        if (!(e instanceof ProviderError && e.status === 404)) throw e
+        return { ok: true, message: `Connected. Key accepted; ${models.length} models listed. ${model} isn't served, so it's hidden now.`, models: models.length }
       }
       return { ok: true, message: `Connected. ${models.length} models available; test request to ${model} succeeded.`, models: models.length }
     } catch (e) {
@@ -653,6 +662,7 @@ export class AppController {
       ready,
       keyStorage: this.secrets.storage,
       providerPresets: PROVIDER_PRESETS,
+      builtinProviders: BUILTIN_PROVIDERS.map((p) => p.id),
       workspace: this.workspace,
       session: this.sessionView(),
       ...this.sessionLists(),

@@ -83,6 +83,8 @@ export interface AppState {
   ready: Record<string, boolean>
   keyStorage: 'os' | 'basic'
   providerPresets: { id: string; name: string; baseUrl: string; requiresKey: boolean }[]
+  /** Ids of providers that ship with the app and can't be removed. */
+  builtinProviders: string[]
   /** Folder of the chat on screen. */
   workspace: string | null
   session: SessionView | null

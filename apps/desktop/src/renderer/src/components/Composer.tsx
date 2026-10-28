@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AppState, AttachmentInput, PermissionMode } from '../../../shared/ipc'
 import { api } from '../lib/api'
 import { modelLabel } from '../lib/format'
+import { MakerLogo, ProviderLogo } from './ProviderLogo'
 
 export const MODES: { id: PermissionMode; label: string; hint: string }[] = [
   { id: 'ask', label: 'Ask', hint: 'Ask before edits and commands' },
@@ -243,6 +244,8 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
           </button>
           <button className="chip" onClick={onOpenPicker} title={`Switch model (${app.platform === 'darwin' ? '⌘K' : 'Ctrl+K'})`}>
             <span className={`dot ${ready ? 'ok' : 'bad'}`} aria-label={ready ? 'Provider ready' : 'Provider needs setup'} />
+            {model && <ProviderLogo id={model.providerId} size={13} />}
+            {model && <MakerLogo modelId={model.modelId} providerId={model.providerId} size={13} />}
             {model ? modelLabel(model.modelId) : 'Pick a model'}
             <span className="muted small">{model?.providerId}</span>
           </button>

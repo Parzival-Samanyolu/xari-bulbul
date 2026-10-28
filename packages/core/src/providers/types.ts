@@ -10,6 +10,8 @@ export interface ChatRequest {
   /** Send stored reasoning back on the current tool loop's assistant messages. Default: on, except api.openai.com. */
   replayReasoning?: boolean
   signal?: AbortSignal
+  /** Give up when no data arrives for this long (hosted OpenAI-compatible providers only). 0 or unset = wait. */
+  stallMs?: number
 }
 
 export type StreamEvent =
@@ -27,6 +29,8 @@ export interface Provider {
   readonly name: string
   listModels(signal?: AbortSignal): Promise<ModelInfo[]>
   chat(req: ChatRequest): AsyncIterable<StreamEvent>
+  /** True for a listed model the provider answered 404 for; it's left out of model lists. */
+  unavailable?(modelId: string): boolean
 }
 
 export class ProviderError extends Error {

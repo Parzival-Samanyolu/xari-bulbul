@@ -170,4 +170,13 @@ describe('OpenAICompatProvider', () => {
     expect(sentBody.max_completion_tokens).toBe(50)
     expect(sentBody).not.toHaveProperty('max_tokens')
   })
+
+  it('drops embedding, safety and speech models from NVIDIA, Mistral and Groq lists', async () => {
+    const ids = ['nvidia/nemotron-3-super-120b-a12b', 'nvidia/nv-embedqa-mistral-7b-v2', 'meta/llama-guard-4-12b', 'mistral-ocr-latest', 'whisper-large-v3']
+    const fetch = (async () => new Response(JSON.stringify({ data: ids.map((id) => ({ id })) }))) as unknown as typeof globalThis.fetch
+    for (const id of ['nvidia', 'mistral', 'groq']) {
+      const p = new OpenAICompatProvider({ config: BUILTIN_PROVIDERS.find((c) => c.id === id)!, apiKey: 'k', fetch })
+      expect((await p.listModels()).map((m) => m.id)).toEqual(['nvidia/nemotron-3-super-120b-a12b'])
+    }
+  })
 })

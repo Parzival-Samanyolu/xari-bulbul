@@ -49,7 +49,7 @@ export const RECOMMENDED: RecommendedModel[] = [
     tier: 'paid',
     ref: { providerId: 'openrouter', modelId: 'deepseek/deepseek-v4.1-flash' },
     name: 'DeepSeek V4.1 Flash',
-    note: 'Very low cost reasoning model. About $0.03 / $0.08.',
+    note: 'Very low cost reasoning model, 1M context. About $0.14 / $0.42.',
   },
   {
     tier: 'paid',

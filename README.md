@@ -5,7 +5,7 @@
 *Xarı bülbül* is a flower from Karabakh, and this is an AI coding agent.
 
 An AI coding agent for **macOS, Windows and Linux** that works directly in your project, as a desktop app.
-It reads, searches, edits and runs code, and it can use **any model** on OpenRouter, Ollama Cloud, Google AI Studio (Gemini), or any OpenAI-compatible API.
+It reads, searches, edits and runs code, and it can use **any model** on OpenRouter, Ollama Cloud, Google AI Studio (Gemini), Anthropic, OpenAI, Mistral, xAI, Groq, Cerebras, NVIDIA, Z.ai, or any OpenAI-compatible API.
 
 Built to be owned and extended. The engine is small, readable TypeScript with no agent framework and no AI SDK.
 
@@ -103,7 +103,6 @@ Project *tool code* only loads if you enable it in settings, because opening a c
 To add a provider, go to **Settings → Providers → Add a custom provider** and enter any OpenAI-compatible base URL, such as:
 - local Ollama: `http://localhost:11434/v1`
 - LM Studio
-- Groq
 - DeepSeek
 - vLLM
 

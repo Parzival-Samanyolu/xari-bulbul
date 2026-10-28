@@ -70,13 +70,72 @@ export const BUILTIN_PROVIDERS: ProviderConfig[] = [
     requiresKey: true,
     api: 'openai',
   },
+  {
+    id: 'mistral',
+    name: 'Mistral',
+    baseUrl: 'https://api.mistral.ai/v1',
+    enabled: true,
+    headers: {},
+    requestUsageCost: false,
+    requiresKey: true,
+    api: 'openai',
+  },
+  {
+    id: 'xai',
+    name: 'xAI',
+    baseUrl: 'https://api.x.ai/v1',
+    enabled: true,
+    headers: {},
+    requestUsageCost: false,
+    requiresKey: true,
+    api: 'openai',
+  },
+  {
+    id: 'groq',
+    name: 'Groq',
+    baseUrl: 'https://api.groq.com/openai/v1',
+    enabled: true,
+    headers: {},
+    requestUsageCost: false,
+    requiresKey: true,
+    api: 'openai',
+  },
+  {
+    id: 'cerebras',
+    name: 'Cerebras',
+    baseUrl: 'https://api.cerebras.ai/v1',
+    enabled: true,
+    headers: {},
+    requestUsageCost: false,
+    requiresKey: true,
+    api: 'openai',
+  },
+  {
+    id: 'nvidia',
+    name: 'NVIDIA',
+    baseUrl: 'https://integrate.api.nvidia.com/v1',
+    enabled: true,
+    headers: {},
+    requestUsageCost: false,
+    requiresKey: true,
+    api: 'openai',
+  },
+  {
+    id: 'zai',
+    name: 'Z.ai',
+    baseUrl: 'https://api.z.ai/api/paas/v4',
+    enabled: true,
+    headers: {},
+    requestUsageCost: false,
+    requiresKey: true,
+    api: 'openai',
+  },
 ]
 
 /** One-click presets for common OpenAI-compatible servers. */
 export const PROVIDER_PRESETS: Omit<ProviderConfig, 'enabled' | 'headers' | 'requestUsageCost' | 'api'>[] = [
   { id: 'ollama-local', name: 'Ollama (local)', baseUrl: 'http://localhost:11434/v1', requiresKey: false },
   { id: 'lmstudio', name: 'LM Studio', baseUrl: 'http://localhost:1234/v1', requiresKey: false },
-  { id: 'groq', name: 'Groq', baseUrl: 'https://api.groq.com/openai/v1', requiresKey: true },
   { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', requiresKey: true },
 ]
 
@@ -161,6 +220,8 @@ export const SettingsSchema = z.object({
           freeOnly: z.boolean().default(true),
           toolsOnly: z.boolean().default(true),
           sort: z.enum(['newest', 'name', 'context', 'price']).default('newest'),
+          /** Provider groups folded shut in the model switcher. */
+          collapsed: z.array(z.string()).default([]),
         })
         .prefault({}),
       /** Per-model overrides keyed by `${providerId}:${modelId}`. */
@@ -189,6 +250,8 @@ export const SettingsSchema = z.object({
       shell: z.string().default(''),
       projectInstructionFiles: z.array(z.string()).default(['AGENTS.md', 'HARNESS.md', 'CLAUDE.md']),
       requestRetries: z.number().int().min(0).max(10).default(3),
+      /** Stop waiting when a hosted provider sends nothing for this long. 0 = wait forever. */
+      stallTimeoutSec: z.number().int().min(0).max(3600).default(90),
       subagents: z
         .object({
           /** Gives the agent the `task` tool. */
@@ -295,6 +358,8 @@ export const SettingsSchema = z.object({
       lastWorkspace: z.string().nullable().default(null),
       /** Folders shown in the sidebar, in order. */
       openWorkspaces: z.array(z.string()).default([]),
+      /** Provider cards folded shut in Settings → Providers & Keys. */
+      collapsedProviders: z.array(z.string()).default([]),
       recentWorkspaces: z.array(z.string()).default([]),
     })
     .prefault({}),

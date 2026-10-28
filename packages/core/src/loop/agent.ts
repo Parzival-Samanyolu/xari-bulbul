@@ -553,6 +553,7 @@ export class Agent {
           messages: [{ role: 'system', content: this.systemPrompt(tools) }, ...this.session.messages],
           tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
           signal,
+          stallMs: this.settings.agent.stallTimeoutSec * 1000,
           ...this.requestParams(),
         })) {
           if (ev.type === 'text') {

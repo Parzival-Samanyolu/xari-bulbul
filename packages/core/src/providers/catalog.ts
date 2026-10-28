@@ -18,6 +18,48 @@ export function sortModels(ms: ModelInfo[], sort: ModelSort): ModelInfo[] {
   return out
 }
 
+/** Org prefixes in model ids ("meta-llama/…", "deepseek-ai/…") → the company that made the model. */
+const ORGS: Record<string, string> = {
+  'meta-llama': 'meta', meta: 'meta', google: 'google', openai: 'openai', anthropic: 'anthropic',
+  mistralai: 'mistral', 'nv-mistralai': 'mistral', deepseek: 'deepseek', 'deepseek-ai': 'deepseek', qwen: 'qwen',
+  moonshotai: 'moonshot', 'z-ai': 'zai', 'zai-org': 'zai', thudm: 'zai', 'x-ai': 'xai', xai: 'xai', nvidia: 'nvidia',
+  minimax: 'minimax', minimaxai: 'minimax', microsoft: 'microsoft', cohere: 'cohere', ibm: 'ibm', 'ibm-granite': 'ibm',
+  stepfun: 'stepfun', 'stepfun-ai': 'stepfun', bytedance: 'bytedance', 'bytedance-seed': 'bytedance', baidu: 'baidu',
+  tencent: 'tencent', amazon: 'amazon', ai21: 'ai21', ai21labs: 'ai21', perplexity: 'perplexity', liquid: 'liquid',
+  nousresearch: 'nousresearch', 'arcee-ai': 'arcee', allenai: 'allenai', poolside: 'poolside', inception: 'inception',
+  openrouter: 'openrouter',
+}
+
+/** For ids without an org prefix (Groq, Ollama, Cerebras): the model family names its maker. */
+const FAMILIES: [RegExp, string][] = [
+  [/^(gpt|o\d|chatgpt|codex)/, 'openai'],
+  [/claude/, 'anthropic'],
+  [/gemini|gemma/, 'google'],
+  [/llama/, 'meta'],
+  [/qwen|qwq/, 'qwen'],
+  [/deepseek/, 'deepseek'],
+  [/mistral|mixtral|codestral|magistral|devstral|ministral|pixtral|voxtral/, 'mistral'],
+  [/grok/, 'xai'],
+  [/glm/, 'zai'],
+  [/kimi/, 'moonshot'],
+  [/minimax/, 'minimax'],
+  [/nemotron/, 'nvidia'],
+  [/^phi-/, 'microsoft'],
+  [/granite/, 'ibm'],
+  [/^command/, 'cohere'],
+  [/hermes/, 'nousresearch'],
+  [/olmo/, 'allenai'],
+]
+
+/** The company that made a model, e.g. "meta" for NVIDIA's "meta/llama-3.2-11b-vision-instruct"; undefined if unknown. */
+export function modelMaker(modelId: string): string | undefined {
+  const id = modelId.toLowerCase().replace(/^models\//, '')
+  const slash = id.indexOf('/')
+  if (slash > 0 && ORGS[id.slice(0, slash)]) return ORGS[id.slice(0, slash)]
+  const name = id.slice(slash + 1)
+  return FAMILIES.find(([re]) => re.test(name))?.[1]
+}
+
 /** "Qwen: Qwen3.8 27B (free)" → "Qwen3.8 27B"; the free badge and provider group say the rest. */
 export function displayName(m: ModelInfo): string {
   let n = m.name.replace(/\s*\(free\)\s*$/i, '')

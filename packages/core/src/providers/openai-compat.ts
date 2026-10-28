@@ -41,10 +41,19 @@ export class OpenAICompatProvider implements Provider {
     return /^https:\/\/api\.openai\.com\//.test(this.config.baseUrl)
   }
 
+  /** Hosts whose model lists mix chat models with embedding, safety, OCR and speech models. */
+  private isMixedList(): boolean {
+    return /^https:\/\/(integrate\.api\.nvidia\.com|api\.mistral\.ai|api\.groq\.com)\//.test(this.config.baseUrl)
+  }
+
   private headers(): Record<string, string> {
     const h: Record<string, string> = { 'content-type': 'application/json', ...this.config.headers }
     if (this.apiKey) h.authorization = `Bearer ${this.apiKey}`
     return h
+  }
+
+  unavailable(modelId: string): boolean {
+    return !!UNAVAILABLE.get(this.config.baseUrl)?.has(modelId)
   }
 
   async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
@@ -52,6 +61,7 @@ export class OpenAICompatProvider implements Provider {
     const json = (await res.json()) as { data?: RawModel[] }
     return (json.data ?? [])
       .filter((m) => !this.isOpenAI() || !NON_CHAT_OPENAI.test(m.id))
+      .filter((m) => !this.isMixedList() || !NON_CHAT_MIXED.test(m.id))
       .flatMap((m) => {
         // Google lists `models/gemini-3.5-flash` next to embedding, image, video and audio models,
         // and still lists Gemini 2.x, which answers 404 "no longer available to new users".
@@ -59,11 +69,40 @@ export class OpenAICompatProvider implements Provider {
         const id = m.id.slice('models/'.length)
         return NON_CHAT_GOOGLE.test(id) || RETIRED_GOOGLE.test(id) ? [] : [{ ...m, id, name: m.name ?? id }]
       })
+      .filter((m) => !this.unavailable(m.id))
       .map((m) => toModelInfo(this.id, m))
       .sort((a, b) => a.id.localeCompare(b.id))
   }
 
   async *chat(req: ChatRequest): AsyncIterable<StreamEvent> {
+    // Free tiers (NVIDIA's especially) can queue a request forever; give up when nothing arrives for a while.
+    // Not for local servers, which may spend minutes loading a model, or OpenAI, whose reasoning models think silently.
+    const stallMs = this.config.requiresKey && !this.isOpenAI() ? (req.stallMs ?? 0) : 0
+    if (!stallMs) return yield* this.stream(req, () => {})
+    const ctrl = new AbortController()
+    const onAbort = () => ctrl.abort(req.signal?.reason)
+    if (req.signal?.aborted) onAbort()
+    req.signal?.addEventListener('abort', onAbort, { once: true })
+    let stalled = false
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const touch = () => {
+      clearTimeout(timer)
+      timer = setTimeout(() => ((stalled = true), ctrl.abort()), stallMs)
+    }
+    try {
+      touch()
+      yield* this.stream({ ...req, signal: ctrl.signal }, touch)
+    } catch (e) {
+      if (!stalled || req.signal?.aborted) throw e
+      throw new ProviderError(`${this.name} sent nothing for ${Math.round(stallMs / 1000)}s on ${req.model}; it may be queued or overloaded. Try another model.`, 408)
+    } finally {
+      clearTimeout(timer)
+      req.signal?.removeEventListener('abort', onAbort)
+    }
+  }
+
+  /** `touch` is called whenever bytes arrive, to reset the stall timer. */
+  private async *stream(req: ChatRequest, touch: () => void): AsyncIterable<StreamEvent> {
     if (!this.apiKey && this.config.requiresKey) {
       throw new ProviderError(`No API key set for ${this.name}. Add one in Settings → Providers & Keys.`)
     }
@@ -90,6 +129,12 @@ export class OpenAICompatProvider implements Provider {
       headers: this.headers(),
       body: JSON.stringify(body),
       signal: req.signal,
+    }).catch((e) => {
+      // NVIDIA lists many models it no longer serves ("Function '…': Not found for account").
+      if (!(e instanceof ProviderError && e.status === 404 && /model|function/i.test(e.message))) throw e
+      const set = UNAVAILABLE.get(this.config.baseUrl) ?? new Set<string>()
+      UNAVAILABLE.set(this.config.baseUrl, set.add(req.model))
+      throw new ProviderError(`${this.name} lists ${req.model} but doesn't serve it (404). Pick another model; this one is now hidden from the list.`, 404)
     })
     if (!res.body) throw new ProviderError('Empty response body from provider')
 
@@ -99,6 +144,7 @@ export class OpenAICompatProvider implements Provider {
     const details: unknown[] = []
 
     for await (const data of readSseData(res.body)) {
+      touch()
       if (data === '[DONE]') break
       let chunk: RawChunk
       try {
@@ -220,11 +266,17 @@ function replayedReasoning(m: Extract<ChatMessage, { role: 'assistant' }>): Reco
 const NON_CHAT_GOOGLE =
   /embedding|imagen|image|nano-banana|veo|tts|aqa|audio|live|lyria|transcribe|translate|robotics|computer-use|deep-research|antigravity/
 
+/** NVIDIA, Mistral and Groq list these next to chat models. */
+const NON_CHAT_MIXED = /embed|rerank|retriever|guard|safety|reward|moderation|ocr|parse|whisper|tts|nvclip|detector|deplot/
+
 /** OpenAI lists image, audio, embedding and legacy completion models next to chat ones. */
 const NON_CHAT_OPENAI =
   /embedding|whisper|tts|dall-e|gpt-image|image|audio|realtime|transcribe|moderation|search|sora|davinci|babbage|codex-mini/
 
 const RETIRED_GOOGLE = /^gemini-[12]\./
+
+/** Model ids that answered 404 this run, by base URL; shared so they stay hidden when the registry is rebuilt. */
+const UNAVAILABLE = new Map<string, Set<string>>()
 
 interface RawModel {
   id: string
@@ -232,6 +284,13 @@ interface RawModel {
   created?: number
   name?: string
   context_length?: number
+  /** Groq, Cerebras */
+  context_window?: number
+  /** Mistral */
+  max_context_length?: number
+  /** vLLM */
+  max_model_len?: number
+  max_input_tokens?: number
   pricing?: { prompt?: string; completion?: string }
   supported_parameters?: string[]
 }
@@ -244,7 +303,7 @@ function toModelInfo(providerId: string, m: RawModel): ModelInfo {
     id: m.id,
     name: m.name ?? m.id,
     providerId,
-    contextLength: m.context_length,
+    contextLength: m.context_length ?? m.context_window ?? m.max_context_length ?? m.max_model_len ?? m.max_input_tokens,
     pricing: priced ? { prompt, completion } : undefined,
     free: (priced && prompt === 0 && completion === 0) || m.id.endsWith(':free'),
     created: typeof m.created === 'number' ? m.created : undefined,
