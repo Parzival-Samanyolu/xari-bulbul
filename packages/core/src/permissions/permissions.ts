@@ -1,7 +1,7 @@
 import path from 'node:path'
 import type { PermissionMode } from '../types.js'
 import { destructiveReason, outsideWriteReason } from './destructive.js'
-import { isInside, resolvePath, toPosix, type Tool } from '../tools/types.js'
+import { isInside, resolvePath, toPosix, type Tool, type ToolKind } from '../tools/types.js'
 
 export interface PermissionConfig {
   mode: PermissionMode
@@ -72,6 +72,15 @@ export function ruleFor(tool: Tool, subject: string): string {
   return tool.name
 }
 
+/** Why a tool asks, shown on the approval prompt. */
+const ASK_REASON: Record<ToolKind, string> = {
+  read: 'Reads outside the usual rules.',
+  edit: 'Modifies files.',
+  exec: 'Runs a shell command.',
+  network: 'Acts on the web.',
+  other: 'Runs a tool that can make changes.',
+}
+
 export class Permissions {
   /** Rules granted with "always allow" during this session. */
   readonly sessionAllow: string[] = []
@@ -121,7 +130,7 @@ export class Permissions {
     if ([...allow, ...this.sessionAllow].some((r) => ruleMatches(r, tool, subject, this.cwd))) return { decision: 'allow' }
     if (mode === 'auto') return { decision: 'allow' }
     if (mode === 'acceptEdits' && tool.kind === 'edit') return { decision: 'allow' }
-    return { decision: 'ask', reason: tool.kind === 'exec' ? 'Runs a shell command.' : 'Modifies files.' }
+    return { decision: 'ask', reason: ASK_REASON[tool.kind] }
   }
 
   private destructive(tool: Tool, subject: string): string | null {
