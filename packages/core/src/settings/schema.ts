@@ -216,6 +216,8 @@ export const SettingsSchema = z.object({
       compaction: ModelRefSchema.nullable().default(null),
       /** Model that names new chats after the first message. Empty = keep the first line as the title. */
       title: ModelRefSchema.nullable().default(null),
+      /** Model that saves durable facts to memory after each turn. Empty = use the title model; neither = off. */
+      memoryReview: ModelRefSchema.nullable().default(null),
       favorites: z.array(ModelRefSchema).default([]),
       /** Most recently used models, newest first (maintained automatically). */
       recent: z.array(ModelRefSchema).default([]),

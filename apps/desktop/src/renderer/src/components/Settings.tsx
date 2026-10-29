@@ -334,7 +334,7 @@ const SPEEDS = [
 ]
 
 function ModelsTab({ app, save, onState, onError, onTab }: TabProps) {
-  const [picking, setPicking] = useState<null | 'default' | 'compaction' | 'title' | 'subagent' | 'override' | 'favorite'>(null)
+  const [picking, setPicking] = useState<null | 'default' | 'compaction' | 'title' | 'memoryReview' | 'subagent' | 'override' | 'favorite'>(null)
   const m = app.settings.models
   const ref = (r: ModelRef | null) => (r ? `${modelLabel(r.modelId)} · ${r.providerId}` : 'Same as active model')
   const onPick = (r: ModelRef) => {
@@ -342,6 +342,7 @@ function ModelsTab({ app, save, onState, onError, onTab }: TabProps) {
     if (picking === 'default') save((s) => ((s.models.default = r), s))
     if (picking === 'compaction') save((s) => ((s.models.compaction = r), s))
     if (picking === 'title') save((s) => ((s.models.title = r), s))
+    if (picking === 'memoryReview') save((s) => ((s.models.memoryReview = r), s))
     if (picking === 'subagent') save((s) => ((s.agent.subagents.model = r), s))
     if (picking === 'favorite') save((s) => (s.models.favorites.some((f) => `${f.providerId}:${f.modelId}` === k) || s.models.favorites.push(r), s))
     if (picking === 'override') save((s) => ((s.models.overrides[k] ??= {}), s))
@@ -375,6 +376,18 @@ function ModelsTab({ app, save, onState, onError, onTab }: TabProps) {
             {m.title && (
               <button className="link small" onClick={() => save((s) => ((s.models.title = null), s))}>
                 turn off
+              </button>
+            )}
+          </div>
+        </Row>
+        <Row label="Memory model" hint="After each reply, saves lasting facts such as your preferences and project commands to memory. Without one, the chat naming model does this; with neither, it's off.">
+          <div className="inline">
+            <button className="btn" onClick={() => setPicking('memoryReview')}>
+              {m.memoryReview ? `${modelLabel(m.memoryReview.modelId)} · ${m.memoryReview.providerId}` : m.title ? 'Same as chat naming model' : 'Off'}
+            </button>
+            {m.memoryReview && (
+              <button className="link small" onClick={() => save((s) => ((s.models.memoryReview = null), s))}>
+                reset
               </button>
             )}
           </div>

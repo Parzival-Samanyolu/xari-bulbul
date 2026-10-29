@@ -4,6 +4,7 @@ import { compactionSplit, estimateTokens, summarize } from '../context/compact.j
 import { buildSystemPrompt, gatherEnvironment, type PromptEnvironment } from '../context/system-prompt.js'
 import { Reminders } from './reminders.js'
 import { runHooks, type HookOutcome } from './hooks.js'
+import { applyReview, reviewExchange, type MemoryFact } from '../memory/review.js'
 import type { MemoryStore } from '../memory/store.js'
 import type { Permissions, PermissionAnswer } from '../permissions/permissions.js'
 import type { ProviderRegistry } from '../providers/registry.js'
@@ -42,6 +43,8 @@ export type AgentEvent =
   | { type: 'compacted'; removedMessages: number }
   /** The title model renamed the chat. */
   | { type: 'title'; title: string }
+  /** The memory review saved or removed facts after the turn. */
+  | { type: 'memory'; added: MemoryFact[]; removed: MemoryFact[] }
   | { type: 'notice'; level: 'info' | 'warn'; text: string }
   | { type: 'error'; message: string }
   | { type: 'turn_end'; reason: TurnEndReason }
@@ -503,6 +506,8 @@ export class Agent {
       this.save()
       this.emit({ type: 'turn_end', reason })
     }
+    // Runs after the turn has ended, so it never holds it up.
+    if (reason === 'done' && this.memoryOn && !this.o.subagent) void this.reviewMemory()
     return reason
   }
 
@@ -902,6 +907,31 @@ export class Agent {
       this.emit({ type: 'title', title })
     } catch {
       // The first line stays as the title.
+    }
+  }
+
+  /** Asks the review model whether the turn taught a durable fact, and saves it. Failures are silent. */
+  private async reviewMemory() {
+    const ref = this.settings.models.memoryReview ?? this.settings.models.title
+    if (!ref || !this.o.memory) return
+    const messages = this.session.messages
+    const user = messages.findLast((m) => m.role === 'user' && !m.synthetic)
+    const reply = messages.findLast((m) => m.role === 'assistant' && m.content.trim())
+    if (!user || !reply || !user.content.trim()) return
+    try {
+      const { review, usage } = await reviewExchange(
+        this.registry.get(ref.providerId),
+        ref.modelId,
+        { global: this.memory('global'), project: this.memory('project'), user: user.content, reply: reply.content },
+        AbortSignal.timeout(90_000),
+      )
+      if (usage) this.recordUsage(ref, usage)
+      // Memory may have been turned off while the review ran.
+      if (!review || !this.memoryOn) return
+      const { added, removed } = applyReview(this.o.memory.scoped(this.session.meta.cwd), review)
+      if (added.length || removed.length) this.emit({ type: 'memory', added, removed })
+    } catch {
+      // Memory stays as it was.
     }
   }
 

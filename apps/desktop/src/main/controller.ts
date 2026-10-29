@@ -4,6 +4,7 @@ import {
   Agent,
   McpManager,
   MemoryStore,
+  type MemoryFact,
   Permissions,
   ProviderRegistry,
   SAVE_SKILL_TOOL,
@@ -458,7 +459,7 @@ export class AppController {
     // Titles, session lists and running indicators change at these points.
     if (event.type === 'turn_start' || event.type === 'turn_end' || (event.type === 'message' && event.index === 0)) this.pushState()
     // Compaction rewrites history; resync the renderer's copy.
-    if (event.type === 'compacted' || event.type === 'title') this.pushState()
+    if (event.type === 'compacted' || event.type === 'title' || event.type === 'memory') this.pushState()
   }
 
   private cancelPending(sessionId?: string) {
@@ -646,6 +647,20 @@ export class AppController {
 
   removeMemory(scope: 'project' | 'global', fact: string): AppState {
     if (scope === 'global' || this.workspace) this.memory.delete(scope, this.workspace ?? '', fact)
+    return this.state()
+  }
+
+  undoMemory(sessionId: string, added: MemoryFact[], removed: MemoryFact[]): AppState {
+    const cwd = this.agents.get(sessionId)?.agent.session.meta.cwd ?? this.store.load(sessionId)?.meta.cwd
+    if (!cwd) return this.state()
+    for (const f of added) this.memory.delete(f.scope, cwd, f.fact)
+    for (const f of removed) {
+      try {
+        this.memory.add(f.scope, cwd, f.fact)
+      } catch {
+        // Memory filled up since; the fact stays removed.
+      }
+    }
     return this.state()
   }
 

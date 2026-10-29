@@ -4,6 +4,7 @@ import type {
   ChatMessage,
   Checkpoint,
   McpServerStatus,
+  MemoryFact,
   ModelInfo,
   ModelRef,
   PermissionAnswer,
@@ -22,6 +23,7 @@ export type {
   ChatMessage,
   Checkpoint,
   McpServerStatus,
+  MemoryFact,
   ModelInfo,
   ModelRef,
   PermissionAnswer,
@@ -213,6 +215,8 @@ export interface HarnessApi {
   memory: {
     remove(scope: 'project' | 'global', fact: string): Promise<AppState>
     clear(scope: 'project' | 'global'): Promise<AppState>
+    /** Reverts what the memory review did after a turn in `sessionId`'s folder. */
+    undo(sessionId: string, added: MemoryFact[], removed: MemoryFact[]): Promise<AppState>
   }
   extensions: {
     reload(): Promise<AppState>

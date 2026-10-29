@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useState } from 'react'
-import type { AgentEvent, AppState, PermissionAnswer, PermissionRequest, UpdateStatus } from '../../shared/ipc'
+import type { AgentEvent, AppState, MemoryFact, PermissionAnswer, PermissionRequest, UpdateStatus } from '../../shared/ipc'
 import { api } from './lib/api'
 import { Chat } from './components/Chat'
 import { Composer } from './components/Composer'
@@ -30,6 +30,8 @@ export interface Notice {
   retry?: boolean
   /** The turn hit the step limit; offer to let the agent keep going. */
   resume?: boolean
+  /** What the memory review changed after a turn; offer to undo it. */
+  memory?: { sessionId: string; added: MemoryFact[]; removed: MemoryFact[] }
 }
 
 /** Point notices at the settings tab that resolves them. */
@@ -75,6 +77,14 @@ function withLive(m: Model, id: string, fn: (l: LiveState) => LiveState): Model 
 function addNotice(l: LiveState, level: Notice['level'], text: string, retry?: boolean): LiveState {
   const notice: Notice = { id: ++noticeId, level, text, fix: fixFor(text), ...(retry && { retry }) }
   return { ...l, notices: [...l.notices, notice].slice(-5) }
+}
+
+function memoryText(added: MemoryFact[], removed: MemoryFact[]): string {
+  const list = (facts: MemoryFact[]) => facts.map((f) => f.fact).join('; ')
+  const parts = []
+  if (added.length) parts.push(`Saved to memory: ${list(added)}`)
+  if (removed.length) parts.push(`Removed from memory: ${list(removed)}`)
+  return parts.join('. ')
 }
 
 function reducer(m: Model, a: Action): Model {
@@ -147,6 +157,10 @@ function reducer(m: Model, a: Action): Model {
       return setLive(addNotice(live, 'info', `Summarized ${e.removedMessages} older messages to free up context.`))
     case 'notice':
       return setLive(addNotice(live, e.level, e.text))
+    case 'memory': {
+      const notice: Notice = { id: ++noticeId, level: 'info', text: memoryText(e.added, e.removed), memory: { sessionId: id, added: e.added, removed: e.removed } }
+      return setLive({ ...live, notices: [...live.notices, notice].slice(-5) })
+    }
     case 'error':
       return setLive(addNotice(live, 'error', e.message, true))
     case 'turn_end': {
@@ -213,6 +227,7 @@ export function App() {
   const onRetry = useCallback(() => void api.agent.retry().catch(fail), [fail])
   const onContinue = useCallback(() => void api.agent.send('continue').catch(fail), [fail])
   const onRevert = useCallback((at: number, file?: string) => void api.agent.revert(at, file).then(setState, fail), [setState, fail])
+  const onUndoMemory = useCallback((m: NonNullable<Notice['memory']>) => void api.memory.undo(m.sessionId, m.added, m.removed).then(setState, fail), [setState, fail])
   const onEdit = useCallback((index: number, text: string, revert: boolean) => void api.agent.editMessage(index, text, revert).catch(fail), [fail])
   const answer = (a: PermissionAnswer) => {
     if (!approval) return
@@ -284,6 +299,7 @@ export function App() {
               onContinue={onContinue}
               onRevert={onRevert}
               onEdit={onEdit}
+              onUndoMemory={onUndoMemory}
             />
             <Composer app={app} onState={setState} onError={fail} onOpenPicker={() => setPickerOpen(true)} />
           </>

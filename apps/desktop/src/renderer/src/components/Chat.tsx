@@ -1,6 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AppState, ChatMessage, Checkpoint, PermissionAnswer, PermissionRequest, QuestionRequest, ToolDisplay } from '../../../shared/ipc'
-import type { LiveState, ToolLive } from '../App'
+import type { LiveState, Notice, ToolLive } from '../App'
 import { Markdown } from '../lib/Markdown'
 import { Approval } from './Approval'
 import { Question } from './Question'
@@ -19,6 +19,7 @@ interface Props {
   onContinue: () => void
   onRevert: (at: number, file?: string) => void
   onEdit: (index: number, text: string, revert: boolean) => void
+  onUndoMemory: (memory: NonNullable<Notice['memory']>) => void
 }
 
 type UserMessage = Extract<ChatMessage, { role: 'user' }>
@@ -27,7 +28,7 @@ type ToolMessage = Extract<ChatMessage, { role: 'tool' }>
 
 const FIX_LABEL = { providers: 'Open Providers & Keys', usage: 'Open Usage & Budgets', agent: 'Open Agent settings' } as const
 
-export function Chat({ app, live, onDismiss, onSettings, approval, question, onRetry, onContinue, onRevert, onEdit }: Props) {
+export function Chat({ app, live, onDismiss, onSettings, approval, question, onRetry, onContinue, onRevert, onEdit, onUndoMemory }: Props) {
   const session = app.session
   const scroller = useRef<HTMLDivElement>(null)
   const stick = useRef(true)
@@ -159,6 +160,17 @@ export function Chat({ app, live, onDismiss, onSettings, approval, question, onR
                 }}
               >
                 Continue
+              </button>
+            )}
+            {n.memory && (
+              <button
+                className="btn"
+                onClick={() => {
+                  onDismiss(n.id)
+                  onUndoMemory(n.memory!)
+                }}
+              >
+                Undo
               </button>
             )}
             {n.fix && (

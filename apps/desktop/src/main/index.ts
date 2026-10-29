@@ -134,6 +134,7 @@ function registerIpc() {
   handle('mcp.setToken', (id, token) => c.setMcpToken(id, token))
   handle('memory.remove', (scope, fact) => c.removeMemory(scope, fact))
   handle('memory.clear', (scope) => c.clearMemory(scope))
+  handle('memory.undo', (sessionId, added, removed) => c.undoMemory(sessionId, added, removed))
   handle('extensions.reload', () => c.reloadExtensions())
   handle('extensions.openDir', async (which) => {
     const dir = c.extensionDir(which)
