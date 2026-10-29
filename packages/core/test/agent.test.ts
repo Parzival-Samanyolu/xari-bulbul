@@ -77,6 +77,18 @@ describe('Agent loop', () => {
     expect(events).toContainEqual({ type: 'notice', level: 'info', text: 'Waiting for batch' })
   })
 
+  it('names a new chat with the title model, once', async () => {
+    const { agent, provider, settings, events } = await setup([[{ type: 'text', delta: 'Count words in files' }], [{ type: 'text', delta: 'Sure.' }], [{ type: 'text', delta: 'again' }]])
+    settings.models.title = { providerId: 'mock', modelId: 'm' }
+    await agent.send('how many words are in my files?')
+    await new Promise((r) => setTimeout(r, 0))
+    expect(agent.session.meta.title).toBe('Count words in files')
+    expect(events).toContainEqual({ type: 'title', title: 'Count words in files' })
+    expect(provider.requests[0].tools).toBeUndefined()
+    await agent.send('and now?')
+    expect(provider.requests).toHaveLength(3)
+  })
+
   it('runs tools until the model stops, tracking usage and cost', async () => {
     const { dir, agent, provider, events, usageTracker } = await setup([
       [call('1', 'read_file', { path: 'app.txt' }), usage(100, 10)],

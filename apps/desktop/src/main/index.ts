@@ -27,6 +27,15 @@ function notify(n: BackgroundNotice) {
   note.show()
 }
 
+/** Shown before the renderer paints; close to the theme's --bg so the window doesn't flash. */
+function windowBackground(): string {
+  const theme = controller?.getSettings().appearance.theme ?? 'system'
+  if (theme === 'oled' || theme === 'contrast') return '#000000'
+  if (theme === 'sepia') return '#f6efe1'
+  if (theme === 'dark' || (theme === 'system' && nativeTheme.shouldUseDarkColors)) return '#16171a'
+  return '#ffffff'
+}
+
 function createWindow() {
   win = new BrowserWindow({
     width: 1280,
@@ -35,7 +44,7 @@ function createWindow() {
     minHeight: 560,
     show: false,
     title: 'Xarı Bülbül',
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#16171a' : '#ffffff',
+    backgroundColor: windowBackground(),
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
@@ -93,6 +102,7 @@ function registerIpc() {
   })
   handle('workspace.set', (p) => c.setWorkspace(p))
   handle('workspace.close', (p) => c.closeWorkspace(p))
+  handle('workspace.reorder', (p) => c.reorderWorkspaces(p))
   handle('sessions.open', (id) => c.openSession(id))
   handle('sessions.create', (cwd) => c.createSession(cwd))
   handle('sessions.remove', (id) => c.removeSession(id))

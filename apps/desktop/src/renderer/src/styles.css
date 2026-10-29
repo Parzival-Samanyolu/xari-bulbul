@@ -65,6 +65,87 @@
   color-scheme: light;
 }
 
+/* OLED: true black surfaces so pixels switch off; flat fills, plum stays as the accent. */
+[data-theme='oled'] {
+  --bg: oklch(0 0 0);
+  --bg-side: oklch(0 0 0);
+  --panel: oklch(0.15 0.012 350);
+  --panel-2: oklch(0.2 0.016 350);
+  --border: oklch(0.27 0.018 350);
+  --control-border: oklch(0.55 0.02 350);
+  --text: oklch(0.93 0.008 350);
+  --muted: oklch(0.72 0.014 350);
+  --accent: oklch(0.76 0.11 350);
+  --accent-strong: oklch(0.5 0.14 350);
+  --accent-soft: oklch(0.24 0.05 350);
+  --on-accent: oklch(1 0 0);
+  --sepal: oklch(0.86 0.09 125);
+  --ok: oklch(0.76 0.13 150);
+  --warn: oklch(0.82 0.12 80);
+  --danger: oklch(0.7 0.16 28);
+  --info: oklch(0.75 0.09 240);
+  --add-bg: oklch(0.22 0.04 150);
+  --del-bg: oklch(0.22 0.045 28);
+  --code-bg: oklch(0.1 0.008 350);
+  --scrim: oklch(0 0 0 / 0.7);
+  --shadow: oklch(0 0 0 / 0.6);
+  color-scheme: dark;
+}
+
+/* Sepia: warm paper for long reading. */
+[data-theme='sepia'] {
+  --bg: oklch(0.955 0.022 85);
+  --bg-side: oklch(0.925 0.028 82);
+  --panel: oklch(0.94 0.025 84);
+  --panel-2: oklch(0.905 0.032 80);
+  --border: oklch(0.84 0.035 78);
+  --control-border: oklch(0.55 0.04 70);
+  --text: oklch(0.27 0.03 55);
+  --muted: oklch(0.47 0.035 60);
+  --accent: oklch(0.45 0.14 350);
+  --accent-strong: oklch(0.45 0.14 350);
+  --accent-soft: oklch(0.9 0.035 350);
+  --on-accent: oklch(1 0 0);
+  --sepal: oklch(0.55 0.1 125);
+  --ok: oklch(0.47 0.12 150);
+  --warn: oklch(0.5 0.11 65);
+  --danger: oklch(0.5 0.17 28);
+  --info: oklch(0.47 0.11 245);
+  --add-bg: oklch(0.91 0.045 140);
+  --del-bg: oklch(0.91 0.04 35);
+  --code-bg: oklch(0.93 0.026 82);
+  --scrim: oklch(0.25 0.03 60 / 0.35);
+  --shadow: oklch(0.35 0.04 60 / 0.2);
+  color-scheme: light;
+}
+
+/* High contrast: black and white, strong borders, AAA text. */
+[data-theme='contrast'] {
+  --bg: oklch(0 0 0);
+  --bg-side: oklch(0 0 0);
+  --panel: oklch(0.13 0 0);
+  --panel-2: oklch(0.22 0 0);
+  --border: oklch(0.62 0 0);
+  --control-border: oklch(0.85 0 0);
+  --text: oklch(1 0 0);
+  --muted: oklch(0.86 0 0);
+  --accent: oklch(0.85 0.09 350);
+  --accent-strong: oklch(0.42 0.15 350);
+  --accent-soft: oklch(0.3 0.07 350);
+  --on-accent: oklch(1 0 0);
+  --sepal: oklch(0.9 0.1 125);
+  --ok: oklch(0.85 0.15 150);
+  --warn: oklch(0.88 0.14 90);
+  --danger: oklch(0.8 0.13 28);
+  --info: oklch(0.85 0.09 240);
+  --add-bg: oklch(0.28 0.06 150);
+  --del-bg: oklch(0.28 0.07 28);
+  --code-bg: oklch(0.1 0 0);
+  --scrim: oklch(0 0 0 / 0.75);
+  --shadow: oklch(0 0 0 / 0.6);
+  color-scheme: dark;
+}
+
 [data-density='compact'] {
   --gap: 8px;
 }
@@ -462,6 +543,29 @@ kbd {
 
 .folder + .folder {
   margin-top: 6px;
+}
+.folder {
+  position: relative;
+}
+.folder.dragging {
+  opacity: 0.5;
+}
+.folder.drop-before::before,
+.folder.drop-after::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--accent);
+  pointer-events: none;
+}
+.folder.drop-before::before {
+  top: -4px;
+}
+.folder.drop-after::after {
+  bottom: -4px;
 }
 .folder-head {
   display: flex;

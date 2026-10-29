@@ -161,6 +161,8 @@ export interface HarnessApi {
     set(path: string): Promise<AppState>
     /** Removes a folder from the sidebar; its chats stay on disk. */
     close(path: string): Promise<AppState>
+    /** Sets the sidebar order of open folders. */
+    reorder(paths: string[]): Promise<AppState>
   }
   sessions: {
     open(id: string): Promise<AppState>

@@ -214,6 +214,8 @@ export const SettingsSchema = z.object({
       default: ModelRefSchema.default({ providerId: 'openrouter', modelId: 'openrouter/free' }),
       /** Model used to summarize old turns. Empty = use the active model. */
       compaction: ModelRefSchema.nullable().default(null),
+      /** Model that names new chats after the first message. Empty = keep the first line as the title. */
+      title: ModelRefSchema.nullable().default(null),
       favorites: z.array(ModelRefSchema).default([]),
       /** Most recently used models, newest first (maintained automatically). */
       recent: z.array(ModelRefSchema).default([]),
@@ -345,7 +347,7 @@ export const SettingsSchema = z.object({
 
   appearance: z
     .object({
-      theme: z.enum(['system', 'dark', 'light']).default('system'),
+      theme: z.enum(['system', 'dark', 'light', 'oled', 'sepia', 'contrast']).default('system'),
       fontSize: z.number().int().min(10).max(24).default(14),
       codeFontFamily: z.string().default('ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'),
       density: z.enum(['comfortable', 'compact']).default('comfortable'),

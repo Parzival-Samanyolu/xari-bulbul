@@ -29,6 +29,23 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
       return next
     })
 
+  // Folder reordering: drag a folder header, or Alt+↑/↓ on it.
+  const [drag, setDrag] = useState<{ from: string; over?: string; after?: boolean } | null>(null)
+  const move = (from: string, to: string, after: boolean) => {
+    const paths = app.folders.map((f) => f.path).filter((p) => p !== from)
+    const at = paths.indexOf(to)
+    if (at < 0) return
+    paths.splice(after ? at + 1 : at, 0, from)
+    if (paths.join('\0') !== app.folders.map((f) => f.path).join('\0')) api.workspace.reorder(paths).then(onState, onError)
+  }
+  const onFolderKey = (e: React.KeyboardEvent, i: number) => {
+    if (!e.altKey || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return
+    e.preventDefault()
+    const j = e.key === 'ArrowUp' ? i - 1 : i + 1
+    if (j < 0 || j >= app.folders.length) return
+    move(app.folders[i].path, app.folders[j].path, j > i)
+  }
+
   const closeMenu = (refocus = true) => {
     setMenu(false)
     if (refocus) trigger.current?.focus()
@@ -148,14 +165,46 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
 
       <nav className="sessions" aria-label="Folders and chats">
         {app.folders.length === 0 && <div className="muted small pad">Open a folder to start.</div>}
-        {app.folders.map((f) => {
+        {app.folders.map((f, fi) => {
           const isCurrent = f.path === app.workspace
           const shut = collapsed.has(f.path)
           const busy = f.sessions.some((s) => app.awaitingSessions.includes(s.id)) ? 'awaiting' : f.sessions.some((s) => app.runningSessions.includes(s.id)) ? 'working' : null
           return (
-            <section key={f.path} className={`folder ${isCurrent ? 'current' : ''}`} aria-label={basename(f.path)}>
-              <div className="folder-head">
-                <button className="folder-toggle" aria-expanded={!shut} title={f.path} onClick={() => toggle(f.path)}>
+            <section
+              key={f.path}
+              className={`folder ${isCurrent ? 'current' : ''} ${drag?.from === f.path ? 'dragging' : ''} ${drag?.over === f.path ? (drag.after ? 'drop-after' : 'drop-before') : ''}`}
+              aria-label={basename(f.path)}
+              onDragOver={(e) => {
+                if (!drag) return
+                e.preventDefault()
+                const r = e.currentTarget.getBoundingClientRect()
+                const after = e.clientY > r.top + r.height / 2
+                if (drag.over !== f.path || drag.after !== after) setDrag({ ...drag, over: f.path, after })
+              }}
+              onDrop={(e) => {
+                e.preventDefault()
+                if (drag && drag.from !== f.path) move(drag.from, f.path, !!drag.after)
+                setDrag(null)
+              }}
+            >
+              <div
+                className="folder-head"
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.effectAllowed = 'move'
+                  e.dataTransfer.setData('text/plain', f.path)
+                  setDrag({ from: f.path })
+                }}
+                onDragEnd={() => setDrag(null)}
+              >
+                <button
+                  className="folder-toggle"
+                  aria-expanded={!shut}
+                  aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
+                  title={`${f.path}\nDrag or press Alt+↑/↓ to reorder`}
+                  onClick={() => toggle(f.path)}
+                  onKeyDown={(e) => onFolderKey(e, fi)}
+                >
                   <span className="chev" aria-hidden>
                     {shut ? '▸' : '▾'}
                   </span>

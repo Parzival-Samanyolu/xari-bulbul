@@ -326,6 +326,15 @@ export class AppController {
     return cwd
   }
 
+  /** Reorders the sidebar's folders. Unknown paths are ignored; open folders left out keep their place at the end. */
+  reorderWorkspaces(paths: string[]): AppState {
+    const open = this.settings.app.openWorkspaces
+    const wanted = paths.map((p) => p.normalize('NFC')).filter((p, i, all) => open.includes(p) && all.indexOf(p) === i)
+    this.settings = { ...this.settings, app: { ...this.settings.app, openWorkspaces: [...wanted, ...open.filter((p) => !wanted.includes(p))] } }
+    this.saveSettings()
+    return this.state()
+  }
+
   /** Removes a folder from the sidebar. Its chats stay on disk, and running ones finish. */
   async closeWorkspace(dir: string): Promise<AppState> {
     const cwd = dir.normalize('NFC')
@@ -435,7 +444,7 @@ export class AppController {
     // Titles, session lists and running indicators change at these points.
     if (event.type === 'turn_start' || event.type === 'turn_end' || (event.type === 'message' && event.index === 0)) this.pushState()
     // Compaction rewrites history; resync the renderer's copy.
-    if (event.type === 'compacted') this.pushState()
+    if (event.type === 'compacted' || event.type === 'title') this.pushState()
   }
 
   private cancelPending(sessionId?: string) {

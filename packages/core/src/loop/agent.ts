@@ -10,6 +10,7 @@ import type { ProviderRegistry } from '../providers/registry.js'
 import { isContextOverflow } from '../providers/http.js'
 import { ProviderError, type ChatRequest } from '../providers/types.js'
 import { newSession, titleFrom, type Checkpoint, type Session } from '../sessions/store.js'
+import { generateTitle } from '../sessions/title.js'
 import { modelKey, type Settings } from '../settings/schema.js'
 import { FORGET_TOOL, REMEMBER_TOOL } from '../tools/memory.js'
 import { JobRegistry } from '../tools/jobs.js'
@@ -36,6 +37,8 @@ export type AgentEvent =
   | { type: 'usage'; record: UsageRecord; summary: UsageSummary; contextTokens: number; contextLength: number }
   | { type: 'todos'; todos: TodoItem[] }
   | { type: 'compacted'; removedMessages: number }
+  /** The title model renamed the chat. */
+  | { type: 'title'; title: string }
   | { type: 'notice'; level: 'info' | 'warn'; text: string }
   | { type: 'error'; message: string }
   | { type: 'turn_end'; reason: TurnEndReason }
@@ -302,6 +305,7 @@ export class Agent {
     const images = attach.images?.length ? attach.images : undefined
     if (this.session.messages.length === 0 && this.session.meta.title === 'New chat') {
       this.session.meta.title = titleFrom(text || [...(files ?? []), ...(images ?? [])].map((f) => f.name).join(', '))
+      if (text.trim() && !this.o.subagent) void this.autoTitle(text, this.session.meta.title)
     }
     if (images && this.registry.cachedModel(this.model.providerId, this.model.modelId)?.supportsImages === false) {
       this.emit({ type: 'notice', level: 'warn', text: `${this.model.modelId} doesn't accept images, so the request may fail. Pick a vision model with ⌘/Ctrl+K.` })
@@ -839,6 +843,22 @@ export class Agent {
     if (used < this.contextLength() * this.settings.agent.compactionThreshold) return
     this.emit({ type: 'notice', level: 'info', text: 'Context is getting full. Summarizing older messages…' })
     await this.compact(signal)
+  }
+
+  /** Names the chat with the title model, unless it's unset or the chat was renamed meanwhile. */
+  private async autoTitle(text: string, fallback: string) {
+    const ref = this.settings.models.title
+    if (!ref) return
+    try {
+      const { title, usage } = await generateTitle(this.registry.get(ref.providerId), ref.modelId, text, AbortSignal.timeout(60_000))
+      if (usage) this.recordUsage(ref, usage)
+      if (!title || this.session.meta.title !== fallback) return
+      this.session.meta.title = title
+      this.save()
+      this.emit({ type: 'title', title })
+    } catch {
+      // The first line stays as the title.
+    }
   }
 
   /** Summarize older history into one message. Safe to call manually (e.g. a /compact command). */

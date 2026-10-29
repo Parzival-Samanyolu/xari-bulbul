@@ -334,13 +334,14 @@ const SPEEDS = [
 ]
 
 function ModelsTab({ app, save, onState, onError, onTab }: TabProps) {
-  const [picking, setPicking] = useState<null | 'default' | 'compaction' | 'subagent' | 'override' | 'favorite'>(null)
+  const [picking, setPicking] = useState<null | 'default' | 'compaction' | 'title' | 'subagent' | 'override' | 'favorite'>(null)
   const m = app.settings.models
   const ref = (r: ModelRef | null) => (r ? `${modelLabel(r.modelId)} · ${r.providerId}` : 'Same as active model')
   const onPick = (r: ModelRef) => {
     const k = `${r.providerId}:${r.modelId}`
     if (picking === 'default') save((s) => ((s.models.default = r), s))
     if (picking === 'compaction') save((s) => ((s.models.compaction = r), s))
+    if (picking === 'title') save((s) => ((s.models.title = r), s))
     if (picking === 'subagent') save((s) => ((s.agent.subagents.model = r), s))
     if (picking === 'favorite') save((s) => (s.models.favorites.some((f) => `${f.providerId}:${f.modelId}` === k) || s.models.favorites.push(r), s))
     if (picking === 'override') save((s) => ((s.models.overrides[k] ??= {}), s))
@@ -362,6 +363,18 @@ function ModelsTab({ app, save, onState, onError, onTab }: TabProps) {
             {m.compaction && (
               <button className="link small" onClick={() => save((s) => ((s.models.compaction = null), s))}>
                 reset
+              </button>
+            )}
+          </div>
+        </Row>
+        <Row label="Chat naming model" hint="Names new chats from the first message. Without one, the first line becomes the title.">
+          <div className="inline">
+            <button className="btn" onClick={() => setPicking('title')}>
+              {m.title ? `${modelLabel(m.title.modelId)} · ${m.title.providerId}` : 'Off'}
+            </button>
+            {m.title && (
+              <button className="link small" onClick={() => save((s) => ((s.models.title = null), s))}>
+                turn off
               </button>
             )}
           </div>
@@ -1200,7 +1213,7 @@ function AppearanceTab({ app, save }: TabProps) {
   return (
     <Section title="Appearance">
       <Row label="Theme">
-        <Select label="Theme" value={a.theme} options={[{ value: 'system', label: 'System' }, { value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }]} onChange={(v) => save((s) => ((s.appearance.theme = v), s))} />
+        <Select label="Theme" value={a.theme} options={[{ value: 'system', label: 'System' }, { value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }, { value: 'oled', label: 'OLED black' }, { value: 'sepia', label: 'Sepia' }, { value: 'contrast', label: 'High contrast' }]} onChange={(v) => save((s) => ((s.appearance.theme = v), s))} />
       </Row>
       <Row label="Font size">
         <Slider label="Font size" value={a.fontSize} min={11} max={20} step={1} format={(v) => `${v}px`} onChange={(v) => save((s) => ((s.appearance.fontSize = v), s))} />
