@@ -1,6 +1,7 @@
 // Model picker logic shared by the desktop picker and the terminal picker.
 // Pure functions with no Node imports, so the renderer can use them too (`@harness/core/catalog`).
 import type { ModelInfo, ModelRef } from '../types.js'
+export { EFFORT_LEVELS, EFFORT_LABELS, fastMode, type ReasoningEffort } from './effort.js'
 export { RECOMMENDED, TIER_LABELS, type RecommendedModel, type RecommendedTier } from './recommended.js'
 
 export type ModelSort = 'newest' | 'name' | 'context' | 'price'

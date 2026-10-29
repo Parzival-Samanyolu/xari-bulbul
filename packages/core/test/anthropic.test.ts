@@ -119,6 +119,45 @@ describe('AnthropicProvider', () => {
     expect(sent.map((r) => r.body.output_config)).toEqual([{ effort: 'low' }, { effort: 'high' }])
   })
 
+  it('passes xhigh and max through, and sends the closest level older models accept', async () => {
+    const { fetch, sent } = fakeApi([])
+    const p = new AnthropicProvider({ config, apiKey: 'k', fetch })
+    const run = (model: string, reasoningEffort: 'xhigh' | 'max') => collect(p.chat({ model, reasoningEffort, messages: [{ role: 'user', content: 'hi' }] }))
+    await run('claude-opus-5-5', 'xhigh')
+    await run('claude-opus-5-5', 'max')
+    await run('claude-sonnet-4-6', 'xhigh')
+    await run('claude-opus-4-5', 'max')
+    expect(sent.map((r) => r.body.output_config.effort)).toEqual(['xhigh', 'max', 'high', 'high'])
+  })
+
+  it('turns on fast mode only for models that have it', async () => {
+    const usage = [{ type: 'message_start', message: { usage: { input_tokens: 1_000_000, output_tokens: 0, speed: 'fast' } } }]
+    const { fetch, sent } = fakeApi(usage)
+    const p = new AnthropicProvider({ config, apiKey: 'k', fetch })
+    const events = await collect(p.chat({ model: 'claude-opus-5-5', speed: 'fast', messages: [{ role: 'user', content: 'hi' }] }))
+    await collect(p.chat({ model: 'claude-sonnet-5-5', speed: 'fast', messages: [{ role: 'user', content: 'hi' }] }))
+    expect(sent[0].body.speed).toBe('fast')
+    expect(sent[0].headers['anthropic-beta']).toContain('fast-mode-2026-02-01')
+    expect(sent[1].body).not.toHaveProperty('speed')
+    expect(sent[1].headers['anthropic-beta']).not.toContain('fast-mode')
+    // Fast mode bills at twice the standard rate ($4/M input on Opus 5.5).
+    expect(events).toContainEqual({ type: 'usage', usage: expect.objectContaining({ cost: 8 }) })
+  })
+
+  it('falls back to standard speed when fast mode is rate limited', async () => {
+    const sent: any[] = []
+    const fetch = (async (url: string, init: RequestInit) => {
+      if (url.includes('/models')) return new Response(JSON.stringify({ data: [opus], has_more: false }))
+      const body = JSON.parse(init.body as string)
+      sent.push(body)
+      if (body.speed === 'fast') return new Response('{"error":{"message":"rate limited"}}', { status: 429 })
+      return sseResponse([{ type: 'message_delta', delta: { stop_reason: 'end_turn' } }])
+    }) as typeof globalThis.fetch
+    const p = new AnthropicProvider({ config, apiKey: 'k', fetch })
+    await collect(p.chat({ model: 'claude-opus-5-5', speed: 'fast', messages: [{ role: 'user', content: 'hi' }] }))
+    expect(sent.map((b) => b.speed ?? 'standard')).toEqual(['fast', 'standard'])
+  })
+
   it('prices known models, including dated ids and the Haiku 5.5 long-prompt tier', () => {
     const t = { input: 1_000_000, cacheRead: 0, cacheWrite: 0, output: 1_000_000 }
     expect(anthropicCost('claude-sonnet-5-5', t)).toBe(12)

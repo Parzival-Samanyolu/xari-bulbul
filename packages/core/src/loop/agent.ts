@@ -236,7 +236,7 @@ export class Agent {
     )
   }
 
-  private requestParams(): Pick<ChatRequest, 'temperature' | 'maxTokens' | 'reasoningEffort' | 'replayReasoning'> {
+  private requestParams(): Pick<ChatRequest, 'temperature' | 'maxTokens' | 'reasoningEffort' | 'replayReasoning' | 'speed'> {
     const m = this.settings.models
     const o = m.overrides[modelKey(this.model)] ?? {}
     return {
@@ -244,6 +244,7 @@ export class Agent {
       maxTokens: o.maxTokens ?? m.maxTokens ?? undefined,
       reasoningEffort: o.reasoningEffort ?? m.reasoningEffort ?? undefined,
       replayReasoning: o.replayReasoning,
+      speed: o.speed === 'fast' ? 'fast' : undefined,
     }
   }
 

@@ -57,6 +57,17 @@ describe('Agent loop', () => {
     expect(agent.session.messages.at(-1)).not.toHaveProperty('extra')
   })
 
+  it("sends the model's thinking level and fast mode from its override", async () => {
+    const { agent, provider, settings } = await setup([[{ type: 'text', delta: 'a' }], [{ type: 'text', delta: 'b' }]])
+    settings.models.reasoningEffort = 'low'
+    await agent.send('one')
+    settings.models.overrides['mock:m'] = { reasoningEffort: 'max', speed: 'fast' }
+    await agent.send('two')
+    expect(provider.requests[0]).toMatchObject({ reasoningEffort: 'low' })
+    expect(provider.requests[0].speed).toBeUndefined()
+    expect(provider.requests[1]).toMatchObject({ reasoningEffort: 'max', speed: 'fast' })
+  })
+
   it('runs tools until the model stops, tracking usage and cost', async () => {
     const { dir, agent, provider, events, usageTracker } = await setup([
       [call('1', 'read_file', { path: 'app.txt' }), usage(100, 10)],

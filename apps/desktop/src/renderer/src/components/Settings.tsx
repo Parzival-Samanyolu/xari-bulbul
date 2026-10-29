@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { MCP_PRESETS, presetServer } from '@harness/core/mcp-presets'
-import { RECOMMENDED, TIER_LABELS, refKey, type RecommendedTier } from '@harness/core/catalog'
+import { EFFORT_LABELS, EFFORT_LEVELS, RECOMMENDED, TIER_LABELS, refKey, type RecommendedTier } from '@harness/core/catalog'
 import type { AppState, McpServerStatus, ModelRef, ProviderTestResult, Settings, UpdateStatus } from '../../../shared/ipc'
 import { api } from '../lib/api'
 import { cost, modelLabel, tokens } from '../lib/format'
@@ -326,12 +326,10 @@ function RecommendedModels({ app, save, onState, onError, onTab }: TabProps) {
   )
 }
 
-const EFFORTS = [
-  { value: '', label: 'Provider default' },
-  { value: 'none', label: 'None' },
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
+const EFFORTS = [{ value: '', label: 'Provider default' }, ...EFFORT_LEVELS.map((e) => ({ value: e, label: EFFORT_LABELS[e] }))]
+const SPEEDS = [
+  { value: '', label: 'Standard' },
+  { value: 'fast', label: 'Fast' },
 ]
 
 function ModelsTab({ app, save, onState, onError, onTab }: TabProps) {
@@ -438,6 +436,10 @@ function ModelsTab({ app, save, onState, onError, onTab }: TabProps) {
               <label>
                 Reasoning
                 <Select value={(o.reasoningEffort ?? '') as string} options={EFFORTS} onChange={(v) => save((s) => ((s.models.overrides[k].reasoningEffort = (v || undefined) as never), s))} />
+              </label>
+              <label title="The provider's fast option, where it has one (Anthropic fast mode, OpenAI priority, OpenRouter fastest host). Costs more.">
+                Speed
+                <Select value={o.speed === 'fast' ? 'fast' : ''} options={SPEEDS} onChange={(v) => save((s) => ((s.models.overrides[k].speed = v ? 'fast' : undefined), s))} />
               </label>
               <label title="Send the model's reasoning back during a tool loop. Auto = on, except OpenAI's own API.">
                 Replay reasoning

@@ -1,3 +1,4 @@
+import type { ReasoningEffort } from './effort.js'
 import type { ChatMessage, ModelInfo, ToolCall, ToolSchema, Usage } from '../types.js'
 
 export interface ChatRequest {
@@ -6,7 +7,9 @@ export interface ChatRequest {
   tools?: ToolSchema[]
   temperature?: number
   maxTokens?: number
-  reasoningEffort?: 'none' | 'low' | 'medium' | 'high'
+  reasoningEffort?: ReasoningEffort
+  /** Use the provider's fast option where it has one; ignored elsewhere. */
+  speed?: 'fast'
   /** Send stored reasoning back on the current tool loop's assistant messages. Default: on, except api.openai.com. */
   replayReasoning?: boolean
   signal?: AbortSignal

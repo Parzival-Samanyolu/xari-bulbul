@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { EFFORT_LEVELS } from '../providers/effort.js'
 
 // Every user-facing setting lives here, with defaults. Secrets (API keys) are NOT
 // part of settings; hosts store them separately (desktop: OS-encrypted via safeStorage).
@@ -181,7 +182,9 @@ const ModelRefSchema = z.object({ providerId: z.string(), modelId: z.string() })
 export const ModelOverrideSchema = z.object({
   temperature: z.number().min(0).max(2).optional(),
   maxTokens: z.number().int().positive().optional(),
-  reasoningEffort: z.enum(['none', 'low', 'medium', 'high']).optional(),
+  reasoningEffort: z.enum(EFFORT_LEVELS).optional(),
+  /** fast = the provider's fast option (Anthropic fast mode, OpenAI priority, OpenRouter throughput). */
+  speed: z.enum(['standard', 'fast']).optional(),
   contextLength: z.number().int().positive().optional(),
   /** Send reasoning back on the current tool loop's assistant messages. Unset = on, except api.openai.com. */
   replayReasoning: z.boolean().optional(),
@@ -228,7 +231,7 @@ export const SettingsSchema = z.object({
       overrides: z.record(z.string(), ModelOverrideSchema).default({}),
       temperature: z.number().min(0).max(2).nullable().default(null),
       maxTokens: z.number().int().positive().nullable().default(null),
-      reasoningEffort: z.enum(['none', 'low', 'medium', 'high']).nullable().default(null),
+      reasoningEffort: z.enum(EFFORT_LEVELS).nullable().default(null),
       /** Fallback context size when a provider doesn't report one. */
       defaultContextLength: z.number().int().positive().default(128_000),
     })

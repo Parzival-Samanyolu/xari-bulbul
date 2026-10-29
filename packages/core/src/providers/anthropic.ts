@@ -3,6 +3,7 @@ import type { ProviderConfig } from '../settings/schema.js'
 import { midStreamError, requestWithRetry } from './http.js'
 import { userText } from './openai-compat.js'
 import { readSseData } from './sse.js'
+import { ANTHROPIC_FAST_MODELS, anthropicEffort } from './effort.js'
 import { ProviderError, type ChatRequest, type Provider, type StreamEvent } from './types.js'
 
 export interface AnthropicOptions {
@@ -16,6 +17,7 @@ export interface AnthropicOptions {
 /** Lets the API drop thinking blocks whose earlier history changed (compaction, undo) instead of answering 400. */
 const THINKING_BINDING_BETA = 'thinking-binding-controls-2026-08-01'
 const FALLBACK_BETA = 'server-side-fallback-2026-07-01'
+const FAST_MODE_BETA = 'fast-mode-2026-02-01'
 /** Models that accept `fallbacks: "default"`: a safety refusal is retried on a fallback model in the same call. */
 const FALLBACK_MODELS = /^claude-(opus-5-5|opus-5|fable-5-1|sonnet-5-5)$/
 
@@ -46,13 +48,15 @@ const PRICES: Record<string, [input: number, output: number, cacheRead: number]>
 export function anthropicCost(
   model: string,
   t: { input: number; cacheRead: number; cacheWrite: number; output: number },
+  fast = false,
 ): number | undefined {
   let price = PRICES[model.replace(/-\d{8}$/, '')]
   if (!price) return undefined
   // Haiku 5.5 prompts over 100K tokens are billed at the higher tier.
   if (model.startsWith('claude-haiku-5-5') && t.input + t.cacheRead + t.cacheWrite > 100_000) price = [0.5, 2.5, 0.05]
   const [input, output, cacheRead] = price
-  return (t.input * input + t.cacheWrite * input * 1.25 + t.cacheRead * cacheRead + t.output * output) / 1e6
+  // Fast mode bills every token at twice the standard rate.
+  return ((fast ? 2 : 1) * (t.input * input + t.cacheWrite * input * 1.25 + t.cacheRead * cacheRead + t.output * output)) / 1e6
 }
 
 /**
@@ -155,20 +159,27 @@ export class AnthropicProvider implements Provider {
       body.thinking = { type: 'adaptive', display: 'summarized', block_binding: { prefix_mismatch_behavior: 'drop_block' } }
     }
     // Only when the user picked one; otherwise the model's own default applies (medium on Opus 5.5).
-    // Thinking can't be turned off on current models, so "none" becomes the lowest effort.
     if (req.reasoningEffort && (caps?.effort?.supported ?? !caps)) {
-      body.output_config = { effort: req.reasoningEffort === 'none' ? 'low' : req.reasoningEffort }
+      body.output_config = { effort: anthropicEffort(req.model, req.reasoningEffort) }
     }
     if (FALLBACK_MODELS.test(req.model)) {
       body.fallbacks = 'default'
       betas.push(FALLBACK_BETA)
     }
+    let fast = req.speed === 'fast' && ANTHROPIC_FAST_MODELS.test(req.model)
 
-    const res = await this.request(this.url('/messages'), {
-      method: 'POST',
-      headers: this.headers(betas),
-      body: JSON.stringify(body),
-      signal: req.signal,
+    const send = (retries = this.retries) =>
+      requestWithRetry(this.fetchImpl, this.name, retries, this.url('/messages'), {
+        method: 'POST',
+        headers: this.headers(fast ? [...betas, FAST_MODE_BETA] : betas),
+        body: JSON.stringify(fast ? { ...body, speed: 'fast' } : body),
+        signal: req.signal,
+      })
+    // A fast request gets one try: fast mode has its own rate limit, and on a 429 the standard tier may still have room.
+    const res = await (fast ? send(0) : send()).catch((e) => {
+      if (!fast || !(e instanceof ProviderError && (e.retryable || e.status == null))) throw e
+      if (e.status === 429) fast = false
+      return send()
     })
     if (!res.body) throw new ProviderError('Empty response body from provider')
 
@@ -199,6 +210,7 @@ export class AnthropicProvider implements Provider {
             tokens.cacheRead = u.cache_read_input_tokens ?? 0
             tokens.cacheWrite = u.cache_creation_input_tokens ?? 0
             tokens.output = u.output_tokens ?? 0
+            if (u.speed) fast = u.speed === 'fast'
           }
           break
         }
@@ -262,7 +274,7 @@ export class AnthropicProvider implements Provider {
       usage.promptTokens = tokens.input + tokens.cacheRead + tokens.cacheWrite
       usage.completionTokens = tokens.output
       if (tokens.cacheRead) usage.cachedTokens = tokens.cacheRead
-      const cost = anthropicCost(req.model, tokens)
+      const cost = anthropicCost(req.model, tokens, fast)
       if (cost != null) usage.cost = cost
       yield { type: 'usage', usage }
     }
@@ -346,7 +358,7 @@ interface RawEvent {
   index?: number
   message?: {
     model?: string
-    usage?: { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number }
+    usage?: { input_tokens?: number; output_tokens?: number; cache_read_input_tokens?: number; cache_creation_input_tokens?: number; speed?: string }
   }
   content_block?: Block
   delta?: {

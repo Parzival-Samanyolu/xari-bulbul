@@ -1196,6 +1196,55 @@ kbd {
 .chip:hover {
   border-color: var(--muted);
 }
+.thinking {
+  position: relative;
+}
+.chip.fast {
+  border-color: var(--accent);
+}
+.fast-tag {
+  color: var(--accent);
+}
+.thinking-pop {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  min-width: 240px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 4px;
+  box-shadow: 0 -8px 24px var(--shadow);
+}
+.thinking-pop button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 5px 8px;
+  border-radius: 5px;
+}
+.thinking-pop button:hover,
+.thinking-pop button:focus-visible {
+  background: var(--panel-2);
+}
+.thinking-pop .check {
+  width: 1em;
+  color: var(--accent);
+}
+.thinking-pop .muted.small {
+  margin-left: auto;
+}
+.thinking-pop .fast-row > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.thinking-pop .fast-row .muted.small {
+  margin-left: 0;
+}
 .dot {
   width: 7px;
   height: 7px;

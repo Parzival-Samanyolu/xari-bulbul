@@ -3,6 +3,7 @@ import type { ProviderConfig } from '../settings/schema.js'
 import { midStreamError, requestWithRetry } from './http.js'
 import { readSseData } from './sse.js'
 import { ProviderError, type ChatRequest, type Provider, type StreamEvent } from './types.js'
+import { openAIEffort, providerKind } from './effort.js'
 
 export interface OpenAICompatOptions {
   config: ProviderConfig
@@ -121,7 +122,10 @@ export class OpenAICompatProvider implements Provider {
     if (req.temperature != null) body.temperature = req.temperature
     // OpenAI's reasoning models reject `max_tokens`.
     if (req.maxTokens != null) body[this.isOpenAI() ? 'max_completion_tokens' : 'max_tokens'] = req.maxTokens
-    if (req.reasoningEffort) body.reasoning_effort = req.reasoningEffort
+    const kind = providerKind(this.config)
+    if (req.reasoningEffort) body.reasoning_effort = openAIEffort(kind, req.reasoningEffort)
+    if (req.speed === 'fast' && kind === 'openai') body.service_tier = 'priority'
+    if (req.speed === 'fast' && kind === 'openrouter') body.provider = { sort: 'throughput' }
     if (this.config.requestUsageCost) body.usage = { include: true }
 
     const res = await this.request(this.url('/chat/completions'), {

@@ -156,6 +156,24 @@ describe('OpenAICompatProvider', () => {
     expect(bodies[2].messages[4]).not.toHaveProperty('reasoning_content')
   })
 
+  it("maps thinking levels and fast mode to each provider's options", async () => {
+    const bodies: any[] = []
+    const fetch = (async (_url: string, init: RequestInit) => {
+      bodies.push(JSON.parse(init.body as string))
+      return sseResponse([{ choices: [{ delta: { content: 'ok' } }] }, '[DONE]'])
+    }) as typeof globalThis.fetch
+    const send = (id: string, reasoningEffort: 'xhigh' | 'max') =>
+      collect(new OpenAICompatProvider({ config: BUILTIN_PROVIDERS.find((c) => c.id === id)!, apiKey: 'k', fetch }).chat({ model: 'm', reasoningEffort, speed: 'fast', messages: [] }))
+    await send('openai', 'max')
+    await send('openrouter', 'xhigh')
+    await send('groq', 'max')
+    expect(bodies.map((b) => b.reasoning_effort)).toEqual(['xhigh', 'xhigh', 'high'])
+    expect(bodies[0].service_tier).toBe('priority')
+    expect(bodies[1].provider).toEqual({ sort: 'throughput' })
+    expect(bodies[2]).not.toHaveProperty('service_tier')
+    expect(bodies[2]).not.toHaveProperty('provider')
+  })
+
   it('lists only OpenAI chat models and sends max_completion_tokens', async () => {
     let sentBody: any
     const fetch = (async (url: string, init: RequestInit) => {

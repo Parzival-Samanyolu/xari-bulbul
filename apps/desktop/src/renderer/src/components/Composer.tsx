@@ -3,6 +3,7 @@ import type { AppState, AttachmentInput, PermissionMode } from '../../../shared/
 import { api } from '../lib/api'
 import { modelLabel } from '../lib/format'
 import { MakerLogo, ProviderLogo } from './ProviderLogo'
+import { ThinkingPicker } from './ThinkingPicker'
 
 export const MODES: { id: PermissionMode; label: string; hint: string }[] = [
   { id: 'ask', label: 'Ask', hint: 'Ask before edits and commands' },
@@ -249,6 +250,7 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
             {model ? modelLabel(model.modelId) : 'Pick a model'}
             <span className="muted small">{model?.providerId}</span>
           </button>
+          {model && <ThinkingPicker app={app} model={model} onState={onState} onError={onError} />}
           <div className="modes" title="Permission mode (Shift+Tab to cycle)">
             {MODES.map((m) => (
               <button key={m.id} aria-pressed={app.mode === m.id} className={`mode mode-${m.id} ${app.mode === m.id ? 'on' : ''}`} title={m.hint} onClick={() => api.agent.setMode(m.id).then(onState, onError)}>
