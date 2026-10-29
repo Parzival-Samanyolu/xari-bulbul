@@ -330,6 +330,7 @@ const EFFORTS = [{ value: '', label: 'Provider default' }, ...EFFORT_LEVELS.map(
 const SPEEDS = [
   { value: '', label: 'Standard' },
   { value: 'fast', label: 'Fast' },
+  { value: 'batch', label: 'Batch' },
 ]
 
 function ModelsTab({ app, save, onState, onError, onTab }: TabProps) {
@@ -437,9 +438,9 @@ function ModelsTab({ app, save, onState, onError, onTab }: TabProps) {
                 Reasoning
                 <Select value={(o.reasoningEffort ?? '') as string} options={EFFORTS} onChange={(v) => save((s) => ((s.models.overrides[k].reasoningEffort = (v || undefined) as never), s))} />
               </label>
-              <label title="The provider's fast option, where it has one (Anthropic fast mode, OpenAI priority, OpenRouter fastest host). Costs more.">
+              <label title="Fast: the provider's fast option (Anthropic fast mode, OpenAI priority, OpenRouter fastest host), costs more. Batch: Anthropic and OpenAI batch APIs, about half price but each step can take minutes.">
                 Speed
-                <Select value={o.speed === 'fast' ? 'fast' : ''} options={SPEEDS} onChange={(v) => save((s) => ((s.models.overrides[k].speed = v ? 'fast' : undefined), s))} />
+                <Select value={o.speed === 'standard' ? '' : (o.speed ?? '')} options={SPEEDS} onChange={(v) => save((s) => ((s.models.overrides[k].speed = (v || undefined) as never), s))} />
               </label>
               <label title="Send the model's reasoning back during a tool loop. Auto = on, except OpenAI's own API.">
                 Replay reasoning
@@ -474,6 +475,9 @@ function AgentTab({ app, save }: TabProps) {
       <Section title="Behavior">
         <Row label="Max steps per message" hint="Model requests per message before pausing (safety net against loops)">
           <NumberField label="Max steps per message" value={a.maxStepsPerTurn} min={1} max={1000} onChange={(v) => save((s) => ((s.agent.maxStepsPerTurn = v ?? 200), s))} />
+        </Row>
+        <Row label="Batch while planning" hint="Plan mode sends requests through the Anthropic or OpenAI batch API: about half price, but each step can take minutes">
+          <Toggle label="Batch while planning" value={a.batchInPlanMode} onChange={(v) => save((s) => ((s.agent.batchInPlanMode = v), s))} />
         </Row>
         <Row label="System prompt" hint="Short drops the detailed guidance; small models follow it better. Auto uses it for free models.">
           <Select label="System prompt" value={a.promptStyle} options={PROMPT_STYLES as { value: typeof a.promptStyle; label: string }[]} onChange={(v) => save((s) => ((s.agent.promptStyle = v), s))} />

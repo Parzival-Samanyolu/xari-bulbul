@@ -3,6 +3,7 @@ import { OpenAICompatProvider, toWireMessage } from '../src/providers/openai-com
 import { BUILTIN_PROVIDERS } from '../src/settings/schema.js'
 import type { StreamEvent } from '../src/providers/types.js'
 import { sseResponse } from './helpers.js'
+import { BATCH_POLL } from '../src/providers/batch.js'
 
 const config = BUILTIN_PROVIDERS[0]
 
@@ -172,6 +173,38 @@ describe('OpenAICompatProvider', () => {
     expect(bodies[1].provider).toEqual({ sort: 'throughput' })
     expect(bodies[2]).not.toHaveProperty('service_tier')
     expect(bodies[2]).not.toHaveProperty('provider')
+  })
+
+  it('sends batch requests through the OpenAI Batch API and cleans up its files', async () => {
+    BATCH_POLL.firstMs = 1
+    const seen: string[] = []
+    let line: any
+    let polls = 0
+    const completion = {
+      choices: [{ message: { content: 'ok', tool_calls: [{ id: 'c1', type: 'function', function: { name: 'read_file', arguments: '{"path":"a"}' } }] }, finish_reason: 'tool_calls' }],
+      usage: { prompt_tokens: 10, completion_tokens: 2 },
+    }
+    const fetch = (async (url: string, init: RequestInit) => {
+      seen.push(`${init.method} ${url.replace('https://api.openai.com/v1', '')}`)
+      if (url.endsWith('/files') && init.method === 'POST') {
+        line = JSON.parse(await ((init.body as FormData).get('file') as Blob).text())
+        return new Response(JSON.stringify({ id: 'f-in' }))
+      }
+      if (url.endsWith('/batches')) return new Response(JSON.stringify({ id: 'b1', status: 'validating' }))
+      if (url.endsWith('/batches/b1')) return new Response(JSON.stringify({ id: 'b1', status: ++polls > 1 ? 'completed' : 'in_progress', output_file_id: 'f-out' }))
+      if (url.endsWith('/files/f-out/content')) return new Response(JSON.stringify({ custom_id: 'step', response: { status_code: 200, body: completion } }) + '\n')
+      return new Response('{}')
+    }) as typeof globalThis.fetch
+    const p = new OpenAICompatProvider({ config: BUILTIN_PROVIDERS.find((c) => c.id === 'openai')!, apiKey: 'k', fetch })
+    const events = await collect(p.chat({ model: 'gpt-5.5', speed: 'batch', messages: [{ role: 'user', content: 'hi' }] }))
+    await new Promise((r) => setTimeout(r, 0))
+    expect(line).toMatchObject({ custom_id: 'step', method: 'POST', url: '/v1/chat/completions', body: { model: 'gpt-5.5' } })
+    expect(line.body).not.toHaveProperty('stream')
+    expect(events[0]).toMatchObject({ type: 'status' })
+    expect(events).toContainEqual({ type: 'text', delta: 'ok' })
+    expect(events).toContainEqual({ type: 'tool_call', call: { id: 'c1', name: 'read_file', arguments: '{"path":"a"}' } })
+    expect(events).toContainEqual({ type: 'usage', usage: expect.objectContaining({ promptTokens: 10, priceFactor: 0.5 }) })
+    expect(seen).toEqual(expect.arrayContaining(['DELETE /files/f-in', 'DELETE /files/f-out']))
   })
 
   it('lists only OpenAI chat models and sends max_completion_tokens', async () => {

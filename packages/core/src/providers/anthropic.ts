@@ -3,6 +3,7 @@ import type { ProviderConfig } from '../settings/schema.js'
 import { midStreamError, requestWithRetry } from './http.js'
 import { userText } from './openai-compat.js'
 import { readSseData } from './sse.js'
+import { BATCH_STATUS, findJsonl, pollBatch } from './batch.js'
 import { ANTHROPIC_FAST_MODELS, anthropicEffort } from './effort.js'
 import { ProviderError, type ChatRequest, type Provider, type StreamEvent } from './types.js'
 
@@ -48,15 +49,15 @@ const PRICES: Record<string, [input: number, output: number, cacheRead: number]>
 export function anthropicCost(
   model: string,
   t: { input: number; cacheRead: number; cacheWrite: number; output: number },
-  fast = false,
+  /** 2 for fast mode, 0.5 for batch requests. */
+  factor = 1,
 ): number | undefined {
   let price = PRICES[model.replace(/-\d{8}$/, '')]
   if (!price) return undefined
   // Haiku 5.5 prompts over 100K tokens are billed at the higher tier.
   if (model.startsWith('claude-haiku-5-5') && t.input + t.cacheRead + t.cacheWrite > 100_000) price = [0.5, 2.5, 0.05]
   const [input, output, cacheRead] = price
-  // Fast mode bills every token at twice the standard rate.
-  return ((fast ? 2 : 1) * (t.input * input + t.cacheWrite * input * 1.25 + t.cacheRead * cacheRead + t.output * output)) / 1e6
+  return (factor * (t.input * input + t.cacheWrite * input * 1.25 + t.cacheRead * cacheRead + t.output * output)) / 1e6
 }
 
 /**
@@ -162,9 +163,15 @@ export class AnthropicProvider implements Provider {
     if (req.reasoningEffort && (caps?.effort?.supported ?? !caps)) {
       body.output_config = { effort: anthropicEffort(req.model, req.reasoningEffort) }
     }
-    if (FALLBACK_MODELS.test(req.model)) {
+    const batch = req.speed === 'batch'
+    // The Batches API rejects `fallbacks`.
+    if (FALLBACK_MODELS.test(req.model) && !batch) {
       body.fallbacks = 'default'
       betas.push(FALLBACK_BETA)
+    }
+    if (batch) {
+      yield { type: 'status', text: BATCH_STATUS }
+      return yield* this.parse(req, this.batch(body, betas, req.signal), 0.5)
     }
     let fast = req.speed === 'fast' && ANTHROPIC_FAST_MODELS.test(req.model)
 
@@ -182,7 +189,41 @@ export class AnthropicProvider implements Provider {
       return send()
     })
     if (!res.body) throw new ProviderError('Empty response body from provider')
+    yield* this.parse(req, sseEvents(res.body), () => (fast ? 2 : 1))
+  }
 
+  /** Sends one request through Message Batches and replays the finished message as stream events. */
+  private async *batch(body: Record<string, unknown>, betas: string[], signal?: AbortSignal): AsyncIterable<RawEvent> {
+    const { stream: _, ...params } = body
+    const res = await this.request(this.url('/messages/batches'), {
+      method: 'POST',
+      headers: this.headers(betas),
+      body: JSON.stringify({ requests: [{ custom_id: 'step', params }] }),
+      signal,
+    })
+    const created = (await res.json()) as RawBatch
+    const ended = await pollBatch(
+      async () => {
+        const r = await this.request(this.url(`/messages/batches/${created.id}`), { method: 'GET', headers: this.headers(betas), signal })
+        const b = (await r.json()) as RawBatch
+        return b.processing_status === 'ended' ? b : undefined
+      },
+      () => this.fetchImpl(this.url(`/messages/batches/${created.id}/cancel`), { method: 'POST', headers: this.headers(betas) }),
+      signal,
+    )
+    const url = ended.results_url ?? this.url(`/messages/batches/${created.id}/results`)
+    const text = await (await this.request(url, { method: 'GET', headers: this.headers(betas), signal })).text()
+    const row = findJsonl<RawBatchResult>(text, 'step')
+    const result = row?.result
+    if (result?.type !== 'succeeded' || !result.message) {
+      const why = result?.error?.error?.message ?? result?.error?.message ?? result?.type ?? 'no result'
+      throw new ProviderError(`${this.name} batch request failed: ${why}`, undefined, result?.type === 'expired')
+    }
+    yield* messageEvents(result.message)
+  }
+
+  private async *parse(req: ChatRequest, events: AsyncIterable<RawEvent>, factor: number | (() => number)): AsyncIterable<StreamEvent> {
+    let fast = false
     // Every content block in order, kept verbatim so it can be sent back next step.
     const blocks: Block[] = []
     const json = new Map<number, string>()
@@ -193,13 +234,7 @@ export class AnthropicProvider implements Provider {
     const tokens = { input: 0, cacheRead: 0, cacheWrite: 0, output: 0 }
     let gotUsage = false
 
-    for await (const data of readSseData(res.body)) {
-      let ev: RawEvent
-      try {
-        ev = JSON.parse(data)
-      } catch {
-        continue
-      }
+    for await (const ev of events) {
       switch (ev.type) {
         case 'message_start': {
           if (ev.message?.model) model = ev.message.model
@@ -274,13 +309,42 @@ export class AnthropicProvider implements Provider {
       usage.promptTokens = tokens.input + tokens.cacheRead + tokens.cacheWrite
       usage.completionTokens = tokens.output
       if (tokens.cacheRead) usage.cachedTokens = tokens.cacheRead
-      const cost = anthropicCost(req.model, tokens, fast)
+      const cost = anthropicCost(req.model, tokens, fast ? 2 : typeof factor === 'number' ? factor : factor())
       if (cost != null) usage.cost = cost
       yield { type: 'usage', usage }
     }
     yield { type: 'extra', extra: { anthropic: { model, content } } }
     yield { type: 'finish', reason: stopReason }
   }
+}
+
+async function* sseEvents(body: ReadableStream<Uint8Array>): AsyncIterable<RawEvent> {
+  for await (const data of readSseData(body)) {
+    try {
+      yield JSON.parse(data) as RawEvent
+    } catch {
+      // keep-alive or junk
+    }
+  }
+}
+
+/** A finished (non-streamed) message as the events a stream of it would have carried. */
+export function* messageEvents(m: RawMessage): Iterable<RawEvent> {
+  yield { type: 'message_start', message: { model: m.model, usage: m.usage } }
+  for (const [index, b] of (m.content ?? []).entries()) {
+    if (b.type === 'text') {
+      yield { type: 'content_block_start', index, content_block: { ...b, text: '' } }
+      yield { type: 'content_block_delta', index, delta: { type: 'text_delta', text: b.text as string } }
+    } else if (b.type === 'thinking') {
+      yield { type: 'content_block_start', index, content_block: { ...b, thinking: '', signature: '' } }
+      yield { type: 'content_block_delta', index, delta: { type: 'thinking_delta', thinking: b.thinking as string } }
+      yield { type: 'content_block_delta', index, delta: { type: 'signature_delta', signature: b.signature as string } }
+    } else if (b.type === 'tool_use') {
+      yield { type: 'content_block_start', index, content_block: { ...b, input: {} } }
+      yield { type: 'content_block_delta', index, delta: { type: 'input_json_delta', partial_json: JSON.stringify(b.input ?? {}) } }
+    } else yield { type: 'content_block_start', index, content_block: b }
+  }
+  yield { type: 'message_delta', delta: { stop_reason: m.stop_reason ?? 'end_turn', stop_details: m.stop_details ?? undefined }, usage: { output_tokens: m.usage?.output_tokens } }
 }
 
 function parseArgs(args: string): unknown {
@@ -372,4 +436,27 @@ interface RawEvent {
   }
   usage?: { output_tokens?: number }
   error?: { type?: string; message?: string }
+}
+
+interface RawMessage {
+  model?: string
+  content?: Block[]
+  stop_reason?: string
+  stop_details?: { explanation?: string } | null
+  usage?: NonNullable<RawEvent['message']>['usage']
+}
+
+interface RawBatch {
+  id: string
+  processing_status?: 'in_progress' | 'canceling' | 'ended'
+  results_url?: string | null
+}
+
+interface RawBatchResult {
+  custom_id?: string
+  result?: {
+    type: 'succeeded' | 'errored' | 'canceled' | 'expired'
+    message?: RawMessage
+    error?: { message?: string; error?: { message?: string } }
+  }
 }

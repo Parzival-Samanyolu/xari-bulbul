@@ -3,6 +3,7 @@ import type { ProviderConfig } from '../settings/schema.js'
 import { midStreamError, requestWithRetry } from './http.js'
 import { readSseData } from './sse.js'
 import { ProviderError, type ChatRequest, type Provider, type StreamEvent } from './types.js'
+import { BATCH_STATUS, findJsonl, pollBatch } from './batch.js'
 import { openAIEffort, providerKind } from './effort.js'
 
 export interface OpenAICompatOptions {
@@ -127,27 +128,16 @@ export class OpenAICompatProvider implements Provider {
     if (req.speed === 'fast' && kind === 'openai') body.service_tier = 'priority'
     if (req.speed === 'fast' && kind === 'openrouter') body.provider = { sort: 'throughput' }
     if (this.config.requestUsageCost) body.usage = { include: true }
-
-    const res = await this.request(this.url('/chat/completions'), {
-      method: 'POST',
-      headers: this.headers(),
-      body: JSON.stringify(body),
-      signal: req.signal,
-    }).catch((e) => {
-      // NVIDIA lists many models it no longer serves ("Function '…': Not found for account").
-      if (!(e instanceof ProviderError && e.status === 404 && /model|function/i.test(e.message))) throw e
-      const set = UNAVAILABLE.get(this.config.baseUrl) ?? new Set<string>()
-      UNAVAILABLE.set(this.config.baseUrl, set.add(req.model))
-      throw new ProviderError(`${this.name} lists ${req.model} but doesn't serve it (404). Pick another model; this one is now hidden from the list.`, 404)
-    })
-    if (!res.body) throw new ProviderError('Empty response body from provider')
+    const batch = req.speed === 'batch' && kind === 'openai'
+    if (batch) yield { type: 'status', text: BATCH_STATUS }
+    const source = batch ? this.batch(body, req.signal) : readSseData(await this.send(body, req))
 
     const calls = new Map<number, ToolCall>()
     let finishReason = 'stop'
     let usage: Usage | undefined
     const details: unknown[] = []
 
-    for await (const data of readSseData(res.body)) {
+    for await (const data of source) {
       touch()
       if (data === '[DONE]') break
       let chunk: RawChunk
@@ -159,7 +149,7 @@ export class OpenAICompatProvider implements Provider {
       // Mid-reply failures arrive as an error chunk because the HTTP status (200) is already sent.
       // OpenRouter's wording is "JSON error injected into SSE stream".
       if (chunk.error) throw midStreamError(this.name, chunk.error.message, chunk.error.code)
-      if (chunk.usage) usage = toUsage(chunk.usage)
+      if (chunk.usage) usage = { ...toUsage(chunk.usage), ...(batch ? { priceFactor: 0.5 } : {}) }
       const choice = chunk.choices?.[0]
       if (!choice) continue
       const d = choice.delta ?? {}
@@ -189,6 +179,73 @@ export class OpenAICompatProvider implements Provider {
     if (details.length) yield { type: 'extra', extra: { openai: { reasoning_details: details } } }
     if (usage) yield { type: 'usage', usage }
     yield { type: 'finish', reason: finishReason }
+  }
+
+  private async send(body: Record<string, unknown>, req: ChatRequest): Promise<ReadableStream<Uint8Array>> {
+    const res = await this.request(this.url('/chat/completions'), {
+      method: 'POST',
+      headers: this.headers(),
+      body: JSON.stringify(body),
+      signal: req.signal,
+    }).catch((e) => {
+      // NVIDIA lists many models it no longer serves ("Function '…': Not found for account").
+      if (!(e instanceof ProviderError && e.status === 404 && /model|function/i.test(e.message))) throw e
+      const set = UNAVAILABLE.get(this.config.baseUrl) ?? new Set<string>()
+      UNAVAILABLE.set(this.config.baseUrl, set.add(req.model))
+      throw new ProviderError(`${this.name} lists ${req.model} but doesn't serve it (404). Pick another model; this one is now hidden from the list.`, 404)
+    })
+    if (!res.body) throw new ProviderError('Empty response body from provider')
+    return res.body
+  }
+
+  /**
+   * One request through OpenAI's Batch API: upload a one-line JSONL file, wait for the batch,
+   * then hand back the finished completion as a single stream chunk.
+   */
+  private async *batch(body: Record<string, unknown>, signal?: AbortSignal): AsyncIterable<string> {
+    const { stream: _s, stream_options: _o, ...params } = body
+    const json = this.headers()
+    const { 'content-type': _ct, ...auth } = json
+    const get = (path: string) => this.request(this.url(path), { method: 'GET', headers: json, signal })
+    const form = new FormData()
+    form.append('purpose', 'batch')
+    form.append('file', new Blob([JSON.stringify({ custom_id: 'step', method: 'POST', url: '/v1/chat/completions', body: params }) + '\n']), 'step.jsonl')
+    const file = (await (await this.request(this.url('/files'), { method: 'POST', headers: auth, body: form, signal })).json()) as { id: string }
+    const files = [file.id]
+    try {
+      const create = await this.request(this.url('/batches'), {
+        method: 'POST',
+        headers: json,
+        body: JSON.stringify({ input_file_id: file.id, endpoint: '/v1/chat/completions', completion_window: '24h' }),
+        signal,
+      })
+      const created = (await create.json()) as RawBatch
+      const done = await pollBatch(
+        async () => {
+          const b = (await (await get(`/batches/${created.id}`)).json()) as RawBatch
+          return ['completed', 'failed', 'expired', 'cancelled'].includes(b.status) ? b : undefined
+        },
+        () => this.fetchImpl(this.url(`/batches/${created.id}/cancel`), { method: 'POST', headers: json }),
+        signal,
+      )
+      const out = done.output_file_id ?? done.error_file_id
+      if (done.status !== 'completed' || !out) {
+        const why = done.errors?.data?.[0]?.message ?? done.status
+        throw new ProviderError(`${this.name} batch request failed: ${why}`, undefined, done.status === 'expired')
+      }
+      files.push(out)
+      const row = findJsonl<RawBatchLine>(await (await get(`/files/${out}/content`)).text(), 'step')
+      const status = row?.response?.status_code ?? 0
+      const completion = row?.response?.body
+      if (!completion?.choices || status >= 400) {
+        const why = row?.error?.message ?? completion?.error?.message ?? 'no result'
+        throw new ProviderError(`${this.name} batch request failed: ${why}`, status || undefined)
+      }
+      yield JSON.stringify(completionChunk(completion))
+    } finally {
+      // Uploaded and result files would otherwise pile up in the account.
+      for (const id of files) void this.fetchImpl(this.url(`/files/${id}`), { method: 'DELETE', headers: json }).catch(() => {})
+    }
   }
 
   private request(url: string, init: RequestInit): Promise<Response> {
@@ -351,4 +408,34 @@ interface RawChunk {
     }
     finish_reason?: string | null
   }[]
+}
+
+interface RawBatch {
+  id: string
+  status: string
+  output_file_id?: string | null
+  error_file_id?: string | null
+  errors?: { data?: { message?: string }[] } | null
+}
+
+interface RawCompletion {
+  choices?: { message?: NonNullable<NonNullable<RawChunk['choices']>[number]['delta']>; finish_reason?: string | null }[]
+  usage?: RawUsage
+  error?: { message?: string }
+}
+
+interface RawBatchLine {
+  custom_id?: string
+  response?: { status_code?: number; body?: RawCompletion }
+  error?: { message?: string } | null
+}
+
+/** A finished (non-streamed) completion as one stream chunk. */
+function completionChunk(c: RawCompletion): RawChunk {
+  const choice = c.choices?.[0]
+  const m = choice?.message ?? {}
+  return {
+    usage: c.usage,
+    choices: [{ delta: { ...m, tool_calls: m.tool_calls?.map((t, index) => ({ ...t, index })) }, finish_reason: choice?.finish_reason ?? 'stop' }],
+  }
 }

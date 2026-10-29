@@ -48,7 +48,7 @@ function add(t: UsageTotals, r: UsageRecord) {
 export function computeCost(usage: Usage, pricing?: ModelPricing): number | null {
   if (typeof usage.cost === 'number') return usage.cost
   if (!pricing) return null
-  return usage.promptTokens * pricing.prompt + usage.completionTokens * pricing.completion
+  return (usage.priceFactor ?? 1) * (usage.promptTokens * pricing.prompt + usage.completionTokens * pricing.completion)
 }
 
 function startOfDay(ts: number): number {

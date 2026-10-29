@@ -4,6 +4,7 @@ import { ProviderRegistry } from '../src/providers/registry.js'
 import { BUILTIN_PROVIDERS } from '../src/settings/schema.js'
 import type { StreamEvent } from '../src/providers/types.js'
 import { sseResponse } from './helpers.js'
+import { BATCH_POLL } from '../src/providers/batch.js'
 
 const config = BUILTIN_PROVIDERS.find((c) => c.id === 'anthropic')!
 
@@ -156,6 +157,43 @@ describe('AnthropicProvider', () => {
     const p = new AnthropicProvider({ config, apiKey: 'k', fetch })
     await collect(p.chat({ model: 'claude-opus-5-5', speed: 'fast', messages: [{ role: 'user', content: 'hi' }] }))
     expect(sent.map((b) => b.speed ?? 'standard')).toEqual(['fast', 'standard'])
+  })
+
+  it('sends batch requests through Message Batches at half price', async () => {
+    BATCH_POLL.firstMs = 1
+    const calls: { url: string; method: string; body?: any }[] = []
+    let polls = 0
+    const message = {
+      model: 'claude-opus-5-5',
+      content: [
+        { type: 'thinking', thinking: 'Plan.', signature: 'sig' },
+        { type: 'text', text: 'Reading it.' },
+        { type: 'tool_use', id: 'tu1', name: 'read_file', input: { path: 'a.ts' } },
+      ],
+      stop_reason: 'tool_use',
+      usage: { input_tokens: 1_000_000, output_tokens: 0 },
+    }
+    const fetch = (async (url: string, init: RequestInit) => {
+      calls.push({ url, method: init.method ?? 'GET', body: init.body ? JSON.parse(init.body as string) : undefined })
+      if (url.endsWith('/models?limit=1000')) return new Response(JSON.stringify({ data: [opus], has_more: false }))
+      if (url.endsWith('/messages/batches')) return new Response(JSON.stringify({ id: 'b1', processing_status: 'in_progress' }))
+      if (url.endsWith('/messages/batches/b1'))
+        return new Response(JSON.stringify({ id: 'b1', processing_status: ++polls > 1 ? 'ended' : 'in_progress', results_url: 'https://api.anthropic.com/v1/messages/batches/b1/results' }))
+      if (url.endsWith('/results')) return new Response(JSON.stringify({ custom_id: 'step', result: { type: 'succeeded', message } }) + '\n')
+      throw new Error(`unexpected ${url}`)
+    }) as typeof globalThis.fetch
+    const p = new AnthropicProvider({ config, apiKey: 'k', fetch })
+    const events = await collect(p.chat({ model: 'claude-opus-5-5', speed: 'batch', messages: [{ role: 'user', content: 'hi' }] }))
+    const create = calls.find((c) => c.url.endsWith('/messages/batches'))!
+    expect(create.body.requests[0].params).not.toHaveProperty('stream')
+    expect(create.body.requests[0].params).not.toHaveProperty('fallbacks')
+    expect(polls).toBe(2)
+    expect(events[0]).toMatchObject({ type: 'status' })
+    expect(events).toContainEqual({ type: 'text', delta: 'Reading it.' })
+    expect(events).toContainEqual({ type: 'reasoning', delta: 'Plan.' })
+    expect(events).toContainEqual({ type: 'tool_call', call: { id: 'tu1', name: 'read_file', arguments: '{"path":"a.ts"}' } })
+    expect(events).toContainEqual({ type: 'usage', usage: expect.objectContaining({ cost: 2 }) })
+    expect(events.at(-1)).toEqual({ type: 'finish', reason: 'tool_use' })
   })
 
   it('prices known models, including dated ids and the Haiku 5.5 long-prompt tier', () => {

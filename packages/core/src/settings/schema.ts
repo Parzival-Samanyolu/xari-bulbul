@@ -183,8 +183,8 @@ export const ModelOverrideSchema = z.object({
   temperature: z.number().min(0).max(2).optional(),
   maxTokens: z.number().int().positive().optional(),
   reasoningEffort: z.enum(EFFORT_LEVELS).optional(),
-  /** fast = the provider's fast option (Anthropic fast mode, OpenAI priority, OpenRouter throughput). */
-  speed: z.enum(['standard', 'fast']).optional(),
+  /** fast = the provider's fast option (Anthropic fast mode, OpenAI priority, OpenRouter throughput). batch = its Batch API. */
+  speed: z.enum(['standard', 'fast', 'batch']).optional(),
   contextLength: z.number().int().positive().optional(),
   /** Send reasoning back on the current tool loop's assistant messages. Unset = on, except api.openai.com. */
   replayReasoning: z.boolean().optional(),
@@ -240,6 +240,8 @@ export const SettingsSchema = z.object({
   agent: z
     .object({
       maxStepsPerTurn: z.number().int().min(1).max(1000).default(200),
+      /** In Plan mode, send model steps through the provider's Batch API (about half price, slower). */
+      batchInPlanMode: z.boolean().default(false),
       /** lean: a short system prompt that small models follow better. auto = lean for free models. */
       promptStyle: z.enum(['auto', 'full', 'lean']).default('auto'),
       customInstructions: z.string().default(''),

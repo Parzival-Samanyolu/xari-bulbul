@@ -41,6 +41,14 @@ export function fastMode(p: ProviderLike, modelId: string): { supported: boolean
   }
 }
 
+/** Whether the provider has a Batch API this app can use. */
+export function batchMode(p: ProviderLike): { supported: boolean; hint: string } {
+  const kind = providerKind(p)
+  return kind === 'anthropic' || kind === 'openai'
+    ? { supported: true, hint: 'About half price; each step can take minutes' }
+    : { supported: false, hint: 'This provider has no batch API' }
+}
+
 /** The closest level an OpenAI-compatible provider accepts as `reasoning_effort`. */
 export function openAIEffort(kind: ProviderKind, e: ReasoningEffort): string {
   if (kind === 'openai' || kind === 'openrouter') return e === 'max' ? 'xhigh' : e

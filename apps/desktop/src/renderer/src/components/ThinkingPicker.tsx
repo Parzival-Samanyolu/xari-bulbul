@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { EFFORT_LABELS, EFFORT_LEVELS, fastMode, refKey, type ReasoningEffort } from '@harness/core/catalog'
+import { EFFORT_LABELS, EFFORT_LEVELS, batchMode, fastMode, refKey, type ReasoningEffort } from '@harness/core/catalog'
 import type { AppState, ModelRef, Settings } from '../../../shared/ipc'
 import { api } from '../lib/api'
 
@@ -19,8 +19,17 @@ export function ThinkingPicker({ app, model, onState, onError }: Props) {
   const o = app.settings.models.overrides[key] ?? {}
   const effort = o.reasoningEffort ?? app.settings.models.reasoningEffort ?? null
   const provider = app.settings.providers.find((p) => p.id === model.providerId)
-  const fast = provider ? fastMode(provider, model.modelId) : { supported: false, hint: '' }
-  const isFast = fast.supported && o.speed === 'fast'
+  const none = { supported: false, hint: '' }
+  const fast = provider ? fastMode(provider, model.modelId) : none
+  const batch = provider ? batchMode(provider) : none
+  const planBatch = batch.supported && app.mode === 'plan' && app.settings.agent.batchInPlanMode
+  // What the next request uses: Plan mode's batch setting wins over the model's own speed.
+  const speed = planBatch ? 'batch' : o.speed === 'fast' && fast.supported ? 'fast' : o.speed === 'batch' && batch.supported ? 'batch' : 'standard'
+  const speeds = [
+    { id: 'standard' as const, label: 'Standard', hint: 'Normal speed and price', show: true },
+    { id: 'fast' as const, label: 'Fast', hint: fast.hint, show: fast.supported },
+    { id: 'batch' as const, label: 'Batch', hint: batch.hint, show: batch.supported },
+  ].filter((x) => x.show)
 
   const close = (refocus = true) => {
     setOpen(false)
@@ -36,6 +45,12 @@ export function ThinkingPicker({ app, model, onState, onError }: Props) {
     window.addEventListener('mousedown', onDown)
     return () => window.removeEventListener('mousedown', onDown)
   }, [open])
+
+  const saveBatchInPlan = (on: boolean) => {
+    const s = structuredClone(app.settings)
+    s.agent.batchInPlanMode = on
+    api.settings.set(s).then(onState, onError)
+  }
 
   const save = (fn: (o: NonNullable<Settings['models']['overrides'][string]>) => void) => {
     const s = structuredClone(app.settings)
@@ -64,14 +79,14 @@ export function ThinkingPicker({ app, model, onState, onError }: Props) {
     <div className="thinking">
       <button
         ref={trigger}
-        className={`chip ${isFast ? 'fast' : ''}`}
+        className={`chip ${speed !== 'standard' ? 'fast' : ''}`}
         aria-haspopup="dialog"
         aria-expanded={open}
         title="Thinking level and speed for this model"
         onClick={() => setOpen((v) => !v)}
       >
         Thinking: {label}
-        {isFast && <span className="fast-tag">· Fast</span>}
+        {speed !== 'standard' && <span className="fast-tag">· {speed === 'fast' ? 'Fast' : 'Batch'}</span>}
       </button>
       {open && (
         <div className="thinking-pop" ref={pop} role="dialog" aria-label="Thinking and speed" onKeyDown={onKey}>
@@ -94,19 +109,35 @@ export function ThinkingPicker({ app, model, onState, onError }: Props) {
               )
             })}
           </div>
-          {fast.supported && (
+          {speeds.length > 1 && (
             <>
               <div className="menu-label">Speed</div>
-              <button role="switch" aria-checked={isFast} className="fast-row" onClick={() => save((x) => (x.speed = isFast ? undefined : 'fast'))}>
-                <span className={`toggle ${isFast ? 'on' : ''}`} aria-hidden>
-                  <span />
-                </span>
-                <span>
-                  Fast mode
-                  <span className="muted small">{fast.hint}</span>
-                </span>
-              </button>
+              <div role="radiogroup" aria-label="Speed">
+                {speeds.map((x) => {
+                  const on = (o.speed ?? 'standard') === x.id
+                  return (
+                    <button key={x.id} role="radio" aria-checked={on} className={`speed-row ${on ? 'on' : ''}`} onClick={() => save((y) => (y.speed = x.id === 'standard' ? undefined : x.id))}>
+                      <span className="check" aria-hidden>{on ? '✓' : ''}</span>
+                      <span className="speed-text">
+                        {x.label}
+                        <span className="muted small">{x.hint}</span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
             </>
+          )}
+          {batch.supported && (
+            <button role="switch" aria-checked={app.settings.agent.batchInPlanMode} className="speed-row" onClick={() => saveBatchInPlan(!app.settings.agent.batchInPlanMode)}>
+              <span className={`toggle ${app.settings.agent.batchInPlanMode ? 'on' : ''}`} aria-hidden>
+                <span />
+              </span>
+              <span className="speed-text">
+                Batch while planning
+                <span className="muted small">Plan mode uses batch, for any model on this provider</span>
+              </span>
+            </button>
           )}
         </div>
       )}

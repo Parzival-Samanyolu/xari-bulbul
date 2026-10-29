@@ -8,8 +8,8 @@ export interface ChatRequest {
   temperature?: number
   maxTokens?: number
   reasoningEffort?: ReasoningEffort
-  /** Use the provider's fast option where it has one; ignored elsewhere. */
-  speed?: 'fast'
+  /** fast: the provider's fast option. batch: its Batch API (about half price, slow). Ignored where unsupported. */
+  speed?: 'fast' | 'batch'
   /** Send stored reasoning back on the current tool loop's assistant messages. Default: on, except api.openai.com. */
   replayReasoning?: boolean
   signal?: AbortSignal
@@ -26,6 +26,8 @@ export type StreamEvent =
   /** Provider data to store on the assistant message and send back with it. */
   | { type: 'extra'; extra: Record<string, unknown> }
   | { type: 'finish'; reason: string }
+  /** Progress the user should see while nothing streams (e.g. waiting for a batch). */
+  | { type: 'status'; text: string }
 
 export interface Provider {
   readonly id: string

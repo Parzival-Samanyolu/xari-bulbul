@@ -1237,12 +1237,12 @@ kbd {
 .thinking-pop .muted.small {
   margin-left: auto;
 }
-.thinking-pop .fast-row > span:last-child {
+.thinking-pop .speed-text {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-.thinking-pop .fast-row .muted.small {
+.thinking-pop .speed-text .muted.small {
   margin-left: 0;
 }
 .dot {

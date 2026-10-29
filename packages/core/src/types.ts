@@ -81,6 +81,8 @@ export interface Usage {
   cachedTokens?: number
   /** USD, when the provider reports it directly. */
   cost?: number
+  /** Multiplier on list prices when cost isn't reported (batch requests: 0.5). */
+  priceFactor?: number
 }
 
 export interface JsonSchema {

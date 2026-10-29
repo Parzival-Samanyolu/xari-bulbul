@@ -244,7 +244,7 @@ export class Agent {
       maxTokens: o.maxTokens ?? m.maxTokens ?? undefined,
       reasoningEffort: o.reasoningEffort ?? m.reasoningEffort ?? undefined,
       replayReasoning: o.replayReasoning,
-      speed: o.speed === 'fast' ? 'fast' : undefined,
+      speed: this.o.permissions.mode === 'plan' && this.settings.agent.batchInPlanMode ? 'batch' : o.speed === 'standard' ? undefined : o.speed,
     }
   }
 
@@ -566,6 +566,7 @@ export class Agent {
           } else if (ev.type === 'tool_call') calls.push(ev.call)
           else if (ev.type === 'usage') usage = ev.usage
           else if (ev.type === 'extra') extra = ev.extra
+          else if (ev.type === 'status') this.emit({ type: 'notice', level: 'info', text: ev.text })
         }
         break
       } catch (err) {

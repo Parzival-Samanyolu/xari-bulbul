@@ -14,7 +14,7 @@ import { MockProvider, tmpDir } from './helpers.js'
 const call = (id: string, name: string, args: object): StreamEvent => ({ type: 'tool_call', call: { id, name, arguments: JSON.stringify(args) } })
 const usage = (p: number, c: number): StreamEvent => ({ type: 'usage', usage: { promptTokens: p, completionTokens: c } })
 
-async function setup(script: ConstructorParameters<typeof MockProvider>[0], opts: { mode?: 'ask' | 'auto'; answer?: 'allow' | 'deny' } = {}) {
+async function setup(script: ConstructorParameters<typeof MockProvider>[0], opts: { mode?: 'ask' | 'auto' | 'plan'; answer?: 'allow' | 'deny' } = {}) {
   const dir = tmpDir()
   fs.writeFileSync(path.join(dir, 'app.txt'), 'hello world\n')
   const provider = new MockProvider(script)
@@ -66,6 +66,15 @@ describe('Agent loop', () => {
     expect(provider.requests[0]).toMatchObject({ reasoningEffort: 'low' })
     expect(provider.requests[0].speed).toBeUndefined()
     expect(provider.requests[1]).toMatchObject({ reasoningEffort: 'max', speed: 'fast' })
+  })
+
+  it('uses batch in Plan mode when batchInPlanMode is on, and shows its status', async () => {
+    const { agent, provider, settings, events } = await setup([[{ type: 'status', text: 'Waiting for batch' }, { type: 'text', delta: 'plan' }]], { mode: 'plan' })
+    settings.agent.batchInPlanMode = true
+    settings.models.overrides['mock:m'] = { speed: 'fast' }
+    await agent.send('plan it')
+    expect(provider.requests[0].speed).toBe('batch')
+    expect(events).toContainEqual({ type: 'notice', level: 'info', text: 'Waiting for batch' })
   })
 
   it('runs tools until the model stops, tracking usage and cost', async () => {
