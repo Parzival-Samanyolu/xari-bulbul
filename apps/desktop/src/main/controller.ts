@@ -36,12 +36,14 @@ import {
   type PermissionAnswer,
   type PermissionMode,
   type QuestionRequest,
+  type Schedule,
   type Session,
   type SessionMeta,
   type Settings,
   type Tool,
 } from '@harness/core'
 import type { AppState, AttachmentInput, ExtensionsInfo, MemoryInfo, ProviderTestResult, SessionView, UiEvent } from '../shared/ipc'
+import { Scheduler } from './scheduler'
 import { SecretStore } from './secrets'
 
 const MAX_ATTACHMENTS = 10
@@ -80,6 +82,8 @@ export class AppController {
   private readonly memory: MemoryStore
   private readonly mcp: McpManager
   private mcpTimer: NodeJS.Timeout | null = null
+  private readonly scheduler: Scheduler
+  private catchUpTimer: NodeJS.Timeout | null = null
   private ext: LoadedExtensions = { tools: [], commands: [], skills: [], errors: [] }
   private tools: Tool[] = builtinTools()
   private workspace: string | null = null
@@ -125,6 +129,12 @@ export class AppController {
         }, 50)
       },
     })
+    this.scheduler = new Scheduler(
+      path.join(dataDir, 'schedules.json'),
+      () => this.settings.schedules,
+      (s) => this.runScheduled(s),
+      () => this.pushState(),
+    )
     this.buildRegistry()
   }
 
@@ -159,6 +169,7 @@ export class AppController {
       await this.reloadExtensions()
     }
     if (JSON.stringify(prev.mcp) !== JSON.stringify(this.settings.mcp)) void this.mcp.sync(this.settings.mcp.servers)
+    if (JSON.stringify(prev.schedules) !== JSON.stringify(this.settings.schedules)) this.scheduler.arm()
     for (const r of this.agents.values()) r.agent.updateSettings(this.settings)
     return this.state()
   }
@@ -275,12 +286,54 @@ export class AppController {
 
   /** Stops running chats (so partial replies are saved) and MCP servers. */
   async dispose() {
+    if (this.catchUpTimer) clearTimeout(this.catchUpTimer)
+    this.scheduler.dispose()
     this.cancelPending()
     for (const r of this.agents.values()) r.agent.stop()
     const deadline = Date.now() + 1500
     while ([...this.agents.values()].some((r) => r.agent.running) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50))
     for (const r of this.agents.values()) r.agent.dispose()
     await this.mcp.close()
+  }
+
+  // ---------- schedules ----------
+
+  /** Arms the schedule timer; after MCP servers had a moment to connect, catches up runs missed while closed. */
+  startSchedules() {
+    this.scheduler.arm()
+    this.catchUpTimer = setTimeout(() => {
+      this.catchUpTimer = null
+      this.scheduler.catchUp()
+    }, 5000)
+  }
+
+  runScheduleNow(id: string): AppState {
+    this.scheduler.runNow(id)
+    return this.state()
+  }
+
+  /** Runs a schedule's prompt in a new chat in its folder, in the background (the chat on screen stays). */
+  private async runScheduled(s: Schedule): Promise<void> {
+    const cwd = path.resolve(s.cwd).normalize('NFC')
+    if (!fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) throw new Error(`Folder not found: ${cwd}`)
+    // Another folder's chat gets that folder's extensions, like it would when opened.
+    const ext =
+      cwd === this.workspace
+        ? this.ext
+        : await loadExtensions(cwd, { user: this.settings.tools.loadUserExtensions, project: this.settings.tools.loadProjectExtensions })
+    const tools = cwd === this.workspace ? this.tools : assembleTools(ext.tools, this.mcp.tools()).tools
+    const session = newSession(cwd, s.model ?? this.settings.models.default)
+    session.meta.title = `⏰ ${s.name.trim() || 'Schedule'}`
+    // Show the folder in the sidebar so the new chat is visible.
+    if (!this.settings.app.openWorkspaces.includes(cwd)) {
+      this.settings = { ...this.settings, app: { ...this.settings.app, openWorkspaces: [...this.settings.app.openWorkspaces, cwd] } }
+      this.saveSettings()
+    }
+    this.prune()
+    const running = this.createAgent(session, { tools, skills: ext.skills })
+    this.agents.set(session.meta.id, running)
+    this.registry.models(session.meta.model.providerId).catch(() => {})
+    await running.agent.send(expandSlashCommand(s.prompt, ext.commands) ?? s.prompt)
   }
 
   private extensionsInfo(): ExtensionsInfo {
@@ -389,18 +442,18 @@ export class AppController {
     this.registry.models(session.meta.model.providerId).catch(() => {})
   }
 
-  private createAgent(session: Session): Running {
+  private createAgent(session: Session, own?: { tools: Tool[]; skills: LoadedExtensions['skills'] }): Running {
     const id = session.meta.id
     const permissions = new Permissions({ ...this.settings.permissions, mode: this.mode }, session.meta.cwd)
     const agent = new Agent({
       session,
       registry: this.registry,
-      tools: this.tools,
+      tools: own?.tools ?? this.tools,
       settings: this.settings,
       usage: this.usage,
       permissions,
       memory: this.memory,
-      skills: this.ext.skills,
+      skills: own?.skills ?? this.ext.skills,
       sessions: { list: (opts) => this.sessionMetas(opts?.cwd), load: (sid) => this.store.load(sid) },
       secret: (id) => this.secrets.get(id),
       onSave: (s) => {
@@ -719,6 +772,7 @@ export class AppController {
       extensions: this.extensionsInfo(),
       skills: this.ext.skills.map((s) => ({ name: s.name, description: s.description, source: s.source, dir: s.dir })),
       memory: this.memoryInfo(),
+      schedules: this.scheduler.status(),
       mcp: {
         servers: this.mcp.status(),
         tokens: Object.fromEntries(this.settings.mcp.servers.map((s) => [s.id, this.secrets.has(mcpSecretId(s.id))])),

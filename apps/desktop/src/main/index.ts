@@ -141,6 +141,11 @@ function registerIpc() {
     if (dir) await shell.openPath(dir)
   })
   handle('skills.remove', (dir: string) => c.removeSkill(dir))
+  handle('schedules.runNow', (id: string) => c.runScheduleNow(id))
+  handle('schedules.pickFolder', async () => {
+    const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: 'Folder for this schedule', defaultPath: c.state().workspace ?? undefined })
+    return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]
+  })
   handle('app.openExternal', (url: string) => {
     if (/^https?:\/\//.test(url)) return shell.openExternal(url)
   })
@@ -171,6 +176,7 @@ app.whenReady().then(async () => {
   registerIpc()
   await controller.restoreWorkspace()
   controller.startMcp()
+  controller.startSchedules()
   createWindow()
   initUpdater(send, controller.getSettings().app.autoUpdate)
 

@@ -44,6 +44,7 @@ const api: HarnessApi = {
   memory: { remove: call('memory.remove') as any, clear: call('memory.clear') as any, undo: call('memory.undo') as any },
   extensions: { reload: call('extensions.reload') as any, openDir: call('extensions.openDir') as any },
   skills: { remove: call('skills.remove') as any },
+  schedules: { runNow: call('schedules.runNow') as any, pickFolder: call('schedules.pickFolder') as any },
   app: {
     openExternal: call('app.openExternal') as any,
     openPath: call('app.openPath') as any,

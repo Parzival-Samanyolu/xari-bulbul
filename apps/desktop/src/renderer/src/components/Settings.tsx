@@ -3,7 +3,7 @@ import { MCP_PRESETS, presetServer } from '@harness/core/mcp-presets'
 import { EFFORT_LABELS, EFFORT_LEVELS, RECOMMENDED, TIER_LABELS, refKey, type RecommendedTier } from '@harness/core/catalog'
 import type { AppState, McpServerStatus, ModelRef, ProviderTestResult, Settings, UpdateStatus } from '../../../shared/ipc'
 import { api } from '../lib/api'
-import { cost, modelLabel, tokens } from '../lib/format'
+import { ago, cost, modelLabel, tokens } from '../lib/format'
 import { MODES } from './Composer'
 import { ListField, NumberField, Row, Section, Select, Slider, TextField, Toggle } from './fields'
 import { ModelPicker } from './ModelPicker'
@@ -27,6 +27,7 @@ const TABS = [
   { id: 'hooks', label: 'Hooks' },
   { id: 'tools', label: 'Tools & Extensions' },
   { id: 'mcp', label: 'MCP Servers' },
+  { id: 'schedules', label: 'Schedules' },
   { id: 'memory', label: 'Memory' },
   { id: 'usage', label: 'Usage & Budgets' },
   { id: 'appearance', label: 'Appearance' },
@@ -60,6 +61,7 @@ export function SettingsView({ app, tab, onTab, onState, onError, onClose, updat
         {tab === 'hooks' && <HooksTab {...common} />}
         {tab === 'tools' && <ToolsTab {...common} />}
         {tab === 'mcp' && <McpTab {...common} />}
+        {tab === 'schedules' && <SchedulesTab {...common} />}
         {tab === 'memory' && <MemoryTab {...common} />}
         {tab === 'usage' && <UsageTab {...common} />}
         {tab === 'appearance' && <AppearanceTab {...common} />}
@@ -1101,6 +1103,153 @@ function McpTab({ app, save, onState, onError }: TabProps) {
           </div>
         </Section>
       )}
+    </>
+  )
+}
+
+// ---------------------------------------------------------------- Schedules
+
+type ScheduleConfig = Settings['schedules'][number]
+
+const FREQUENCIES = [
+  { value: 'daily', label: 'Every day' },
+  { value: 'weekly', label: 'Every week' },
+  { value: 'interval', label: 'Every few hours' },
+] as const
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map((label, i) => ({ value: String(i), label }))
+
+function when(t: number | null): string {
+  if (t == null) return '—'
+  return new Date(t).toLocaleString(undefined, { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+}
+
+function SchedulesTab({ app, save, onState, onError }: TabProps) {
+  const list = app.settings.schedules
+  const status = new Map(app.schedules.map((s) => [s.id, s]))
+  const [picking, setPicking] = useState<number | null>(null)
+  const update = (i: number, fn: (s: ScheduleConfig) => void) => save((st) => (fn(st.schedules[i]), st))
+  const add = () =>
+    save((st) => {
+      st.schedules.push({
+        id: `sch-${Date.now().toString(36)}`,
+        name: 'New schedule',
+        enabled: true,
+        cwd: app.workspace ?? '',
+        prompt: '',
+        when: { kind: 'daily', time: '09:00', weekday: 1, hours: 24 },
+        model: null,
+      })
+      return st
+    })
+  const pickFolder = (i: number) =>
+    api.schedules.pickFolder().then((dir) => dir && update(i, (s) => (s.cwd = dir)), onError)
+  return (
+    <>
+      <Section
+        title="Schedules"
+        description="Run a prompt on a timer. Each run starts a new chat in the chosen folder, in the current permission mode, and you get a notification when it finishes or needs approval. Runs only happen while the app is open; if a run was missed while it was closed, it runs once the next time you open the app."
+      >
+        {list.length === 0 && <p className="muted small">No schedules yet.</p>}
+        {list.map((sch, i) => {
+          const st = status.get(sch.id)
+          const missing = !sch.cwd.trim() ? 'Choose a folder.' : !sch.prompt.trim() ? 'Write a prompt.' : null
+          return (
+            <div key={sch.id} className="provider-card schedule">
+              <div className="provider-head">
+                <Toggle label={`Enable ${sch.name}`} value={sch.enabled} onChange={(v) => update(i, (s) => (s.enabled = v))} />
+                <b>{sch.name || 'Schedule'}</b>
+                {st?.running && (
+                  <span className="badge ok" role="status">
+                    Running
+                  </span>
+                )}
+                <div className="spacer" />
+                <button className="btn ghost" disabled={!!missing || st?.running} onClick={() => api.schedules.runNow(sch.id).then(onState, onError)}>
+                  Run now
+                </button>
+                <button className="link danger small" onClick={() => confirm(`Remove ${sch.name || 'this schedule'}?`) && save((x) => ((x.schedules = x.schedules.filter((y) => y.id !== sch.id)), x))}>
+                  Remove
+                </button>
+              </div>
+              <div className="muted small schedule-times">
+                Last run: {st?.lastRun ? `${when(st.lastRun)} (${ago(st.lastRun)})` : 'never'} · Next run: {sch.enabled && !missing ? when(st?.nextRun ?? null) : 'off'}
+              </div>
+              {missing && <div className="small warn">{missing}</div>}
+              {st?.error && <div className="notice notice-error small">Last run couldn't start: {st.error}</div>}
+              <Row label="Name" labelFor={`sch-name-${sch.id}`}>
+                <TextField label="Name" id={`sch-name-${sch.id}`} value={sch.name} onChange={(v) => update(i, (s) => (s.name = v))} />
+              </Row>
+              <Row label="Folder" hint="The chat runs here, with this folder's project instructions and extensions.">
+                <div className="inline">
+                  <span className="mono small schedule-path" title={sch.cwd}>
+                    {sch.cwd || 'None'}
+                  </span>
+                  <button className="btn" onClick={() => pickFolder(i)}>
+                    Choose…
+                  </button>
+                </div>
+              </Row>
+              <Row label="Prompt" hint="Sent as the first message. Slash commands work." wide>
+                <TextField label="Prompt" multiline rows={4} value={sch.prompt} placeholder="Check the open pull requests and summarize what needs review." onChange={(v) => update(i, (s) => (s.prompt = v))} />
+              </Row>
+              <Row label="Frequency">
+                <div className="inline">
+                  <Select label="Frequency" value={sch.when.kind} options={[...FREQUENCIES]} onChange={(v) => update(i, (s) => (s.when.kind = v))} />
+                  {sch.when.kind === 'weekly' && (
+                    <Select label="Weekday" value={String(sch.when.weekday)} options={WEEKDAYS} onChange={(v) => update(i, (s) => (s.when.weekday = Number(v)))} />
+                  )}
+                  {sch.when.kind !== 'interval' ? (
+                    <input type="time" aria-label="Time" value={sch.when.time} onChange={(e) => e.target.value && update(i, (s) => (s.when.time = e.target.value))} />
+                  ) : (
+                    <IntervalField hours={sch.when.hours} onChange={(h) => update(i, (s) => (s.when.hours = h))} />
+                  )}
+                </div>
+              </Row>
+              <Row label="Model">
+                <div className="inline">
+                  <button className="btn" onClick={() => setPicking(i)}>
+                    {sch.model ? `${modelLabel(sch.model.modelId)} · ${sch.model.providerId}` : 'Default model'}
+                  </button>
+                  {sch.model && (
+                    <button className="link small" onClick={() => update(i, (s) => (s.model = null))}>
+                      reset
+                    </button>
+                  )}
+                </div>
+              </Row>
+            </div>
+          )
+        })}
+        <button className="btn" onClick={add}>
+          + Add schedule
+        </button>
+      </Section>
+      {picking != null && (
+        <ModelPicker app={app} onClose={() => setPicking(null)} onState={onState} onError={onError} onPick={(r) => update(picking, (s) => (s.model = r))} title="Model for this schedule…" />
+      )}
+    </>
+  )
+}
+
+/** "Every N minutes/hours"; stored as hours. */
+function IntervalField({ hours, onChange }: { hours: number; onChange: (hours: number) => void }) {
+  const [unit, setUnit] = useState<'minutes' | 'hours'>(hours < 1 ? 'minutes' : 'hours')
+  const shown = unit === 'minutes' ? Math.round(hours * 60) : Math.round(hours * 100) / 100
+  return (
+    <>
+      <NumberField label="Interval" value={shown} min={1} onChange={(v) => v && onChange(unit === 'minutes' ? v / 60 : v)} />
+      <Select
+        label="Unit"
+        value={unit}
+        options={[
+          { value: 'minutes', label: 'minutes' },
+          { value: 'hours', label: 'hours' },
+        ]}
+        onChange={(u) => {
+          setUnit(u)
+          onChange(u === 'minutes' ? shown / 60 : shown)
+        }}
+      />
     </>
   )
 }

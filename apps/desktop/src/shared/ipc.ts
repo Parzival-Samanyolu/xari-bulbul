@@ -83,6 +83,17 @@ export interface MemoryInfo {
   projectFile: string | null
 }
 
+export interface ScheduleStatus {
+  id: string
+  /** ms since epoch, or null if it hasn't run. */
+  lastRun: number | null
+  /** null when it's off or missing a folder or prompt. */
+  nextRun: number | null
+  running: boolean
+  /** Why the last run couldn't start. */
+  error: string | null
+}
+
 export interface AppState {
   version: string
   platform: NodeJS.Platform
@@ -118,6 +129,8 @@ export interface AppState {
   mcp: { servers: McpServerStatus[]; tokens: Record<string, boolean> }
   /** Saved memories for the open folder and for every folder. */
   memory: MemoryInfo
+  /** Run times of each schedule in settings. */
+  schedules: ScheduleStatus[]
   paths: { data: string; sessions: string; usage: string }
 }
 
@@ -225,6 +238,12 @@ export interface HarnessApi {
   skills: {
     /** Deletes the skill's folder. */
     remove(dir: string): Promise<AppState>
+  }
+  schedules: {
+    /** Starts the schedule in a new chat now, unless its last run is still going. */
+    runNow(id: string): Promise<AppState>
+    /** Folder picker that only returns the path (doesn't open the folder). */
+    pickFolder(): Promise<string | null>
   }
   app: {
     openExternal(url: string): Promise<void>

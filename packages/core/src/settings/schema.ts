@@ -201,6 +201,30 @@ export const HookRuleSchema = z.object({
 })
 export type HookRule = z.infer<typeof HookRuleSchema>
 
+/** A prompt run in a new chat on a timer, while the app is open. Run times live in `<data>/schedules.json`. */
+export const ScheduleSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().default('Schedule'),
+  enabled: z.boolean().default(true),
+  /** Folder the chat runs in. */
+  cwd: z.string().default(''),
+  prompt: z.string().default(''),
+  when: z
+    .object({
+      kind: z.enum(['daily', 'weekly', 'interval']).default('daily'),
+      /** "HH:MM", local time (daily, weekly). Not validated here so one bad value can't drop every schedule. */
+      time: z.string().default('09:00'),
+      /** 0 = Sunday … 6 = Saturday (weekly). */
+      weekday: z.number().int().min(0).max(6).default(1),
+      /** Hours between runs (interval). */
+      hours: z.number().positive().default(24),
+    })
+    .prefault({}),
+  /** null = the default model. */
+  model: ModelRefSchema.nullable().default(null),
+})
+export type Schedule = z.infer<typeof ScheduleSchema>
+
 export const SettingsSchema = z.object({
   providers: z
     .array(ProviderConfigSchema)
@@ -335,6 +359,8 @@ export const SettingsSchema = z.object({
       servers: z.array(McpServerSchema).default([]),
     })
     .prefault({}),
+
+  schedules: z.array(ScheduleSchema).default([]),
 
   usage: z
     .object({

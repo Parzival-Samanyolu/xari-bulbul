@@ -25,3 +25,4 @@ export { runHeadless, exitCodeFor, EXIT, type HeadlessFormat, type HeadlessOptio
 export { gatherEnvironment, type PromptEnvironment } from './context/system-prompt.js'
 export { destructiveReason, outsideWriteReason } from './permissions/destructive.js'
 export { findFiles } from './tools/fs-walk.js'
+export { nextRun, missedRun, parseTime, intervalMs, type ScheduleWhen } from './schedule/next.js'

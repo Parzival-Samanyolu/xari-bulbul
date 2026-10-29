@@ -2176,6 +2176,17 @@ button.badge.rec-key:hover {
   white-space: nowrap;
 }
 
+.schedule-times {
+  margin-top: 6px;
+}
+.schedule-path {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ---------- edit, revert, questions ---------- */
 
 .user-row {
