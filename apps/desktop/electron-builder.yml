@@ -17,6 +17,8 @@ mac:
   # Only the display name may be non-ASCII: Electron finds its helper apps via CFBundleName.
   extendInfo:
     CFBundleDisplayName: Xarı Bülbül
+    # Shown when voice input first asks for the microphone.
+    NSMicrophoneUsageDescription: Xarı Bülbül uses the microphone when you dictate a message.
   target:
     - target: dmg
       arch: [universal]

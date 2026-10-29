@@ -94,6 +94,11 @@ export interface ScheduleStatus {
   error: string | null
 }
 
+export interface VoiceState {
+  /** 'provider' = `models.transcription` is set and its provider is ready. */
+  engine: 'provider' | null
+}
+
 export interface AppState {
   version: string
   platform: NodeJS.Platform
@@ -133,6 +138,8 @@ export interface AppState {
   schedules: ScheduleStatus[]
   /** The browser the browser tools drive (from tools.browser.path or detection), or null if none was found. */
   browser: string | null
+  /** How the mic button transcribes; null hides it. */
+  voice: VoiceState
   paths: { data: string; sessions: string; usage: string }
 }
 
@@ -246,6 +253,12 @@ export interface HarnessApi {
     runNow(id: string): Promise<AppState>
     /** Folder picker that only returns the path (doesn't open the folder). */
     pickFolder(): Promise<string | null>
+  }
+  voice: {
+    /** Asks the OS for microphone access (macOS); true when recording may start. */
+    prepare(): Promise<boolean>
+    /** Turns a recording into text with the configured engine. */
+    transcribe(audio: Uint8Array, mediaType: string): Promise<string>
   }
   app: {
     openExternal(url: string): Promise<void>

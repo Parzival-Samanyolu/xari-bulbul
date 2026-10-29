@@ -1213,6 +1213,31 @@ kbd {
   color: var(--text);
   border-color: var(--control-border);
 }
+.icon-btn.mic.recording {
+  color: var(--danger);
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+.icon-btn.mic:disabled {
+  cursor: progress;
+}
+.mic-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.mic-status:empty {
+  display: none;
+}
+.rec-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: blink 1.2s ease-in-out infinite;
+}
 .composer-box.running {
   border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
 }
@@ -2267,4 +2292,18 @@ label.question-option.on {
 .ask-answer {
   border-top: 1px solid var(--border);
   padding: 8px 12px;
+}
+
+/* ---------- voice input settings ---------- */
+
+.voice-model {
+  display: grid;
+  gap: 8px;
+}
+.voice-model .btn[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.voice-model p {
+  margin: 0;
 }

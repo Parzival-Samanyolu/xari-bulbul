@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AppState, AttachmentInput, PermissionMode } from '../../../shared/ipc'
 import { api } from '../lib/api'
 import { modelLabel } from '../lib/format'
+import { MicButton } from './MicButton'
 import { MakerLogo, ProviderLogo } from './ProviderLogo'
 import { ThinkingPicker } from './ThinkingPicker'
 
@@ -120,6 +121,24 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
     if (!files.length) return
     e.preventDefault()
     add(files)
+  }
+
+  /** Dictated text goes where the cursor is (or replaces the selection), with a space on either side when needed. */
+  const insert = (t: string) => {
+    const el = ref.current
+    setText((cur) => {
+      const start = el ? el.selectionStart : cur.length
+      const end = el ? el.selectionEnd : cur.length
+      const before = cur.slice(0, start)
+      const after = cur.slice(end)
+      const piece = (before && !/\s$/.test(before) ? ' ' : '') + t + (after && !/^\s/.test(after) ? ' ' : '')
+      requestAnimationFrame(() => {
+        if (!el) return
+        el.focus()
+        el.setSelectionRange(start + piece.length, start + piece.length)
+      })
+      return before + piece + after
+    })
   }
 
   const pick = () =>
@@ -243,6 +262,7 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
               <path d="M10.5 4.5 5.8 9.2a1.4 1.4 0 0 0 2 2l5-5a2.8 2.8 0 0 0-4-4l-5.2 5.2a4.2 4.2 0 0 0 6 6l4.4-4.4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
+          <MicButton app={app} onText={insert} onError={onError} />
           <button className="chip" onClick={onOpenPicker} title={`Switch model (${app.platform === 'darwin' ? '⌘K' : 'Ctrl+K'})`}>
             <span className={`dot ${ready ? 'ok' : 'bad'}`} aria-label={ready ? 'Provider ready' : 'Provider needs setup'} />
             {model && <ProviderLogo id={model.providerId} size={13} />}

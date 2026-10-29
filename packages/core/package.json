@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./catalog": "./src/providers/catalog.ts",
-    "./mcp-presets": "./src/mcp/presets.ts"
+    "./mcp-presets": "./src/mcp/presets.ts",
+    "./voice": "./src/voice/transcribe.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

@@ -1,6 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, Notification, shell } from 'electron'
+import { pathToFileURL } from 'node:url'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, Notification, session, shell, systemPreferences, type WebContents } from 'electron'
 import { IPC_EVENT, type UiEvent } from '../shared/ipc'
 import { AppController, type BackgroundNotice } from './controller'
 import { loadShellPath } from './shell-path'
@@ -34,6 +35,51 @@ function windowBackground(): string {
   if (theme === 'sepia') return '#f6efe1'
   if (theme === 'dark' || (theme === 'system' && nativeTheme.shouldUseDarkColors)) return '#16171a'
   return '#ffffff'
+}
+
+/** True when `url` is the app's own page (the dev server, or the bundled index.html). */
+function isAppUrl(url: string | undefined): boolean {
+  if (!url) return false
+  try {
+    const u = new URL(url)
+    if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) return u.origin === new URL(process.env.ELECTRON_RENDERER_URL).origin
+    return u.protocol === 'file:' && `${u.origin}${u.pathname}` === pathToFileURL(path.join(__dirname, '../renderer/index.html')).href
+  } catch {
+    return false
+  }
+}
+
+const isAppPage = (wc: WebContents | null, url?: string) => !!wc && wc === win?.webContents && isAppUrl(url || wc.getURL())
+
+/**
+ * Only the app's own page gets permissions. The microphone (for voice input) is the one media
+ * device it may use: requests that include the camera or screen are refused.
+ */
+function setPermissionHandlers() {
+  session.defaultSession.setPermissionRequestHandler((wc, permission, callback, details) => {
+    if (!isAppPage(wc, details.requestingUrl)) return callback(false)
+    if (permission === 'media') {
+      const types = (details as { mediaTypes?: string[] }).mediaTypes ?? []
+      return callback(types.length > 0 && types.every((t) => t === 'audio'))
+    }
+    callback(true)
+  })
+  session.defaultSession.setPermissionCheckHandler((wc, permission, _origin, details) => {
+    if (!isAppPage(wc, details.requestingUrl)) return false
+    if (permission === 'media') return (details as { mediaType?: string }).mediaType !== 'video'
+    return true
+  })
+}
+
+/** On macOS the system asks once for microphone access; elsewhere the OS doesn't gate it here. */
+async function microphoneAccess(): Promise<boolean> {
+  if (process.platform !== 'darwin') return true
+  const status = systemPreferences.getMediaAccessStatus('microphone')
+  if (status === 'granted') return true
+  if (status === 'denied' || status === 'restricted') {
+    throw new Error('Microphone access is off. Turn it on for Xarı Bülbül in System Settings → Privacy & Security → Microphone.')
+  }
+  return systemPreferences.askForMediaAccess('microphone')
 }
 
 function createWindow() {
@@ -146,6 +192,8 @@ function registerIpc() {
     const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: 'Folder for this schedule', defaultPath: c.state().workspace ?? undefined })
     return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]
   })
+  handle('voice.prepare', () => microphoneAccess())
+  handle('voice.transcribe', (audio: Uint8Array, mediaType: string) => c.transcribe(audio, mediaType))
   handle('app.openExternal', (url: string) => {
     if (/^https?:\/\//.test(url)) return shell.openExternal(url)
   })
@@ -174,6 +222,7 @@ app.whenReady().then(async () => {
   loadShellPath()
   controller = new AppController(app.getPath('userData'), app.getVersion(), send, notify)
   registerIpc()
+  setPermissionHandlers()
   await controller.restoreWorkspace()
   controller.startMcp()
   controller.startSchedules()

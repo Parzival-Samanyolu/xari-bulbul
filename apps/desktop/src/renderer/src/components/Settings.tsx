@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { MCP_PRESETS, presetServer } from '@harness/core/mcp-presets'
+import { TRANSCRIPTION_SUGGESTIONS } from '@harness/core/voice'
 import { EFFORT_LABELS, EFFORT_LEVELS, RECOMMENDED, TIER_LABELS, refKey, type RecommendedTier } from '@harness/core/catalog'
 import type { AppState, McpServerStatus, ModelRef, ProviderTestResult, Settings, UpdateStatus } from '../../../shared/ipc'
 import { api } from '../lib/api'
@@ -335,6 +336,52 @@ const SPEEDS = [
   { value: 'batch', label: 'Batch' },
 ]
 
+function VoiceSection({ app, save, onTab }: TabProps) {
+  const t = app.settings.models.transcription
+  // Anthropic's API has no audio endpoint; every other provider speaks the OpenAI one.
+  const providers = app.settings.providers.filter((p) => p.api === 'openai')
+  const provider = t && app.settings.providers.find((p) => p.id === t.providerId)
+  const setProvider = (id: string) =>
+    save((s) => {
+      const suggested = TRANSCRIPTION_SUGGESTIONS.find((x) => x.providerId === id)?.modelId
+      s.models.transcription = id ? { providerId: id, modelId: suggested ?? (s.models.transcription?.modelId || '') } : null
+      return s
+    })
+  return (
+    <Section title="Voice input" description="The mic button in the message box records you and types what you said. Recordings are sent to the provider you choose here.">
+      <Row label="Transcription model" hint="A provider with an OpenAI-style audio transcription endpoint. Off hides the mic button." wide>
+        <div className="voice-model">
+          <div className="inline">
+            <Select label="Transcription provider" value={t?.providerId ?? ''} options={[{ value: '', label: 'Off' }, ...providers.map((p) => ({ value: p.id, label: p.name }))]} onChange={setProvider} />
+            {t && <TextField label="Transcription model id" mono value={t.modelId} placeholder="whisper-1" onChange={(v) => save((s) => ((s.models.transcription = { providerId: t.providerId, modelId: v.trim() }), s))} />}
+          </div>
+          <div className="inline small">
+            <span className="muted">Suggested:</span>
+            {TRANSCRIPTION_SUGGESTIONS.map((x) => (
+              <button
+                key={x.label}
+                className="btn small"
+                aria-pressed={t?.providerId === x.providerId && t.modelId === x.modelId}
+                onClick={() => save((s) => ((s.models.transcription = { providerId: x.providerId, modelId: x.modelId }), s))}
+              >
+                {x.label}
+              </button>
+            ))}
+          </div>
+          {t && provider && !app.ready[t.providerId] && (
+            <p className="small warn">
+              {provider.enabled ? `${provider.name} needs an API key.` : `${provider.name} is turned off.`}{' '}
+              <button className="link" onClick={() => onTab?.('providers')}>
+                Open Providers &amp; Keys
+              </button>
+            </p>
+          )}
+        </div>
+      </Row>
+    </Section>
+  )
+}
+
 function ModelsTab({ app, save, onState, onError, onTab }: TabProps) {
   const [picking, setPicking] = useState<null | 'default' | 'compaction' | 'title' | 'memoryReview' | 'subagent' | 'override' | 'favorite'>(null)
   const m = app.settings.models
@@ -425,6 +472,7 @@ function ModelsTab({ app, save, onState, onError, onTab }: TabProps) {
           </div>
         </Row>
       </Section>
+      <VoiceSection app={app} save={save} onState={onState} onError={onError} onTab={onTab} />
       <Section title="Generation defaults" description="Leave empty to use each provider's default.">
         <Row label="Temperature">
           <NumberField label="Temperature" nullable value={m.temperature} min={0} max={2} step={0.1} placeholder="default" onChange={(v) => save((s) => ((s.models.temperature = v), s))} />

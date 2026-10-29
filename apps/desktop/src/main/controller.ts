@@ -24,7 +24,9 @@ import {
   PROVIDER_PRESETS,
   ProviderError,
   BUILTIN_PROVIDERS,
+  canTranscribe,
   providerReady,
+  transcribe,
   pushRecent,
   parseSettings,
   saveSettingsFile,
@@ -43,7 +45,7 @@ import {
   type Settings,
   type Tool,
 } from '@harness/core'
-import type { AppState, AttachmentInput, ExtensionsInfo, MemoryInfo, ProviderTestResult, SessionView, UiEvent } from '../shared/ipc'
+import type { AppState, AttachmentInput, ExtensionsInfo, MemoryInfo, ProviderTestResult, SessionView, UiEvent, VoiceState } from '../shared/ipc'
 import { Scheduler } from './scheduler'
 import { SecretStore } from './secrets'
 
@@ -237,6 +239,25 @@ export class AppController {
     } catch (e) {
       return { ok: false, message: (e as Error).message }
     }
+  }
+
+  // ---------- voice ----------
+
+  private voiceState(): VoiceState {
+    const ref = this.settings.models.transcription
+    const config = ref && this.settings.providers.find((p) => p.id === ref.providerId)
+    return { engine: ref?.modelId.trim() && canTranscribe(config || undefined) && this.isReady(ref.providerId) ? 'provider' : null }
+  }
+
+  /** Recording bytes from the composer's mic button → text. */
+  async transcribe(audio: Uint8Array, mediaType: string): Promise<string> {
+    if (!(audio instanceof Uint8Array)) throw new Error('No recording received.')
+    const ref = this.settings.models.transcription
+    const config = ref && this.settings.providers.find((p) => p.id === ref.providerId)
+    if (!ref?.modelId.trim() || !config) throw new Error('Choose a transcription model in Settings → Models.')
+    if (!canTranscribe(config)) throw new Error(`${config.name} has no transcription endpoint.`)
+    if (!this.isReady(ref.providerId)) throw new Error(`Add a ${config.name} API key in Settings → Providers & Keys.`)
+    return transcribe({ provider: config, apiKey: this.secrets.get(ref.providerId), model: ref.modelId.trim(), audio, mediaType }, { signal: AbortSignal.timeout(120_000) })
   }
 
   // ---------- extensions ----------
@@ -775,6 +796,7 @@ export class AppController {
       memory: this.memoryInfo(),
       schedules: this.scheduler.status(),
       browser: findBrowser(this.settings.tools.browser.path),
+      voice: this.voiceState(),
       mcp: {
         servers: this.mcp.status(),
         tokens: Object.fromEntries(this.settings.mcp.servers.map((s) => [s.id, this.secrets.has(mcpSecretId(s.id))])),
