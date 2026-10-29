@@ -1,6 +1,6 @@
 {
   "name": "@harness/core",
-  "version": "0.2.11",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
   "main": "src/index.ts",
