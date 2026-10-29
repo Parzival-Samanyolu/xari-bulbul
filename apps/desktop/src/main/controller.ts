@@ -400,6 +400,7 @@ export class AppController {
       permissions,
       memory: this.memory,
       skills: this.ext.skills,
+      sessions: { list: (opts) => this.sessionMetas(opts?.cwd), load: (sid) => this.store.load(sid) },
       secret: (id) => this.secrets.get(id),
       onSave: (s) => {
         if (!s.messages.length || this.removed.has(id)) return
@@ -653,11 +654,17 @@ export class AppController {
     return this.state()
   }
 
+  /** Saved chats newest first, from the index instead of re-reading every file; only `cwd`'s when given. */
+  private sessionMetas(cwd?: string): SessionMeta[] {
+    this.index ??= new Map(this.store.list().map((m) => [m.id, m]))
+    const want = cwd?.normalize('NFC')
+    return [...this.index.values()].filter((m) => !want || m.cwd.normalize('NFC') === want).sort((a, b) => b.updatedAt - a.updatedAt)
+  }
+
   /** Chats for every open folder, from one pass over the store. */
   private sessionLists(): Pick<AppState, 'sessions' | 'folders'> {
-    this.index ??= new Map(this.store.list().map((m) => [m.id, m]))
     const byFolder = new Map<string, AppState['sessions']>()
-    for (const meta of [...this.index.values()].sort((a, b) => b.updatedAt - a.updatedAt)) {
+    for (const meta of this.sessionMetas()) {
       const cwd = meta.cwd.normalize('NFC')
       byFolder.set(cwd, [...(byFolder.get(cwd) ?? []), meta])
     }

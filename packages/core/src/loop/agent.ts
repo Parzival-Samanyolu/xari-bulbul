@@ -14,12 +14,13 @@ import { generateTitle } from '../sessions/title.js'
 import { modelKey, type Settings } from '../settings/schema.js'
 import { FORGET_TOOL, REMEMBER_TOOL } from '../tools/memory.js'
 import { SAVE_SKILL_TOOL, SKILL_TOOL } from '../tools/skills.js'
+import { SESSION_SEARCH_TOOL } from '../tools/session-search.js'
 import { USER_EXT_DIR, projectExtDir, type Skill } from '../extensions/loader.js'
 import { JobRegistry } from '../tools/jobs.js'
 import { SEARCH_KEY_ID, type WebSearchConfig } from '../tools/web-search.js'
 import { TASK_TOOL } from '../tools/task.js'
 import { ASK_USER_TOOL } from '../tools/ask-user.js'
-import type { SubagentInput, Tool, ToolContext, ToolResult, UserQuestion } from '../tools/types.js'
+import type { SessionAccess, SubagentInput, Tool, ToolContext, ToolResult, UserQuestion } from '../tools/types.js'
 import type { ChatMessage, FileAttachment, ImageAttachment, ModelRef, TodoItem, ToolCall, Usage } from '../types.js'
 import { checkBudget, computeCost, type UsageRecord, type UsageSummary, type UsageTracker } from '../usage/tracker.js'
 
@@ -81,6 +82,8 @@ export interface AgentOptions {
   skills?: Skill[]
   /** Where save_skill writes user skills; `~/.harness/skills` by default. */
   userSkillsDir?: string
+  /** Saved chats session_search reads (a SessionStore); the tool is hidden without it. */
+  sessions?: Omit<SessionAccess, 'exclude'>
   /** Set for subagents: what they were asked to do, and whose usage/budget they count against. */
   subagent?: { description: string; parentSessionId: string }
   /** Background shell jobs; subagents share their parent's. */
@@ -222,6 +225,7 @@ export class Agent {
     // Same for skills: subagents load them, only the main agent saves new ones.
     if (!this.skills) disabled.add(SKILL_TOOL)
     if (!this.skills || this.o.subagent) disabled.add(SAVE_SKILL_TOOL)
+    if (!this.o.sessions) disabled.add(SESSION_SEARCH_TOOL)
     // Questions need someone to answer them.
     if (!this.o.askUser || this.o.subagent) disabled.add(ASK_USER_TOOL)
     return this.tools.filter((t) => !disabled.has(t.name) && (!plan || t.readOnly))
@@ -626,6 +630,13 @@ export class Agent {
     return calls
   }
 
+  private sessionAccess(): SessionAccess | undefined {
+    const store = this.o.sessions
+    if (!store) return undefined
+    // A subagent's own chat is never saved; it leaves out its parent's instead.
+    return { list: (opts) => store.list(opts), load: (id) => store.load(id), exclude: this.o.subagent?.parentSessionId ?? this.session.meta.id }
+  }
+
   private toolContext(callId: string, signal: AbortSignal): ToolContext {
     return {
       cwd: this.session.meta.cwd,
@@ -654,6 +665,7 @@ export class Agent {
           this.skills = [...(this.skills ?? []).filter((s) => s.name !== skill.name), skill].sort((a, b) => a.name.localeCompare(b.name))
         },
       },
+      sessions: this.sessionAccess(),
       webSearch: this.webSearchConfig(),
       runSubagent: this.o.subagent ? undefined : (input) => this.runSubagent(callId, input, signal),
       askUser: this.o.askUser && !this.o.subagent ? (q) => this.o.askUser!({ ...q, callId }) : undefined,
@@ -732,6 +744,7 @@ export class Agent {
       permissions: this.o.permissions,
       memory: this.o.memory,
       skills: this.skills,
+      sessions: this.o.sessions,
       subagent: { description: input.description, parentSessionId: this.session.meta.id },
       jobs: this.jobs,
       secret: this.o.secret,

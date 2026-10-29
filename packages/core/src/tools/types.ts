@@ -2,6 +2,7 @@ import path from 'node:path'
 import { z } from 'zod'
 import type { Skill } from '../extensions/loader.js'
 import type { MemoryAccess } from '../memory/store.js'
+import type { Session, SessionMeta } from '../sessions/store.js'
 import type { JobRegistry } from './jobs.js'
 import type { WebSearchConfig } from './web-search.js'
 import type { JsonSchema, TodoItem } from '../types.js'
@@ -25,6 +26,8 @@ export interface ToolContext {
   webSearch?: WebSearchConfig
   /** Skills the agent can load, and where save_skill writes; absent when skills are off. */
   skills?: SkillAccess
+  /** Saved chats, for session_search; absent when the host keeps none. */
+  sessions?: SessionAccess
   /** Background shell jobs owned by this agent. */
   jobs?: JobRegistry
   /** Runs a subagent; provided by the agent loop when subagents are enabled. */
@@ -45,6 +48,14 @@ export interface SkillAccess {
   dirs: { user: string; project: string }
   /** Makes a just-saved skill loadable for the rest of the chat. */
   added?(skill: Skill): void
+}
+
+export interface SessionAccess {
+  /** Saved chats, newest first; only those in `cwd` when given. */
+  list(opts?: { cwd?: string }): SessionMeta[]
+  load(id: string): Session | null
+  /** The chat doing the search, left out of the results. */
+  exclude?: string
 }
 
 export interface UserQuestion {
