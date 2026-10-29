@@ -18,6 +18,7 @@ import { SAVE_SKILL_TOOL, SKILL_TOOL } from '../tools/skills.js'
 import { SESSION_SEARCH_TOOL } from '../tools/session-search.js'
 import { USER_EXT_DIR, projectExtDir, type Skill } from '../extensions/loader.js'
 import { JobRegistry } from '../tools/jobs.js'
+import { BROWSER_READ_TOOL, BROWSER_TOOL, BrowserHost, findBrowser, type BrowserAccess } from '../tools/browser.js'
 import { SEARCH_KEY_ID, type WebSearchConfig } from '../tools/web-search.js'
 import { TASK_TOOL } from '../tools/task.js'
 import { ASK_USER_TOOL } from '../tools/ask-user.js'
@@ -142,6 +143,8 @@ export class Agent {
   private warnedNoTools = false
   private saveFailed = false
   private skills: Skill[] | undefined
+  /** Launched on the first browser call, closed on stop/dispose. */
+  private browser: BrowserHost | null = null
 
   constructor(private readonly o: AgentOptions) {
     this.session = o.session
@@ -176,6 +179,9 @@ export class Agent {
   }
 
   updateSettings(settings: Settings, tools?: Tool[]): void {
+    const b = settings.tools.browser
+    // A different browser or window mode takes effect on the next browser call.
+    if (this.browser && (!b.enabled || b.path !== this.browser.options.path || b.headless !== this.browser.options.headless)) this.closeBrowser()
     this.settings = settings
     if (tools) this.tools = tools
     this.o.permissions.update({ ...settings.permissions, mode: this.o.permissions.mode })
@@ -188,6 +194,12 @@ export class Agent {
 
   stop(): void {
     this.abort?.abort(new Error('Interrupted by user'))
+    this.closeBrowser()
+  }
+
+  private closeBrowser() {
+    this.browser?.close()
+    this.browser = null
   }
 
   /** Stops the running turn and any background jobs. Call when the chat is closed. */
@@ -229,9 +241,26 @@ export class Agent {
     if (!this.skills) disabled.add(SKILL_TOOL)
     if (!this.skills || this.o.subagent) disabled.add(SAVE_SKILL_TOOL)
     if (!this.o.sessions) disabled.add(SESSION_SEARCH_TOOL)
+    if (!this.browserOn) disabled.add(BROWSER_TOOL).add(BROWSER_READ_TOOL)
     // Questions need someone to answer them.
     if (!this.o.askUser || this.o.subagent) disabled.add(ASK_USER_TOOL)
     return this.tools.filter((t) => !disabled.has(t.name) && (!plan || t.readOnly))
+  }
+
+  private get browserOn(): boolean {
+    const b = this.settings.tools.browser
+    return b.enabled && !!findBrowser(b.path)
+  }
+
+  private browserAccess(): BrowserAccess | undefined {
+    if (!this.browserOn) return undefined
+    const b = this.settings.tools.browser
+    const host = () => (this.browser ??= new BrowserHost({ path: b.path, headless: b.headless }))
+    return {
+      page: (signal) => host().getPage(signal),
+      running: !!this.browser?.running,
+      vision: this.registry.cachedModel(this.model.providerId, this.model.modelId)?.supportsImages !== false,
+    }
   }
 
   private get memoryOn(): boolean {
@@ -657,6 +686,7 @@ export class Agent {
       progress: (text) => this.emit({ type: 'tool_progress', callId, text }),
       memory: this.memoryOn ? this.o.memory!.scoped(this.session.meta.cwd) : undefined,
       jobs: this.jobs,
+      browser: this.browserAccess(),
       skills: this.skills && {
         list: this.skills,
         dirs: {
@@ -779,6 +809,8 @@ export class Agent {
       return { content: (report || 'The subagent finished without a report.') + note }
     } finally {
       signal.removeEventListener('abort', onAbort)
+      // Closes the subagent's own browser, if it opened one; the shared jobs keep running.
+      child.dispose()
     }
   }
 
@@ -807,6 +839,7 @@ export class Agent {
         toolCallId: call.id,
         name: call.name,
         content: result.isError && !denied ? `Error: ${result.content}` : result.content,
+        ...(result.images?.length && !result.isError ? { images: result.images } : {}),
       })
     }
 

@@ -30,7 +30,14 @@ export type ChatMessage =
       /** Provider data replayed with this turn (Anthropic's content blocks with thinking signatures). */
       extra?: Record<string, unknown>
     }
-  | { role: 'tool'; toolCallId: string; name: string; content: string }
+  | {
+      role: 'tool'
+      toolCallId: string
+      name: string
+      content: string
+      /** Images the tool returned (a browser screenshot); sent to the model with the result. */
+      images?: ImageAttachment[]
+    }
 
 /** A text file the user attached; its contents go to the model after the message text. */
 export interface FileAttachment {

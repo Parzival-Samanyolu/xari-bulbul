@@ -9,6 +9,7 @@ import {
   ProviderRegistry,
   SAVE_SKILL_TOOL,
   SEARCH_KEY_ID,
+  findBrowser,
   SessionStore,
   USER_EXT_DIR,
   UsageTracker,
@@ -773,6 +774,7 @@ export class AppController {
       skills: this.ext.skills.map((s) => ({ name: s.name, description: s.description, source: s.source, dir: s.dir })),
       memory: this.memoryInfo(),
       schedules: this.scheduler.status(),
+      browser: findBrowser(this.settings.tools.browser.path),
       mcp: {
         servers: this.mcp.status(),
         tokens: Object.fromEntries(this.settings.mcp.servers.map((s) => [s.id, this.secrets.has(mcpSecretId(s.id))])),

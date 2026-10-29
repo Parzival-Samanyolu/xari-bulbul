@@ -1,4 +1,4 @@
-import type { ChatMessage, ModelInfo, ToolCall, Usage } from '../types.js'
+import type { ChatMessage, ImageAttachment, ModelInfo, ToolCall, Usage } from '../types.js'
 import type { ProviderConfig } from '../settings/schema.js'
 import { midStreamError, requestWithRetry } from './http.js'
 import { readSseData } from './sse.js'
@@ -277,8 +277,24 @@ export function wireMessages(messages: ChatMessage[], replayReasoning: boolean):
       }
     }
   }
-  return messages.map((m, i) => toWireMessage(m, i >= from))
+  const out: Record<string, unknown>[] = []
+  let images: ImageAttachment[] = []
+  messages.forEach((m, i) => {
+    out.push(toWireMessage(m, i >= from))
+    // Tool messages carry text only, so a tool's images follow the round's results as a user message.
+    if (m.role === 'tool' && m.images?.length) images.push(...m.images)
+    if (images.length && messages[i + 1]?.role !== 'tool') {
+      out.push({
+        role: 'user',
+        content: [{ type: 'text', text: images.length > 1 ? 'Images returned by the tool calls above.' : 'Image returned by the tool call above.' }, ...images.map(imagePart)],
+      })
+      images = []
+    }
+  })
+  return out
 }
+
+const imagePart = (i: ImageAttachment) => ({ type: 'image_url', image_url: { url: `data:${i.mediaType};base64,${i.data}` } })
 
 export function toWireMessage(m: ChatMessage, replayReasoning = false): Record<string, unknown> {
   switch (m.role) {
@@ -291,7 +307,7 @@ export function toWireMessage(m: ChatMessage, replayReasoning = false): Record<s
         role: 'user',
         content: [
           ...(text ? [{ type: 'text', text }] : []),
-          ...m.images.map((i) => ({ type: 'image_url', image_url: { url: `data:${i.mediaType};base64,${i.data}` } })),
+          ...m.images.map(imagePart),
         ],
       }
     }

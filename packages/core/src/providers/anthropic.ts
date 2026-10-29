@@ -397,7 +397,15 @@ export function toAnthropicMessages(msgs: ChatMessage[]): { system?: string; mes
         break
       }
       case 'tool':
-        add('user', [{ type: 'tool_result', tool_use_id: m.toolCallId, content: m.content || '(no output)' }])
+        add('user', [
+          {
+            type: 'tool_result',
+            tool_use_id: m.toolCallId,
+            content: m.images?.length
+              ? [{ type: 'text', text: m.content || '(no output)' }, ...m.images.map((i) => ({ type: 'image', source: { type: 'base64', media_type: i.mediaType, data: i.data } }))]
+              : m.content || '(no output)',
+          },
+        ])
         break
     }
   }

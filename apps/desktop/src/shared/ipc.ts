@@ -131,6 +131,8 @@ export interface AppState {
   memory: MemoryInfo
   /** Run times of each schedule in settings. */
   schedules: ScheduleStatus[]
+  /** The browser the browser tools drive (from tools.browser.path or detection), or null if none was found. */
+  browser: string | null
   paths: { data: string; sessions: string; usage: string }
 }
 

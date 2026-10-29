@@ -707,6 +707,7 @@ function ToolsTab({ app, save, onState, onError }: TabProps) {
         )}
       </Section>
       <WebSearchSection app={app} save={save} onState={onState} onError={onError} />
+      <BrowserSection app={app} save={save} onState={onState} onError={onError} />
       <Section
         title="Extensions"
         description={
@@ -880,6 +881,27 @@ function WebSearchSection({ app, save, onState, onError }: TabProps) {
             onBlur={() => url !== ws.searxngUrl && save((s) => ((s.tools.webSearch.searxngUrl = url.trim()), s))}
           />
         </Row>
+      )}
+    </Section>
+  )
+}
+
+function BrowserSection({ app, save }: TabProps) {
+  const b = app.settings.tools.browser
+  return (
+    <Section title="Browser" description="The browser and browser_read tools open pages in Chrome, Edge, Brave or Chromium on this computer, with a fresh profile that is deleted afterwards. Your own browser profile and logins are not used.">
+      <Row label="Let the agent use a browser" hint={app.browser ? <>Uses <code>{app.browser}</code></> : 'No browser found. Install Chrome, Edge, Brave or Chromium, or set its path below.'}>
+        <Toggle label="Let the agent use a browser" value={b.enabled} onChange={(v) => save((s) => ((s.tools.browser.enabled = v), s))} />
+      </Row>
+      {b.enabled && (
+        <>
+          <Row label="Hide the browser window" hint="Turn off to watch the agent click and type.">
+            <Toggle label="Hide the browser window" value={b.headless} onChange={(v) => save((s) => ((s.tools.browser.headless = v), s))} />
+          </Row>
+          <Row label="Browser path" hint="Leave empty to find one automatically." labelFor="browser-path">
+            <TextField id="browser-path" mono value={b.path} placeholder="Found automatically" onChange={(v) => save((s) => ((s.tools.browser.path = v.trim()), s))} />
+          </Row>
+        </>
       )}
     </Section>
   )

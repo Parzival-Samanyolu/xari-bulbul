@@ -332,6 +332,16 @@ export const SettingsSchema = z.object({
           searxngUrl: z.string().default(''),
         })
         .prefault({}),
+      /** The browser / browser_read tools drive a local Chrome, Edge, Brave or Chromium; hidden when none is found. */
+      browser: z
+        .object({
+          enabled: z.boolean().default(true),
+          /** Browser executable; empty = detect. */
+          path: z.string().default(''),
+          /** Run without a window. */
+          headless: z.boolean().default(true),
+        })
+        .prefault({}),
     })
     .prefault({}),
 

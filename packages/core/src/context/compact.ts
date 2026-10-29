@@ -9,7 +9,8 @@ import type { Provider } from '../providers/types.js'
 export function estimateTokens(messages: ChatMessage[]): number {
   let chars = 0
   for (const m of messages) {
-    chars += m.role === 'user' ? userText(m).length + (m.images?.length ?? 0) * IMAGE_TOKENS * 4 : m.content.length
+    chars += m.role === 'user' ? userText(m).length : m.content.length
+    if (m.role === 'user' || m.role === 'tool') chars += (m.images?.length ?? 0) * IMAGE_TOKENS * 4
     if (m.role === 'assistant') for (const c of m.toolCalls ?? []) chars += c.arguments.length + c.name.length
   }
   return Math.ceil(chars / 4)

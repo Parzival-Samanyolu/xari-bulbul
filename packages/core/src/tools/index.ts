@@ -1,4 +1,5 @@
 import { bashOutputTool, bashTool, killJobTool } from './bash.js'
+import { browserReadTool, browserTool } from './browser.js'
 import { askUserTool } from './ask-user.js'
 import { editFileTool, multiEditTool } from './edit-file.js'
 import { forgetTool, rememberTool } from './memory.js'
@@ -14,7 +15,7 @@ import { webSearchTool } from './web-search.js'
 import { writeFileTool } from './write-file.js'
 
 export function builtinTools(): Tool[] {
-  return [readFileTool, writeFileTool, editFileTool, multiEditTool, listDirTool, globTool, grepTool, bashTool, bashOutputTool, killJobTool, webSearchTool, webFetchTool, todoTool, askUserTool, taskTool, rememberTool, forgetTool, skillTool, saveSkillTool, sessionSearchTool]
+  return [readFileTool, writeFileTool, editFileTool, multiEditTool, listDirTool, globTool, grepTool, bashTool, bashOutputTool, killJobTool, webSearchTool, webFetchTool, browserTool, browserReadTool, todoTool, askUserTool, taskTool, rememberTool, forgetTool, skillTool, saveSkillTool, sessionSearchTool]
 }
 
 export * from './types.js'
@@ -23,6 +24,7 @@ export { resolveShell, type Shell } from './shell.js'
 export { JobRegistry, type Job } from './jobs.js'
 export { SEARCH_KEY_ID, parseDuckDuckGo, search, type SearchBackend, type SearchResult, type WebSearchConfig } from './web-search.js'
 export { TASK_TOOL } from './task.js'
+export { BROWSER_READ_TOOL, BROWSER_TOOL, BrowserHost, findBrowser, formatSnapshot, type BrowserOptions } from './browser.js'
 export { ASK_USER_TOOL } from './ask-user.js'
 export { applyEdit } from './edit-file.js'
 export { checkFile } from './check.js'

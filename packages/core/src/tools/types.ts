@@ -3,9 +3,10 @@ import { z } from 'zod'
 import type { Skill } from '../extensions/loader.js'
 import type { MemoryAccess } from '../memory/store.js'
 import type { Session, SessionMeta } from '../sessions/store.js'
+import type { BrowserAccess } from './browser.js'
 import type { JobRegistry } from './jobs.js'
 import type { WebSearchConfig } from './web-search.js'
-import type { JsonSchema, TodoItem } from '../types.js'
+import type { ImageAttachment, JsonSchema, TodoItem } from '../types.js'
 
 export type ToolKind = 'read' | 'edit' | 'exec' | 'network' | 'other'
 
@@ -30,6 +31,8 @@ export interface ToolContext {
   sessions?: SessionAccess
   /** Background shell jobs owned by this agent. */
   jobs?: JobRegistry
+  /** The agent's browser, launched on first use; absent when the browser tools are off. */
+  browser?: BrowserAccess
   /** Runs a subagent; provided by the agent loop when subagents are enabled. */
   runSubagent?(input: SubagentInput): Promise<ToolResult>
   /** Asks the user a question and waits for the answer; absent where nobody can answer (headless, subagents). */
@@ -78,6 +81,8 @@ export interface ToolResult {
   content: string
   isError?: boolean
   display?: ToolDisplay
+  /** Images for the model (screenshots). Only return them when the model accepts images. */
+  images?: ImageAttachment[]
 }
 
 export interface Tool<I = any> {
