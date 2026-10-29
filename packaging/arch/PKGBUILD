@@ -3,8 +3,8 @@
 #   makepkg -si
 pkgname=xari-bulbul-bin
 _pkgname=xari-bulbul
-_appimage="XariBulbul-0.2.10-linux-x86_64.AppImage"
-pkgver=0.2.10
+_appimage="XariBulbul-0.2.11-linux-x86_64.AppImage"
+pkgver=0.2.11
 pkgrel=1
 pkgdesc='Desktop AI coding agent for OpenRouter, Ollama and any OpenAI-compatible provider'
 arch=('x86_64')
