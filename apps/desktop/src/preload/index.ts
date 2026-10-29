@@ -43,6 +43,7 @@ const api: HarnessApi = {
   mcp: { restart: call('mcp.restart') as any, setToken: call('mcp.setToken') as any },
   memory: { remove: call('memory.remove') as any, clear: call('memory.clear') as any },
   extensions: { reload: call('extensions.reload') as any, openDir: call('extensions.openDir') as any },
+  skills: { remove: call('skills.remove') as any },
   app: {
     openExternal: call('app.openExternal') as any,
     openPath: call('app.openPath') as any,

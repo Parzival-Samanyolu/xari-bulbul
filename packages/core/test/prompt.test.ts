@@ -25,6 +25,7 @@ const base: SystemPromptInput = {
   override: '',
   toolNames: builtinTools().map((t) => t.name),
   memory: { global: ['Prefers pnpm'], project: [] },
+  skills: [{ name: 'release', description: 'How to cut a release of this app' }],
   env,
 }
 
@@ -44,7 +45,7 @@ describe('system prompt', () => {
   })
 
   it('matches the snapshot for a subagent', () => {
-    const toolNames = base.toolNames.filter((n) => !['task', 'todo_write', 'remember', 'forget', 'ask_user'].includes(n))
+    const toolNames = base.toolNames.filter((n) => !['task', 'todo_write', 'remember', 'forget', 'save_skill', 'ask_user'].includes(n))
     expect(buildSystemPrompt({ ...base, toolNames, subagent: { description: 'Find config loaders' } })).toMatchSnapshot()
   })
 

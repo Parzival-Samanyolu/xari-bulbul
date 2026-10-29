@@ -80,6 +80,8 @@ export interface SystemPromptInput {
   toolNames: string[]
   /** Saved memories; undefined when memory is off. */
   memory?: { global: string[]; project: string[] }
+  /** Skills the agent can load; undefined when there are none or skills are off. */
+  skills?: { name: string; description: string }[]
   /** Set when this prompt is for a subagent working on a delegated task. */
   subagent?: { description: string }
   /** The model's context window, when known. */
@@ -102,6 +104,7 @@ export function buildSystemPrompt(i: SystemPromptInput): string {
     subagent: i.subagent,
     instructions: loadProjectInstructions(i.cwd, i.instructionFiles),
     memory: i.memory,
+    skills: i.skills,
     customInstructions: i.customInstructions,
     lean: i.lean,
   }

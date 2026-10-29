@@ -1,5 +1,6 @@
 import path from 'node:path'
 import { z } from 'zod'
+import type { Skill } from '../extensions/loader.js'
 import type { MemoryAccess } from '../memory/store.js'
 import type { JobRegistry } from './jobs.js'
 import type { WebSearchConfig } from './web-search.js'
@@ -22,6 +23,8 @@ export interface ToolContext {
   memory?: MemoryAccess
   /** Which search backend web_search uses, with its key. Defaults to DuckDuckGo. */
   webSearch?: WebSearchConfig
+  /** Skills the agent can load, and where save_skill writes; absent when skills are off. */
+  skills?: SkillAccess
   /** Background shell jobs owned by this agent. */
   jobs?: JobRegistry
   /** Runs a subagent; provided by the agent loop when subagents are enabled. */
@@ -34,6 +37,14 @@ export interface ToolContext {
   checkAfterEdit?: boolean
   /** How long that check may run. */
   checkTimeoutSec?: number
+}
+
+export interface SkillAccess {
+  list: Skill[]
+  /** The skills folders save_skill writes to (`~/.harness/skills`, `<project>/.harness/skills`). */
+  dirs: { user: string; project: string }
+  /** Makes a just-saved skill loadable for the rest of the chat. */
+  added?(skill: Skill): void
 }
 
 export interface UserQuestion {
@@ -64,6 +75,8 @@ export interface Tool<I = any> {
   parameters: JsonSchema
   kind: ToolKind
   readOnly: boolean
+  /** Runs without asking (outside plan mode) even though it writes: it only saves the agent's own notes. */
+  autoAllow?: boolean
   /** Validates/normalizes raw model input; throw to reject. */
   parse(input: unknown): I
   /** Short human label, also the subject for permission rules (a path or a command). */
@@ -80,6 +93,7 @@ export function defineTool<S extends z.ZodType>(def: {
   input: S
   kind: ToolKind
   readOnly: boolean
+  autoAllow?: boolean
   subject: (input: z.infer<S>) => string
   execute: (input: z.infer<S>, ctx: ToolContext) => Promise<ToolResult>
 }): Tool<z.infer<S>> {
@@ -91,6 +105,7 @@ export function defineTool<S extends z.ZodType>(def: {
     parameters: schema,
     kind: def.kind,
     readOnly: def.readOnly,
+    autoAllow: def.autoAllow,
     parse: (input) => {
       let res = def.input.safeParse(input)
       const clamped = res.success ? null : clampNumbers(input, res.error.issues)

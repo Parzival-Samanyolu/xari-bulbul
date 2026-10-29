@@ -59,6 +59,13 @@ export interface ToolInfo {
   kind: string
 }
 
+export interface SkillInfo {
+  name: string
+  description: string
+  source: 'user' | 'project' | 'claude'
+  dir: string
+}
+
 export interface ExtensionsInfo {
   tools: ToolInfo[]
   commands: CommandInfo[]
@@ -103,6 +110,8 @@ export interface AppState {
   /** Open ask_user questions, in every chat. */
   questions: { sessionId: string; request: QuestionRequest }[]
   extensions: ExtensionsInfo
+  /** Skills for the folder on screen: yours, the project's and Claude Code's. */
+  skills: SkillInfo[]
   /** Connection state of each configured MCP server, and which have a stored token. */
   mcp: { servers: McpServerStatus[]; tokens: Record<string, boolean> }
   /** Saved memories for the open folder and for every folder. */
@@ -208,6 +217,10 @@ export interface HarnessApi {
   extensions: {
     reload(): Promise<AppState>
     openDir(which: 'user' | 'project'): Promise<void>
+  }
+  skills: {
+    /** Deletes the skill's folder. */
+    remove(dir: string): Promise<AppState>
   }
   app: {
     openExternal(url: string): Promise<void>

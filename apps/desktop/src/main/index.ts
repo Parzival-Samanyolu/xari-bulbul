@@ -139,6 +139,7 @@ function registerIpc() {
     const dir = c.extensionDir(which)
     if (dir) await shell.openPath(dir)
   })
+  handle('skills.remove', (dir: string) => c.removeSkill(dir))
   handle('app.openExternal', (url: string) => {
     if (/^https?:\/\//.test(url)) return shell.openExternal(url)
   })

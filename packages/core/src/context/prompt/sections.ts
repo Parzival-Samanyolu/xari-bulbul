@@ -21,6 +21,7 @@ export interface PromptContext {
   subagent?: { description: string }
   instructions: { file: string; content: string }[]
   memory?: { global: string[]; project: string[] }
+  skills?: { name: string; description: string }[]
   customInstructions: string
   /** Short prompt for small models: leanCore replaces tone, tasks, initiative, conventions and tool policy. */
   lean?: boolean
@@ -266,6 +267,26 @@ export const memory: PromptSection = {
   },
 }
 
+export const skills: PromptSection = {
+  id: 'skills',
+  when: (c) => (!!c.skills?.length && has(c, 'skill')) || has(c, 'save_skill'),
+  render: (c) => {
+    const lines = ['# Skills']
+    if (c.skills?.length && has(c, 'skill')) {
+      lines.push(
+        'Saved instructions for kinds of tasks. Before starting a task that matches one, load it with the skill tool and follow it.',
+        c.skills.map((s) => `- ${s.name}: ${s.description}`).join('\n'),
+      )
+    }
+    if (has(c, 'save_skill')) {
+      lines.push(
+        'After you finish a hard task that is likely to come up again, save the procedure that worked with save_skill: the steps, the commands and the pitfalls. Do not save one-off fixes or anything obvious from the code. If a skill you followed was wrong or incomplete, save a corrected version under the same name.',
+      )
+    }
+    return lines.join('\n\n')
+  },
+}
+
 export const customInstructions: PromptSection = {
   id: 'custom-instructions',
   when: (c) => !!c.customInstructions.trim(),
@@ -289,5 +310,6 @@ export const SECTIONS: PromptSection[] = [
   environment,
   projectInstructions,
   memory,
+  skills,
   customInstructions,
 ]

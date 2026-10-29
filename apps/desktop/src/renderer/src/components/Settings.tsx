@@ -756,6 +756,38 @@ Review the uncommitted changes (git diff) for bugs and risky code. Focus on: $AR
           ))}
         </div>
       </Section>
+      <Section
+        title="Skills"
+        description={
+          <>
+            Instructions the agent loads before a matching task, one folder with a <code>SKILL.md</code> each. Read from <code>skills/</code> in your extensions folder, in the project's <code>.harness/</code> and in <code>~/.claude/skills</code>. The agent saves new ones to your folder after hard, repeatable tasks.
+          </>
+        }
+      >
+        {app.skills.length === 0 ? (
+          <p className="muted small">No skills yet.</p>
+        ) : (
+          <div className="tool-list">
+            {app.skills.map((s) => (
+              <div key={s.dir} className="tool-item">
+                <code>{s.name}</code>
+                <span className="badge">{s.source === 'claude' ? 'Claude Code' : s.source}</span>
+                <span className="muted small tool-desc" title={s.description}>
+                  {s.description}
+                </span>
+                <button className="btn ghost" aria-label={`Open folder of skill ${s.name}`} onClick={() => api.app.openPath(s.dir)}>
+                  Open folder
+                </button>
+                {s.source !== 'claude' && (
+                  <button className="btn ghost danger" aria-label={`Delete skill ${s.name}`} onClick={() => confirm(`Delete the skill "${s.name}" and its folder?`) && api.skills.remove(s.dir).then(onState, onError)}>
+                    Delete
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </Section>
     </>
   )
 }

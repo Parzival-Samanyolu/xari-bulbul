@@ -6,6 +6,7 @@ import {
   MemoryStore,
   Permissions,
   ProviderRegistry,
+  SAVE_SKILL_TOOL,
   SEARCH_KEY_ID,
   SessionStore,
   USER_EXT_DIR,
@@ -78,7 +79,7 @@ export class AppController {
   private readonly memory: MemoryStore
   private readonly mcp: McpManager
   private mcpTimer: NodeJS.Timeout | null = null
-  private ext: LoadedExtensions = { tools: [], commands: [], errors: [] }
+  private ext: LoadedExtensions = { tools: [], commands: [], skills: [], errors: [] }
   private tools: Tool[] = builtinTools()
   private workspace: string | null = null
   private agents = new Map<string, Running>()
@@ -233,7 +234,7 @@ export class AppController {
           user: this.settings.tools.loadUserExtensions,
           project: this.settings.tools.loadProjectExtensions,
         })
-      : { tools: [], commands: [], errors: [] }
+      : { tools: [], commands: [], skills: [], errors: [] }
     for (const name of assembleTools(this.ext.tools).conflicts) {
       this.ext.errors.push({ file: name, error: `Tool "${name}" conflicts with a built-in tool and was skipped.` })
     }
@@ -246,8 +247,10 @@ export class AppController {
     this.tools = assembleTools(this.ext.tools, this.mcp.tools()).tools
     for (const r of this.agents.values()) {
       // Extensions belong to a folder; chats in other folders keep theirs but get current MCP tools.
-      if (r.agent.session.meta.cwd.normalize('NFC') === this.workspace) r.agent.updateSettings(this.settings, this.tools)
-      else r.agent.updateSettings(this.settings, [...r.agent.availableTools.filter((t) => t.source !== 'mcp'), ...this.mcp.tools()])
+      if (r.agent.session.meta.cwd.normalize('NFC') === this.workspace) {
+        r.agent.updateSettings(this.settings, this.tools)
+        r.agent.setSkills(this.ext.skills)
+      } else r.agent.updateSettings(this.settings, [...r.agent.availableTools.filter((t) => t.source !== 'mcp'), ...this.mcp.tools()])
     }
   }
 
@@ -289,10 +292,17 @@ export class AppController {
     }
   }
 
+  /** Deletes a skill folder, if it is one the loader found (Claude Code's own skills are left alone). */
+  async removeSkill(dir: string): Promise<AppState> {
+    const skill = this.ext.skills.find((s) => s.dir === dir)
+    if (skill && skill.source !== 'claude') fs.rmSync(skill.dir, { recursive: true, force: true })
+    return this.reloadExtensions()
+  }
+
   extensionDir(which: 'user' | 'project'): string | null {
     const dir = which === 'user' ? USER_EXT_DIR : this.workspace && projectExtDir(this.workspace)
     if (!dir) return null
-    for (const sub of ['tools', 'commands']) fs.mkdirSync(path.join(dir, sub), { recursive: true })
+    for (const sub of ['tools', 'commands', 'skills']) fs.mkdirSync(path.join(dir, sub), { recursive: true })
     return dir
   }
 
@@ -389,6 +399,7 @@ export class AppController {
       usage: this.usage,
       permissions,
       memory: this.memory,
+      skills: this.ext.skills,
       secret: (id) => this.secrets.get(id),
       onSave: (s) => {
         if (!s.messages.length || this.removed.has(id)) return
@@ -433,6 +444,8 @@ export class AppController {
   private onAgentEvent(sessionId: string, event: AgentEvent) {
     if (this.removed.has(sessionId)) return
     this.send({ type: 'agent', sessionId, event })
+    // A saved skill shows up in Settings and in the folder's other chats.
+    if (event.type === 'tool_end' && event.name === SAVE_SKILL_TOOL && !event.result.isError) void this.reloadExtensions().then(() => this.pushState())
     if (event.type === 'turn_end') {
       this.cancelPending(sessionId)
       if (sessionId !== this.activeId) {
@@ -682,6 +695,7 @@ export class AppController {
       awaitingSessions: [...new Set([...this.pending.values(), ...this.questions.values()].map((p) => p.sessionId))],
       questions: [...this.questions.values()].map(({ sessionId, request }) => ({ sessionId, request })),
       extensions: this.extensionsInfo(),
+      skills: this.ext.skills.map((s) => ({ name: s.name, description: s.description, source: s.source, dir: s.dir })),
       memory: this.memoryInfo(),
       mcp: {
         servers: this.mcp.status(),

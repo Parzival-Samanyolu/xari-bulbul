@@ -7,6 +7,8 @@ import type { Tool, ToolContext, ToolKind, ToolResult } from '../tools/types.js'
 
 export const USER_EXT_DIR = path.join(os.homedir(), '.harness')
 export const projectExtDir = (cwd: string) => path.join(cwd, '.harness')
+/** Claude Code's folder; only its `skills/` is read. */
+export const CLAUDE_DIR = path.join(os.homedir(), '.claude')
 
 /**
  * Shape of a user tool file (`~/.harness/tools/my-tool.mjs`):
@@ -33,6 +35,7 @@ export interface UserToolModule {
 export interface LoadedExtensions {
   tools: Tool[]
   commands: SlashCommand[]
+  skills: Skill[]
   errors: { file: string; error: string }[]
 }
 
@@ -42,6 +45,23 @@ export interface SlashCommand {
   template: string
   source: 'user' | 'project'
   file: string
+}
+
+/**
+ * A folder with a SKILL.md: instructions the agent loads with the `skill` tool before a matching task.
+ *
+ *   ---
+ *   name: release
+ *   description: How to cut a release of this app
+ *   ---
+ *   Steps…
+ */
+export interface Skill {
+  name: string
+  description: string
+  dir: string
+  file: string
+  source: 'user' | 'project' | 'claude'
 }
 
 function listFiles(dir: string, exts: string[]): string[] {
@@ -76,24 +96,101 @@ function adaptTool(mod: UserToolModule, source: 'user' | 'project'): Tool {
   }
 }
 
-function parseCommand(file: string, source: 'user' | 'project'): SlashCommand {
-  const raw = fs.readFileSync(file, 'utf8')
-  let description = ''
-  let template = raw
+/** Splits `---` frontmatter from the body and reads simple `key: value` fields (quoted or folded with `>`/`|`). */
+export function parseFrontmatter(raw: string): { fields: Record<string, string>; body: string } {
   const fm = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(raw)
-  if (fm) {
-    template = raw.slice(fm[0].length)
-    description = /^description:\s*(.+)$/m.exec(fm[1])?.[1]?.trim() ?? ''
+  if (!fm) return { fields: {}, body: raw }
+  const fields: Record<string, string> = {}
+  const lines = fm[1].split(/\r?\n/)
+  for (let i = 0; i < lines.length; i++) {
+    const m = /^([\w-]+):\s*(.*)$/.exec(lines[i])
+    if (!m) continue
+    let value = m[2].trim()
+    if (value === '' || value === '>' || value === '|' || value === '>-' || value === '|-') {
+      const block: string[] = []
+      while (i + 1 < lines.length && /^\s+\S/.test(lines[i + 1])) block.push(lines[++i].trim())
+      value = block.join(' ')
+    }
+    fields[m[1]] = unquote(value)
   }
+  return { fields, body: raw.slice(fm[0].length) }
+}
+
+function unquote(value: string): string {
+  if (/^".*"$/.test(value)) {
+    try {
+      return JSON.parse(value)
+    } catch {
+      /* fall through */
+    }
+  }
+  return value.replace(/^(["'])(.*)\1$/, '$2')
+}
+
+function parseCommand(file: string, source: 'user' | 'project'): SlashCommand {
+  const { fields, body: template } = parseFrontmatter(fs.readFileSync(file, 'utf8'))
+  let description = fields.description ?? ''
   if (!description) description = template.trim().split('\n')[0].slice(0, 80)
   return { name: path.basename(file).replace(/\.md$/, ''), description, template, source, file }
 }
 
+function parseSkill(file: string, source: Skill['source']): Skill {
+  const { fields, body } = parseFrontmatter(fs.readFileSync(file, 'utf8'))
+  const dir = path.dirname(file)
+  const name = fields.name || path.basename(dir)
+  const description = fields.description || body.trim().split('\n')[0].replace(/^#+\s*/, '').slice(0, 200)
+  return { name, description, dir, file, source }
+}
+
+/** `<root>/skills/*\/SKILL.md` */
+function loadSkills(root: string, source: Skill['source'], out: LoadedExtensions) {
+  let dirs: string[]
+  try {
+    dirs = fs.readdirSync(path.join(root, 'skills'))
+  } catch {
+    return
+  }
+  for (const d of dirs) {
+    const file = path.join(root, 'skills', d, 'SKILL.md')
+    if (!fs.existsSync(file)) continue
+    try {
+      out.skills.push(parseSkill(file, source))
+    } catch (e) {
+      out.errors.push({ file, error: (e as Error).message })
+    }
+  }
+}
+
+/** A skill name as a folder name: `Cut a Release!` → `cut-a-release`. */
+export function skillSlug(name: string): string {
+  return name
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 64)
+}
+
+/** Writes `<skillsDir>/<slug>/SKILL.md`, replacing an existing skill with the same slug. */
+export function writeSkill(skillsDir: string, s: { name: string; description: string; body: string }, source: Skill['source']): Skill {
+  const name = skillSlug(s.name)
+  if (!name) throw new Error('The skill name needs at least one letter or digit.')
+  const description = s.description.replace(/\s+/g, ' ').trim()
+  const dir = path.join(skillsDir, name)
+  const file = path.join(dir, 'SKILL.md')
+  fs.mkdirSync(dir, { recursive: true })
+  fs.writeFileSync(file, `---\nname: ${name}\ndescription: ${JSON.stringify(description)}\n---\n\n${s.body.trim()}\n`)
+  return { name, description, dir, file, source }
+}
+
 export async function loadExtensions(
   cwd: string,
-  opts: { user: boolean; project: boolean; userDir?: string },
+  opts: { user: boolean; project: boolean; userDir?: string; claudeDir?: string },
 ): Promise<LoadedExtensions> {
-  const result: LoadedExtensions = { tools: [], commands: [], errors: [] }
+  const result: LoadedExtensions = { tools: [], commands: [], skills: [], errors: [] }
+  // Skills are Markdown like commands, so they always load. Later roots win on a name clash.
+  loadSkills(opts.claudeDir ?? CLAUDE_DIR, 'claude', result)
   const roots: { dir: string; source: 'user' | 'project'; allowCode: boolean }[] = [
     { dir: opts.userDir ?? USER_EXT_DIR, source: 'user', allowCode: opts.user },
     // Markdown commands are always safe to load; project *code* requires opt-in.
@@ -119,7 +216,10 @@ export async function loadExtensions(
         result.errors.push({ file, error: (e as Error).message })
       }
     }
+    loadSkills(root.dir, root.source, result)
   }
+  const skills = new Map(result.skills.map((s) => [s.name, s]))
+  result.skills = [...skills.values()].sort((a, b) => a.name.localeCompare(b.name))
   // Project commands override user commands with the same name.
   const byName = new Map(result.commands.map((c) => [c.name, c]))
   result.commands = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name))

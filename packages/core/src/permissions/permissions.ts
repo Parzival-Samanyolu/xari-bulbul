@@ -102,6 +102,7 @@ export class Permissions {
     if (mode === 'plan') {
       return { decision: 'deny', reason: 'Plan mode is read-only. Present a plan instead of making changes.' }
     }
+    if (tool.autoAllow) return { decision: 'allow' }
     const outside =
       tool.kind === 'edit' && !this.config.allowOutsideWorkspace && !isInside(this.cwd, resolvePath(this.cwd, subject))
     if (outside) return { decision: 'ask', reason: 'Writes outside the workspace folder.' }

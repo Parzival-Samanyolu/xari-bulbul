@@ -4,6 +4,7 @@ import { editFileTool, multiEditTool } from './edit-file.js'
 import { forgetTool, rememberTool } from './memory.js'
 import { readFileTool } from './read-file.js'
 import { globTool, grepTool, listDirTool } from './search.js'
+import { saveSkillTool, skillTool } from './skills.js'
 import { taskTool } from './task.js'
 import { todoTool } from './todo.js'
 import type { Tool } from './types.js'
@@ -12,7 +13,7 @@ import { webSearchTool } from './web-search.js'
 import { writeFileTool } from './write-file.js'
 
 export function builtinTools(): Tool[] {
-  return [readFileTool, writeFileTool, editFileTool, multiEditTool, listDirTool, globTool, grepTool, bashTool, bashOutputTool, killJobTool, webSearchTool, webFetchTool, todoTool, askUserTool, taskTool, rememberTool, forgetTool]
+  return [readFileTool, writeFileTool, editFileTool, multiEditTool, listDirTool, globTool, grepTool, bashTool, bashOutputTool, killJobTool, webSearchTool, webFetchTool, todoTool, askUserTool, taskTool, rememberTool, forgetTool, skillTool, saveSkillTool]
 }
 
 export * from './types.js'
@@ -25,3 +26,4 @@ export { ASK_USER_TOOL } from './ask-user.js'
 export { applyEdit } from './edit-file.js'
 export { checkFile } from './check.js'
 export { FORGET_TOOL, REMEMBER_TOOL } from './memory.js'
+export { SAVE_SKILL_TOOL, SKILL_TOOL } from './skills.js'

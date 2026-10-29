@@ -13,6 +13,8 @@ import { newSession, titleFrom, type Checkpoint, type Session } from '../session
 import { generateTitle } from '../sessions/title.js'
 import { modelKey, type Settings } from '../settings/schema.js'
 import { FORGET_TOOL, REMEMBER_TOOL } from '../tools/memory.js'
+import { SAVE_SKILL_TOOL, SKILL_TOOL } from '../tools/skills.js'
+import { USER_EXT_DIR, projectExtDir, type Skill } from '../extensions/loader.js'
 import { JobRegistry } from '../tools/jobs.js'
 import { SEARCH_KEY_ID, type WebSearchConfig } from '../tools/web-search.js'
 import { TASK_TOOL } from '../tools/task.js'
@@ -75,6 +77,10 @@ export interface AgentOptions {
   onSave?: (session: Session) => void
   /** Where saved facts live; memory is off without it. */
   memory?: MemoryStore
+  /** Skills (SKILL.md folders) the agent can load; the skill tools are hidden without it. */
+  skills?: Skill[]
+  /** Where save_skill writes user skills; `~/.harness/skills` by default. */
+  userSkillsDir?: string
   /** Set for subagents: what they were asked to do, and whose usage/budget they count against. */
   subagent?: { description: string; parentSessionId: string }
   /** Background shell jobs; subagents share their parent's. */
@@ -129,9 +135,11 @@ export class Agent {
   private turnAt = -1
   private warnedNoTools = false
   private saveFailed = false
+  private skills: Skill[] | undefined
 
   constructor(private readonly o: AgentOptions) {
     this.session = o.session
+    this.skills = o.skills
     this.jobs = o.jobs ?? new JobRegistry()
     this.settings = o.settings
     this.tools = o.tools
@@ -165,6 +173,11 @@ export class Agent {
     this.settings = settings
     if (tools) this.tools = tools
     this.o.permissions.update({ ...settings.permissions, mode: this.o.permissions.mode })
+  }
+
+  /** Replaces the skill list after the folder's extensions reload. */
+  setSkills(skills: Skill[]): void {
+    if (this.skills) this.skills = skills
   }
 
   stop(): void {
@@ -206,6 +219,9 @@ export class Agent {
     if (!this.settings.agent.subagents.enabled || this.o.subagent) disabled.add(TASK_TOOL)
     // Subagents read memory but only the main agent saves to it.
     if (!this.memoryOn || this.o.subagent) disabled.add(REMEMBER_TOOL).add(FORGET_TOOL)
+    // Same for skills: subagents load them, only the main agent saves new ones.
+    if (!this.skills) disabled.add(SKILL_TOOL)
+    if (!this.skills || this.o.subagent) disabled.add(SAVE_SKILL_TOOL)
     // Questions need someone to answer them.
     if (!this.o.askUser || this.o.subagent) disabled.add(ASK_USER_TOOL)
     return this.tools.filter((t) => !disabled.has(t.name) && (!plan || t.readOnly))
@@ -265,6 +281,7 @@ export class Agent {
       env: this.env,
       lean: this.leanPrompt(),
       memory: this.memoryOn ? { global: this.memory('global'), project: this.memory('project') } : undefined,
+      skills: this.skills?.map((s) => ({ name: s.name, description: s.description })),
     })
   }
 
@@ -624,6 +641,19 @@ export class Agent {
       progress: (text) => this.emit({ type: 'tool_progress', callId, text }),
       memory: this.memoryOn ? this.o.memory!.scoped(this.session.meta.cwd) : undefined,
       jobs: this.jobs,
+      skills: this.skills && {
+        list: this.skills,
+        dirs: {
+          user: this.o.userSkillsDir ?? path.join(USER_EXT_DIR, 'skills'),
+          project: path.join(projectExtDir(this.session.meta.cwd), 'skills'),
+        },
+        added: (skill) => {
+          // A project skill keeps winning over a user skill with the same name, as in the loader.
+          const shadowed = this.skills?.some((s) => s.name === skill.name && s.source === 'project' && skill.source !== 'project')
+          if (shadowed) return
+          this.skills = [...(this.skills ?? []).filter((s) => s.name !== skill.name), skill].sort((a, b) => a.name.localeCompare(b.name))
+        },
+      },
       webSearch: this.webSearchConfig(),
       runSubagent: this.o.subagent ? undefined : (input) => this.runSubagent(callId, input, signal),
       askUser: this.o.askUser && !this.o.subagent ? (q) => this.o.askUser!({ ...q, callId }) : undefined,
@@ -701,6 +731,7 @@ export class Agent {
       usage: this.o.usage,
       permissions: this.o.permissions,
       memory: this.o.memory,
+      skills: this.skills,
       subagent: { description: input.description, parentSessionId: this.session.meta.id },
       jobs: this.jobs,
       secret: this.o.secret,
