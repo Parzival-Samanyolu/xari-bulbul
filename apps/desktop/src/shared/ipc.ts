@@ -3,6 +3,9 @@ import type {
   AgentEvent,
   ChatMessage,
   Checkpoint,
+  DirListing,
+  FileChange,
+  FilePreview,
   LocalWhisperStatus,
   McpServerStatus,
   MemoryFact,
@@ -23,6 +26,9 @@ export type {
   AgentEvent,
   ChatMessage,
   Checkpoint,
+  DirListing,
+  FileChange,
+  FilePreview,
   LocalWhisperStatus,
   McpServerStatus,
   MemoryFact,
@@ -174,6 +180,10 @@ export type UiEvent =
   | { type: 'state'; state: AppState }
   | { type: 'update'; status: UpdateStatus }
   | { type: 'voice_download'; download: VoiceDownload }
+  /** Output of a terminal opened with `term.open`. */
+  | { type: 'term_data'; id: string; data: string }
+  /** The terminal's shell ended (null: it was killed). */
+  | { type: 'term_exit'; id: string; code: number | null }
 
 /** A file on disk (`path`) or a pasted image (`data`, base64). Main reads and validates it. */
 export interface AttachmentInput {
@@ -237,6 +247,23 @@ export interface HarnessApi {
     revert(at: number, file?: string): Promise<AppState>
     /** Replaces an earlier message of the chat on screen and runs from there. */
     editMessage(index: number, text: string, revert: boolean): Promise<void>
+  }
+  fs: {
+    /** One directory of an open folder (folders first; ignored and noisy entries skipped). Refuses paths outside open folders. */
+    tree(dir: string): Promise<DirListing>
+    /** The start of a file in an open folder, for a read-only preview. */
+    read(path: string): Promise<FilePreview>
+  }
+  session: {
+    /** Files the chat changed, diffed against what's on disk now. */
+    diff(id: string): Promise<FileChange[]>
+  }
+  term: {
+    /** Starts a shell in `cwd` (an open folder); returns the terminal's id. */
+    open(cwd: string, cols: number, rows: number): Promise<string>
+    write(id: string, data: string): void
+    resize(id: string, cols: number, rows: number): void
+    kill(id: string): void
   }
   files: {
     /** Native file picker for attachments. */

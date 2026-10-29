@@ -25,6 +25,10 @@ import {
   ProviderError,
   BUILTIN_PROVIDERS,
   canTranscribe,
+  checkpointChanges,
+  listDir,
+  readPreview,
+  rootFor,
   chooseVoiceEngine,
   installWhisperBinary,
   installWhisperModel,
@@ -41,7 +45,10 @@ import {
   saveSettingsFile,
   projectExtDir,
   type AgentEvent,
+  type DirListing,
   type FileAttachment,
+  type FileChange,
+  type FilePreview,
   type ImageAttachment,
   type LoadedExtensions,
   type ModelRef,
@@ -58,6 +65,7 @@ import {
 import type { AppState, AttachmentInput, ExtensionsInfo, MemoryInfo, ProviderTestResult, SessionView, UiEvent, VoiceDownload, VoiceState } from '../shared/ipc'
 import { Scheduler } from './scheduler'
 import { SecretStore } from './secrets'
+import { Terminals } from './terminals'
 
 const MAX_ATTACHMENTS = 10
 
@@ -99,6 +107,7 @@ export class AppController {
   private catchUpTimer: NodeJS.Timeout | null = null
   private voiceDownload: { ac: AbortController; progress: VoiceDownload } | null = null
   private ext: LoadedExtensions = { tools: [], commands: [], skills: [], errors: [] }
+  private readonly terminals: Terminals
   private tools: Tool[] = builtinTools()
   private workspace: string | null = null
   private agents = new Map<string, Running>()
@@ -130,6 +139,7 @@ export class AppController {
     this.usage = new UsageTracker(this.paths.usage)
     this.store = new SessionStore(this.paths.sessions)
     this.memory = new MemoryStore(path.join(dataDir, 'memory'), this.settings.memory.maxChars)
+    this.terminals = new Terminals(send)
     this.mcp = new McpManager({
       clientVersion: version,
       secret: (id) => this.secrets.get(mcpSecretId(id)),
@@ -386,6 +396,7 @@ export class AppController {
     this.scheduler.dispose()
     this.voiceDownload?.ac.abort()
     this.cancelPending()
+    this.terminals.dispose()
     for (const r of this.agents.values()) r.agent.stop()
     const deadline = Date.now() + 1500
     while ([...this.agents.values()].some((r) => r.agent.running) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50))
@@ -502,6 +513,7 @@ export class AppController {
     const open = this.settings.app.openWorkspaces.filter((w) => w !== cwd)
     this.settings = { ...this.settings, app: { ...this.settings.app, openWorkspaces: open } }
     this.saveSettings()
+    this.terminals.killFolder(cwd)
     if (cwd !== this.workspace) return this.state()
     if (open.length) return this.setWorkspace(open[0])
     this.workspace = null
@@ -762,6 +774,49 @@ export class AppController {
   async compact(): Promise<boolean> {
     if (!this.agent || this.agent.running) return false
     return this.agent.compact()
+  }
+
+  // ---------- files, changes, terminals (Elite layout panels) ----------
+
+  /** The open folder that contains `p`; anything outside the open folders is refused. */
+  private openRoot(p: unknown): string {
+    if (typeof p !== 'string' || !path.isAbsolute(p)) throw new Error('Expected an absolute path.')
+    const root = rootFor(this.settings.app.openWorkspaces, p.normalize('NFC'))
+    if (!root) throw new Error('That path is outside the open folders.')
+    return root
+  }
+
+  listDir(dir: string): Promise<DirListing> {
+    return listDir(this.openRoot(dir), path.resolve(dir).normalize('NFC'))
+  }
+
+  readFile(file: string): Promise<FilePreview> {
+    this.openRoot(file)
+    return readPreview(path.resolve(file))
+  }
+
+  sessionDiff(id: string): FileChange[] {
+    const session = this.agents.get(id)?.agent.session ?? this.store.load(id)
+    if (!session) throw new Error('Session not found')
+    return checkpointChanges(session.checkpoints ?? [], session.meta.cwd)
+  }
+
+  termOpen(cwd: string, cols: number, rows: number): string {
+    this.openRoot(cwd)
+    if (!fs.statSync(cwd).isDirectory()) throw new Error(`Not a folder: ${cwd}`)
+    return this.terminals.open(cwd.normalize('NFC'), cols, rows)
+  }
+
+  termWrite(id: string, data: string) {
+    if (typeof data === 'string') this.terminals.write(id, data)
+  }
+
+  termResize(id: string, cols: number, rows: number) {
+    this.terminals.resize(id, cols, rows)
+  }
+
+  termKill(id: string) {
+    this.terminals.kill(id)
   }
 
   // ---------- usage ----------

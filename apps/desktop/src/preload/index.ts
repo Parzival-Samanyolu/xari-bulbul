@@ -38,6 +38,15 @@ const api: HarnessApi = {
     revert: call('agent.revert') as any,
     editMessage: call('agent.editMessage') as any,
   },
+  fs: { tree: call('fs.tree') as any, read: call('fs.read') as any },
+  session: { diff: call('session.diff') as any },
+  // Keystrokes and resizes are fire-and-forget; only open waits for an answer.
+  term: {
+    open: call('term.open') as any,
+    write: (id, data) => ipcRenderer.send('term.write', id, data),
+    resize: (id, cols, rows) => ipcRenderer.send('term.resize', id, cols, rows),
+    kill: (id) => ipcRenderer.send('term.kill', id),
+  },
   files: { pick: call('files.pick') as any, pathFor: (file: File) => webUtils.getPathForFile(file) },
   usage: { exportCsv: call('usage.exportCsv') as any, clear: call('usage.clear') as any },
   mcp: { restart: call('mcp.restart') as any, setToken: call('mcp.setToken') as any },

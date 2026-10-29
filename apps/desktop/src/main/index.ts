@@ -169,6 +169,13 @@ function registerIpc() {
   handle('agent.retry', () => c.retry())
   handle('agent.revert', (at, file) => c.revert(at, file))
   handle('agent.editMessage', (index, text, revert) => c.editMessage(index, text, revert))
+  handle('fs.tree', (dir: string) => c.listDir(dir))
+  handle('fs.read', (file: string) => c.readFile(file))
+  handle('session.diff', (id: string) => c.sessionDiff(id))
+  handle('term.open', (cwd: string, cols: number, rows: number) => c.termOpen(cwd, cols, rows))
+  ipcMain.on('term.write', (e, id: string, data: string) => isAppPage(e.sender) && c.termWrite(id, data))
+  ipcMain.on('term.resize', (e, id: string, cols: number, rows: number) => isAppPage(e.sender) && c.termResize(id, cols, rows))
+  ipcMain.on('term.kill', (e, id: string) => isAppPage(e.sender) && c.termKill(id))
   handle('usage.exportCsv', async () => {
     const r = await dialog.showSaveDialog(win!, { defaultPath: 'harness-usage.csv', filters: [{ name: 'CSV', extensions: ['csv'] }] })
     if (r.canceled || !r.filePath) return false

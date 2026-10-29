@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useReducer, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import type { AgentEvent, AppState, MemoryFact, PermissionAnswer, PermissionRequest, UpdateStatus } from '../../shared/ipc'
 import { api } from './lib/api'
 import { Chat } from './components/Chat'
 import { Composer } from './components/Composer'
 import { ModelPicker } from './components/ModelPicker'
+import { Resizer, RightPanel } from './components/Panels'
 import { SettingsView } from './components/Settings'
 import { Sidebar } from './components/Sidebar'
 import { StatusBar } from './components/StatusBar'
+import { TerminalPanel } from './components/Terminal'
 import { Welcome } from './components/Welcome'
 
 export interface ToolLive {
@@ -173,6 +175,8 @@ function reducer(m: Model, a: Action): Model {
   return m
 }
 
+type Panels = AppState['settings']['app']['panels']
+
 interface PendingApproval {
   sessionId: string
   request: PermissionRequest
@@ -185,6 +189,26 @@ export function App() {
   const [settingsTab, setSettingsTab] = useState<string>('providers')
   const [pickerOpen, setPickerOpen] = useState(false)
   const [update, setUpdate] = useState<UpdateStatus>({ state: 'idle' })
+  // Right (files, changes) and bottom (terminal) panels. Elite restores them open; Basic starts with them closed.
+  const [panels, setPanels] = useState<Panels | null>(null)
+  const [bottomUsed, setBottomUsed] = useState(false)
+  const latest = useRef<AppState | null>(null)
+  latest.current = app
+  const layout = app?.settings.appearance.layout
+  const layoutChosen = app?.settings.app.layoutChosen
+  useEffect(() => {
+    const s = latest.current?.settings
+    if (!s) return
+    const elite = s.appearance.layout === 'elite'
+    setPanels((p) => {
+      // First load: Basic opens nothing. Later layout changes (picker, Settings) open or close both.
+      const saved = s.app.panels
+      return { ...saved, rightOpen: elite && saved.rightOpen, bottomOpen: elite && saved.bottomOpen, ...(p && { right: p.right, bottom: p.bottom }) }
+    })
+  }, [layout, layoutChosen, app === null])
+  useEffect(() => {
+    if (panels?.bottomOpen) setBottomUsed(true)
+  }, [panels?.bottomOpen])
 
   const setState = useCallback((state: AppState | null | undefined) => state && dispatch({ type: 'state', state }), [])
   const fail = useCallback((e: unknown) => dispatch({ type: 'notice', level: 'error', text: String((e as Error)?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '') }), [])
@@ -229,6 +253,18 @@ export function App() {
   const onRevert = useCallback((at: number, file?: string) => void api.agent.revert(at, file).then(setState, fail), [setState, fail])
   const onUndoMemory = useCallback((m: NonNullable<Notice['memory']>) => void api.memory.undo(m.sessionId, m.added, m.removed).then(setState, fail), [setState, fail])
   const onEdit = useCallback((index: number, text: string, revert: boolean) => void api.agent.editMessage(index, text, revert).catch(fail), [fail])
+  /** Changes the panels on screen and saves them. */
+  const savePanels = useCallback(
+    (patch: Partial<Panels>) => {
+      setPanels((p) => (p ? { ...p, ...patch } : p))
+      const cur = latest.current?.settings
+      if (cur) api.settings.set({ ...cur, app: { ...cur.app, panels: { ...cur.app.panels, ...patch } } }).then(setState, fail)
+    },
+    [setState, fail],
+  )
+  const toggleBottom = useCallback(() => panels && savePanels({ bottomOpen: !panels.bottomOpen }), [panels, savePanels])
+  const toggleRight = useCallback(() => panels && savePanels({ rightOpen: !panels.rightOpen }), [panels, savePanels])
+
   const answer = (a: PermissionAnswer) => {
     if (!approval) return
     const sessionId = activeId(app)
@@ -240,7 +276,15 @@ export function App() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey
-      if (mod && e.key.toLowerCase() === 'k') {
+      if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'j' && app?.workspace) {
+        // ⌘/Ctrl+J: terminal panel.
+        e.preventDefault()
+        toggleBottom()
+      } else if (mod && e.altKey && e.code === 'KeyB' && app?.workspace) {
+        // ⌥⌘B / Ctrl+Alt+B: files and changes panel.
+        e.preventDefault()
+        toggleRight()
+      } else if (mod && e.key.toLowerCase() === 'k') {
         e.preventDefault()
         setPickerOpen((o) => !o)
       } else if (mod && e.key === ',') {
@@ -268,7 +312,7 @@ export function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [app?.workspace, app?.running, app?.sessions, app?.session?.meta.id, approval, pickerOpen, setState, fail])
+  }, [app?.workspace, app?.running, app?.sessions, app?.session?.meta.id, approval, pickerOpen, setState, fail, toggleBottom, toggleRight])
 
   if (!app) return <div className="boot">Loading…</div>
 
@@ -277,6 +321,9 @@ export function App() {
     setView('settings')
   }
   const anyReady = Object.values(app.ready).some(Boolean)
+  const welcome = !app.workspace || !anyReady || !app.settings.app.layoutChosen
+  const showRight = !!app.workspace && !!panels?.rightOpen
+  const showBottom = !!app.workspace && !!panels?.bottomOpen
 
   return (
     <div className="app">
@@ -284,7 +331,7 @@ export function App() {
       <main className="main">
         {view === 'settings' ? (
           <SettingsView app={app} tab={settingsTab} onTab={setSettingsTab} onState={setState} onError={fail} onClose={() => setView('chat')} update={update} />
-        ) : !app.workspace || !anyReady ? (
+        ) : welcome ? (
           <Welcome app={app} onState={setState} onError={fail} onSettings={openSettings} />
         ) : (
           <>
@@ -304,8 +351,28 @@ export function App() {
             <Composer app={app} onState={setState} onError={fail} onOpenPicker={() => setPickerOpen(true)} />
           </>
         )}
-        <StatusBar app={app} live={live} onOpenPicker={() => setPickerOpen(true)} onUsage={() => openSettings('usage')} update={update} />
       </main>
+      {showRight && panels && (
+        <aside className="side-right" style={{ width: panels.right }} aria-label="Files and changes">
+          <Resizer axis="x" label="Resize files and changes panel" value={panels.right} min={220} max={Math.max(220, Math.min(1200, window.innerWidth - 570))} onChange={(right) => setPanels({ ...panels, right })} onCommit={(right) => savePanels({ right })} />
+          <RightPanel app={app} onState={setState} onError={fail} />
+        </aside>
+      )}
+      {/* Stays mounted once used, so terminals keep running while the panel is closed. */}
+      {bottomUsed && panels && (
+        <section className="side-bottom" hidden={!showBottom} style={{ height: panels.bottom }} aria-label="Terminal">
+          <Resizer axis="y" label="Resize terminal panel" value={panels.bottom} min={120} max={Math.max(120, Math.min(1000, window.innerHeight - 220))} onChange={(bottom) => setPanels({ ...panels, bottom })} onCommit={(bottom) => savePanels({ bottom })} />
+          <TerminalPanel app={app} visible={showBottom} onError={fail} />
+        </section>
+      )}
+      <StatusBar
+        app={app}
+        live={live}
+        onOpenPicker={() => setPickerOpen(true)}
+        onUsage={() => openSettings('usage')}
+        update={update}
+        panels={app.workspace && panels ? { bottom: showBottom, right: showRight, onBottom: toggleBottom, onRight: toggleRight } : undefined}
+      />
       {pickerOpen && <ModelPicker app={app} onClose={() => setPickerOpen(false)} onState={setState} onError={fail} />}
     </div>
   )

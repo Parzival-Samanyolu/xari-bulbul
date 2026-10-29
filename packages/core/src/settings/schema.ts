@@ -403,6 +403,8 @@ export const SettingsSchema = z.object({
       expandToolCalls: z.boolean().default(false),
       showReasoning: z.boolean().default(true),
       sendWithEnter: z.boolean().default(true),
+      /** basic: sidebar and chat. elite: also a right panel (files, changes) and a bottom terminal, open at launch. */
+      layout: z.enum(['basic', 'elite']).default('basic'),
     })
     .prefault({}),
 
@@ -417,6 +419,17 @@ export const SettingsSchema = z.object({
       /** Provider cards folded shut in Settings → Providers & Keys. */
       collapsedProviders: z.array(z.string()).default([]),
       recentWorkspaces: z.array(z.string()).default([]),
+      /** The layout picker was answered (it shows once). */
+      layoutChosen: z.boolean().default(false),
+      /** Sizes (px) and open state of the right and bottom panels. */
+      panels: z
+        .object({
+          right: z.number().int().min(220).max(1200).default(360),
+          bottom: z.number().int().min(120).max(1000).default(260),
+          rightOpen: z.boolean().default(false),
+          bottomOpen: z.boolean().default(false),
+        })
+        .prefault({}),
     })
     .prefault({}),
 })

@@ -9,9 +9,12 @@ interface Props {
   onOpenPicker: () => void
   onUsage: () => void
   update: UpdateStatus
+  /** Toggles for the bottom (terminal) and right (files, changes) panels; hidden without a folder. */
+  panels?: { bottom: boolean; right: boolean; onBottom: () => void; onRight: () => void }
 }
 
-export function StatusBar({ app, live, onOpenPicker, onUsage, update }: Props) {
+export function StatusBar({ app, live, onOpenPicker, onUsage, update, panels }: Props) {
+  const mac = app.platform === 'darwin'
   const s = app.usage.session
   const t = app.usage.today
   const showCost = app.settings.usage.showCost
@@ -64,6 +67,17 @@ export function StatusBar({ app, live, onOpenPicker, onUsage, update }: Props) {
         </button>
       )}
       {update.state === 'downloading' && <span className="sb-item muted">Downloading update {update.percent}%</span>}
+      {panels && (
+        <>
+          <span className="sb-sep" />
+          <button className={`sb-item sb-toggle ${panels.bottom ? 'on' : ''}`} aria-pressed={panels.bottom} onClick={panels.onBottom} title={`Terminal (${mac ? '⌘J' : 'Ctrl+J'})`}>
+            Terminal
+          </button>
+          <button className={`sb-item sb-toggle ${panels.right ? 'on' : ''}`} aria-pressed={panels.right} onClick={panels.onRight} title={`Files and changes (${mac ? '⌥⌘B' : 'Ctrl+Alt+B'})`}>
+            Files & changes
+          </button>
+        </>
+      )}
     </footer>
   )
 }

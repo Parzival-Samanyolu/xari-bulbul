@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AppState, AttachmentInput, PermissionMode } from '../../../shared/ipc'
 import { api } from '../lib/api'
+import { PATH_DRAG_TYPE } from './Panels'
 import { modelLabel } from '../lib/format'
 import { MicButton } from './MicButton'
 import { MakerLogo, ProviderLogo } from './ProviderLogo'
@@ -92,16 +93,24 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
   // Dropping a file anywhere in the window attaches it (and never navigates away).
   useEffect(() => {
     let depth = 0
+    // Real files, or a file dragged from the Files panel (by path).
+    const isFile = (e: DragEvent) => !!e.dataTransfer && (e.dataTransfer.types.includes('Files') || e.dataTransfer.types.includes(PATH_DRAG_TYPE))
     const over = (e: DragEvent) => {
-      if (!e.dataTransfer?.types.includes('Files')) return
+      if (!isFile(e)) return
       e.preventDefault()
     }
-    const enter = (e: DragEvent) => e.dataTransfer?.types.includes('Files') && (depth++, setDragging(true))
+    const enter = (e: DragEvent) => isFile(e) && (depth++, setDragging(true))
     const leave = () => --depth <= 0 && ((depth = 0), setDragging(false))
     const drop = (e: DragEvent) => {
       e.preventDefault()
       depth = 0
       setDragging(false)
+      const dragged = e.dataTransfer?.getData(PATH_DRAG_TYPE)
+      if (dragged) {
+        setAttachments((a) => [...a, { id: ++attachId, name: dragged.split(/[\\/]/).pop() || dragged, path: dragged }])
+        ref.current?.focus()
+        return
+      }
       add([...(e.dataTransfer?.files ?? [])])
     }
     window.addEventListener('dragover', over)

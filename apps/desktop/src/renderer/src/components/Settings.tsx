@@ -7,6 +7,7 @@ import { api } from '../lib/api'
 import { ago, cost, modelLabel, tokens } from '../lib/format'
 import { MODES } from './Composer'
 import { ListField, NumberField, Row, Section, Select, Slider, TextField, Toggle } from './fields'
+import { LayoutPicker, withLayout } from './LayoutPicker'
 import { ModelPicker } from './ModelPicker'
 import { ProviderLogo } from './ProviderLogo'
 
@@ -1596,6 +1597,9 @@ function AppearanceTab({ app, save }: TabProps) {
   const a = app.settings.appearance
   return (
     <Section title="Appearance">
+      <Row label="Layout" hint="Elite opens a files and changes panel on the right and a terminal at the bottom. Either layout can open or close them.">
+        <LayoutPicker value={a.layout} onChange={(v) => v !== a.layout && save((s) => withLayout(s, v))} />
+      </Row>
       <Row label="Theme">
         <Select label="Theme" value={a.theme} options={[{ value: 'system', label: 'System' }, { value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }, { value: 'oled', label: 'OLED black' }, { value: 'sepia', label: 'Sepia' }, { value: 'contrast', label: 'High contrast' }]} onChange={(v) => save((s) => ((s.appearance.theme = v), s))} />
       </Row>

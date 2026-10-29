@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import type { AppState } from '../../../shared/ipc'
 import { api } from '../lib/api'
 import mark from '../assets/mark.png'
+import { LayoutPicker, withLayout, type Layout } from './LayoutPicker'
 
 interface Props {
   app: AppState
@@ -15,12 +17,25 @@ export function Welcome({ app, onState, onError, onSettings }: Props) {
   // The first unfinished step carries the primary action.
   const next = !connected ? 'connect' : !hasFolder ? 'folder' : null
   const recents = app.settings.app.recentWorkspaces.filter((w) => w !== app.workspace)
+  const [layout, setLayout] = useState<Layout>(app.settings.appearance.layout)
 
   return (
     <div className="welcome">
       <img className="welcome-mark" src={mark} alt="" width={96} height={76} />
       <h1>Xarı Bülbül</h1>
       <p className="muted">An AI coding agent that works in your project, with any model you like.</p>
+      {!app.settings.app.layoutChosen && (
+        <section className="layout-card" aria-labelledby="layout-q">
+          <h2 id="layout-q">Which layout?</h2>
+          <p className="muted small">You can change it later in Settings → Appearance.</p>
+          <LayoutPicker value={layout} onChange={setLayout} />
+          <div className="layout-actions">
+            <button className="btn primary" onClick={() => api.settings.set(withLayout(app.settings, layout)).then(onState, onError)}>
+              Continue
+            </button>
+          </div>
+        </section>
+      )}
       <ol className="steps">
         <li className={connected ? 'done' : ''}>
           <div>

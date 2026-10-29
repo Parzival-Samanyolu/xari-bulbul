@@ -9,11 +9,27 @@ directories:
 files:
   - out/**
   - package.json
+  # node-pty: keep the JS and the binaries; drop sources and debug symbols (the Windows .pdb files are ~50 MB).
+  - '!**/node_modules/node-pty/{src,deps,third_party,scripts,typings}/**'
+  - '!**/node_modules/node-pty/prebuilds/**/*.pdb'
+  - '!**/node_modules/node-pty/prebuilds/win32-arm64/**'
+afterPack: scripts/after-pack.cjs
 afterSign: scripts/self-sign.cjs
 asarUnpack:
   - resources/**
+  # node-pty's native module and its spawn-helper must be real files on disk.
+  - '**/node_modules/node-pty/**'
+# node-pty is the only native dependency and is N-API (ABI-stable across Node and Electron): the
+# prebuilt binaries it ships (macOS, Windows) or the one built by `pnpm install` (Linux) load as is,
+# so packaging needs no compiler.
+npmRebuild: false
 mac:
   category: public.app-category.developer-tools
+  files:
+    - '!**/node_modules/node-pty/prebuilds/win32-*/**'
+  # The universal app carries node-pty's x64 and arm64 prebuilds side by side (identical in both
+  # halves); node-pty picks the one for the running arch.
+  x64ArchFiles: '**/node_modules/node-pty/prebuilds/darwin-*/*'
   # Only the display name may be non-ASCII: Electron finds its helper apps via CFBundleName.
   extendInfo:
     CFBundleDisplayName: Xarı Bülbül
@@ -36,6 +52,8 @@ dmg:
   writeUpdateInfo: false
 win:
   icon: build/icon.png
+  files:
+    - '!**/node_modules/node-pty/prebuilds/darwin-*/**'
   target:
     - target: nsis
       arch: [x64]
@@ -46,6 +64,8 @@ nsis:
   allowToChangeInstallationDirectory: true
 linux:
   category: Development
+  files:
+    - '!**/node_modules/node-pty/prebuilds/**'
   # AppImage runs on every distro and updates itself; packaging/arch/PKGBUILD repackages it for Arch.
   target: [AppImage]
   maintainer: Xarı Bülbül contributors
