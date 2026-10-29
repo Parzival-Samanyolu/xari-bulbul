@@ -45,7 +45,13 @@ const api: HarnessApi = {
   extensions: { reload: call('extensions.reload') as any, openDir: call('extensions.openDir') as any },
   skills: { remove: call('skills.remove') as any },
   schedules: { runNow: call('schedules.runNow') as any, pickFolder: call('schedules.pickFolder') as any },
-  voice: { prepare: call('voice.prepare') as any, transcribe: call('voice.transcribe') as any },
+  voice: {
+    prepare: call('voice.prepare') as any,
+    transcribe: call('voice.transcribe') as any,
+    download: call('voice.download') as any,
+    cancelDownload: call('voice.cancelDownload') as any,
+    remove: call('voice.remove') as any,
+  },
   app: {
     openExternal: call('app.openExternal') as any,
     openPath: call('app.openPath') as any,

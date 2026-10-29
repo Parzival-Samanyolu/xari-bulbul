@@ -26,4 +26,22 @@ export { gatherEnvironment, type PromptEnvironment } from './context/system-prom
 export { destructiveReason, outsideWriteReason } from './permissions/destructive.js'
 export { findFiles } from './tools/fs-walk.js'
 export { transcribe, buildTranscriptionRequest, audioFileName, canTranscribe, TRANSCRIPTION_SUGGESTIONS, type TranscriptionRequest } from './voice/transcribe.js'
+export {
+  WHISPER_BINARIES,
+  WHISPER_MODELS,
+  binaryFor,
+  chooseVoiceEngine,
+  findWhisperOnPath,
+  installWhisperBinary,
+  installWhisperModel,
+  localWhisperStatus,
+  pickWhisperModel,
+  removeWhisper,
+  runWhisperCli,
+  whisperModelPath,
+  type LocalWhisperStatus,
+  type VoiceEnginePref,
+  type WhisperModelId,
+} from './voice/local.js'
+export { encodeWav, WHISPER_SAMPLE_RATE } from './voice/wav.js'
 export { nextRun, missedRun, parseTime, intervalMs, type ScheduleWhen } from './schedule/next.js'

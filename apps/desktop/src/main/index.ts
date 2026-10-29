@@ -194,6 +194,9 @@ function registerIpc() {
   })
   handle('voice.prepare', () => microphoneAccess())
   handle('voice.transcribe', (audio: Uint8Array, mediaType: string) => c.transcribe(audio, mediaType))
+  handle('voice.download', () => c.downloadWhisper())
+  handle('voice.cancelDownload', () => c.cancelWhisperDownload())
+  handle('voice.remove', (what: string) => c.removeWhisper(what))
   handle('app.openExternal', (url: string) => {
     if (/^https?:\/\//.test(url)) return shell.openExternal(url)
   })

@@ -374,6 +374,15 @@ export const SettingsSchema = z.object({
 
   schedules: z.array(ScheduleSchema).default([]),
 
+  voice: z
+    .object({
+      /** auto: the downloaded local model when there is one, else the transcription model under Models. */
+      engine: z.enum(['auto', 'local', 'provider']).default('auto'),
+      /** Which downloaded whisper.cpp model to use (and to download). */
+      localModel: z.enum(['tiny', 'base', 'small']).default('base'),
+    })
+    .prefault({}),
+
   usage: z
     .object({
       showCost: z.boolean().default(true),

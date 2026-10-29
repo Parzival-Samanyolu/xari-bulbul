@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AppState } from '../../../shared/ipc'
 import { api } from '../lib/api'
+import { recordingToWav } from '../lib/wav'
 
 type Phase = 'idle' | 'starting' | 'recording' | 'transcribing'
 
@@ -57,8 +58,10 @@ export function MicButton({ app, onText, onError }: Props) {
   const finish = async (blob: Blob) => {
     setPhase('transcribing')
     try {
-      const bytes = new Uint8Array(await blob.arrayBuffer())
-      const text = await api.voice.transcribe(bytes, blob.type || 'audio/webm')
+      // whisper.cpp reads 16 kHz WAV; providers take the recording as it is.
+      const local = engine === 'local'
+      const bytes = local ? await recordingToWav(blob) : new Uint8Array(await blob.arrayBuffer())
+      const text = await api.voice.transcribe(bytes, local ? 'audio/wav' : blob.type || 'audio/webm')
       if (text) onText(text)
     } catch (e) {
       onError(e)

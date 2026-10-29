@@ -1,8 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { MCP_PRESETS, presetServer } from '@harness/core/mcp-presets'
 import { TRANSCRIPTION_SUGGESTIONS } from '@harness/core/voice'
 import { EFFORT_LABELS, EFFORT_LEVELS, RECOMMENDED, TIER_LABELS, refKey, type RecommendedTier } from '@harness/core/catalog'
-import type { AppState, McpServerStatus, ModelRef, ProviderTestResult, Settings, UpdateStatus } from '../../../shared/ipc'
+import type { AppState, McpServerStatus, ModelRef, ProviderTestResult, Settings, UpdateStatus, VoiceDownload } from '../../../shared/ipc'
 import { api } from '../lib/api'
 import { ago, cost, modelLabel, tokens } from '../lib/format'
 import { MODES } from './Composer'
@@ -336,7 +336,109 @@ const SPEEDS = [
   { value: 'batch', label: 'Batch' },
 ]
 
-function VoiceSection({ app, save, onTab }: TabProps) {
+const mb = (n: number) => `${Math.round(n / 1_000_000)} MB`
+
+const ENGINE_OPTIONS = [
+  { value: 'auto' as const, label: 'Auto: local model if downloaded, else provider' },
+  { value: 'local' as const, label: 'Local model only' },
+  { value: 'provider' as const, label: 'Provider only' },
+]
+
+/** The optional offline engine: whisper.cpp plus a ggml model in the data folder. */
+function LocalSpeech({ app, save, onState, onError }: TabProps) {
+  const v = app.voice
+  const local = v.local
+  const [live, setLive] = useState<VoiceDownload | null>(null)
+  useEffect(() => api.onEvent((e) => e.type === 'voice_download' && setLive(e.download)), [])
+  const download = v.download ? (live ?? v.download) : null
+  const chosen = local.models.find((m) => m.id === app.settings.voice.localModel)!
+  const needBinary = !local.binary && local.canDownloadBinary
+  const missing = [needBinary && `whisper.cpp (${mb(local.binarySize ?? 0)})`, !chosen.installed && `the ${chosen.id} model (${mb(chosen.size)})`].filter(Boolean)
+  const start = () => {
+    setLive(null)
+    api.voice.download().then(onState, onError)
+  }
+  const remove = (what: string) => api.voice.remove(what).then(onState, onError)
+  const installed = local.models.filter((m) => m.installed)
+  const isMac = app.platform === 'darwin'
+
+  return (
+    <div className="voice-model">
+      <div className="inline">
+        <Select label="Local speech model" value={app.settings.voice.localModel} options={local.models.map((m) => ({ value: m.id, label: `${m.label} (${mb(m.size)})` }))} onChange={(id) => save((s) => ((s.voice.localModel = id), s))} />
+        {download ? (
+          <button className="btn" onClick={() => api.voice.cancelDownload().then(onState, onError)}>
+            Cancel download
+          </button>
+        ) : (
+          missing.length > 0 && (
+            <button className="btn primary" onClick={start}>
+              Download local speech model
+            </button>
+          )
+        )}
+      </div>
+      {download && (
+        <div className="voice-progress">
+          <progress value={download.received} max={download.total || undefined} aria-label={download.step === 'binary' ? 'Downloading whisper.cpp' : `Downloading the ${download.model} model`} />
+          <span className="small muted" aria-hidden>
+            {download.step === 'binary' ? 'whisper.cpp' : `${download.model} model`}: {mb(download.received)}
+            {download.total ? ` of ${mb(download.total)}` : ''}
+          </span>
+        </div>
+      )}
+      {!download && missing.length > 0 && <p className="small muted">Downloads {missing.join(' and ')}. Checksums are verified before anything is used.</p>}
+      <p className="small muted">
+        {local.binary ? (
+          <>
+            whisper.cpp: <code>{local.binary.path}</code> {local.binary.source === 'path' ? '(found on your system)' : '(downloaded)'}
+          </>
+        ) : local.canDownloadBinary ? (
+          'whisper.cpp is not installed yet.'
+        ) : (
+          <>
+            whisper.cpp publishes no ready-made build for {isMac ? 'macOS' : 'this system'}. {isMac ? 'Install it with Homebrew' : 'Install whisper-cli with your package manager or build it'}
+            {isMac && (
+              <>
+                : <code>brew install whisper-cpp</code>
+              </>
+            )}
+            . Then{' '}
+            <button className="link" onClick={() => api.getState().then(onState, onError)}>
+              check again
+            </button>
+            .
+          </>
+        )}
+      </p>
+      {(installed.length > 0 || local.binary?.source === 'download') && (
+        <ul className="voice-installed" aria-label="Downloaded speech files">
+          {installed.map((m) => (
+            <li key={m.id}>
+              <span>
+                {m.id} model <span className="muted small">{mb(m.size)}</span>
+                {local.model === m.id && <span className="badge ok">in use</span>}
+              </span>
+              <button className="link danger small" disabled={!!download} aria-label={`Delete the ${m.id} model`} onClick={() => remove(m.id)}>
+                Delete
+              </button>
+            </li>
+          ))}
+          {local.binary?.source === 'download' && (
+            <li>
+              <span>whisper.cpp</span>
+              <button className="link danger small" disabled={!!download} aria-label="Delete the downloaded whisper.cpp" onClick={() => remove('binary')}>
+                Delete
+              </button>
+            </li>
+          )}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function VoiceSection({ app, save, onState, onError, onTab }: TabProps) {
   const t = app.settings.models.transcription
   // Anthropic's API has no audio endpoint; every other provider speaks the OpenAI one.
   const providers = app.settings.providers.filter((p) => p.api === 'openai')
@@ -348,8 +450,26 @@ function VoiceSection({ app, save, onTab }: TabProps) {
       return s
     })
   return (
-    <Section title="Voice input" description="The mic button in the message box records you and types what you said. Recordings are sent to the provider you choose here.">
-      <Row label="Transcription model" hint="A provider with an OpenAI-style audio transcription endpoint. Off hides the mic button." wide>
+    <Section
+      title="Voice input"
+      description="The mic button in the message box records you and types what you said. A local speech model keeps recordings on this computer; a transcription model sends them to that provider."
+    >
+      <Row
+        label="Engine"
+        hint={
+          app.voice.engine === 'local'
+            ? 'Now using the local speech model.'
+            : app.voice.engine === 'provider'
+              ? `Now using ${t?.modelId} on ${provider?.name ?? t?.providerId}.`
+              : 'Nothing is set up yet, so the mic button is hidden.'
+        }
+      >
+        <Select label="Voice engine" value={app.settings.voice.engine} options={ENGINE_OPTIONS} onChange={(e) => save((s) => ((s.voice.engine = e), s))} />
+      </Row>
+      <Row label="Local speech model" hint="whisper.cpp runs on this computer, without a key or network. Base suits most dictation; Small is more accurate but slower." wide>
+        <LocalSpeech app={app} save={save} onState={onState} onError={onError} />
+      </Row>
+      <Row label="Transcription model" hint="A provider with an OpenAI-style audio transcription endpoint." wide>
         <div className="voice-model">
           <div className="inline">
             <Select label="Transcription provider" value={t?.providerId ?? ''} options={[{ value: '', label: 'Off' }, ...providers.map((p) => ({ value: p.id, label: p.name }))]} onChange={setProvider} />

@@ -2307,3 +2307,33 @@ label.question-option.on {
 .voice-model p {
   margin: 0;
 }
+.voice-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.voice-progress progress {
+  flex: 1;
+  max-width: 320px;
+  accent-color: var(--accent-strong);
+}
+.voice-installed {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+.voice-installed li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  max-width: 420px;
+}
+.voice-installed .badge {
+  margin-left: 6px;
+}
+.voice-model code {
+  overflow-wrap: anywhere;
+}

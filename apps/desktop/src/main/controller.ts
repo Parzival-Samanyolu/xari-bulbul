@@ -25,8 +25,17 @@ import {
   ProviderError,
   BUILTIN_PROVIDERS,
   canTranscribe,
+  chooseVoiceEngine,
+  installWhisperBinary,
+  installWhisperModel,
+  localWhisperStatus,
+  pickWhisperModel,
   providerReady,
+  removeWhisper,
+  runWhisperCli,
   transcribe,
+  WHISPER_MODELS,
+  whisperModelPath,
   pushRecent,
   parseSettings,
   saveSettingsFile,
@@ -44,8 +53,9 @@ import {
   type SessionMeta,
   type Settings,
   type Tool,
+  type WhisperModelId,
 } from '@harness/core'
-import type { AppState, AttachmentInput, ExtensionsInfo, MemoryInfo, ProviderTestResult, SessionView, UiEvent, VoiceState } from '../shared/ipc'
+import type { AppState, AttachmentInput, ExtensionsInfo, MemoryInfo, ProviderTestResult, SessionView, UiEvent, VoiceDownload, VoiceState } from '../shared/ipc'
 import { Scheduler } from './scheduler'
 import { SecretStore } from './secrets'
 
@@ -87,6 +97,7 @@ export class AppController {
   private mcpTimer: NodeJS.Timeout | null = null
   private readonly scheduler: Scheduler
   private catchUpTimer: NodeJS.Timeout | null = null
+  private voiceDownload: { ac: AbortController; progress: VoiceDownload } | null = null
   private ext: LoadedExtensions = { tools: [], commands: [], skills: [], errors: [] }
   private tools: Tool[] = builtinTools()
   private workspace: string | null = null
@@ -246,18 +257,81 @@ export class AppController {
   private voiceState(): VoiceState {
     const ref = this.settings.models.transcription
     const config = ref && this.settings.providers.find((p) => p.id === ref.providerId)
-    return { engine: ref?.modelId.trim() && canTranscribe(config || undefined) && this.isReady(ref.providerId) ? 'provider' : null }
+    const provider = !!(ref?.modelId.trim() && canTranscribe(config || undefined) && this.isReady(ref.providerId))
+    const status = localWhisperStatus(this.dataDir)
+    const model = pickWhisperModel(status, this.settings.voice.localModel)
+    return {
+      engine: chooseVoiceEngine(this.settings.voice.engine, { local: !!(status.binary && model), provider }),
+      provider,
+      local: { ...status, model },
+      download: this.voiceDownload?.progress ?? null,
+    }
   }
 
-  /** Recording bytes from the composer's mic button → text. */
+  /** Recording bytes from the composer's mic button → text. Local transcription takes a 16 kHz WAV the renderer made. */
   async transcribe(audio: Uint8Array, mediaType: string): Promise<string> {
     if (!(audio instanceof Uint8Array)) throw new Error('No recording received.')
+    const voice = this.voiceState()
+    if (voice.engine === 'local') {
+      if (!/^audio\/(x-)?wav\b/.test(mediaType)) throw new Error('Local transcription needs a WAV recording.')
+      return runWhisperCli({ bin: voice.local.binary!.path, model: whisperModelPath(this.dataDir, voice.local.model as WhisperModelId), wav: audio, signal: AbortSignal.timeout(300_000) })
+    }
     const ref = this.settings.models.transcription
     const config = ref && this.settings.providers.find((p) => p.id === ref.providerId)
-    if (!ref?.modelId.trim() || !config) throw new Error('Choose a transcription model in Settings → Models.')
+    if (!ref?.modelId.trim() || !config) throw new Error('Choose a transcription model in Settings → Models, or download a local speech model.')
     if (!canTranscribe(config)) throw new Error(`${config.name} has no transcription endpoint.`)
     if (!this.isReady(ref.providerId)) throw new Error(`Add a ${config.name} API key in Settings → Providers & Keys.`)
     return transcribe({ provider: config, apiKey: this.secrets.get(ref.providerId), model: ref.modelId.trim(), audio, mediaType }, { signal: AbortSignal.timeout(120_000) })
+  }
+
+  /** Fetches whisper.cpp (if this platform has a published build and none is installed) and the chosen model. */
+  async downloadWhisper(): Promise<AppState> {
+    if (this.voiceDownload) throw new Error('A speech model download is already running.')
+    const model = this.settings.voice.localModel
+    const ac = new AbortController()
+    const status = localWhisperStatus(this.dataDir)
+    const needBinary = !status.binary && status.canDownloadBinary
+    const needModel = !status.models.find((m) => m.id === model)?.installed
+    if (!needBinary && !needModel) return this.state()
+    const modelSize = WHISPER_MODELS.find((m) => m.id === model)?.size ?? 0
+    const progress: VoiceDownload = needBinary ? { step: 'binary', model, received: 0, total: status.binarySize ?? 0 } : { step: 'model', model, received: 0, total: modelSize }
+    this.voiceDownload = { ac, progress }
+    let last = 0
+    const onProgress = (received: number, total: number) => {
+      progress.received = received
+      progress.total = total
+      const now = Date.now()
+      if (now - last < 200 && received !== total) return
+      last = now
+      this.send({ type: 'voice_download', download: { ...progress } })
+    }
+    this.pushState()
+    try {
+      if (needBinary) await installWhisperBinary(this.dataDir, { signal: ac.signal, onProgress })
+      if (needModel) {
+        Object.assign(progress, { step: 'model', received: 0, total: modelSize })
+        this.send({ type: 'voice_download', download: { ...progress } })
+        await installWhisperModel(this.dataDir, model, { signal: ac.signal, onProgress })
+      }
+    } catch (e) {
+      if (!ac.signal.aborted) throw e
+    } finally {
+      this.voiceDownload = null
+      this.pushState()
+    }
+    return this.state()
+  }
+
+  cancelWhisperDownload(): AppState {
+    this.voiceDownload?.ac.abort()
+    return this.state()
+  }
+
+  removeWhisper(what: string): AppState {
+    if (this.voiceDownload) throw new Error('Wait for the download to finish or cancel it first.')
+    if (what !== 'binary' && !WHISPER_MODELS.some((m) => m.id === what)) throw new Error(`Unknown speech model: ${what}`)
+    removeWhisper(this.dataDir, what as 'binary' | WhisperModelId)
+    return this.state()
   }
 
   // ---------- extensions ----------
@@ -310,6 +384,7 @@ export class AppController {
   async dispose() {
     if (this.catchUpTimer) clearTimeout(this.catchUpTimer)
     this.scheduler.dispose()
+    this.voiceDownload?.ac.abort()
     this.cancelPending()
     for (const r of this.agents.values()) r.agent.stop()
     const deadline = Date.now() + 1500

@@ -3,6 +3,7 @@ import type {
   AgentEvent,
   ChatMessage,
   Checkpoint,
+  LocalWhisperStatus,
   McpServerStatus,
   MemoryFact,
   ModelInfo,
@@ -22,6 +23,7 @@ export type {
   AgentEvent,
   ChatMessage,
   Checkpoint,
+  LocalWhisperStatus,
   McpServerStatus,
   MemoryFact,
   ModelInfo,
@@ -94,9 +96,24 @@ export interface ScheduleStatus {
   error: string | null
 }
 
+/** A local speech model download in progress (whisper.cpp first if needed, then the model). */
+export interface VoiceDownload {
+  step: 'binary' | 'model'
+  /** Model id being fetched. */
+  model: string
+  received: number
+  /** 0 when the server didn't say. */
+  total: number
+}
+
 export interface VoiceState {
-  /** 'provider' = `models.transcription` is set and its provider is ready. */
-  engine: 'provider' | null
+  /** What the mic button uses now (from `voice.engine` and what's set up); null hides it. */
+  engine: 'local' | 'provider' | null
+  /** `models.transcription` is set and its provider is ready. */
+  provider: boolean
+  /** whisper.cpp and the downloaded models, plus the model local transcription would use. */
+  local: LocalWhisperStatus & { model: string | null }
+  download: VoiceDownload | null
 }
 
 export interface AppState {
@@ -156,6 +173,7 @@ export type UiEvent =
   | { type: 'permission_cancelled'; sessionId: string; callId: string }
   | { type: 'state'; state: AppState }
   | { type: 'update'; status: UpdateStatus }
+  | { type: 'voice_download'; download: VoiceDownload }
 
 /** A file on disk (`path`) or a pasted image (`data`, base64). Main reads and validates it. */
 export interface AttachmentInput {
@@ -257,8 +275,13 @@ export interface HarnessApi {
   voice: {
     /** Asks the OS for microphone access (macOS); true when recording may start. */
     prepare(): Promise<boolean>
-    /** Turns a recording into text with the configured engine. */
+    /** Turns a recording into text: WAV for the local engine, the recorder's format for a provider. */
     transcribe(audio: Uint8Array, mediaType: string): Promise<string>
+    /** Downloads whisper.cpp (where a build is published and none is installed) and the `voice.localModel` model. Progress arrives as `voice_download` events. */
+    download(): Promise<AppState>
+    cancelDownload(): Promise<AppState>
+    /** Deletes a downloaded model, or the downloaded whisper.cpp ('binary'). */
+    remove(what: string): Promise<AppState>
   }
   app: {
     openExternal(url: string): Promise<void>
