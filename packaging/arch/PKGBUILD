@@ -16,7 +16,7 @@ conflicts=("$_pkgname")
 options=('!strip' '!debug')
 source=("$_appimage::$url/releases/download/v$pkgver/$_appimage")
 noextract=("$_appimage")
-sha256sums=('551036cc6ae73c65c291009d12cb723c48c6ffb008c25b0f31ce3670bdc16d5e')
+sha256sums=('27ddff11efb84c93eb3fa88a8b92f38892edeb696e4bdffef306df90e82cd9de')
 
 prepare() {
   cd "$srcdir"
