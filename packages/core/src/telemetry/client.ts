@@ -86,7 +86,10 @@ function pathForms(p: string): string[] {
     out.add(v.replace(/\//g, '\\'))
     try {
       out.add(pathToFileURL(v).href)
-      out.add(encodeURI(v.replace(/\\/g, '/')))
+      const enc = encodeURI(v.replace(/\\/g, '/'))
+      out.add(enc)
+      // pathToFileURL resolves against the current drive on Windows, so add the plain form too.
+      out.add(`file://${enc.startsWith('/') ? '' : '/'}${enc}`)
     } catch {
       /* not a path */
     }

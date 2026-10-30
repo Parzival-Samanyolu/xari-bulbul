@@ -22,8 +22,8 @@ export function browserCandidates(platform: NodeJS.Platform = process.platform, 
       ['Brave Browser', 'Brave Browser'],
       ['Chromium', 'Chromium'],
     ]
-    const roots = ['/Applications', path.join(env.HOME ?? os.homedir(), 'Applications')]
-    return roots.flatMap((root) => apps.map(([app, bin]) => path.join(root, `${app}.app`, 'Contents', 'MacOS', bin)))
+    const roots = ['/Applications', path.posix.join(env.HOME ?? os.homedir(), 'Applications')]
+    return roots.flatMap((root) => apps.map(([app, bin]) => path.posix.join(root, `${app}.app`, 'Contents', 'MacOS', bin)))
   }
   if (platform === 'win32') {
     const roots = [env.PROGRAMFILES, env['PROGRAMFILES(X86)'], env.LOCALAPPDATA].filter((r): r is string => !!r)

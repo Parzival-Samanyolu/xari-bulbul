@@ -171,7 +171,8 @@ describe('pinned downloads', () => {
       })
       const bin = await installWhisperBinary(dir, { platform: 'linux', arch: 'x64', fetch: serve(body), extract })
       expect(bin).toBe(path.join(whisperDirs(dir).bin, 'whisper-bin-ubuntu-x64', 'whisper-cli'))
-      expect(fs.statSync(bin).mode & 0o111).not.toBe(0)
+      // Windows has no exec bit.
+      if (process.platform !== 'win32') expect(fs.statSync(bin).mode & 0o111).not.toBe(0)
       // The archive and staging folder are gone.
       expect(fs.readdirSync(whisperDirs(dir).root)).toEqual(['bin'])
       const status = localWhisperStatus(dir, { platform: 'linux', arch: 'x64', env: { PATH: '' } })
