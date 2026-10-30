@@ -1,0 +1,12 @@
+{
+  "id": "blender",
+  "name": "Blender",
+  "description": "Run Python scripts in Blender to edit scenes, set up materials and render, and read what a .blend file holds.",
+  "version": "1.0.0",
+  "includes": {
+    "tools": ["blender_run", "blender_info"],
+    "commands": [],
+    "skills": ["blender-python"],
+    "mcpServers": []
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "id": "docker",
+  "name": "Docker",
+  "description": "List containers, read their logs and configuration, and start or stop Compose projects.",
+  "version": "1.0.0",
+  "includes": {
+    "tools": ["docker_ps", "docker_logs", "docker_inspect", "docker_compose"],
+    "commands": [],
+    "skills": ["docker"],
+    "mcpServers": []
+  }
+}
