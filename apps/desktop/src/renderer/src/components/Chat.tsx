@@ -1,8 +1,11 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import type { AppState, ChatMessage, Checkpoint, PermissionAnswer, PermissionRequest, QuestionRequest, ToolDisplay } from '../../../shared/ipc'
+import { chatBot } from '@harness/core/bots'
 import type { LiveState, Notice, ToolLive } from '../App'
+import { api } from '../lib/api'
 import { Markdown } from '../lib/Markdown'
 import { Approval } from './Approval'
+import { BotAvatar, turnOnBot } from './Bots'
 import { Question } from './Question'
 
 type ToolCallT = NonNullable<Extract<ChatMessage, { role: 'assistant' }>['toolCalls']>[number]
@@ -20,6 +23,8 @@ interface Props {
   onRevert: (at: number, file?: string) => void
   onEdit: (index: number, text: string, revert: boolean) => void
   onUndoMemory: (memory: NonNullable<Notice['memory']>) => void
+  onState: (s: AppState) => void
+  onError: (e: unknown) => void
 }
 
 type UserMessage = Extract<ChatMessage, { role: 'user' }>
@@ -28,7 +33,7 @@ type ToolMessage = Extract<ChatMessage, { role: 'tool' }>
 
 const FIX_LABEL = { providers: 'Open API keys', usage: 'Open Usage', agent: 'Open Agent limits' } as const
 
-export function Chat({ app, live, onDismiss, onSettings, approval, question, onRetry, onContinue, onRevert, onEdit, onUndoMemory }: Props) {
+export function Chat({ app, live, onDismiss, onSettings, approval, question, onRetry, onContinue, onRevert, onEdit, onUndoMemory, onState, onError }: Props) {
   const session = app.session
   const scroller = useRef<HTMLDivElement>(null)
   const stick = useRef(true)
@@ -64,6 +69,9 @@ export function Chat({ app, live, onDismiss, onSettings, approval, question, onR
   if (!session) return <div className="chat" />
 
   const empty = session.messages.length === 0 && !app.running
+  // The chat's bot: null for plain chats and while bots are off (then bot chats open as plain chats).
+  const bot = chatBot(app.settings, session.meta.botId)
+  const botOn = !!bot?.enabled
   // Announced to screen readers; streamed text itself is not announced token by token.
   const status = approval
     ? `Approval needed: ${approval.request.tool} ${approval.request.subject}`
@@ -84,8 +92,29 @@ export function Chat({ app, live, onDismiss, onSettings, approval, question, onR
       <div className="sr-only" aria-live="polite">
         {status}
       </div>
+      {bot && (
+        <header className="bot-head" style={{ '--bot': bot.color } as CSSProperties}>
+          <BotAvatar app={app} bot={bot} size={26} />
+          <span className="bot-head-name">{bot.name}</span>
+          {bot.tagline && <span className="muted small bot-head-tag">{bot.tagline}</span>}
+        </header>
+      )}
       <div className="chat-inner">
-        {empty && <EmptyChat app={app} />}
+        {bot && !botOn && (
+          <div className="notice notice-warn" role="status">
+            <span>This bot is turned off, so this chat works as a plain chat.</span>
+            <button className="btn" onClick={() => api.settings.set(turnOnBot(app, bot.id)).then(onState, onError)}>
+              Turn on
+            </button>
+          </div>
+        )}
+        {empty && !botOn && <EmptyChat app={app} />}
+        {botOn && bot.greeting?.trim() && (
+          // Shown only; the model never sees the greeting.
+          <div className="assistant bot-greeting">
+            <Markdown text={bot.greeting} />
+          </div>
+        )}
         {session.messages.map((m, i) => {
           const cp = turns.endsAt.get(i)
           const bar = cp && settled(cp.at) && <RevertBar key={`r${cp.at}`} checkpoint={cp} onRevert={onRevert} />

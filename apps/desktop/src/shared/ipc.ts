@@ -200,6 +200,8 @@ export interface AppState {
   browserLogins: boolean
   /** How the mic button transcribes; null hides it. */
   voice: VoiceState
+  /** Bots with a picture as their avatar: bot id → data URL. */
+  botAvatars: Record<string, string>
   paths: { data: string; sessions: string; usage: string }
 }
 
@@ -293,8 +295,8 @@ export interface HarnessApi {
   }
   sessions: {
     open(id: string): Promise<AppState>
-    /** New chat in `cwd`, or in the current folder. */
-    create(cwd?: string): Promise<AppState>
+    /** New chat in `cwd`, or in the current folder; with `botId`, a chat with that bot (it must be turned on). */
+    create(cwd?: string, botId?: string): Promise<AppState>
     remove(id: string): Promise<AppState>
     removeAll(): Promise<AppState>
   }
@@ -372,6 +374,10 @@ export interface HarnessApi {
     runNow(id: string): Promise<AppState>
     /** Folder picker that only returns the path (doesn't open the folder). */
     pickFolder(): Promise<string | null>
+  }
+  bots: {
+    /** Picks an image and makes it the bot's avatar (copied into the data folder). Null when cancelled. */
+    pickAvatar(botId: string): Promise<AppState | null>
   }
   voice: {
     /** Asks the OS for microphone access (macOS); true when recording may start. */

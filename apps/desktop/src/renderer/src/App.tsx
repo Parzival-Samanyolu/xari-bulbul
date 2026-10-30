@@ -323,7 +323,7 @@ export function App() {
   if (!app) return <div className="boot">Loading…</div>
 
   /** Opens Settings at a page id, or an older tab id ('providers', 'usage', …). */
-  const openSettings = (tab?: string) => setSettingsPage(resolvePage(tab))
+  const openSettings = (tab?: string) => setSettingsPage(resolvePage(tab, app.settings))
   const anyReady = Object.values(app.ready).some(Boolean)
   const welcome = !app.workspace || !anyReady || !app.settings.app.layoutChosen
   const showRight = !!app.workspace && !!panels?.rightOpen
@@ -349,6 +349,8 @@ export function App() {
               onRevert={onRevert}
               onEdit={onEdit}
               onUndoMemory={onUndoMemory}
+              onState={setState}
+              onError={fail}
             />
             <Composer app={app} onState={setState} onError={fail} onOpenPicker={() => setPickerOpen(true)} />
           </>

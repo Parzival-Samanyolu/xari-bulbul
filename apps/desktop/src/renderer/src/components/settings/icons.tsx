@@ -46,6 +46,8 @@ const P: Record<string, string> = {
   chevronRight: 'M6 3.5 10.5 8 6 12.5',
   chevronDown: 'M3.5 6 8 10.5 12.5 6',
   close: 'M3.5 3.5l9 9M12.5 3.5l-9 9',
+  bot: 'M4 5.5h8a1.5 1.5 0 0 1 1.5 1.5v4.5A1.5 1.5 0 0 1 12 13H4a1.5 1.5 0 0 1-1.5-1.5V7A1.5 1.5 0 0 1 4 5.5ZM8 5.5V3M8 3h.01M6 9h.01M10 9h.01M6.5 11h3',
+  flask: 'M6.5 2.5h3M7 2.5v4L3.2 12.6a.6.6 0 0 0 .5.9h8.6a.6.6 0 0 0 .5-.9L9 6.5v-4M5 10h6',
 }
 
 export type IconName = keyof typeof P

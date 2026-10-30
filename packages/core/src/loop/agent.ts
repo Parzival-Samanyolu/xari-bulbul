@@ -12,7 +12,8 @@ import { isContextOverflow } from '../providers/http.js'
 import { ProviderError, type ChatRequest } from '../providers/types.js'
 import { newSession, titleFrom, type Checkpoint, type Session } from '../sessions/store.js'
 import { generateTitle } from '../sessions/title.js'
-import { modelKey, type Settings } from '../settings/schema.js'
+import { modelKey, type Bot, type Settings } from '../settings/schema.js'
+import { activeBot, filterBotSkills, filterBotTools } from '../bots/bots.js'
 import { FORGET_TOOL, REMEMBER_TOOL } from '../tools/memory.js'
 import { SAVE_SKILL_TOOL, SKILL_TOOL } from '../tools/skills.js'
 import { SESSION_SEARCH_TOOL } from '../tools/session-search.js'
@@ -246,7 +247,23 @@ export class Agent {
     if (!this.browserOn) disabled.add(BROWSER_TOOL).add(BROWSER_READ_TOOL)
     // Questions need someone to answer them.
     if (!this.o.askUser || this.o.subagent) disabled.add(ASK_USER_TOOL)
-    return this.tools.filter((t) => !disabled.has(t.name) && (!plan || t.readOnly))
+    return filterBotTools(this.tools, this.bot).filter((t) => !disabled.has(t.name) && (!plan || t.readOnly))
+  }
+
+  /** The chat's bot while bots are on and it's turned on; subagents never take on the persona. */
+  get bot(): Bot | undefined {
+    return this.o.subagent ? undefined : activeBot(this.settings, this.session.meta.botId)
+  }
+
+  /** The skills this chat may load: the bot's list, if it has one. */
+  private get allowedSkills(): Skill[] | undefined {
+    return this.skills && filterBotSkills(this.skills, this.bot)
+  }
+
+  /** The memory tools and prompt see: the folder's, plus the bot's own when it keeps one. */
+  private memoryAccess() {
+    const bot = this.bot
+    return this.o.memory!.scoped(this.session.meta.cwd, bot?.memory === 'own' ? bot.id : undefined)
   }
 
   private get browserOn(): boolean {
@@ -275,7 +292,7 @@ export class Agent {
   }
 
   private get memoryOn(): boolean {
-    return !!this.o.memory && this.settings.memory.enabled
+    return !!this.o.memory && this.settings.memory.enabled && this.bot?.memory !== 'off'
   }
 
   private modelInfoTried = new Set<string>()
@@ -308,7 +325,8 @@ export class Agent {
     return {
       temperature: o.temperature ?? m.temperature ?? undefined,
       maxTokens: o.maxTokens ?? m.maxTokens ?? undefined,
-      reasoningEffort: o.reasoningEffort ?? m.reasoningEffort ?? undefined,
+      // The model's own setting (the thinking picker) wins over the bot's, which wins over the default.
+      reasoningEffort: o.reasoningEffort ?? this.bot?.thinking ?? m.reasoningEffort ?? undefined,
       replayReasoning: o.replayReasoning,
       speed: this.o.permissions.mode === 'plan' && this.settings.agent.batchInPlanMode ? 'batch' : o.speed === 'standard' ? undefined : o.speed,
     }
@@ -327,9 +345,15 @@ export class Agent {
       contextLength: this.contextLength(),
       env: this.env,
       lean: this.leanPrompt(),
-      memory: this.memoryOn ? { global: this.memory('global'), project: this.memory('project') } : undefined,
-      skills: this.skills?.map((s) => ({ name: s.name, description: s.description })),
+      memory: this.memoryOn ? this.promptMemory() : undefined,
+      bot: this.bot && { name: this.bot.name, persona: this.bot.persona },
+      skills: this.allowedSkills?.map((s) => ({ name: s.name, description: s.description })),
     })
+  }
+
+  private promptMemory(): { global: string[]; project: string[]; bot?: string[] } {
+    const own = this.bot?.memory === 'own'
+    return { global: this.memory('global'), project: this.memory('project'), ...(own ? { bot: this.memoryAccess().list('bot') } : {}) }
   }
 
   /** Small and free models follow a short prompt better than the full one. */
@@ -695,11 +719,11 @@ export class Agent {
         this.emit({ type: 'todos', todos })
       },
       progress: (text) => this.emit({ type: 'tool_progress', callId, text }),
-      memory: this.memoryOn ? this.o.memory!.scoped(this.session.meta.cwd) : undefined,
+      memory: this.memoryOn ? this.memoryAccess() : undefined,
       jobs: this.jobs,
       browser: this.browserAccess(),
       skills: this.skills && {
-        list: this.skills,
+        list: this.allowedSkills ?? [],
         dirs: {
           user: this.o.userSkillsDir ?? path.join(USER_EXT_DIR, 'skills'),
           project: path.join(projectExtDir(this.session.meta.cwd), 'skills'),
@@ -777,7 +801,8 @@ export class Agent {
   private async runSubagent(callId: string, input: SubagentInput, signal: AbortSignal): Promise<ToolResult> {
     const cfg = this.settings.agent.subagents
     const readOnly = input.type === 'explore' || !cfg.allowWrite || this.o.permissions.mode === 'plan'
-    const tools = this.tools.filter((t) => t.name !== TASK_TOOL && t.name !== 'todo_write' && (!readOnly || t.readOnly))
+    // A bot's tool limits hold for the helpers it starts too.
+    const tools = filterBotTools(this.tools, this.bot).filter((t) => t.name !== TASK_TOOL && t.name !== 'todo_write' && (!readOnly || t.readOnly))
     const model = cfg.model ?? this.model
     const progress = (text: string) => this.emit({ type: 'tool_progress', callId, text })
     let error = ''
@@ -788,8 +813,9 @@ export class Agent {
       settings: { ...this.settings, agent: { ...this.settings.agent, maxStepsPerTurn: cfg.maxSteps } },
       usage: this.o.usage,
       permissions: this.o.permissions,
-      memory: this.o.memory,
-      skills: this.skills,
+      // A bot with memory off keeps its helpers out of it too.
+      memory: this.memoryOn ? this.o.memory : undefined,
+      skills: this.allowedSkills,
       sessions: this.o.sessions,
       subagent: { description: input.description, parentSessionId: this.session.meta.id },
       jobs: this.jobs,

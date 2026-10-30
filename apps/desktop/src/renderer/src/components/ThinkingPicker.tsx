@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { EFFORT_LABELS, EFFORT_LEVELS, batchMode, fastMode, refKey, type ReasoningEffort } from '@harness/core/catalog'
+import { activeBot } from '@harness/core/bots'
 import type { AppState, ModelRef, Settings } from '../../../shared/ipc'
 import { api } from '../lib/api'
 
@@ -17,7 +18,10 @@ export function ThinkingPicker({ app, model, onState, onError }: Props) {
   const pop = useRef<HTMLDivElement>(null)
   const key = refKey(model)
   const o = app.settings.models.overrides[key] ?? {}
-  const effort = o.reasoningEffort ?? app.settings.models.reasoningEffort ?? null
+  // A bot's thinking level replaces the default for its chats; the model's own setting still wins.
+  const bot = activeBot(app.settings, app.session?.meta.botId)
+  const fallback = bot?.thinking ?? app.settings.models.reasoningEffort ?? null
+  const effort = o.reasoningEffort ?? fallback
   const provider = app.settings.providers.find((p) => p.id === model.providerId)
   const none = { supported: false, hint: '' }
   const fast = provider ? fastMode(provider, model.modelId) : none
@@ -104,7 +108,7 @@ export function ThinkingPicker({ app, model, onState, onError }: Props) {
                 >
                   <span className="check" aria-hidden>{on ? '✓' : ''}</span>
                   {l ? EFFORT_LABELS[l] : 'Default'}
-                  {!l && <span className="muted small">{app.settings.models.reasoningEffort ? EFFORT_LABELS[app.settings.models.reasoningEffort] : 'provider default'}</span>}
+                  {!l && <span className="muted small">{fallback ? `${EFFORT_LABELS[fallback]}${bot?.thinking ? ` (${bot.name})` : ''}` : 'provider default'}</span>}
                 </button>
               )
             })}

@@ -78,8 +78,10 @@ export interface SystemPromptInput {
   customInstructions: string
   override: string
   toolNames: string[]
-  /** Saved memories; undefined when memory is off. */
-  memory?: { global: string[]; project: string[] }
+  /** Saved memories; undefined when memory is off. `bot` only for a bot with its own memory. */
+  memory?: { global: string[]; project: string[]; bot?: string[] }
+  /** The chat's bot persona, if any. */
+  bot?: { name: string; persona: string }
   /** Skills the agent can load; undefined when there are none or skills are off. */
   skills?: { name: string; description: string }[]
   /** Set when this prompt is for a subagent working on a delegated task. */
@@ -104,6 +106,7 @@ export function buildSystemPrompt(i: SystemPromptInput): string {
     subagent: i.subagent,
     instructions: loadProjectInstructions(i.cwd, i.instructionFiles),
     memory: i.memory,
+    bot: i.bot,
     skills: i.skills,
     customInstructions: i.customInstructions,
     lean: i.lean,

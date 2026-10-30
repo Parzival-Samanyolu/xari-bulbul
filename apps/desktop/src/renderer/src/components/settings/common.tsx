@@ -13,6 +13,8 @@ export interface PageProps {
   /** Opens another settings page. */
   go: (pageId: string) => void
   update: UpdateStatus
+  /** Closes Settings (e.g. to show a chat a page started). */
+  close: () => void
 }
 
 export const KEY_LINKS: Record<string, string> = {

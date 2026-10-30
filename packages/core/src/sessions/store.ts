@@ -11,6 +11,8 @@ export interface SessionMeta {
   model: ModelRef
   createdAt: number
   updatedAt: number
+  /** The bot this chat was started with (Settings › Bots). Kept when bots are turned off. */
+  botId?: string
 }
 
 export interface Session {
@@ -37,9 +39,9 @@ export interface Checkpoint {
   files: Record<string, string | null>
 }
 
-export function newSession(cwd: string, model: ModelRef): Session {
+export function newSession(cwd: string, model: ModelRef, opts: { botId?: string } = {}): Session {
   const now = Date.now()
-  return { meta: { id: randomUUID(), title: 'New chat', cwd, model, createdAt: now, updatedAt: now }, messages: [], todos: [] }
+  return { meta: { id: randomUUID(), title: 'New chat', cwd, model, createdAt: now, updatedAt: now, ...(opts.botId ? { botId: opts.botId } : {}) }, messages: [], todos: [] }
 }
 
 /** One JSON file per session. Written atomically (tmp + rename). */

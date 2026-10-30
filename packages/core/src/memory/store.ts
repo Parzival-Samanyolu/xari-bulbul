@@ -2,9 +2,10 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
-export type MemoryScope = 'project' | 'global'
+/** `bot`: facts only one bot sees (bots with `memory: 'own'`); its key is the bot id instead of a folder. */
+export type MemoryScope = 'project' | 'global' | 'bot'
 
-/** Memory bound to one workspace, as handed to tools. */
+/** Memory bound to one workspace (and bot), as handed to tools. */
 export interface MemoryAccess {
   list(scope: MemoryScope): string[]
   add(scope: MemoryScope, fact: string): void
@@ -23,8 +24,10 @@ export class MemoryStore {
     public maxChars = 6000,
   ) {}
 
+  /** `cwd` is the folder for project memory and the bot id for bot memory. */
   file(scope: MemoryScope, cwd: string): string {
     if (scope === 'global') return path.join(this.dir, 'global.md')
+    if (scope === 'bot') return path.join(this.dir, 'bots', `${cwd.replace(/[^\w-]/g, '_') || '_'}.md`)
     const key = crypto.createHash('sha256').update(cwd.normalize('NFC')).digest('hex').slice(0, 16)
     return path.join(this.dir, 'projects', `${key}.md`)
   }
@@ -83,18 +86,24 @@ export class MemoryStore {
     fs.rmSync(this.file(scope, cwd), { force: true })
   }
 
-  scoped(cwd: string): MemoryAccess {
+  /** Memory for one folder; `botId` adds that bot's own memory (otherwise the bot scope is refused). */
+  scoped(cwd: string, botId?: string): MemoryAccess {
+    const key = (scope: MemoryScope) => {
+      if (scope !== 'bot') return cwd
+      if (!botId) throw new Error('This chat has no bot memory; use "project" or "global".')
+      return botId
+    }
     return {
-      list: (scope) => this.list(scope, cwd),
-      add: (scope, fact) => this.add(scope, cwd, fact),
-      remove: (scope, match) => this.remove(scope, cwd, match),
+      list: (scope) => (scope === 'bot' && !botId ? [] : this.list(scope, key(scope))),
+      add: (scope, fact) => this.add(scope, key(scope), fact),
+      remove: (scope, match) => this.remove(scope, key(scope), match),
     }
   }
 
   private write(scope: MemoryScope, cwd: string, facts: string[]) {
     const file = this.file(scope, cwd)
     fs.mkdirSync(path.dirname(file), { recursive: true })
-    const header = scope === 'global' ? '<!-- Xarı Bülbül: global memory -->' : `<!-- ${cwd.normalize('NFC')} -->`
+    const header = scope === 'global' ? '<!-- Xarı Bülbül: global memory -->' : scope === 'bot' ? `<!-- Xarı Bülbül: memory of bot ${cwd} -->` : `<!-- ${cwd.normalize('NFC')} -->`
     fs.writeFileSync(file, `${header}\n${facts.map((f) => `- ${f}`).join('\n')}\n`)
   }
 }

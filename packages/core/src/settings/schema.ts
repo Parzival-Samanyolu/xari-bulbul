@@ -232,6 +232,90 @@ export const ScheduleSchema = z.object({
 })
 export type Schedule = z.infer<typeof ScheduleSchema>
 
+const PERMISSION_MODES = ['ask', 'acceptEdits', 'plan', 'auto'] as const
+
+/**
+ * A saved agent with its own personality (Settings › Bots, behind `experimental.bots`). The persona
+ * changes tone and focus only; safety, permission and tool rules stay as they are.
+ */
+export const BotSchema = z.object({
+  /** Stable id; also names the bot's own memory file (`<data>/memory/bots/<id>.md`). */
+  id: z.string().min(1),
+  /** A turned-off bot leaves the sidebar; its chats open as plain chats with a note. */
+  enabled: z.boolean().default(true),
+  name: z.string().default('Bot'),
+  /** An emoji (or a few letters), or the path of an image in `<data>/bots/`. */
+  avatar: z.string().default('🤖'),
+  /** CSS color for the avatar and the chat header. */
+  color: z.string().default('#9b4d6e'),
+  tagline: z.string().default(''),
+  /** Instructions added to the system prompt after the identity section. */
+  persona: z.string().default(''),
+  /** Shown as the bot's first message in a new chat; never sent to the model. */
+  greeting: z.string().optional(),
+  /** Unset = the default model. */
+  model: ModelRefSchema.optional(),
+  /** Unset = the model's own thinking setting. */
+  thinking: z.enum(EFFORT_LEVELS).optional(),
+  /** The permission mode its chats start in. Unset = the current mode. */
+  mode: z.enum(PERMISSION_MODES).optional(),
+  /** Tool names it may use ('all', or a list; a trailing * matches a prefix such as mcp__github__*). Memory and skill tools follow `memory` and `skills`. */
+  tools: z.union([z.literal('all'), z.array(z.string())]).default('all'),
+  /** Skill names it may load. Unset = every skill. */
+  skills: z.array(z.string()).optional(),
+  /** shared: the usual memories. own: also a memory only this bot sees. off: no memory. */
+  memory: z.enum(['shared', 'own', 'off']).default('shared'),
+})
+export type Bot = z.infer<typeof BotSchema>
+
+/** Read-only work tools for the starter bots that don't edit. */
+const LOOK_TOOLS = ['read_file', 'list_dir', 'glob', 'grep', 'web_search', 'web_fetch', 'browser_read', 'session_search', 'todo_write']
+
+/** Bots new installs start with; the user can edit or delete them. */
+export const STARTER_BOTS: Bot[] = [
+  {
+    id: 'reviewer',
+    enabled: true,
+    name: 'Reviewer',
+    avatar: '🔍',
+    color: '#9b4d6e',
+    tagline: 'Terse code review, read-only',
+    persona:
+      'You review code. Be terse. Lead with what matters most: bugs, security holes, data loss and broken edge cases, then correctness and clarity. Give each finding as path:line, the problem, and the fix in a sentence. Skip praise, and skip style nits unless asked. If the code is fine, say so in one line.',
+    greeting: 'Point me at a change, a file or a folder and I will review it.',
+    mode: 'plan',
+    tools: [...LOOK_TOOLS, 'task'],
+    memory: 'shared',
+  },
+  {
+    id: 'explainer',
+    enabled: true,
+    name: 'Explainer',
+    avatar: '📖',
+    color: '#3d7a8c',
+    tagline: 'Patient, teaches, makes no edits',
+    persona:
+      'You teach. Explain how the code works and why it was written that way, at the level the user shows. Start with the big picture, then go into detail, with short examples from this project and path:line references. Define terms the first time you use them. Check understanding with a question when a topic is hard. You do not edit files or run commands; if asked to change something, explain how the user could do it.',
+    greeting: 'Ask me how anything in this project works, and I will walk you through it.',
+    tools: [...LOOK_TOOLS, 'ask_user'],
+    memory: 'shared',
+  },
+  {
+    id: 'shipper',
+    enabled: true,
+    name: 'Shipper',
+    avatar: '🚀',
+    color: '#5a7d3a',
+    tagline: 'Auto mode, gets things done',
+    persona:
+      'You get things done. Pick the simplest approach that works and start right away. Work in small steps and check each one with the tests or the build. Ask only when a choice is truly the user\'s to make. Finish with what you changed and how you checked it, in a few lines.',
+    greeting: 'What should we ship? Tell me the task and I will take it from here.',
+    mode: 'auto',
+    tools: 'all',
+    memory: 'shared',
+  },
+]
+
 export const SettingsSchema = z.object({
   providers: z
     .array(ProviderConfigSchema)
@@ -384,6 +468,17 @@ export const SettingsSchema = z.object({
     .prefault({}),
 
   schedules: z.array(ScheduleSchema).default([]),
+
+  /** Saved agents with a personality; used only while `experimental.bots` is on. */
+  bots: z.array(BotSchema).default(() => structuredClone(STARTER_BOTS)),
+
+  /** Preview features, off by default. */
+  experimental: z
+    .object({
+      /** Bots in the sidebar and Settings › Bots. Off: bot chats open as plain chats; bots and their memories are kept. */
+      bots: z.boolean().default(false),
+    })
+    .prefault({}),
 
   sessions: z
     .object({

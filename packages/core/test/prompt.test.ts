@@ -49,6 +49,24 @@ describe('system prompt', () => {
     expect(buildSystemPrompt({ ...base, toolNames, subagent: { description: 'Find config loaders' } })).toMatchSnapshot()
   })
 
+  it('matches the snapshot with a bot persona, placed after identity and before the rules', () => {
+    const p = buildSystemPrompt({
+      ...base,
+      bot: { name: 'Reviewer', persona: 'You review code. Be terse.' },
+      memory: { global: ['Prefers pnpm'], project: [], bot: ['Flags missing tests first'] },
+    })
+    expect(p).toMatchSnapshot()
+    const at = (h: string) => p.indexOf(h)
+    expect(at('# Persona: Reviewer')).toBeGreaterThan(at('You are Xarı Bülbül'))
+    expect(at('# Persona: Reviewer')).toBeLessThan(at('# Tone'))
+    expect(at('# Safety and secrets')).toBeGreaterThan(at('You review code. Be terse.'))
+    expect(p).toContain('they win')
+    expect(p).toContain('## Your own notes (only you see these)\n- Flags missing tests first')
+    // An override replaces the base, but the persona stays after it.
+    const o = buildSystemPrompt({ ...base, override: 'Custom base.', bot: { name: 'Reviewer', persona: 'Terse.' } })
+    expect(o.startsWith('Custom base.\n\n# Persona: Reviewer')).toBe(true)
+  })
+
   it('tells the model how the shell differs from GNU bash', () => {
     const forShell = (platform: string, shell: string) => buildSystemPrompt({ ...base, env: { ...env, platform, shell } })
     expect(forShell('win32', 'PowerShell 5.1')).toContain('`&&` and `||` are syntax errors')

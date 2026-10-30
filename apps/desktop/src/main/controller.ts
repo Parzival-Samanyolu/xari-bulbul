@@ -2,6 +2,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 import {
   Agent,
+  activeBot,
+  chatDefaults,
+  isImageAvatar,
   McpManager,
   MemoryStore,
   type MemoryFact,
@@ -113,6 +116,9 @@ export interface BackgroundNotice {
 
 const DAY_MS = 86_400_000
 
+const BOT_IMAGE_TYPES: Record<string, string> = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp' }
+const MAX_AVATAR_BYTES = 1_000_000
+
 /**
  * Owns all engine state for the app. Every open chat has its own agent, so chats keep
  * working while you view another one. One chat is "active" (shown in the window).
@@ -149,6 +155,8 @@ export class AppController {
   private questions = new Map<string, { sessionId: string; request: QuestionRequest; resolve: (text: string) => void }>()
   /** Every saved chat's metadata, read from disk once and then kept current, so state pushes don't re-read every file. */
   private index: Map<string, SessionMeta> | null = null
+  /** Bot image avatars read so far: path → data URL ('' when unreadable). */
+  private avatarCache = new Map<string, string>()
   readonly paths: AppState['paths']
 
   constructor(
@@ -228,7 +236,14 @@ export class AppController {
     if (JSON.stringify(prev.mcp) !== JSON.stringify(this.settings.mcp)) void this.mcp.sync(this.settings.mcp.servers)
     if (JSON.stringify(prev.schedules) !== JSON.stringify(this.settings.schedules)) this.scheduler.arm()
     if (opts.prune !== false && prev.sessions.retentionDays !== this.settings.sessions.retentionDays) this.pruneSessions()
-    for (const r of this.agents.values()) r.agent.updateSettings(this.settings)
+    for (const r of this.agents.values()) {
+      r.agent.updateSettings(this.settings)
+      // A bot chat follows its bot's mode when that changes (the bot turned off or on, its mode edited).
+      const id = r.agent.session.meta.botId
+      const before = activeBot(prev, id)?.mode
+      const after = activeBot(this.settings, id)?.mode
+      if (id && before !== after) r.permissions.setMode(after ?? this.mode)
+    }
     return this.state()
   }
 
@@ -762,7 +777,9 @@ export class AppController {
 
   private createAgent(session: Session, own?: { tools: Tool[]; skills: LoadedExtensions['skills'] }): Running {
     const id = session.meta.id
-    const permissions = new Permissions({ ...this.settings.permissions, mode: this.mode }, session.meta.cwd)
+    // A bot's chats start in the bot's mode.
+    const mode = activeBot(this.settings, session.meta.botId)?.mode ?? this.mode
+    const permissions = new Permissions({ ...this.settings.permissions, mode }, session.meta.cwd)
     const agent = new Agent({
       session,
       registry: this.registry,
@@ -859,12 +876,21 @@ export class AppController {
     return this.state()
   }
 
-  async createSession(cwd?: string): Promise<AppState> {
+  /** A new chat in `cwd` (or the current folder), with `botId`'s persona, model and mode when given. */
+  async createSession(cwd?: string, botId?: string): Promise<AppState> {
     const dir = cwd ?? this.workspace
     if (!dir) throw new Error('Open a folder first.')
-    const model = this.agent?.model ?? this.settings.models.default
-    this.activate(newSession(await this.enterFolder(dir), model))
+    const bot = botId ? activeBot(this.settings, botId) : undefined
+    if (botId && !bot) throw new Error('That bot is turned off. Turn it on in Settings › Bots.')
+    const { model } = chatDefaults(this.settings, botId, { model: this.plainModel(), mode: this.mode })
+    this.activate(newSession(await this.enterFolder(dir), model, { botId: bot?.id }))
     return this.state()
+  }
+
+  /** A new plain chat keeps the model of the chat on screen, unless that one's model came from its bot. */
+  private plainModel(): ModelRef {
+    const a = this.agent
+    return a && !activeBot(this.settings, a.session.meta.botId)?.model ? a.model : this.settings.models.default
   }
 
   private discard(id: string) {
@@ -877,7 +903,7 @@ export class AppController {
   }
 
   removeSession(id: string): AppState {
-    const model = this.agent?.model ?? this.settings.models.default
+    const model = this.plainModel()
     this.discard(id)
     this.store.delete(id)
     if (this.activeId === id) {
@@ -888,7 +914,7 @@ export class AppController {
   }
 
   removeAllSessions(): AppState {
-    const model = this.agent?.model ?? this.settings.models.default
+    const model = this.plainModel()
     for (const id of [...this.agents.keys()]) this.discard(id)
     this.store.deleteAll()
     this.index = null
@@ -975,10 +1001,66 @@ export class AppController {
     return this.state()
   }
 
+  /**
+   * Changes the mode of the chat on screen. In a plain chat it's the mode for every chat whose bot
+   * doesn't set one; a bot with its own mode keeps the change to that chat.
+   */
   setMode(mode: PermissionMode): AppState {
+    const shown = this.activeId ? this.agents.get(this.activeId) : undefined
+    if (shown && this.botMode(shown.agent)) {
+      shown.permissions.setMode(mode)
+      return this.state()
+    }
     this.mode = mode
-    for (const r of this.agents.values()) r.permissions.setMode(mode)
+    for (const r of this.agents.values()) if (!this.botMode(r.agent)) r.permissions.setMode(mode)
     return this.state()
+  }
+
+  private botMode(agent: Agent): PermissionMode | undefined {
+    return activeBot(this.settings, agent.session.meta.botId)?.mode
+  }
+
+  // ---------- bots ----------
+
+  /** Copies an image into `<data>/bots/` and makes it the bot's avatar. */
+  async setBotAvatar(botId: string, file: string): Promise<AppState> {
+    const bot = this.settings.bots.find((b) => b.id === botId)
+    if (!bot) throw new Error('That bot no longer exists.')
+    const ext = path.extname(file).toLowerCase()
+    if (!BOT_IMAGE_TYPES[ext]) throw new Error('Choose a PNG, JPEG, GIF or WebP image.')
+    if (fs.statSync(file).size > MAX_AVATAR_BYTES) throw new Error('Choose an image under 1 MB.')
+    const dir = path.join(this.dataDir, 'bots')
+    fs.mkdirSync(dir, { recursive: true })
+    // A new name each time, so the renderer never shows a cached old picture.
+    const target = path.join(dir, `${botId.replace(/[^\w-]/g, '_')}-${Date.now().toString(36)}${ext}`)
+    fs.copyFileSync(file, target)
+    const old = bot.avatar
+    const bots = this.settings.bots.map((b) => (b.id === botId ? { ...b, avatar: target } : b))
+    const state = await this.setSettings({ ...this.settings, bots })
+    // Copies of a bot share its picture; delete it only when no bot uses it any more.
+    if (isImageAvatar(old) && path.dirname(old) === dir && !bots.some((b) => b.avatar === old)) fs.rmSync(old, { force: true })
+    return state
+  }
+
+  /** Image avatars as data URLs (the renderer can't read files). Cached by path. */
+  private botAvatars(): Record<string, string> {
+    const out: Record<string, string> = {}
+    for (const b of this.settings.bots) {
+      if (!isImageAvatar(b.avatar)) continue
+      let url = this.avatarCache.get(b.avatar)
+      if (url === undefined) {
+        try {
+          const type = BOT_IMAGE_TYPES[path.extname(b.avatar).toLowerCase()]
+          const data = fs.readFileSync(b.avatar)
+          url = type && data.length <= MAX_AVATAR_BYTES ? `data:${type};base64,${data.toString('base64')}` : ''
+        } catch {
+          url = ''
+        }
+        this.avatarCache.set(b.avatar, url)
+      }
+      if (url) out[b.id] = url
+    }
+    return out
   }
 
   async compact(): Promise<boolean> {
@@ -1126,7 +1208,8 @@ export class AppController {
       session: this.sessionView(),
       ...this.sessionLists(),
       usage: this.usage.summary(this.agent?.session.meta.id),
-      mode: this.mode,
+      // The chat on screen may run in its bot's mode.
+      mode: (this.activeId && this.agents.get(this.activeId)?.permissions.mode) || this.mode,
       running: this.agent?.running ?? false,
       runningSessions: [...this.agents.entries()].filter(([, r]) => r.agent.running).map(([id]) => id),
       awaitingSessions: [...new Set([...this.pending.values(), ...this.questions.values()].map((p) => p.sessionId))],
@@ -1143,6 +1226,7 @@ export class AppController {
         servers: this.mcp.status(),
         tokens: Object.fromEntries(this.settings.mcp.servers.map((s) => [s.id, this.secrets.has(mcpSecretId(s.id))])),
       },
+      botAvatars: this.botAvatars(),
       paths: this.paths,
     }
   }

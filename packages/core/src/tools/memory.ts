@@ -2,8 +2,8 @@ import { z } from 'zod'
 import { defineTool } from './types.js'
 
 const scope = z
-  .enum(['project', 'global'])
-  .describe('"project" for facts about this folder, "global" for the user\'s preferences everywhere')
+  .enum(['project', 'global', 'bot'])
+  .describe('"project" for facts about this folder, "global" for the user\'s preferences everywhere, "bot" for notes only you keep (when your persona has its own memory)')
 
 export const REMEMBER_TOOL = 'remember'
 export const FORGET_TOOL = 'forget'

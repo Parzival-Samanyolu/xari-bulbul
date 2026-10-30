@@ -1,8 +1,10 @@
 import type { ComponentType } from 'react'
+import type { Settings } from '../../../../shared/ipc'
 import { SHORTCUTS } from '../../lib/shortcuts'
 import type { PageProps } from './common'
 import type { IconName } from './icons'
 import { DesktopPage, LimitsPage, OutputPage, TerminalPage, ToolAccessPage } from './pages/advanced'
+import { BotsPage, ExperimentalPage } from './pages/bots'
 import { PluginsPage, SchedulesPage, SessionsPage, UsagePage, VersionPage } from './pages/data'
 import { AppearancePage, ChatPage, NotificationsPage, ShortcutsPage, WorkspacePage } from './pages/general'
 import { AuxModelsPage, MainModelPage, SubagentsPage } from './pages/model'
@@ -28,6 +30,8 @@ export interface PageDef {
   page: ComponentType<PageProps>
   /** Built in a later phase: left out of the sidebar and search until then. */
   hidden?: boolean
+  /** Shown only while this is true (a page for a feature that can be turned off). */
+  when?: (s: Settings) => boolean
 }
 
 export interface GroupDef {
@@ -218,6 +222,14 @@ export const TREE: NodeDef[] = [
         page: OutputPage,
         rows: [['Max tool output', 'truncate characters']],
       },
+      {
+        id: 'advanced.experimental',
+        label: 'Experimental',
+        icon: 'flask',
+        description: 'Features in preview. They may change or go away.',
+        page: ExperimentalPage,
+        rows: [['Bots', 'experimental preview personas personality']],
+      },
     ],
   },
   {
@@ -270,6 +282,15 @@ export const TREE: NodeDef[] = [
   },
   { id: 'schedules', label: 'Schedules', icon: 'schedules', description: 'Prompts that run on a timer, each in a new chat, while the app is open.', page: SchedulesPage, rows: [] },
   {
+    id: 'bots',
+    label: 'Bots',
+    icon: 'bot',
+    description: 'Saved agents with their own personality, model and tools. Pick one in the sidebar to chat with it.',
+    page: BotsPage,
+    when: (s) => s.experimental.bots,
+    rows: [['Your bots', 'add duplicate preview turn off persona'], ['Persona', 'personality system prompt'], ['Greeting', 'first message'], ['Avatar', 'emoji picture image color'], ['Thinking', 'bot reasoning'], ['Permission mode', 'bot mode plan auto'], ['Tools', 'bot tools'], ['Skills', 'bot skills'], ['Memory', 'bot memory own shared']],
+  },
+  {
     id: 'sessions',
     label: 'Sessions',
     icon: 'sessions',
@@ -289,12 +310,25 @@ export const TREE: NodeDef[] = [
   },
 ]
 
-/** The tree without pages that aren't built yet (and groups left empty by that). */
-export const VISIBLE: NodeDef[] = TREE.flatMap((n): NodeDef[] => {
-  if (!isGroup(n)) return n.hidden ? [] : [n]
-  const children = n.children.filter((c) => !c.hidden)
-  return children.length ? [{ ...n, children }] : []
-})
+const shown = (p: PageDef, s?: Settings) => !p.hidden && (!s || !p.when || p.when(s))
+
+/** The tree without pages that aren't built yet or are turned off in `s` (and groups left empty by that). */
+export function visibleTree(s?: Settings): NodeDef[] {
+  return TREE.flatMap((n): NodeDef[] => {
+    if (!isGroup(n)) return shown(n, s) ? [n] : []
+    const children = n.children.filter((c) => shown(c, s))
+    return children.length ? [{ ...n, children }] : []
+  })
+}
+
+/** Every built page, including ones a setting turns off. */
+export const VISIBLE: NodeDef[] = visibleTree()
+
+/** Whether the page is in the sidebar with these settings. */
+export function pageShown(id: string, s: Settings): boolean {
+  const entry = PAGES.find((p) => p.page.id === id)
+  return !!entry && shown(entry.page, s)
+}
 
 export interface PageEntry {
   page: PageDef
@@ -319,8 +353,9 @@ const ALIASES: Record<string, string> = {
   voice: 'voice.stt',
 }
 
-export function resolvePage(id: string | undefined): string {
+export function resolvePage(id: string | undefined, s?: Settings): string {
   if (!id) return DEFAULT_PAGE
+  if (s && PAGES.some((p) => p.page.id === id) && !pageShown(id, s)) return DEFAULT_PAGE
   if (PAGES.some((p) => p.page.id === id)) return id
   const alias = ALIASES[id]
   if (alias && PAGES.some((p) => p.page.id === alias)) return alias
@@ -352,8 +387,8 @@ const INDEX: IndexItem[] = PAGES.flatMap(({ page, group }) => {
   return [own, ...(page.rows ?? []).map(([label, kw]) => ({ pageId: page.id, row: label, label: label.replace(/ \(extensions\)$/, ''), where, hay: `${label} ${kw ?? ''} ${page.label} ${group?.label ?? ''}`.toLowerCase() }))]
 })
 
-/** Every term must appear; labels that start with the query rank first, then label matches. */
-export function searchSettings(query: string, limit = 12): SearchHit[] {
+/** Every term must appear; labels that start with the query rank first, then label matches. Pages `s` turns off are left out. */
+export function searchSettings(query: string, limit = 12, s?: Settings): SearchHit[] {
   const q = query.trim().toLowerCase()
   const terms = q.split(/\s+/).filter(Boolean)
   if (!terms.length) return []
@@ -361,7 +396,7 @@ export function searchSettings(query: string, limit = 12): SearchHit[] {
     const label = i.label.toLowerCase()
     return (label.startsWith(q) ? 0 : label.includes(q) ? 1 : terms.every((t) => label.includes(t)) ? 2 : 3) + (i.row ? 0 : -0.5)
   }
-  return INDEX.filter((i) => terms.every((t) => i.hay.includes(t)))
+  return INDEX.filter((i) => terms.every((t) => i.hay.includes(t)) && (!s || pageShown(i.pageId, s)))
     .map((i) => ({ i, s: score(i) }))
     .sort((a, b) => a.s - b.s)
     .slice(0, limit)

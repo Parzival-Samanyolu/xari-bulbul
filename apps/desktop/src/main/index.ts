@@ -190,7 +190,7 @@ function registerIpc() {
   handle('workspace.close', (p) => c.closeWorkspace(p))
   handle('workspace.reorder', (p) => c.reorderWorkspaces(p))
   handle('sessions.open', (id) => c.openSession(id))
-  handle('sessions.create', (cwd) => c.createSession(cwd))
+  handle('sessions.create', (cwd, botId) => c.createSession(cwd ?? undefined, botId ?? undefined))
   handle('sessions.remove', (id) => c.removeSession(id))
   handle('sessions.removeAll', () => c.removeAllSessions())
   // Fire and forget: progress arrives as events; the promise resolves when the turn ends.
@@ -242,6 +242,10 @@ function registerIpc() {
   handle('schedules.pickFolder', async () => {
     const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: 'Folder for this schedule', defaultPath: c.state().workspace ?? undefined })
     return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]
+  })
+  handle('bots.pickAvatar', async (botId: string) => {
+    const r = await dialog.showOpenDialog(win!, { properties: ['openFile'], title: 'Bot picture', filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }] })
+    return r.canceled || !r.filePaths[0] ? null : c.setBotAvatar(botId, r.filePaths[0])
   })
   handle('voice.prepare', () => microphoneAccess())
   handle('voice.transcribe', (audio: Uint8Array, mediaType: string) => c.transcribe(audio, mediaType))

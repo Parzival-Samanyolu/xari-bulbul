@@ -5,7 +5,7 @@ import { api } from '../../lib/api'
 import { formatCombo, isMac, matchesShortcut, shortcutFor } from '../../lib/shortcuts'
 import type { PageProps, Save } from './common'
 import { Icon } from './icons'
-import { VISIBLE, isGroup, pageEntry, resolvePage, searchSettings, type SearchHit } from './tree'
+import { DEFAULT_PAGE, isGroup, pageEntry, pageShown, resolvePage, searchSettings, visibleTree, type SearchHit } from './tree'
 
 interface Props {
   app: AppState
@@ -44,6 +44,8 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update }:
   const search = useRef<HTMLInputElement>(null)
   const items = useRef(new Map<string, HTMLLIElement>())
   const mac = isMac(app.platform)
+  // Pages for features that are turned off (Bots) leave the sidebar and search.
+  const tree = useMemo(() => visibleTree(app.settings), [app.settings])
 
   // Text and number fields save on blur, which an unmounting input never gets: blur first.
   const close = () => {
@@ -54,8 +56,8 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update }:
   const save: Save = (fn) => void api.settings.set(fn(structuredClone(app.settings))).then(onState, fail)
   /** Opens a page, or a group's first page. */
   const open = (id: string) => {
-    const g = VISIBLE.find((n) => n.id === id)
-    const entry = pageEntry(g && isGroup(g) ? g.children[0].id : resolvePage(id))
+    const g = tree.find((n) => n.id === id)
+    const entry = pageEntry(g && isGroup(g) ? g.children[0].id : resolvePage(id, app.settings))
     if (entry.group) setExpanded((x) => new Set(x).add(entry.group!.id))
     setFocusId(entry.page.id)
     setNotice(null)
@@ -80,6 +82,11 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update }:
     setFocusId(page)
   }, [page])
 
+  // The open page was turned off (an import or reset): show the default page.
+  useEffect(() => {
+    if (!pageShown(page, app.settings)) onPage(DEFAULT_PAGE)
+  }, [page, app.settings])
+
   // A new page starts at the top.
   useEffect(() => {
     if (content.current) content.current.scrollTop = 0
@@ -100,12 +107,12 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update }:
 
   const visible: TreeItem[] = useMemo(
     () =>
-      VISIBLE.flatMap((n): TreeItem[] => {
+      tree.flatMap((n): TreeItem[] => {
         if (!isGroup(n)) return [{ id: n.id, label: n.label, icon: n.icon, level: 1, group: false }]
         const head: TreeItem = { id: n.id, label: n.label, icon: n.icon, level: 1, group: true }
         return expanded.has(n.id) ? [head, ...n.children.map((c): TreeItem => ({ id: c.id, label: c.label, icon: c.icon, level: 2, group: false, parent: n.id }))] : [head]
       }),
-    [expanded],
+    [expanded, tree],
   )
 
   // The roving tab stop: a page inside a folded group hands it to the group.
@@ -158,7 +165,7 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update }:
     }
   }
 
-  const hits = useMemo(() => searchSettings(query), [query])
+  const hits = useMemo(() => searchSettings(query, 12, app.settings), [query, app.settings])
   const jump = (hit: SearchHit) => {
     setQuery('')
     setActive(0)
@@ -230,7 +237,7 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update }:
   }
 
   const Page = def.page
-  const props: PageProps = { app, save, onState, onError: fail, go: open, update }
+  const props: PageProps = { app, save, onState, onError: fail, go: open, update, close }
   const searchKeys = formatCombo(shortcutFor(app.settings, 'modelPicker'), mac)
   const listOpen = query.trim() !== ''
 
@@ -274,7 +281,7 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update }:
         <div className="so-body">
           <nav className="so-side" aria-label="Settings sections">
             <ul className="so-tree" role="tree" aria-label="Settings sections" onKeyDown={onTreeKey}>
-              {VISIBLE.map((n) => {
+              {tree.map((n) => {
                 const groupOpen = isGroup(n) && expanded.has(n.id)
                 const current = !isGroup(n) && n.id === page
                 const holds = isGroup(n) && group?.id === n.id

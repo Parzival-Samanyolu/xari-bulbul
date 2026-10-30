@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AppState, SessionMeta } from '../../../shared/ipc'
+import { chatBot, shownBots } from '@harness/core/bots'
 import { api } from '../lib/api'
 import { ago, basename } from '../lib/format'
+import { BotAvatar } from './Bots'
 
 interface Props {
   app: AppState
@@ -20,6 +22,7 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
   const openPaths = new Set(app.folders.map((f) => f.path))
   const recents = app.settings.app.recentWorkspaces.filter((w) => !openPaths.has(w))
   const mod = app.platform === 'darwin' ? '⌘' : 'Ctrl+'
+  const bots = shownBots(app.settings)
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(JSON.parse(localStorage.getItem('sidebar.collapsed') ?? '[]')))
   const toggle = (path: string) =>
     setCollapsed((prev) => {
@@ -81,6 +84,7 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
     const active = s.id === current && !settingsOpen
     const awaiting = app.awaitingSessions.includes(s.id)
     const working = app.runningSessions.includes(s.id)
+    const bot = chatBot(app.settings, s.botId)
     return (
       <li key={s.id} className={`session ${active ? 'active' : ''}`}>
         <button
@@ -92,7 +96,11 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
             if (s.id !== current) api.sessions.open(s.id).then(onState, onError)
           }}
         >
-          <span className="session-title">{s.title}</span>
+          <span className="session-title">
+            {bot && <BotAvatar app={app} bot={bot} size={16} />}
+            {bot && <span className="sr-only">{bot.name}: </span>}
+            {s.title}
+          </span>
           {awaiting ? (
             <span className="session-meta session-status awaiting">{app.questions.some((q) => q.sessionId === s.id) ? 'Has a question' : 'Needs approval'}</span>
           ) : working ? (
@@ -162,6 +170,26 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
       >
         + New chat <kbd>{mod}N</kbd>
       </button>
+
+      {bots.length > 0 && (
+        <nav className="bots-row" aria-label="Bots">
+          {bots.map((b) => (
+            <button
+              key={b.id}
+              className="bot-pick"
+              disabled={!app.workspace}
+              aria-label={`New chat with ${b.name}`}
+              title={app.workspace ? `New chat with ${b.name}${b.tagline ? `: ${b.tagline}` : ''}` : 'Open a folder first'}
+              onClick={() => {
+                onChat()
+                api.sessions.create(undefined, b.id).then(onState, onError)
+              }}
+            >
+              <BotAvatar app={app} bot={b} size={30} />
+            </button>
+          ))}
+        </nav>
+      )}
 
       <nav className="sessions" aria-label="Folders and chats">
         {app.folders.length === 0 && <div className="muted small pad">Open a folder to start.</div>}
