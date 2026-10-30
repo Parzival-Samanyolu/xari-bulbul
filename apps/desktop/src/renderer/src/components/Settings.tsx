@@ -2,13 +2,14 @@ import { useEffect, useState } from 'react'
 import { MCP_PRESETS, presetServer } from '@harness/core/mcp-presets'
 import { TRANSCRIPTION_SUGGESTIONS } from '@harness/core/voice'
 import { EFFORT_LABELS, EFFORT_LEVELS, RECOMMENDED, TIER_LABELS, refKey, type RecommendedTier } from '@harness/core/catalog'
-import type { AppState, McpServerStatus, ModelRef, ProviderTestResult, Settings, UpdateStatus, VoiceDownload } from '../../../shared/ipc'
+import type { AppState, McpServerStatus, ModelRef, PluginInfo, ProviderTestResult, Settings, UpdateStatus, VoiceDownload } from '../../../shared/ipc'
 import { api } from '../lib/api'
 import { ago, cost, modelLabel, tokens } from '../lib/format'
 import { MODES } from './Composer'
 import { ListField, NumberField, Row, Section, Select, Slider, TextField, Toggle } from './fields'
 import { LayoutPicker, withLayout } from './LayoutPicker'
 import { ModelPicker } from './ModelPicker'
+import { PluginDialog, includesText } from './PluginDialog'
 import { ProviderLogo } from './ProviderLogo'
 
 interface Props {
@@ -29,6 +30,7 @@ const TABS = [
   { id: 'hooks', label: 'Hooks' },
   { id: 'tools', label: 'Tools & Extensions' },
   { id: 'mcp', label: 'MCP Servers' },
+  { id: 'plugins', label: 'Plugins' },
   { id: 'schedules', label: 'Schedules' },
   { id: 'memory', label: 'Memory' },
   { id: 'usage', label: 'Usage & Budgets' },
@@ -63,6 +65,7 @@ export function SettingsView({ app, tab, onTab, onState, onError, onClose, updat
         {tab === 'hooks' && <HooksTab {...common} />}
         {tab === 'tools' && <ToolsTab {...common} />}
         {tab === 'mcp' && <McpTab {...common} />}
+        {tab === 'plugins' && <PluginsTab {...common} />}
         {tab === 'schedules' && <SchedulesTab {...common} />}
         {tab === 'memory' && <MemoryTab {...common} />}
         {tab === 'usage' && <UsageTab {...common} />}
@@ -859,7 +862,7 @@ function ToolsTab({ app, save, onState, onError }: TabProps) {
               <Toggle label={`Enable ${tool.name}`} value={!disabled.has(tool.name)} onChange={(on) => save((s) => ((s.tools.disabled = on ? s.tools.disabled.filter((x) => x !== tool.name) : [...s.tools.disabled, tool.name]), s))} />
               <code>{tool.name}</code>
               <span className={`badge ${tool.readOnly && tool.kind !== 'network' ? 'ok' : ''}`}>{tool.kind === 'network' ? 'network' : tool.readOnly ? 'read-only' : tool.kind === 'exec' ? 'runs commands' : tool.kind === 'edit' ? 'edits files' : tool.kind}</span>
-              {tool.source !== 'builtin' && <span className="badge">{tool.source}</span>}
+              {tool.source !== 'builtin' && <span className="badge">{tool.plugin ? `${tool.plugin} plugin` : tool.source}</span>}
               <span className="muted small tool-desc" title={tool.description}>
                 {tool.description}
               </span>
@@ -933,7 +936,7 @@ Review the uncommitted changes (git diff) for bugs and risky code. Focus on: $AR
           {ext.commands.map((c) => (
             <div key={c.name} className="tool-item">
               <code>/{c.name}</code>
-              <span className="badge">{c.source}</span>
+              <span className="badge">{c.plugin ? `${c.plugin} plugin` : c.source}</span>
               <span className="muted small tool-desc" title={c.description}>
                 {c.description}
               </span>
@@ -956,14 +959,14 @@ Review the uncommitted changes (git diff) for bugs and risky code. Focus on: $AR
             {app.skills.map((s) => (
               <div key={s.dir} className="tool-item">
                 <code>{s.name}</code>
-                <span className="badge">{s.source === 'claude' ? 'Claude Code' : s.source}</span>
+                <span className="badge">{s.plugin ? `${s.plugin} plugin` : s.source === 'claude' ? 'Claude Code' : s.source}</span>
                 <span className="muted small tool-desc" title={s.description}>
                   {s.description}
                 </span>
                 <button className="btn ghost" aria-label={`Open folder of skill ${s.name}`} onClick={() => api.app.openPath(s.dir)}>
                   Open folder
                 </button>
-                {s.source !== 'claude' && (
+                {s.source !== 'claude' && !s.plugin && (
                   <button className="btn ghost danger" aria-label={`Delete skill ${s.name}`} onClick={() => confirm(`Delete the skill "${s.name}" and its folder?`) && api.skills.remove(s.dir).then(onState, onError)}>
                     Delete
                   </button>
@@ -1294,6 +1297,89 @@ function McpTab({ app, save, onState, onError }: TabProps) {
           </div>
         </Section>
       )}
+    </>
+  )
+}
+
+// ---------------------------------------------------------------- Plugins
+
+const shortSha = (sha: string) => sha.slice(0, 7)
+const folderName = (p: string) => p.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || p
+
+function PluginsTab({ app, onState, onError }: TabProps) {
+  const [open, setOpen] = useState<string | null>(null)
+  const dialogPlugin = app.plugins.find((p) => p.id === open)
+  const remove = (p: PluginInfo) => confirm(`Remove the ${p.name} plugin? Its tools, skills and files are deleted.`) && api.plugins.remove(p.id).then(onState, onError)
+  return (
+    <>
+      <Section
+        title="Plugins"
+        description="Tools and skills for apps on this computer. We write and review each plugin and pin it to a commit; every file is checked against that commit before it's installed."
+      >
+        {app.plugins.map((p) => {
+          const inst = p.installed
+          const update = !!inst && inst.pin !== p.pin
+          return (
+            <div key={p.id} className="provider-card plugin-card">
+              <div className="provider-head">
+                {inst && <Toggle label={`Turn on ${p.name}`} value={inst.enabled} onChange={(v) => api.plugins.setEnabled(p.id, v).then(onState, onError)} />}
+                <b>{p.name}</b>
+                <span className="badge reviewed">Reviewed</span>
+                {inst ? (
+                  <span className={`badge ${inst.enabled ? 'ok' : ''}`} title={inst.dir}>
+                    {inst.enabled ? 'On' : 'Off'} · {inst.scope === 'user' ? 'All projects' : `Project ${folderName(inst.cwd ?? '')}`}
+                  </span>
+                ) : (
+                  p.detected && (
+                    <span className="badge" title={p.detected}>
+                      Found on this computer
+                    </span>
+                  )
+                )}
+                <div className="spacer" />
+                {p.busy && <span className="spinner" aria-label="Installing" />}
+                {!inst && (
+                  <button className="btn" disabled={p.busy} onClick={() => setOpen(p.id)}>
+                    Install…
+                  </button>
+                )}
+                {update && (
+                  <button className="btn" disabled={p.busy} onClick={() => setOpen(p.id)}>
+                    Update…
+                  </button>
+                )}
+                {inst && (
+                  <button className="link danger small" disabled={p.busy} onClick={() => remove(p)}>
+                    Remove
+                  </button>
+                )}
+              </div>
+              <p className="muted small plugin-desc">
+                {p.description} Adds {includesText(p.includes)}.
+              </p>
+              {update && inst && (
+                <p className="small plugin-desc">
+                  An update is available: <code>{shortSha(inst.pin)}</code> installed, <code>{shortSha(p.pin)}</code> reviewed.
+                </p>
+              )}
+              {inst && !update && (
+                <div className="inline small">
+                  <span className="muted">
+                    Commit <code title={inst.pin}>{shortSha(inst.pin)}</code>
+                  </span>
+                  <button className="link small" onClick={() => api.app.openPath(inst.dir)}>
+                    Open folder
+                  </button>
+                  <button className="link small" onClick={() => setOpen(p.id)}>
+                    Details…
+                  </button>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </Section>
+      {dialogPlugin && <PluginDialog plugin={dialogPlugin} workspace={app.workspace} onClose={() => setOpen(null)} onState={onState} />}
     </>
   )
 }

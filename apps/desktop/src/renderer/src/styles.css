@@ -2722,3 +2722,69 @@ body.resizing * {
 .sb-toggle.on {
   color: var(--accent);
 }
+
+/* ---------- plugins ---------- */
+
+.badge.reviewed {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+.plugin-dialog {
+  width: min(560px, 92vw);
+}
+.plugin-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.plugin-summary {
+  margin: 0;
+}
+.plugin-dialog > p.small {
+  margin: 0;
+}
+.plugin-kv {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 3px 0;
+  font-size: 0.92em;
+}
+.plugin-kv > span,
+.plugin-kv > code {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.plugin-details {
+  padding-top: 6px;
+}
+.plugin-path {
+  font-size: 0.9em;
+}
+.plugin-actions {
+  justify-content: flex-end;
+}
+.plugin-actions .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.plugin-card .plugin-desc {
+  margin: 6px 0;
+}
+.plugin-suggestion {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 24px;
+  padding: 14px 16px;
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border));
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.btn.primary .spinner {
+  border-color: color-mix(in srgb, currentColor 35%, transparent);
+  border-top-color: currentColor;
+}

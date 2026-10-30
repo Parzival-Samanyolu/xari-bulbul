@@ -89,6 +89,50 @@ function gitReason(args: string[]): string | null {
   }
 }
 
+/** Skips leading options, including the value of those in `valued` (`-f file`, `--host=x` needs no skip). */
+function skipOptions(args: string[], valued: Set<string>): number {
+  let i = 0
+  while (i < args.length && args[i].startsWith('-')) i += valued.has(args[i]) ? 2 : 1
+  return i
+}
+
+const DOCKER_GLOBAL = new Set(['-H', '--host', '-c', '--context', '--config', '-l', '--log-level', '--tlscacert', '--tlscert', '--tlskey'])
+const COMPOSE_GLOBAL = new Set(['-f', '--file', '-p', '--project-name', '--project-directory', '--profile', '--env-file', '--ansi', '--progress', '--parallel'])
+
+function composeReason(args: string[]): string | null {
+  const i = skipOptions(args, COMPOSE_GLOBAL)
+  const rest = args.slice(i + 1)
+  return args[i] === 'down' && rest.some((a) => a === '--volumes' || (/^-[a-z]*v/.test(a) && !a.startsWith('--')))
+    ? 'Deletes the Compose volumes (compose down -v)'
+    : null
+}
+
+function dockerReason(args: string[]): string | null {
+  const i = skipOptions(args, DOCKER_GLOBAL)
+  const sub = args[i]
+  const rest = args.slice(i + 1)
+  const action = rest[0]
+  const removes = action === 'rm' || action === 'remove'
+  switch (sub) {
+    case 'rm':
+      return describe(operands(rest), 'Deletes containers')
+    case 'rmi':
+      return describe(operands(rest), 'Deletes images')
+    case 'container':
+      return removes ? describe(operands(rest.slice(1)), 'Deletes containers') : action === 'prune' ? 'Deletes all stopped containers' : null
+    case 'image':
+      return removes ? describe(operands(rest.slice(1)), 'Deletes images') : action === 'prune' ? 'Deletes unused images' : null
+    case 'volume':
+      return removes ? describe(operands(rest.slice(1)), 'Deletes volumes and their data') : action === 'prune' ? 'Deletes unused volumes and their data' : null
+    case 'system':
+      return action === 'prune' ? 'Deletes unused containers, networks and images (docker system prune)' : null
+    case 'compose':
+      return composeReason(rest)
+    default:
+      return null
+  }
+}
+
 function segmentReason(segment: string, depth: number): string | null {
   let w = words(segment)
   // Drop env assignments and wrappers (sudo, xargs and their flags).
@@ -111,6 +155,8 @@ function segmentReason(segment: string, depth: number): string | null {
     return 'Deletes files found by find'
   }
   if (cmd === 'git') return gitReason(args)
+  if (cmd === 'docker' || cmd === 'podman') return dockerReason(args)
+  if (cmd === 'docker-compose' || cmd === 'podman-compose') return composeReason(args)
   const inner = nestedCommand(cmd, args)
   if (inner && depth < 2) return destructiveReason(inner, depth + 1)
   return null

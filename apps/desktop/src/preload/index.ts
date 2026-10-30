@@ -50,6 +50,7 @@ const api: HarnessApi = {
   files: { pick: call('files.pick') as any, pathFor: (file: File) => webUtils.getPathForFile(file) },
   usage: { exportCsv: call('usage.exportCsv') as any, clear: call('usage.clear') as any },
   mcp: { restart: call('mcp.restart') as any, setToken: call('mcp.setToken') as any },
+  plugins: { list: call('plugins.list') as any, install: call('plugins.install') as any, remove: call('plugins.remove') as any, setEnabled: call('plugins.setEnabled') as any },
   memory: { remove: call('memory.remove') as any, clear: call('memory.clear') as any, undo: call('memory.undo') as any },
   extensions: { reload: call('extensions.reload') as any, openDir: call('extensions.openDir') as any },
   skills: { remove: call('skills.remove') as any },

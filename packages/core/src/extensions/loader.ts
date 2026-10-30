@@ -4,6 +4,7 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import type { JsonSchema } from '../types.js'
 import type { Tool, ToolContext, ToolKind, ToolResult } from '../tools/types.js'
+import { changedPluginFiles, type PluginRoot } from '../plugins/install.js'
 
 export const USER_EXT_DIR = path.join(os.homedir(), '.harness')
 export const projectExtDir = (cwd: string) => path.join(cwd, '.harness')
@@ -45,6 +46,8 @@ export interface SlashCommand {
   template: string
   source: 'user' | 'project'
   file: string
+  /** Id of the plugin it came with. */
+  plugin?: string
 }
 
 /**
@@ -62,6 +65,8 @@ export interface Skill {
   dir: string
   file: string
   source: 'user' | 'project' | 'claude'
+  /** Id of the plugin it came with. */
+  plugin?: string
 }
 
 function listFiles(dir: string, exts: string[]): string[] {
@@ -75,7 +80,7 @@ function listFiles(dir: string, exts: string[]): string[] {
   }
 }
 
-function adaptTool(mod: UserToolModule, source: 'user' | 'project'): Tool {
+function adaptTool(mod: UserToolModule, source: 'user' | 'project', plugin?: string): Tool {
   if (!mod || typeof mod.name !== 'string' || typeof mod.execute !== 'function') {
     throw new Error('Tool module must default-export { name, description, execute }')
   }
@@ -93,6 +98,7 @@ function adaptTool(mod: UserToolModule, source: 'user' | 'project'): Tool {
       return typeof r === 'string' ? { content: r } : r
     },
     source,
+    ...(plugin ? { plugin } : {}),
   }
 }
 
@@ -127,23 +133,23 @@ function unquote(value: string): string {
   return value.replace(/^(["'])(.*)\1$/, '$2')
 }
 
-function parseCommand(file: string, source: 'user' | 'project'): SlashCommand {
+function parseCommand(file: string, source: 'user' | 'project', plugin?: string): SlashCommand {
   const { fields, body: template } = parseFrontmatter(fs.readFileSync(file, 'utf8'))
   let description = fields.description ?? ''
   if (!description) description = template.trim().split('\n')[0].slice(0, 80)
-  return { name: path.basename(file).replace(/\.md$/, ''), description, template, source, file }
+  return { name: path.basename(file).replace(/\.md$/, ''), description, template, source, file, ...(plugin ? { plugin } : {}) }
 }
 
-function parseSkill(file: string, source: Skill['source']): Skill {
+function parseSkill(file: string, source: Skill['source'], plugin?: string): Skill {
   const { fields, body } = parseFrontmatter(fs.readFileSync(file, 'utf8'))
   const dir = path.dirname(file)
   const name = fields.name || path.basename(dir)
   const description = fields.description || body.trim().split('\n')[0].replace(/^#+\s*/, '').slice(0, 200)
-  return { name, description, dir, file, source }
+  return { name, description, dir, file, source, ...(plugin ? { plugin } : {}) }
 }
 
 /** `<root>/skills/*\/SKILL.md` */
-function loadSkills(root: string, source: Skill['source'], out: LoadedExtensions) {
+function loadSkills(root: string, source: Skill['source'], out: LoadedExtensions, plugin?: string) {
   let dirs: string[]
   try {
     dirs = fs.readdirSync(path.join(root, 'skills'))
@@ -154,7 +160,7 @@ function loadSkills(root: string, source: Skill['source'], out: LoadedExtensions
     const file = path.join(root, 'skills', d, 'SKILL.md')
     if (!fs.existsSync(file)) continue
     try {
-      out.skills.push(parseSkill(file, source))
+      out.skills.push(parseSkill(file, source, plugin))
     } catch (e) {
       out.errors.push({ file, error: (e as Error).message })
     }
@@ -186,24 +192,48 @@ export function writeSkill(skillsDir: string, s: { name: string; description: st
 
 export async function loadExtensions(
   cwd: string,
-  opts: { user: boolean; project: boolean; userDir?: string; claudeDir?: string },
+  opts: {
+    user: boolean
+    project: boolean
+    userDir?: string
+    claudeDir?: string
+    /** Installed, turned-on plugins. Their tool code loads whatever `user`/`project` say: the user installed that reviewed pin. */
+    plugins?: PluginRoot[]
+  },
 ): Promise<LoadedExtensions> {
   const result: LoadedExtensions = { tools: [], commands: [], skills: [], errors: [] }
   // Skills are Markdown like commands, so they always load. Later roots win on a name clash.
   loadSkills(opts.claudeDir ?? CLAUDE_DIR, 'claude', result)
-  const roots: { dir: string; source: 'user' | 'project'; allowCode: boolean }[] = [
+  const roots: { dir: string; source: 'user' | 'project'; allowCode: boolean; plugin?: PluginRoot }[] = [
     { dir: opts.userDir ?? USER_EXT_DIR, source: 'user', allowCode: opts.user },
+    // Plugins sit between the user's own extensions and the project's.
+    ...(opts.plugins ?? []).map((p) => ({ dir: p.dir, source: p.source, allowCode: true, plugin: p })),
     // Markdown commands are always safe to load; project *code* requires opt-in.
-    { dir: projectExtDir(cwd), source: 'project', allowCode: opts.project },
+    { dir: projectExtDir(cwd), source: 'project' as const, allowCode: opts.project },
   ]
   for (const root of roots) {
+    let tools = listFiles(path.join(root.dir, 'tools'), ['.mjs', '.js'])
+    if (root.plugin) {
+      // A plugin loads only as installed: changed files could be code nobody reviewed.
+      if (!fs.existsSync(root.dir)) {
+        result.errors.push({ file: root.dir, error: `Plugin "${root.plugin.id}" is missing. Reinstall or remove it in Settings → Plugins.` })
+        continue
+      }
+      const changed = changedPluginFiles(root.dir, root.plugin.files)
+      if (changed.length) {
+        result.errors.push({ file: root.dir, error: `Plugin "${root.plugin.id}" was not loaded because files changed after it was installed (${changed.join(', ')}). Reinstall it in Settings → Plugins.` })
+        continue
+      }
+      const listed = new Set(root.plugin.files.map((f) => path.join(root.dir, ...f.path.split('/'))))
+      tools = tools.filter((f) => listed.has(f))
+    }
     if (root.allowCode) {
-      for (const file of listFiles(path.join(root.dir, 'tools'), ['.mjs', '.js'])) {
+      for (const file of tools) {
         try {
           // Cache-bust so edits are picked up on reload.
           const url = `${pathToFileURL(file).href}?t=${fs.statSync(file).mtimeMs}`
           const mod = await import(/* @vite-ignore */ url)
-          result.tools.push(adaptTool(mod.default ?? mod, root.source))
+          result.tools.push(adaptTool(mod.default ?? mod, root.source, root.plugin?.id))
         } catch (e) {
           result.errors.push({ file, error: (e as Error).message })
         }
@@ -211,12 +241,12 @@ export async function loadExtensions(
     }
     for (const file of listFiles(path.join(root.dir, 'commands'), ['.md'])) {
       try {
-        result.commands.push(parseCommand(file, root.source))
+        result.commands.push(parseCommand(file, root.source, root.plugin?.id))
       } catch (e) {
         result.errors.push({ file, error: (e as Error).message })
       }
     }
-    loadSkills(root.dir, root.source, result)
+    loadSkills(root.dir, root.source, result, root.plugin?.id)
   }
   const skills = new Map(result.skills.map((s) => [s.name, s]))
   result.skills = [...skills.values()].sort((a, b) => a.name.localeCompare(b.name))

@@ -44,6 +44,20 @@ import {
   parseSettings,
   saveSettingsFile,
   projectExtDir,
+  PLUGIN_CATALOG,
+  activePlugins,
+  detectPlugins,
+  installPlugin,
+  mergePluginServers,
+  pluginDir,
+  pluginMcpServers,
+  pluginRoot,
+  pluginTreeUrl,
+  readInstalled,
+  uninstallPlugin,
+  writeInstalled,
+  type InstalledPlugin,
+  type PluginScope,
   type AgentEvent,
   type DirListing,
   type FileAttachment,
@@ -62,7 +76,7 @@ import {
   type Tool,
   type WhisperModelId,
 } from '@harness/core'
-import type { AppState, AttachmentInput, ExtensionsInfo, MemoryInfo, ProviderTestResult, SessionView, UiEvent, VoiceDownload, VoiceState } from '../shared/ipc'
+import type { AppState, AttachmentInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, VoiceDownload, VoiceState } from '../shared/ipc'
 import { Scheduler } from './scheduler'
 import { SecretStore } from './secrets'
 import { Terminals } from './terminals'
@@ -107,6 +121,12 @@ export class AppController {
   private catchUpTimer: NodeJS.Timeout | null = null
   private voiceDownload: { ac: AbortController; progress: VoiceDownload } | null = null
   private ext: LoadedExtensions = { tools: [], commands: [], skills: [], errors: [] }
+  /** Plugins from the catalog that are installed (`<dataDir>/plugins.json`). */
+  private plugins: InstalledPlugin[]
+  /** Catalog plugins whose app was found at launch: id → the path that matched. */
+  private readonly detected: Record<string, string>
+  /** The plugin being installed or removed. */
+  private pluginBusy: string | null = null
   private readonly terminals: Terminals
   private tools: Tool[] = builtinTools()
   private workspace: string | null = null
@@ -140,6 +160,9 @@ export class AppController {
     this.store = new SessionStore(this.paths.sessions)
     this.memory = new MemoryStore(path.join(dataDir, 'memory'), this.settings.memory.maxChars)
     this.terminals = new Terminals(send)
+    this.plugins = readInstalled(dataDir)
+    // Stat only: nothing is started to look for apps.
+    this.detected = detectPlugins(PLUGIN_CATALOG)
     this.mcp = new McpManager({
       clientVersion: version,
       secret: (id) => this.secrets.get(mcpSecretId(id)),
@@ -347,17 +370,21 @@ export class AppController {
   // ---------- extensions ----------
 
   async reloadExtensions(): Promise<AppState> {
-    this.ext = this.workspace
-      ? await loadExtensions(this.workspace, {
-          user: this.settings.tools.loadUserExtensions,
-          project: this.settings.tools.loadProjectExtensions,
-        })
-      : { tools: [], commands: [], skills: [], errors: [] }
+    this.ext = this.workspace ? await this.loadExtensionsFor(this.workspace) : { tools: [], commands: [], skills: [], errors: [] }
     for (const name of assembleTools(this.ext.tools).conflicts) {
       this.ext.errors.push({ file: name, error: `Tool "${name}" conflicts with a built-in tool and was skipped.` })
     }
     this.applyTools()
     return this.state()
+  }
+
+  /** A folder's extensions: yours, its project's and the turned-on plugins that apply there. */
+  private loadExtensionsFor(cwd: string): Promise<LoadedExtensions> {
+    return loadExtensions(cwd, {
+      user: this.settings.tools.loadUserExtensions,
+      project: this.settings.tools.loadProjectExtensions,
+      plugins: activePlugins(this.plugins, cwd, USER_EXT_DIR),
+    })
   }
 
   /** Built-in tools, then this folder's extensions, then MCP tools; later duplicates are skipped. */
@@ -370,6 +397,108 @@ export class AppController {
         r.agent.setSkills(this.ext.skills)
       } else r.agent.updateSettings(this.settings, [...r.agent.availableTools.filter((t) => t.source !== 'mcp'), ...this.mcp.tools()])
     }
+  }
+
+  // ---------- plugins ----------
+
+  private pluginInfo(): PluginInfo[] {
+    return PLUGIN_CATALOG.map((p) => {
+      const rec = this.plugins.find((r) => r.id === p.id)
+      return {
+        id: p.id,
+        name: p.name,
+        description: p.description,
+        version: p.version,
+        pin: p.pin,
+        sourceUrl: `https://github.com/${p.repo}`,
+        treeUrl: pluginTreeUrl(p),
+        includes: p.includes,
+        detected: this.detected[p.id] ?? null,
+        installPaths: { user: pluginDir(USER_EXT_DIR, p.id), project: this.workspace ? pluginDir(projectExtDir(this.workspace), p.id) : null },
+        installed: rec
+          ? {
+              pin: rec.pin,
+              scope: rec.scope,
+              cwd: rec.cwd ?? null,
+              installedAt: rec.installedAt,
+              enabled: rec.enabled,
+              dir: pluginDir(pluginRoot(rec.scope, { userDir: USER_EXT_DIR, cwd: rec.cwd }), p.id),
+            }
+          : null,
+        busy: this.pluginBusy === p.id,
+      }
+    })
+  }
+
+  listPlugins(): PluginInfo[] {
+    return this.pluginInfo()
+  }
+
+  /** Installs (or updates to the catalog's pin) a plugin, turns it on and loads it. */
+  async installPlugin(id: string, scope: PluginScope): Promise<AppState> {
+    const entry = PLUGIN_CATALOG.find((p) => p.id === id)
+    if (!entry) throw new Error(`Unknown plugin: ${id}`)
+    if (scope !== 'user' && scope !== 'project') throw new Error(`Unknown scope: ${scope}`)
+    if (this.pluginBusy) throw new Error('Another plugin is being installed. Try again in a moment.')
+    const cwd = scope === 'project' ? this.workspace : null
+    const root = pluginRoot(scope, { userDir: USER_EXT_DIR, cwd })
+    const previous = this.plugins.find((p) => p.id === id)
+    this.pluginBusy = id
+    this.pushState()
+    try {
+      const files = await installPlugin(entry, { root, linkBase: cwd ?? root, signal: AbortSignal.timeout(120_000) })
+      // Moving to the other scope leaves no copy behind.
+      if (previous && (previous.scope !== scope || previous.cwd !== (cwd ?? undefined))) this.deletePluginFiles(previous)
+      const record: InstalledPlugin = { id, pin: entry.pin, scope, ...(cwd ? { cwd } : {}), installedAt: Date.now(), enabled: true, files }
+      this.plugins = [...this.plugins.filter((p) => p.id !== id), record]
+      writeInstalled(this.dataDir, this.plugins)
+    } finally {
+      this.pluginBusy = null
+    }
+    return this.pluginsChanged(id)
+  }
+
+  /** Deletes a plugin's folder and its MCP servers. */
+  async removePlugin(id: string): Promise<AppState> {
+    const rec = this.plugins.find((p) => p.id === id)
+    if (!rec) return this.state()
+    this.deletePluginFiles(rec)
+    this.plugins = this.plugins.filter((p) => p.id !== id)
+    writeInstalled(this.dataDir, this.plugins)
+    return this.pluginsChanged(id)
+  }
+
+  async setPluginEnabled(id: string, on: boolean): Promise<AppState> {
+    const rec = this.plugins.find((p) => p.id === id)
+    if (!rec) throw new Error('That plugin is not installed.')
+    this.plugins = this.plugins.map((p) => (p.id === id ? { ...p, enabled: !!on } : p))
+    writeInstalled(this.dataDir, this.plugins)
+    return this.pluginsChanged(id)
+  }
+
+  private deletePluginFiles(rec: InstalledPlugin) {
+    try {
+      const root = pluginRoot(rec.scope, { userDir: USER_EXT_DIR, cwd: rec.cwd })
+      uninstallPlugin(root, rec.id, rec.scope === 'project' && rec.cwd ? rec.cwd : root)
+    } catch {
+      // The project folder is gone; nothing left to delete.
+    }
+  }
+
+  /** Puts the plugin's MCP servers in settings while it's installed and on, then reloads tools and servers. */
+  private async pluginsChanged(id: string): Promise<AppState> {
+    const rec = this.plugins.find((p) => p.id === id)
+    const dir = rec && pluginDir(pluginRoot(rec.scope, { userDir: USER_EXT_DIR, cwd: rec.cwd }), id)
+    const servers = mergePluginServers(this.settings.mcp.servers, id, rec?.enabled && dir ? pluginMcpServers(dir, id) : [])
+    if (JSON.stringify(servers) !== JSON.stringify(this.settings.mcp.servers)) {
+      this.settings = { ...this.settings, mcp: { ...this.settings.mcp, servers } }
+      this.saveSettings()
+      for (const r of this.agents.values()) r.agent.updateSettings(this.settings)
+    }
+    void this.mcp.sync(this.settings.mcp.servers)
+    await this.reloadExtensions()
+    this.pushState()
+    return this.state()
   }
 
   // ---------- MCP ----------
@@ -428,7 +557,7 @@ export class AppController {
     const ext =
       cwd === this.workspace
         ? this.ext
-        : await loadExtensions(cwd, { user: this.settings.tools.loadUserExtensions, project: this.settings.tools.loadProjectExtensions })
+        : await this.loadExtensionsFor(cwd)
     const tools = cwd === this.workspace ? this.tools : assembleTools(ext.tools, this.mcp.tools()).tools
     const session = newSession(cwd, s.model ?? this.settings.models.default)
     session.meta.title = `⏰ ${s.name.trim() || 'Schedule'}`
@@ -446,8 +575,8 @@ export class AppController {
 
   private extensionsInfo(): ExtensionsInfo {
     return {
-      tools: this.tools.map((t) => ({ name: t.name, description: t.description, source: t.source ?? 'builtin', readOnly: t.readOnly, kind: t.kind })),
-      commands: [...BUILTIN_COMMANDS, ...this.ext.commands.map((c) => ({ name: c.name, description: c.description, source: c.source }))],
+      tools: this.tools.map((t) => ({ name: t.name, description: t.description, source: t.source ?? 'builtin', readOnly: t.readOnly, kind: t.kind, plugin: t.plugin })),
+      commands: [...BUILTIN_COMMANDS, ...this.ext.commands.map((c) => ({ name: c.name, description: c.description, source: c.source, plugin: c.plugin }))],
       errors: this.ext.errors,
       userDir: USER_EXT_DIR,
       projectDir: this.workspace ? projectExtDir(this.workspace) : null,
@@ -457,7 +586,7 @@ export class AppController {
   /** Deletes a skill folder, if it is one the loader found (Claude Code's own skills are left alone). */
   async removeSkill(dir: string): Promise<AppState> {
     const skill = this.ext.skills.find((s) => s.dir === dir)
-    if (skill && skill.source !== 'claude') fs.rmSync(skill.dir, { recursive: true, force: true })
+    if (skill && skill.source !== 'claude' && !skill.plugin) fs.rmSync(skill.dir, { recursive: true, force: true })
     return this.reloadExtensions()
   }
 
@@ -922,7 +1051,8 @@ export class AppController {
       awaitingSessions: [...new Set([...this.pending.values(), ...this.questions.values()].map((p) => p.sessionId))],
       questions: [...this.questions.values()].map(({ sessionId, request }) => ({ sessionId, request })),
       extensions: this.extensionsInfo(),
-      skills: this.ext.skills.map((s) => ({ name: s.name, description: s.description, source: s.source, dir: s.dir })),
+      skills: this.ext.skills.map((s) => ({ name: s.name, description: s.description, source: s.source, dir: s.dir, plugin: s.plugin })),
+      plugins: this.pluginInfo(),
       memory: this.memoryInfo(),
       schedules: this.scheduler.status(),
       browser: findBrowser(this.settings.tools.browser.path),

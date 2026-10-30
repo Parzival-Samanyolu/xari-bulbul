@@ -100,6 +100,8 @@ export interface Tool<I = any> {
   execute(input: I, ctx: ToolContext): Promise<ToolResult>
   /** Where the tool came from, for the UI. */
   source?: 'builtin' | 'user' | 'project' | 'mcp'
+  /** Id of the plugin it came with. */
+  plugin?: string
 }
 
 /** Helper for built-in tools: zod input → JSON schema + validation. */

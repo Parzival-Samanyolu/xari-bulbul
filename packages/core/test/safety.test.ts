@@ -52,6 +52,37 @@ describe('destructive command detection', () => {
   )
 })
 
+describe('destructive docker commands', () => {
+  it.each([
+    ['docker rm -f web', /Deletes containers: web/],
+    ['docker rmi nginx:1.27', /Deletes images: nginx:1\.27/],
+    ['docker container rm web db', /Deletes containers: web db/],
+    ['docker image prune -a', /Deletes unused images/],
+    ['docker system prune -af', /docker system prune/],
+    ['docker volume rm pgdata', /Deletes volumes and their data: pgdata/],
+    ['docker volume prune', /Deletes unused volumes/],
+    ['docker --context prod volume rm pgdata', /Deletes volumes/],
+    ['docker compose down -v', /compose down -v/],
+    ['docker compose -f deploy/compose.yaml down --volumes', /compose down -v/],
+    ['docker-compose down -v --remove-orphans', /compose down -v/],
+    ['cd app && sudo docker system prune', /docker system prune/],
+  ])('flags %s', (cmd, re) => {
+    expect(destructiveReason(cmd)).toMatch(re)
+  })
+
+  it.each(['docker ps -a', 'docker logs web', 'docker compose down', 'docker-compose up -d', 'docker volume ls', 'docker image ls', 'docker compose -f v.yaml ps', 'docker run --rm alpine echo hi'])(
+    'does not flag %s',
+    (cmd) => {
+      expect(destructiveReason(cmd)).toBeNull()
+    },
+  )
+
+  it('asks in auto mode', () => {
+    const p = new Permissions({ ...base, mode: 'auto' }, cwd)
+    expect(p.check(bashTool, 'docker volume rm pgdata').decision).toBe('ask')
+  })
+})
+
 describe('permissions for destructive commands', () => {
   it('asks even in auto mode', () => {
     const p = new Permissions({ ...base, mode: 'auto' }, cwd)

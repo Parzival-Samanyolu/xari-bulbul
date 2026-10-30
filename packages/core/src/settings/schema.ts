@@ -157,6 +157,8 @@ const McpBase = {
   /** Shown in the UI and used in tool names (`mcp__<name>__<tool>`). */
   name: z.string().min(1),
   enabled: z.boolean().default(true),
+  /** Set for servers a plugin added; removing the plugin removes them. */
+  plugin: z.string().optional(),
 }
 
 export const McpServerSchema = z.discriminatedUnion('transport', [
@@ -421,6 +423,8 @@ export const SettingsSchema = z.object({
       recentWorkspaces: z.array(z.string()).default([]),
       /** The layout picker was answered (it shows once). */
       layoutChosen: z.boolean().default(false),
+      /** Plugin suggestions dismissed on the Welcome screen. */
+      skippedPlugins: z.array(z.string()).default([]),
       /** Sizes (px) and open state of the right and bottom panels. */
       panels: z
         .object({

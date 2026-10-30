@@ -3,6 +3,7 @@ import type { AppState } from '../../../shared/ipc'
 import { api } from '../lib/api'
 import mark from '../assets/mark.png'
 import { LayoutPicker, withLayout, type Layout } from './LayoutPicker'
+import { PluginDialog } from './PluginDialog'
 
 interface Props {
   app: AppState
@@ -18,6 +19,15 @@ export function Welcome({ app, onState, onError, onSettings }: Props) {
   const next = !connected ? 'connect' : !hasFolder ? 'folder' : null
   const recents = app.settings.app.recentWorkspaces.filter((w) => w !== app.workspace)
   const [layout, setLayout] = useState<Layout>(app.settings.appearance.layout)
+  const [installing, setInstalling] = useState<string | null>(null)
+  const skipped = app.settings.app.skippedPlugins
+  const suggestions = app.plugins.filter((p) => p.detected && !p.installed && !skipped.includes(p.id))
+  const dialogPlugin = app.plugins.find((p) => p.id === installing)
+  const skip = (id: string) => {
+    const next = structuredClone(app.settings)
+    next.app.skippedPlugins = [...skipped, id]
+    api.settings.set(next).then(onState, onError)
+  }
 
   return (
     <div className="welcome">
@@ -60,6 +70,23 @@ export function Welcome({ app, onState, onError, onSettings }: Props) {
           </button>
         </li>
       </ol>
+      {suggestions.map((p) => (
+        <section key={p.id} className="plugin-suggestion" aria-label={`${p.name} plugin`}>
+          <div>
+            <b>Found {p.name}. Want its plugin?</b>
+            <div className="muted small">{p.description}</div>
+          </div>
+          <div className="inline">
+            <button className="btn ghost" onClick={() => skip(p.id)}>
+              Skip
+            </button>
+            <button className="btn" onClick={() => setInstalling(p.id)}>
+              Review and install…
+            </button>
+          </div>
+        </section>
+      ))}
+      {dialogPlugin && <PluginDialog plugin={dialogPlugin} workspace={app.workspace} onClose={() => setInstalling(null)} onState={onState} />}
       {recents.length > 0 && (
         <div className="recents">
           <div className="muted small">Recent folders</div>

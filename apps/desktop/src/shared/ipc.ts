@@ -59,6 +59,7 @@ export interface CommandInfo {
   name: string
   description: string
   source: 'builtin' | 'user' | 'project'
+  plugin?: string
 }
 
 export interface ToolInfo {
@@ -67,6 +68,7 @@ export interface ToolInfo {
   source: 'builtin' | 'user' | 'project' | 'mcp'
   readOnly: boolean
   kind: string
+  plugin?: string
 }
 
 export interface SkillInfo {
@@ -74,6 +76,37 @@ export interface SkillInfo {
   description: string
   source: 'user' | 'project' | 'claude'
   dir: string
+  plugin?: string
+}
+
+/** A plugin from the built-in catalog, with its install state on this computer. */
+export interface PluginInfo {
+  id: string
+  name: string
+  description: string
+  version: string
+  /** The reviewed commit the catalog installs. */
+  pin: string
+  /** The repository's page. */
+  sourceUrl: string
+  /** The plugin's files on GitHub at the pin. */
+  treeUrl: string
+  includes: { tools: string[]; commands: string[]; skills: string[]; mcpServers: string[] }
+  /** Where its app was found at launch, or null. */
+  detected: string | null
+  /** Where it would install for each scope; project is null without an open folder. */
+  installPaths: { user: string; project: string | null }
+  installed: {
+    pin: string
+    scope: 'user' | 'project'
+    /** The project, for scope project. */
+    cwd: string | null
+    installedAt: number
+    enabled: boolean
+    dir: string
+  } | null
+  /** Being installed right now. */
+  busy: boolean
 }
 
 export interface ExtensionsInfo {
@@ -153,6 +186,8 @@ export interface AppState {
   extensions: ExtensionsInfo
   /** Skills for the folder on screen: yours, the project's and Claude Code's. */
   skills: SkillInfo[]
+  /** The plugin catalog, with what's installed and which apps were found. */
+  plugins: PluginInfo[]
   /** Connection state of each configured MCP server, and which have a stored token. */
   mcp: { servers: McpServerStatus[]; tokens: Record<string, boolean> }
   /** Saved memories for the open folder and for every folder. */
@@ -278,6 +313,14 @@ export interface HarnessApi {
   mcp: {
     restart(id: string): Promise<AppState>
     setToken(id: string, token: string | null): Promise<AppState>
+  }
+  plugins: {
+    list(): Promise<PluginInfo[]>
+    /** Downloads the reviewed files, checks each one's sha256 and turns the plugin on. Also updates to a new pin. */
+    install(id: string, scope: 'user' | 'project'): Promise<AppState>
+    /** Deletes the plugin's folder and its MCP servers. */
+    remove(id: string): Promise<AppState>
+    setEnabled(id: string, on: boolean): Promise<AppState>
   }
   memory: {
     remove(scope: 'project' | 'global', fact: string): Promise<AppState>

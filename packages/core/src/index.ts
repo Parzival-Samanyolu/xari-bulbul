@@ -47,3 +47,22 @@ export { encodeWav, WHISPER_SAMPLE_RATE } from './voice/wav.js'
 export { nextRun, missedRun, parseTime, intervalMs, type ScheduleWhen } from './schedule/next.js'
 export { checkpointChanges, MAX_DIFF_BYTES, type FileChange } from './sessions/changes.js'
 export { listDir, readPreview, rootFor, TREE_SKIP, MAX_DIR_ENTRIES, MAX_PREVIEW_BYTES, type DirEntry, type DirListing, type FilePreview } from './host/files.js'
+export { PLUGIN_CATALOG, PLUGIN_REPO, pluginFileUrl, pluginTreeUrl, type CatalogPlugin, type PluginDetect, type PluginFile, type PluginIncludes } from './plugins/catalog.js'
+export {
+  activePlugins,
+  changedPluginFiles,
+  checkPluginPath,
+  detectPlugins,
+  installPlugin,
+  mergePluginServers,
+  pluginDir,
+  pluginMcpServers,
+  pluginRoot,
+  pluginsFile,
+  readInstalled,
+  uninstallPlugin,
+  writeInstalled,
+  type InstalledPlugin,
+  type PluginRoot,
+  type PluginScope,
+} from './plugins/install.js'
