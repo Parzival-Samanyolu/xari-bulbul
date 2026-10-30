@@ -280,6 +280,7 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
           onPaste={onPaste}
         />
         <div className="composer-bar">
+          <div className="composer-tools">
           <button className="icon-btn attach" onClick={pick} aria-label="Attach files" title="Attach files (or drop / paste them)">
             <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden>
               <path d="M10.5 4.5 5.8 9.2a1.4 1.4 0 0 0 2 2l5-5a2.8 2.8 0 0 0-4-4l-5.2 5.2a4.2 4.2 0 0 0 6 6l4.4-4.4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -311,7 +312,7 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
               </button>
             ))}
           </div>
-          <div className="spacer" />
+          </div>
           {app.running ? (
             <button className="btn stop" onClick={() => api.agent.stop()}>
               ■ Stop

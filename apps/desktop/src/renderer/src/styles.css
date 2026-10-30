@@ -1256,9 +1256,21 @@ kbd {
 }
 .composer-bar {
   display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+/* The tools wrap among themselves; Send stays at the right end of the first row's baseline. */
+.composer-tools {
+  display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+.composer-bar > .btn {
+  flex: none;
+  margin-left: auto;
 }
 .provider-logo {
   display: inline-flex;
