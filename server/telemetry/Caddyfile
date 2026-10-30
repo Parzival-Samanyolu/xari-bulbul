@@ -1,0 +1,13 @@
+# Installed by deploy.sh as /etc/caddy/sites/xb-telemetry.caddy and imported from
+# /etc/caddy/Caddyfile. Caddy gets the TLS certificate automatically.
+# No access log is configured, so client IPs are never written to disk.
+193-122-49-121.sslip.io {
+	request_body {
+		max_size 64KB
+	}
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000"
+	}
+	reverse_proxy 127.0.0.1:8787
+}

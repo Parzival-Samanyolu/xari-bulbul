@@ -1,0 +1,14 @@
+{
+  "name": "xb-telemetry",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Anonymous share-info collector for Xari Bulbul (Node 22 + node:sqlite, zero dependencies)",
+  "type": "module",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node --experimental-sqlite --disable-warning=ExperimentalWarning server.js",
+    "test": "node --experimental-sqlite --disable-warning=ExperimentalWarning --test 'test/*.test.js'"
+  }
+}

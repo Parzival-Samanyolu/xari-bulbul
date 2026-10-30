@@ -1,0 +1,64 @@
+[Unit]
+Description=Xari Bulbul share-info collector
+After=network.target
+
+[Service]
+Type=simple
+# Code is installed to /opt/xb-telemetry by deploy.sh; Node 22 from NodeSource is /usr/bin/node.
+WorkingDirectory=/opt/xb-telemetry
+# --experimental-sqlite is required on Node 22.5-22.12 and a harmless no-op on 22.13+,
+# where node:sqlite is unflagged but still prints an ExperimentalWarning.
+ExecStart=/usr/bin/node --experimental-sqlite --disable-warning=ExperimentalWarning --max-old-space-size=64 server.js
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=8787
+Environment=DB_PATH=/var/lib/xb-telemetry/events.db
+# STATS_TOKEN=... lives here (root-only, 0600). Without it /v1/stats and / are disabled.
+EnvironmentFile=-/etc/xb-telemetry/env
+
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=10s
+
+# Identity and state
+DynamicUser=yes
+StateDirectory=xb-telemetry
+StateDirectoryMode=0700
+UMask=0077
+
+# Resources (the VPS has ~1 GB RAM)
+MemoryMax=150M
+TasksMax=64
+LimitNOFILE=4096
+
+# Hardening
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectProc=invisible
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=yes
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RemoveIPC=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+# Only Caddy on this host talks to the service.
+IPAddressDeny=any
+IPAddressAllow=localhost
+# MemoryDenyWriteExecute is deliberately off: V8's JIT needs W+X pages.
+
+[Install]
+WantedBy=multi-user.target
