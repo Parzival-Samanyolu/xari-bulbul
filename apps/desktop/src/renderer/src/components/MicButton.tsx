@@ -45,6 +45,12 @@ export function MicButton({ app, onText, onError }: Props) {
     return () => clearInterval(t)
   }, [phase])
 
+  // The longest recording (Settings › Voice) ends it and transcribes what was said.
+  const limit = app.settings.voice.maxRecordingSec
+  useEffect(() => {
+    if (phase === 'recording' && seconds >= limit && rec.current && rec.current.recorder.state !== 'inactive') rec.current.recorder.stop()
+  }, [phase, seconds, limit])
+
   const engine = app.voice.engine
   // Turned off in Settings mid-recording: drop the recording.
   useEffect(() => {
@@ -87,6 +93,8 @@ export function MicButton({ app, onText, onError }: Props) {
       }
       rec.current = r
       recorder.start()
+      // Reset with the phase change, so the length limit never sees the last recording's time.
+      setSeconds(0)
       setPhase('recording')
     } catch (e) {
       setPhase('idle')

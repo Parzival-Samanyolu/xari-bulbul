@@ -30,12 +30,12 @@ Built to be owned and extended. The engine is small, readable TypeScript with no
 - **Destructive commands always ask:** `rm`, `git reset --hard`, force pushes and similar need your approval even in Full auto, and are only ever allowed once. Before a turn ends, the agent checks for unfinished checklist steps and failed tool calls and must report anything it skipped.
 - **Web search:**
   - **No key needed:** DuckDuckGo first, then Brave's free search when DuckDuckGo is busy. Results unrelated to the query are rejected.
-  - **Free keys (optional):** a Brave Search key (2,000 searches a month) or a Tavily key (1,000 a month) is used first in automatic mode. Add one in **Settings → Tools** or by setting `BRAVE_API_KEY` / `TAVILY_API_KEY`.
+  - **Free keys (optional):** a Brave Search key (2,000 searches a month) or a Tavily key (1,000 a month) is used first in automatic mode. Add one in **Settings › Tools & Keys › Web search** or by setting `BRAVE_API_KEY` / `TAVILY_API_KEY`.
   - **Your own SearXNG:** also supported.
   - **Filters:** searches can be limited to certain sites and to recent results.
   - **Reading pages:** `web_fetch` returns a page's main content as Markdown, in parts for long pages.
-- **MCP servers:** connect local (command) or remote (URL) Model Context Protocol servers in **Settings → MCP Servers**. Their tools follow your permission rules as `mcp__<server>__<tool>`. GitHub's hosted server is one click: **Add GitHub**, then paste a token.
-- **Memory:** the agent can remember facts across chats (your preferences, how to test a project) with the `remember` / `forget` tools. Memories live in the app's data folder, and you can review or delete them in **Settings → Memory**.
+- **MCP servers:** connect local (command) or remote (URL) Model Context Protocol servers in **Settings › Tools & Keys › MCP servers**. Their tools follow your permission rules as `mcp__<server>__<tool>`. GitHub's hosted server is one click: **Add GitHub**, then paste a token.
+- **Memory:** the agent can remember facts across chats (your preferences, how to test a project) with the `remember` / `forget` tools. Memories live in the app's data folder, and you can review or delete them in **Settings › Memory & Context**.
 - **Detailed settings:**
   - Providers & keys: stored in the OS keychain (macOS Keychain, libsecret on Linux), or encrypted with your Windows account (DPAPI)
   - Models: defaults, per-model overrides, reasoning effort
@@ -68,7 +68,7 @@ pnpm install
 pnpm dev          # launches the desktop app with hot reload
 ```
 
-1. Open **Settings → Providers & Keys** and paste an [OpenRouter](https://openrouter.ai/keys) or [Ollama Cloud](https://ollama.com/settings/keys) or [Google AI Studio](https://aistudio.google.com/apikey) key, then click **Test**.
+1. Open **Settings › Providers › API keys** and paste an [OpenRouter](https://openrouter.ai/keys) or [Ollama Cloud](https://ollama.com/settings/keys) or [Google AI Studio](https://aistudio.google.com/apikey) key. It's tested as soon as you save it.
 2. Open a project folder and start asking.
 
 | Shortcut | Action |
@@ -96,11 +96,11 @@ Extensions live in `~/.harness/` (yours, applied to every project) or `<project>
 └─ commands/    *.md   → slash commands (/name), with $ARGUMENTS substitution
 ```
 
-See [`examples/extensions`](examples/extensions) for a working tool and two commands. Reload them from **Settings → Tools & Extensions**.
+See [`examples/extensions`](examples/extensions) for a working tool and two commands. Reload them from **Settings › Tools & Keys › Extensions**.
 
 Project *tool code* only loads if you enable it in settings, because opening a cloned repo shouldn't run its code. Project commands, which are plain markdown, always load.
 
-To add a provider, go to **Settings → Providers → Add a custom provider** and enter any OpenAI-compatible base URL, such as:
+To add a provider, go to **Settings › Providers › Custom endpoints**, choose **Add endpoint** and enter any OpenAI-compatible base URL, such as:
 - local Ollama: `http://localhost:11434/v1`
 - LM Studio
 - DeepSeek

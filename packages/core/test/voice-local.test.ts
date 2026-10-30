@@ -97,7 +97,7 @@ describe('engine selection', () => {
   })
 
   it('defaults to auto with the base model', () => {
-    expect(parseSettings({}).voice).toEqual({ engine: 'auto', localModel: 'base' })
+    expect(parseSettings({}).voice).toEqual({ engine: 'auto', localModel: 'base', enabled: true, maxRecordingSec: 120, language: '', autoSend: false })
   })
 })
 

@@ -180,6 +180,14 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
     api.agent.send(t).catch(onError)
   }
 
+  // Transcribed speech: typed in, or sent right away (Settings › Voice). A ref, because the
+  // recording finishes long after the render that started it.
+  const onVoice = useRef((_t: string) => {})
+  onVoice.current = (t: string) => {
+    if (app.settings.voice.autoSend && !app.running) submit(text.trim() ? `${text.trimEnd()} ${t}` : t)
+    else insert(t)
+  }
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (matches.length && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
       e.preventDefault()
@@ -271,7 +279,7 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
               <path d="M10.5 4.5 5.8 9.2a1.4 1.4 0 0 0 2 2l5-5a2.8 2.8 0 0 0-4-4l-5.2 5.2a4.2 4.2 0 0 0 6 6l4.4-4.4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          <MicButton app={app} onText={insert} onError={onError} />
+          <MicButton app={app} onText={(t) => onVoice.current(t)} onError={onError} />
           <button className="chip" onClick={onOpenPicker} title={`Switch model (${app.platform === 'darwin' ? '⌘K' : 'Ctrl+K'})`}>
             <span className={`dot ${ready ? 'ok' : 'bad'}`} aria-label={ready ? 'Provider ready' : 'Provider needs setup'} />
             {model && <ProviderLogo id={model.providerId} size={13} />}

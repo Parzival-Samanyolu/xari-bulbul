@@ -1,7 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, Notification, session, shell, systemPreferences, type WebContents } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, Notification, powerSaveBlocker, session, shell, systemPreferences, type WebContents } from 'electron'
 import { IPC_EVENT, type UiEvent } from '../shared/ipc'
 import { AppController, type BackgroundNotice } from './controller'
 import { loadShellPath } from './shell-path'
@@ -11,12 +11,44 @@ let win: BrowserWindow | null = null
 let controller: AppController
 
 function send(e: UiEvent) {
+  // State pushes come at every turn start and end, which is when "keep awake while working" changes.
+  if (e.type === 'state') keepAwake(e.state.runningSessions.length > 0)
   if (win && !win.isDestroyed()) win.webContents.send(IPC_EVENT, e)
+}
+
+let blocker: number | null = null
+/** Holds off system sleep per `app.keepAwake`: never, while a chat works, or while the app is open. */
+function keepAwake(working: boolean) {
+  const mode = controller?.getSettings().app.keepAwake ?? 'off'
+  const want = mode === 'always' || (mode === 'working' && working)
+  if (want && blocker == null) blocker = powerSaveBlocker.start('prevent-app-suspension')
+  else if (!want && blocker != null) {
+    powerSaveBlocker.stop(blocker)
+    blocker = null
+  }
+}
+
+/** Launch at login exists on macOS and Windows; Linux desktops use autostart files instead. */
+const loginItems = process.platform === 'darwin' || process.platform === 'win32'
+
+/** Applies the settings that live outside the controller: login item and sleep blocking. */
+function applyDesktopSettings() {
+  const s = controller.getSettings().app
+  if (loginItems && app.isPackaged && app.getLoginItemSettings().openAtLogin !== s.launchAtLogin) app.setLoginItemSettings({ openAtLogin: s.launchAtLogin })
+  keepAwake(controller.state().runningSessions.length > 0)
+}
+
+/** Settings handlers return a new state; the desktop-level ones are applied after each. */
+async function settingsChanged<T>(p: Promise<T> | T): Promise<T> {
+  const r = await p
+  applyDesktopSettings()
+  return r
 }
 
 /** Tell the user about a chat they aren't looking at; clicking opens it. */
 function notify(n: BackgroundNotice) {
-  if (!controller?.getSettings().app.notifications || !Notification.isSupported()) return
+  const s = controller?.getSettings().app
+  if (!s?.notifications || !s.notify[n.kind] || !Notification.isSupported()) return
   const note = new Notification({ title: n.title, body: n.body, silent: false })
   note.on('click', () => {
     if (!win || win.isDestroyed()) createWindow()
@@ -125,21 +157,29 @@ function handle(channel: string, fn: (...args: any[]) => unknown) {
 function registerIpc() {
   const c = controller
   handle('getState', () => c.state())
-  handle('settings.set', (s) => c.setSettings(s))
-  handle('settings.reset', () => c.resetSettings())
+  handle('settings.set', (s) => settingsChanged(c.setSettings(s)))
+  handle('settings.reset', () => settingsChanged(c.resetSettings()))
   handle('settings.export', async () => {
-    const r = await dialog.showSaveDialog(win!, { defaultPath: 'harness-settings.json', filters: [{ name: 'JSON', extensions: ['json'] }] })
+    const r = await dialog.showSaveDialog(win!, { defaultPath: 'xari-bulbul-settings.json', filters: [{ name: 'JSON', extensions: ['json'] }] })
     if (r.canceled || !r.filePath) return false
-    fs.writeFileSync(r.filePath, JSON.stringify(c.getSettings(), null, 2))
+    fs.writeFileSync(r.filePath, JSON.stringify(c.exportSettings(), null, 2))
     return true
   })
   handle('settings.import', async () => {
     const r = await dialog.showOpenDialog(win!, { properties: ['openFile'], filters: [{ name: 'JSON', extensions: ['json'] }] })
     if (r.canceled || !r.filePaths[0]) return null
-    return c.setSettings(JSON.parse(fs.readFileSync(r.filePaths[0], 'utf8')))
+    let raw: unknown
+    try {
+      raw = JSON.parse(fs.readFileSync(r.filePaths[0], 'utf8'))
+    } catch (e) {
+      throw new Error(`That file isn't valid JSON, so nothing was changed. ${(e as Error).message}`)
+    }
+    return settingsChanged(c.importSettings(raw))
   })
   handle('keys.set', (id, key) => c.setKey(id, key))
   handle('providers.test', (id) => c.testProvider(id))
+  handle('providers.probe', (input) => c.probeEndpoint(input))
+  handle('browser.clearLogins', () => c.clearBrowserLogins())
   handle('models.list', (id, refresh) => c.listModels(id, refresh))
   handle('workspace.pick', async () => {
     const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: 'Open project folder' })
@@ -242,6 +282,10 @@ app.whenReady().then(async () => {
   controller.startSchedules()
   createWindow()
   initUpdater(send, controller.getSettings().app.autoUpdate)
+  applyDesktopSettings()
+  // Session retention: once at launch, then daily while the app stays open.
+  controller.pruneSessions()
+  setInterval(() => controller.pruneSessions(), 6 * 60 * 60 * 1000).unref()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

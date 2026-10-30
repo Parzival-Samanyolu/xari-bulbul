@@ -137,7 +137,7 @@ export class AnthropicProvider implements Provider {
 
   async *chat(req: ChatRequest): AsyncIterable<StreamEvent> {
     if (!this.apiKey && this.config.requiresKey) {
-      throw new ProviderError(`No API key set for ${this.name}. Add one in Settings → Providers & Keys.`)
+      throw new ProviderError(`No API key set for ${this.name}. Add one in Settings › Providers › API keys.`)
     }
     const info = await this.modelInfo(req.model, req.signal)
     const caps = info?.capabilities

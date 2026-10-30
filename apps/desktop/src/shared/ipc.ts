@@ -196,6 +196,8 @@ export interface AppState {
   schedules: ScheduleStatus[]
   /** The browser the browser tools drive (from tools.browser.path or detection), or null if none was found. */
   browser: string | null
+  /** A kept browser profile (saved site logins) exists in the data folder. */
+  browserLogins: boolean
   /** How the mic button transcribes; null hides it. */
   voice: VoiceState
   paths: { data: string; sessions: string; usage: string }
@@ -229,6 +231,26 @@ export interface AttachmentInput {
   size?: number
 }
 
+/** An endpoint to try before it's saved (Settings › Providers › Custom endpoints). */
+export interface EndpointProbeInput {
+  /** The provider id; a saved key for it is used when `key` is blank. */
+  id?: string
+  name?: string
+  baseUrl: string
+  api: 'auto' | 'openai' | 'anthropic'
+  key?: string
+  /** Also send a 5-token request to this model. */
+  model?: string
+}
+
+export interface EndpointProbe {
+  ok: boolean
+  message: string
+  /** The protocol that answered (what auto-detect picked). */
+  api?: 'openai' | 'anthropic'
+  models: string[]
+}
+
 export interface ProviderTestResult {
   ok: boolean
   message: string
@@ -239,8 +261,11 @@ export interface HarnessApi {
   getState(): Promise<AppState>
   settings: {
     set(settings: Settings): Promise<AppState>
+    /** Defaults for everything; keys, chats and this machine's folders stay. */
     reset(): Promise<AppState>
+    /** Saves settings to a file, without keys or folder paths. */
     export(): Promise<boolean>
+    /** Validates a file and applies it; rejects with the invalid fields named (nothing changes). Null when cancelled. */
     import(): Promise<AppState | null>
   }
   keys: {
@@ -248,6 +273,12 @@ export interface HarnessApi {
   }
   providers: {
     test(providerId: string): Promise<ProviderTestResult>
+    /** Tries an endpoint that isn't saved yet. */
+    probe(input: EndpointProbeInput): Promise<EndpointProbe>
+  }
+  browser: {
+    /** Closes running browsers and deletes the kept profile with its site logins. */
+    clearLogins(): Promise<AppState>
   }
   models: {
     list(providerId: string, refresh?: boolean): Promise<ModelInfo[]>

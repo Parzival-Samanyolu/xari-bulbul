@@ -44,10 +44,11 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
   const input = useRef<HTMLInputElement>(null)
   const list = useRef<HTMLDivElement>(null)
   const dialog = useRef<HTMLDivElement>(null)
-  const { favorites, recent, picker } = app.settings.models
-  const enabled = app.settings.providers.filter((p) => p.enabled)
-  // Providers without a key would each add an empty "needs an API key" group; show them only when nothing is set up yet.
-  const providers = enabled.some((p) => app.ready[p.id]) ? enabled.filter((p) => app.ready[p.id]) : enabled
+  const { picker } = app.settings.models
+  // Only connected providers (a key, or keyless and on) appear; the rest live in Settings › Providers › API keys.
+  const providers = app.settings.providers.filter((p) => app.ready[p.id])
+  const favorites = app.settings.models.favorites.filter((r) => app.ready[r.providerId])
+  const recent = app.settings.models.recent.filter((r) => app.ready[r.providerId])
   const current = onPick ? undefined : app.session?.meta.model
   const favSet = new Set(favorites.map(key))
 
@@ -119,7 +120,8 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
   }
   const toggleFav = (m: ModelInfo) => {
     const ref = refOf(m)
-    const next = favSet.has(key(ref)) ? favorites.filter((f) => key(f) !== key(ref)) : [...favorites, ref]
+    const all = app.settings.models.favorites
+    const next = favSet.has(key(ref)) ? all.filter((f) => key(f) !== key(ref)) : [...all, ref]
     api.settings.set({ ...app.settings, models: { ...app.settings.models, favorites: next } }).then(onState, onError)
   }
 
@@ -223,7 +225,6 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
                   {id && (
                     <>
                       {r.total ? <span className="muted small">{r.shown === r.total ? r.total : `${r.shown} of ${r.total}`}</span> : null}
-                      {!app.ready[id] && <span className="warn small">needs an API key</span>}
                       {loading[id] && <span className="muted small">loading…</span>}
                       {errors[id] && <span className="warn small">{errors[id]}</span>}
                       <button className="link small" onClick={() => load(id, true)}>
@@ -274,7 +275,12 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
               </div>
             )
           })}
-          {noMatches && (
+          {providers.length === 0 && (
+            <div className="picker-empty">
+              <p>No provider is connected yet. Add an API key or a local endpoint in Settings › Providers.</p>
+            </div>
+          )}
+          {noMatches && providers.length > 0 && (
             <div className="picker-empty">
               <p>No models match "{q.trim()}".</p>
               <div className="inline">

@@ -37,7 +37,7 @@ export function Welcome({ app, onState, onError, onSettings }: Props) {
       {!app.settings.app.layoutChosen && (
         <section className="layout-card" aria-labelledby="layout-q">
           <h2 id="layout-q">Which layout?</h2>
-          <p className="muted small">You can change it later in Settings → Appearance.</p>
+          <p className="muted small">You can change it later in Settings › Appearance.</p>
           <LayoutPicker value={layout} onChange={setLayout} />
           <div className="layout-actions">
             <button className="btn primary" onClick={() => api.settings.set(withLayout(app.settings, layout)).then(onState, onError)}>

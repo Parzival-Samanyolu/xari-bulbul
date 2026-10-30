@@ -5,7 +5,9 @@ import { Chat } from './components/Chat'
 import { Composer } from './components/Composer'
 import { ModelPicker } from './components/ModelPicker'
 import { Resizer, RightPanel } from './components/Panels'
-import { SettingsView } from './components/Settings'
+import { SettingsOverlay } from './components/settings/SettingsOverlay'
+import { resolvePage } from './components/settings/tree'
+import { isMac, matchesShortcut } from './lib/shortcuts'
 import { Sidebar } from './components/Sidebar'
 import { StatusBar } from './components/StatusBar'
 import { TerminalPanel } from './components/Terminal'
@@ -38,7 +40,7 @@ export interface Notice {
 
 /** Point notices at the settings tab that resolves them. */
 function fixFor(text: string): Notice['fix'] {
-  if (/api key|providers & keys|unauthori[sz]ed|\b401\b|turned off/i.test(text)) return 'providers'
+  if (/api key|providers ›|unauthori[sz]ed|\b401\b|turned off/i.test(text)) return 'providers'
   if (/budget/i.test(text)) return 'usage'
   if (/max steps/i.test(text)) return 'agent'
   return undefined
@@ -185,8 +187,8 @@ interface PendingApproval {
 export function App() {
   const [{ app, lives }, dispatch] = useReducer(reducer, { app: null, lives: {} })
   const [pending, setPending] = useState<PendingApproval[]>([])
-  const [view, setView] = useState<'chat' | 'settings'>('chat')
-  const [settingsTab, setSettingsTab] = useState<string>('providers')
+  /** The open settings page, or null while Settings is closed. */
+  const [settingsPage, setSettingsPage] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [update, setUpdate] = useState<UpdateStatus>({ state: 'idle' })
   // Right (files, changes) and bottom (terminal) panels. Elite restores them open; Basic starts with them closed.
@@ -236,6 +238,8 @@ export function App() {
     root.dataset.platform = app?.platform
     root.style.setProperty('--font-size', `${appearance.fontSize}px`)
     root.style.setProperty('--mono', appearance.codeFontFamily)
+    if (appearance.fontFamily) root.style.setProperty('--sans', appearance.fontFamily)
+    else root.style.removeProperty('--sans')
     media.addEventListener('change', apply)
     return () => media.removeEventListener('change', apply)
   }, [appearance, app?.platform])
@@ -272,35 +276,37 @@ export function App() {
     api.agent.respond(sessionId, approval.callId, a)
   }
 
-  // Global shortcuts.
+  // Global shortcuts (rebindable ones come from Settings › Keyboard shortcuts).
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const mod = e.metaKey || e.ctrlKey
-      if (mod && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'j' && app?.workspace) {
-        // ⌘/Ctrl+J: terminal panel.
+      if (!app) return
+      const settings = app.settings
+      const mac = isMac(app.platform)
+      const is = (id: Parameters<typeof matchesShortcut>[2]) => matchesShortcut(e, settings, id, mac)
+      const mod = mac ? e.metaKey : e.ctrlKey
+      if (is('settings')) {
+        e.preventDefault()
+        setSettingsPage((p) => (p ? null : resolvePage(undefined)))
+      } else if (settingsPage) {
+        // Settings is open and handles its own keys.
+        return
+      } else if (is('terminal') && app.workspace) {
         e.preventDefault()
         toggleBottom()
-      } else if (mod && e.altKey && e.code === 'KeyB' && app?.workspace) {
-        // ⌥⌘B / Ctrl+Alt+B: files and changes panel.
+      } else if (is('filesPanel') && app.workspace) {
         e.preventDefault()
         toggleRight()
-      } else if (mod && e.key.toLowerCase() === 'k') {
+      } else if (is('modelPicker')) {
         e.preventDefault()
         setPickerOpen((o) => !o)
-      } else if (mod && e.key === ',') {
-        e.preventDefault()
-        setView((v) => (v === 'settings' ? 'chat' : 'settings'))
-      } else if (mod && e.key.toLowerCase() === 'n' && app?.workspace) {
+      } else if (is('newChat') && app.workspace) {
         e.preventDefault()
         api.sessions.create().then(setState, fail)
-      } else if (mod && /^[1-9]$/.test(e.key) && app?.sessions[Number(e.key) - 1]) {
+      } else if (mod && !e.altKey && !e.shiftKey && /^Digit[1-9]$/.test(e.code) && app.sessions[Number(e.code.slice(5)) - 1]) {
         // ⌘/Ctrl+1–9 jumps to the nth chat in the sidebar.
         e.preventDefault()
-        const target = app.sessions[Number(e.key) - 1]
-        if (target.id !== app.session?.meta.id) {
-          setView('chat')
-          api.sessions.open(target.id).then(setState, fail)
-        }
+        const target = app.sessions[Number(e.code.slice(5)) - 1]
+        if (target.id !== app.session?.meta.id) api.sessions.open(target.id).then(setState, fail)
       } else if (e.key === 'Escape' && approval && !pickerOpen) {
         // Esc denies this chat's pending approval.
         e.preventDefault()
@@ -312,14 +318,12 @@ export function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [app?.workspace, app?.running, app?.sessions, app?.session?.meta.id, approval, pickerOpen, setState, fail, toggleBottom, toggleRight])
+  }, [app?.settings, app?.platform, app?.workspace, app?.running, app?.sessions, app?.session?.meta.id, approval, pickerOpen, settingsPage, setState, fail, toggleBottom, toggleRight])
 
   if (!app) return <div className="boot">Loading…</div>
 
-  const openSettings = (tab = 'providers') => {
-    setSettingsTab(tab)
-    setView('settings')
-  }
+  /** Opens Settings at a page id, or an older tab id ('providers', 'usage', …). */
+  const openSettings = (tab?: string) => setSettingsPage(resolvePage(tab))
   const anyReady = Object.values(app.ready).some(Boolean)
   const welcome = !app.workspace || !anyReady || !app.settings.app.layoutChosen
   const showRight = !!app.workspace && !!panels?.rightOpen
@@ -327,11 +331,9 @@ export function App() {
 
   return (
     <div className="app">
-      <Sidebar app={app} onState={setState} onError={fail} onSettings={() => openSettings()} settingsOpen={view === 'settings'} onChat={() => setView('chat')} />
+      <Sidebar app={app} onState={setState} onError={fail} onSettings={() => openSettings()} settingsOpen={!!settingsPage} onChat={() => setSettingsPage(null)} />
       <main className="main">
-        {view === 'settings' ? (
-          <SettingsView app={app} tab={settingsTab} onTab={setSettingsTab} onState={setState} onError={fail} onClose={() => setView('chat')} update={update} />
-        ) : welcome ? (
+        {welcome ? (
           <Welcome app={app} onState={setState} onError={fail} onSettings={openSettings} />
         ) : (
           <>
@@ -374,6 +376,7 @@ export function App() {
         panels={app.workspace && panels ? { bottom: showBottom, right: showRight, onBottom: toggleBottom, onRight: toggleRight } : undefined}
       />
       {pickerOpen && <ModelPicker app={app} onClose={() => setPickerOpen(false)} onState={setState} onError={fail} />}
+      {settingsPage && <SettingsOverlay app={app} page={settingsPage} onPage={setSettingsPage} onState={setState} onClose={() => setSettingsPage(null)} update={update} />}
     </div>
   )
 }

@@ -1,9 +1,9 @@
 import { useEffect, useId, useState, type ReactNode } from 'react'
 
-export function Section({ title, description, children }: { title: string; description?: ReactNode; children?: ReactNode }) {
+export function Section({ title, description, children }: { title?: string; description?: ReactNode; children?: ReactNode }) {
   return (
-    <section className="s-section">
-      <h3>{title}</h3>
+    <section className="s-section" data-row={title}>
+      {title && <h3>{title}</h3>}
       {description && <p className="muted small">{description}</p>}
       {children && <div className="s-rows">{children}</div>}
     </section>
@@ -13,11 +13,12 @@ export function Section({ title, description, children }: { title: string; descr
 /**
  * A labelled settings row. `labelFor` links the label to a single input by id; otherwise the
  * control area is a group named by the label, so screen readers announce what it's for.
+ * `data-row` (the label, or `search`) is what Settings search scrolls to.
  */
-export function Row({ label, hint, children, wide, labelFor }: { label: ReactNode; hint?: ReactNode; children: ReactNode; wide?: boolean; labelFor?: string }) {
+export function Row({ label, hint, children, wide, labelFor, search }: { label: ReactNode; hint?: ReactNode; children: ReactNode; wide?: boolean; labelFor?: string; search?: string }) {
   const id = useId()
   return (
-    <div className={`s-row ${wide ? 'wide' : ''}`}>
+    <div className={`s-row ${wide ? 'wide' : ''}`} data-row={search ?? (typeof label === 'string' ? label : undefined)}>
       <div className="s-label">
         {labelFor ? <label htmlFor={labelFor}>{label}</label> : <div id={`${id}-l`}>{label}</div>}
         {hint && (
@@ -33,9 +34,9 @@ export function Row({ label, hint, children, wide, labelFor }: { label: ReactNod
   )
 }
 
-export function Toggle({ value, onChange, label }: { value: boolean; onChange: (v: boolean) => void; label?: string }) {
+export function Toggle({ value, onChange, label, disabled }: { value: boolean; onChange: (v: boolean) => void; label?: string; disabled?: boolean }) {
   return (
-    <button role="switch" aria-checked={value} aria-label={label} className={`toggle ${value ? 'on' : ''}`} onClick={() => onChange(!value)}>
+    <button role="switch" aria-checked={value} aria-label={label} disabled={disabled} className={`toggle ${value ? 'on' : ''}`} onClick={() => onChange(!value)}>
       <span />
     </button>
   )
@@ -102,7 +103,8 @@ export function NumberField({
         placeholder={placeholder}
         onChange={(e) => setText(e.target.value)}
         onBlur={commit}
-        onKeyDown={(e) => e.key === 'Enter' && commit()}
+        // Enter commits here instead of submitting a surrounding form with the old value.
+        onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), commit())}
       />
       {suffix && <span className="muted small">{suffix}</span>}
     </span>

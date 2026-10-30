@@ -228,6 +228,14 @@ describe('memory review', () => {
     await vi.waitFor(() => expect(title.store.list('global', title.dir)).toEqual(['Likes tea']))
   })
 
+  it('is skipped when saving after each turn is turned off', async () => {
+    const { provider, agent, settings } = setup([[{ type: 'text', delta: 'ok' }]])
+    settings.memory.autoReview = false
+    await agent.send('hello, I like tea')
+    await new Promise((r) => setTimeout(r, 10))
+    expect(provider.requests).toHaveLength(1)
+  })
+
   it('is skipped when memory is off', async () => {
     const { provider, agent } = setup([[{ type: 'text', delta: 'ok' }]], { enabled: false })
     await agent.send('hello')

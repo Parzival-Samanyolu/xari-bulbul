@@ -21,7 +21,7 @@ export const rememberTool = defineTool({
   readOnly: false,
   subject: (i) => `${i.scope}: ${i.fact}`,
   async execute(input, ctx) {
-    if (!ctx.memory) return { content: 'Memory is off (Settings → Memory).', isError: true }
+    if (!ctx.memory) return { content: 'Memory is off (Settings › Memory & Context).', isError: true }
     try {
       ctx.memory.add(input.scope, input.fact)
       return { content: `Saved to ${input.scope} memory.` }

@@ -26,7 +26,7 @@ type UserMessage = Extract<ChatMessage, { role: 'user' }>
 type AssistantMessageT = Extract<ChatMessage, { role: 'assistant' }>
 type ToolMessage = Extract<ChatMessage, { role: 'tool' }>
 
-const FIX_LABEL = { providers: 'Open Providers & Keys', usage: 'Open Usage & Budgets', agent: 'Open Agent settings' } as const
+const FIX_LABEL = { providers: 'Open API keys', usage: 'Open Usage', agent: 'Open Agent limits' } as const
 
 export function Chat({ app, live, onDismiss, onSettings, approval, question, onRetry, onContinue, onRevert, onEdit, onUndoMemory }: Props) {
   const session = app.session

@@ -2,7 +2,6 @@
 // Pure functions with no Node imports, so the renderer can use them too (`@harness/core/catalog`).
 import type { ModelInfo, ModelRef } from '../types.js'
 export { EFFORT_LEVELS, EFFORT_LABELS, batchMode, fastMode, type ReasoningEffort } from './effort.js'
-export { RECOMMENDED, TIER_LABELS, type RecommendedModel, type RecommendedTier } from './recommended.js'
 
 export type ModelSort = 'newest' | 'name' | 'context' | 'price'
 export const MODEL_SORTS: ModelSort[] = ['newest', 'name', 'context', 'price']

@@ -88,6 +88,17 @@ export class SessionStore {
     fs.rmSync(this.file(id), { force: true })
   }
 
+  /** Deletes chats last changed before `before` (ms since epoch), except those `keep` returns true for. Returns the deleted ids. */
+  prune(before: number, keep: (id: string) => boolean = () => false): string[] {
+    const gone: string[] = []
+    for (const meta of this.list()) {
+      if (meta.updatedAt >= before || keep(meta.id)) continue
+      this.delete(meta.id)
+      gone.push(meta.id)
+    }
+    return gone
+  }
+
   deleteAll(): void {
     for (const name of fs.readdirSync(this.dir)) if (name.endsWith('.json')) fs.rmSync(path.join(this.dir, name))
   }

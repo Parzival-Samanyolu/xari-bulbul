@@ -1,5 +1,6 @@
 export * from './types.js'
 export * from './settings/schema.js'
+export { exportSettings, importSettings, resetSettings, type ImportResult } from './settings/transfer.js'
 export * from './providers/types.js'
 export { OpenAICompatProvider } from './providers/openai-compat.js'
 export { ProviderRegistry, type KeyLookup } from './providers/registry.js'

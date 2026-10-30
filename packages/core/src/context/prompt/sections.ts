@@ -29,7 +29,7 @@ export interface PromptContext {
 
 export interface PromptSection {
   id: string
-  /** Part of the replaceable base (Settings → Agent → System prompt override). */
+  /** Part of the replaceable base (Settings › Chat › System prompt override). */
   base?: boolean
   when?: (c: PromptContext) => boolean
   render: (c: PromptContext) => string

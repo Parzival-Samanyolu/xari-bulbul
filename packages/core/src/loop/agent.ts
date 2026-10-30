@@ -94,6 +94,8 @@ export interface AgentOptions {
   jobs?: JobRegistry
   /** Looks up stored secrets (web search keys). */
   secret?: (id: string) => string | undefined
+  /** Browser profile kept between chats when `tools.browser.keepLogins` is on. Without it every browser gets a throwaway profile. */
+  browserProfileDir?: string
 }
 
 /** A tiny counting semaphore: `await acquire()` returns the release function. */
@@ -181,7 +183,7 @@ export class Agent {
   updateSettings(settings: Settings, tools?: Tool[]): void {
     const b = settings.tools.browser
     // A different browser or window mode takes effect on the next browser call.
-    if (this.browser && (!b.enabled || b.path !== this.browser.options.path || b.headless !== this.browser.options.headless)) this.closeBrowser()
+    if (this.browser && (!b.enabled || b.path !== this.browser.options.path || b.headless !== this.browser.options.headless || this.profileDir(b) !== this.browser.options.profileDir)) this.closeBrowser()
     this.settings = settings
     if (tools) this.tools = tools
     this.o.permissions.update({ ...settings.permissions, mode: this.o.permissions.mode })
@@ -252,10 +254,19 @@ export class Agent {
     return b.enabled && !!findBrowser(b.path)
   }
 
+  private profileDir(b: Settings['tools']['browser']): string | undefined {
+    return b.keepLogins ? this.o.browserProfileDir : undefined
+  }
+
+  /** Closes this chat's browser, e.g. before its saved profile is deleted. */
+  closeBrowserNow(): void {
+    this.closeBrowser()
+  }
+
   private browserAccess(): BrowserAccess | undefined {
     if (!this.browserOn) return undefined
     const b = this.settings.tools.browser
-    const host = () => (this.browser ??= new BrowserHost({ path: b.path, headless: b.headless }))
+    const host = () => (this.browser ??= new BrowserHost({ path: b.path, headless: b.headless, profileDir: this.profileDir(b) }))
     return {
       page: (signal) => host().getPage(signal),
       running: !!this.browser?.running,
@@ -472,7 +483,7 @@ export class Agent {
         if (!budget.ok) {
           const msg = `${budget.which === 'session' ? 'Session' : 'Daily'} budget reached ($${budget.spent.toFixed(4)} of $${budget.limit.toFixed(2)}).`
           if (this.settings.usage.budgetAction === 'stop') {
-            this.emit({ type: 'notice', level: 'warn', text: `${msg} Stopping. Raise the limit in Settings → Usage.` })
+            this.emit({ type: 'notice', level: 'warn', text: `${msg} Stopping. Raise the limit in Settings › Usage.` })
             reason = 'budget'
             break
           }
@@ -521,7 +532,7 @@ export class Agent {
         this.emit({
           type: 'notice',
           level: 'warn',
-          text: `Stopped after ${this.settings.agent.maxStepsPerTurn} steps (Settings → Agent → Max steps). Send "continue" to keep going.`,
+          text: `Stopped after ${this.settings.agent.maxStepsPerTurn} steps (Settings › Advanced › Agent limits). Send "continue" to keep going.`,
         })
       }
     } catch (err) {
@@ -536,7 +547,7 @@ export class Agent {
       this.emit({ type: 'turn_end', reason })
     }
     // Runs after the turn has ended, so it never holds it up.
-    if (reason === 'done' && this.memoryOn && !this.o.subagent) void this.reviewMemory()
+    if (reason === 'done' && this.memoryOn && this.settings.memory.autoReview && !this.o.subagent) void this.reviewMemory()
     return reason
   }
 

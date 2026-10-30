@@ -216,12 +216,12 @@ export async function loadExtensions(
     if (root.plugin) {
       // A plugin loads only as installed: changed files could be code nobody reviewed.
       if (!fs.existsSync(root.dir)) {
-        result.errors.push({ file: root.dir, error: `Plugin "${root.plugin.id}" is missing. Reinstall or remove it in Settings → Plugins.` })
+        result.errors.push({ file: root.dir, error: `Plugin "${root.plugin.id}" is missing. Reinstall or remove it in Settings › Plugins.` })
         continue
       }
       const changed = changedPluginFiles(root.dir, root.plugin.files)
       if (changed.length) {
-        result.errors.push({ file: root.dir, error: `Plugin "${root.plugin.id}" was not loaded because files changed after it was installed (${changed.join(', ')}). Reinstall it in Settings → Plugins.` })
+        result.errors.push({ file: root.dir, error: `Plugin "${root.plugin.id}" was not loaded because files changed after it was installed (${changed.join(', ')}). Reinstall it in Settings › Plugins.` })
         continue
       }
       const listed = new Set(root.plugin.files.map((f) => path.join(root.dir, ...f.path.split('/'))))

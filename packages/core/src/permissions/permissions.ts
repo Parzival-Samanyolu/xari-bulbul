@@ -105,7 +105,7 @@ export class Permissions {
   check(tool: Tool, subject: string): Verdict {
     const { mode, allow, deny } = this.config
     if (deny.some((r) => ruleMatches(r, tool, subject, this.cwd))) {
-      return { decision: 'deny', reason: `Blocked by a deny rule in Settings → Permissions.` }
+      return { decision: 'deny', reason: `Blocked by a deny rule in Settings › Safety.` }
     }
     if (tool.readOnly) return { decision: 'allow' }
     if (mode === 'plan') {

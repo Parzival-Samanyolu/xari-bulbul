@@ -43,6 +43,11 @@ import {
   pushRecent,
   parseSettings,
   saveSettingsFile,
+  exportSettings,
+  importSettings,
+  resetSettings,
+  guessProviderApi,
+  ProviderConfigSchema,
   projectExtDir,
   PLUGIN_CATALOG,
   activePlugins,
@@ -76,7 +81,7 @@ import {
   type Tool,
   type WhisperModelId,
 } from '@harness/core'
-import type { AppState, AttachmentInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, VoiceDownload, VoiceState } from '../shared/ipc'
+import type { AppState, AttachmentInput, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, VoiceDownload, VoiceState } from '../shared/ipc'
 import { Scheduler } from './scheduler'
 import { SecretStore } from './secrets'
 import { Terminals } from './terminals'
@@ -100,9 +105,13 @@ interface Running {
 
 export interface BackgroundNotice {
   sessionId: string
+  /** Which `app.notify` switch decides whether it's shown. */
+  kind: keyof Settings['app']['notify']
   title: string
   body: string
 }
+
+const DAY_MS = 86_400_000
 
 /**
  * Owns all engine state for the app. Every open chat has its own agent, so chats keep
@@ -204,7 +213,8 @@ export class AppController {
     return this.settings
   }
 
-  async setSettings(next: unknown): Promise<AppState> {
+  /** `prune: false` skips deleting old chats when the retention setting changed (import, reset). */
+  async setSettings(next: unknown, opts: { prune?: boolean } = {}): Promise<AppState> {
     const prev = this.settings
     this.settings = parseSettings(next)
     this.saveSettings()
@@ -217,13 +227,51 @@ export class AppController {
     }
     if (JSON.stringify(prev.mcp) !== JSON.stringify(this.settings.mcp)) void this.mcp.sync(this.settings.mcp.servers)
     if (JSON.stringify(prev.schedules) !== JSON.stringify(this.settings.schedules)) this.scheduler.arm()
+    if (opts.prune !== false && prev.sessions.retentionDays !== this.settings.sessions.retentionDays) this.pruneSessions()
     for (const r of this.agents.values()) r.agent.updateSettings(this.settings)
     return this.state()
   }
 
+  /** Defaults for everything; keys, chats, this machine's folders and plugin MCP servers stay. */
   async resetSettings(): Promise<AppState> {
-    const keep = { app: this.settings.app }
-    return this.setSettings(keep)
+    return this.setSettings(resetSettings(this.settings), { prune: false })
+  }
+
+  /** Settings for a file: no keys (they never live in settings), folders or secret-looking MCP values. */
+  exportSettings(): Record<string, unknown> {
+    return exportSettings(this.settings)
+  }
+
+  /** Applies an imported file only if every field is valid; otherwise throws with the problems listed. */
+  async importSettings(raw: unknown): Promise<AppState> {
+    const r = importSettings(raw, this.settings)
+    if (!r.ok) throw new Error(`That file isn't valid settings, so nothing was changed. ${r.errors.join(' · ')}`)
+    return this.setSettings(r.settings, { prune: false })
+  }
+
+  // ---------- retention ----------
+
+  /** Deletes chats older than `sessions.retentionDays`, except open, running or waiting ones. */
+  pruneSessions(now = Date.now()): number {
+    const days = this.settings.sessions.retentionDays
+    if (!days) return 0
+    const gone = this.store.prune(now - days * DAY_MS, (id) => this.agents.has(id) || this.awaiting(id))
+    for (const id of gone) this.index?.delete(id)
+    if (gone.length) this.pushState()
+    return gone.length
+  }
+
+  // ---------- browser logins ----------
+
+  private get browserProfileDir(): string {
+    return path.join(this.dataDir, 'browser-profile')
+  }
+
+  /** Closes every chat's browser and deletes the kept profile (cookies, saved site logins). */
+  clearBrowserLogins(): AppState {
+    for (const r of this.agents.values()) r.agent.closeBrowserNow()
+    fs.rmSync(this.browserProfileDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
+    return this.state()
   }
 
   // ---------- providers / keys ----------
@@ -285,6 +333,36 @@ export class AppController {
     }
   }
 
+  /**
+   * Tries an endpoint that isn't saved yet: lists its models and, when a model is given, sends a
+   * 5-token request. With api 'auto' the protocol the URL suggests is tried first, then the other.
+   */
+  async probeEndpoint(input: EndpointProbeInput): Promise<EndpointProbe> {
+    if (!/^https?:\/\/\S+$/.test(input?.baseUrl?.trim() ?? '')) return { ok: false, message: 'Enter an http:// or https:// URL.', models: [] }
+    const id = input.id?.trim() || 'probe'
+    // A blank key falls back to the one already saved for this id (editing an endpoint).
+    const key = input.key?.trim() || this.secrets.get(id)
+    const order: ('openai' | 'anthropic')[] = input.api === 'auto' ? (guessProviderApi(input.baseUrl) === 'anthropic' ? ['anthropic', 'openai'] : ['openai', 'anthropic']) : [input.api]
+    let last = ''
+    for (const api of order) {
+      const config = ProviderConfigSchema.parse({ id, name: input.name?.trim() || id, baseUrl: input.baseUrl.trim(), requiresKey: false, api })
+      const registry = new ProviderRegistry([config], () => key, { retries: 0 })
+      try {
+        const models = (await registry.models(id, { refresh: true })).map((m) => m.id)
+        if (input.model?.trim()) {
+          for await (const _ of registry.get(id).chat({ model: input.model.trim(), maxTokens: 5, messages: [{ role: 'user', content: 'Say OK' }] })) {
+            /* drain */
+          }
+          return { ok: true, api, models, message: `Connected. ${models.length} models listed; a test request to ${input.model.trim()} worked.` }
+        }
+        return { ok: true, api, models, message: models.length ? `Connected. ${models.length} models listed.` : 'Connected, but the endpoint lists no models. Type the model id.' }
+      } catch (e) {
+        last = (e as Error).message
+      }
+    }
+    return { ok: false, message: last || 'No answer from that URL.', models: [] }
+  }
+
   // ---------- voice ----------
 
   private voiceState(): VoiceState {
@@ -294,7 +372,7 @@ export class AppController {
     const status = localWhisperStatus(this.dataDir)
     const model = pickWhisperModel(status, this.settings.voice.localModel)
     return {
-      engine: chooseVoiceEngine(this.settings.voice.engine, { local: !!(status.binary && model), provider }),
+      engine: this.settings.voice.enabled ? chooseVoiceEngine(this.settings.voice.engine, { local: !!(status.binary && model), provider }) : null,
       provider,
       local: { ...status, model },
       download: this.voiceDownload?.progress ?? null,
@@ -305,16 +383,18 @@ export class AppController {
   async transcribe(audio: Uint8Array, mediaType: string): Promise<string> {
     if (!(audio instanceof Uint8Array)) throw new Error('No recording received.')
     const voice = this.voiceState()
+    if (!this.settings.voice.enabled) throw new Error('Voice input is turned off in Settings › Voice.')
     if (voice.engine === 'local') {
       if (!/^audio\/(x-)?wav\b/.test(mediaType)) throw new Error('Local transcription needs a WAV recording.')
-      return runWhisperCli({ bin: voice.local.binary!.path, model: whisperModelPath(this.dataDir, voice.local.model as WhisperModelId), wav: audio, signal: AbortSignal.timeout(300_000) })
+      return runWhisperCli({ bin: voice.local.binary!.path, model: whisperModelPath(this.dataDir, voice.local.model as WhisperModelId), wav: audio, language: this.settings.voice.language.trim(), signal: AbortSignal.timeout(300_000) })
     }
     const ref = this.settings.models.transcription
     const config = ref && this.settings.providers.find((p) => p.id === ref.providerId)
-    if (!ref?.modelId.trim() || !config) throw new Error('Choose a transcription model in Settings → Models, or download a local speech model.')
+    if (!ref?.modelId.trim() || !config) throw new Error('Choose a transcription model in Settings › Voice › Speech to text, or download a local speech model.')
     if (!canTranscribe(config)) throw new Error(`${config.name} has no transcription endpoint.`)
-    if (!this.isReady(ref.providerId)) throw new Error(`Add a ${config.name} API key in Settings → Providers & Keys.`)
-    return transcribe({ provider: config, apiKey: this.secrets.get(ref.providerId), model: ref.modelId.trim(), audio, mediaType }, { signal: AbortSignal.timeout(120_000) })
+    if (!this.isReady(ref.providerId)) throw new Error(`Add a ${config.name} API key in Settings › Providers › API keys.`)
+    const language = this.settings.voice.language.trim() || undefined
+    return transcribe({ provider: config, apiKey: this.secrets.get(ref.providerId), model: ref.modelId.trim(), audio, mediaType, language }, { signal: AbortSignal.timeout(120_000) })
   }
 
   /** Fetches whisper.cpp (if this platform has a published build and none is installed) and the chosen model. */
@@ -600,10 +680,10 @@ export class AppController {
   // ---------- workspace & sessions ----------
 
   /** Opens a folder (adding it to the sidebar) and shows its most recent chat. */
-  async setWorkspace(dir: string): Promise<AppState> {
+  async setWorkspace(dir: string, opts: { resume?: boolean } = {}): Promise<AppState> {
     if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) throw new Error(`Not a folder: ${dir}`)
     const cwd = await this.enterFolder(dir)
-    const latest = this.store.list({ cwd })[0]
+    const latest = opts.resume === false ? undefined : this.store.list({ cwd })[0]
     const session = latest ? this.store.load(latest.id) : null
     this.activate(session ?? newSession(cwd, this.settings.models.default))
     return this.state()
@@ -661,7 +741,7 @@ export class AppController {
     if (!open.length && last) open = [last]
     this.settings = { ...this.settings, app: { ...app, openWorkspaces: open } }
     const start = last && open.includes(last) ? last : open[0]
-    if (start) await this.setWorkspace(start).catch(() => {})
+    if (start) await this.setWorkspace(start, { resume: app.resumeLastChat }).catch(() => {})
   }
 
   private activate(session: Session) {
@@ -694,6 +774,7 @@ export class AppController {
       skills: own?.skills ?? this.ext.skills,
       sessions: { list: (opts) => this.sessionMetas(opts?.cwd), load: (sid) => this.store.load(sid) },
       secret: (id) => this.secrets.get(id),
+      browserProfileDir: this.browserProfileDir,
       onSave: (s) => {
         if (!s.messages.length || this.removed.has(id)) return
         this.store.save(s)
@@ -705,13 +786,13 @@ export class AppController {
           // Call ids are only unique within a chat (providers reuse ids like "call_0").
           this.pending.set(`${id}:${request.callId}`, { sessionId: id, resolve })
           this.send({ type: 'permission', sessionId: id, request })
-          if (id !== this.activeId) this.notify({ sessionId: id, title: agent.session.meta.title, body: `Needs approval: ${request.tool} ${request.subject}`.trim() })
+          if (id !== this.activeId) this.notify({ sessionId: id, kind: 'approval', title: agent.session.meta.title, body: `Needs approval: ${request.tool} ${request.subject}`.trim() })
           this.pushState()
         }),
       askUser: (request) =>
         new Promise<string>((resolve) => {
           this.questions.set(`${id}:${request.callId}`, { sessionId: id, request, resolve })
-          if (id !== this.activeId) this.notify({ sessionId: id, title: agent.session.meta.title, body: `Has a question: ${request.question}` })
+          if (id !== this.activeId) this.notify({ sessionId: id, kind: 'question', title: agent.session.meta.title, body: `Has a question: ${request.question}` })
           this.pushState()
         }),
     })
@@ -744,7 +825,7 @@ export class AppController {
       if (sessionId !== this.activeId) {
         const title = this.agents.get(sessionId)?.agent.session.meta.title ?? 'Chat'
         const body = ({ done: 'Finished.', error: 'Stopped with an error.', aborted: 'Stopped.', max_steps: 'Hit the step limit.', budget: 'Hit the budget limit.' })[event.reason]
-        this.notify({ sessionId, title, body })
+        this.notify({ sessionId, kind: event.reason === 'done' ? 'finished' : 'failed', title, body })
       }
     }
     // Titles, session lists and running indicators change at these points.
@@ -825,8 +906,8 @@ export class AppController {
     const { providerId } = this.agent.model
     const config = this.settings.providers.find((p) => p.id === providerId)
     if (!config) throw new Error(`The provider "${providerId}" no longer exists. Pick another model (⌘/Ctrl+K).`)
-    if (!config.enabled) throw new Error(`${config.name} is turned off. Turn it on in Settings → Providers & Keys, or pick another model.`)
-    if (!this.isReady(providerId)) throw new Error(`${config.name} needs an API key. Add one in Settings → Providers & Keys.`)
+    if (!config.enabled) throw new Error(`${config.name} is turned off. Turn it on in Settings › Providers › API keys, or pick another model.`)
+    if (!this.isReady(providerId)) throw new Error(`${config.name} needs an API key. Add one in Settings › Providers › API keys.`)
     return this.agent
   }
 
@@ -1056,6 +1137,7 @@ export class AppController {
       memory: this.memoryInfo(),
       schedules: this.scheduler.status(),
       browser: findBrowser(this.settings.tools.browser.path),
+      browserLogins: fs.existsSync(this.browserProfileDir),
       voice: this.voiceState(),
       mcp: {
         servers: this.mcp.status(),

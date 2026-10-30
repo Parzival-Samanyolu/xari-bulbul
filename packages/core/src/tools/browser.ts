@@ -159,7 +159,12 @@ export interface BrowserOptions {
   /** Executable; detected when empty. */
   path?: string
   headless: boolean
+  /** A profile folder kept after the browser closes (saved logins). Empty = a throwaway profile. */
+  profileDir?: string
 }
+
+/** Kept profiles a running browser holds; Chrome allows one process per profile, so others get a throwaway one. */
+const profilesInUse = new Set<string>()
 
 /** A running browser's DevTools port, and how to stop it. */
 export interface Launched {
@@ -173,8 +178,15 @@ let exitHook = false
 /** Starts the browser with a throwaway profile and waits for its DevTools port. */
 export async function launchBrowser(o: BrowserOptions, signal?: AbortSignal): Promise<Launched> {
   const exe = findBrowser(o.path)
-  if (!exe) throw new Error(o.path ? `No browser at ${o.path}.` : 'No Chrome, Edge, Brave or Chromium found. Set its path in Settings → Tools.')
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'xari-browser-'))
+  if (!exe) throw new Error(o.path ? `No browser at ${o.path}.` : 'No Chrome, Edge, Brave or Chromium found. Set its path in Settings › Browser.')
+  const keep = !!o.profileDir && !profilesInUse.has(path.resolve(o.profileDir))
+  const dir = keep ? path.resolve(o.profileDir!) : fs.mkdtempSync(path.join(os.tmpdir(), 'xari-browser-'))
+  if (keep) {
+    fs.mkdirSync(dir, { recursive: true })
+    // A crashed run leaves its port file behind; reading it would connect to nothing.
+    fs.rmSync(path.join(dir, 'DevToolsActivePort'), { force: true })
+    profilesInUse.add(dir)
+  }
   const args = [
     '--remote-debugging-port=0',
     `--user-data-dir=${dir}`,
@@ -203,7 +215,9 @@ export async function launchBrowser(o: BrowserOptions, signal?: AbortSignal): Pr
       stopped = true
       live.delete(launched)
       killTree(child.pid)
-      const cleanup = () => fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }, () => {})
+      const cleanup = keep
+        ? () => profilesInUse.delete(dir)
+        : () => fs.rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }, () => {})
       if (exited) cleanup()
       else child.once('exit', cleanup)
     },

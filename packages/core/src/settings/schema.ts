@@ -146,6 +146,11 @@ function fixGoogleUrl(p: ProviderConfig): ProviderConfig {
   return p.baseUrl.startsWith(google) && !/\/openai\/?$/.test(p.baseUrl) ? { ...p, baseUrl: `${google}/v1beta/openai` } : p
 }
 
+/** Guess the wire protocol of an endpoint from its URL: Anthropic's Messages API, else OpenAI chat completions. */
+export function guessProviderApi(baseUrl: string): ProviderConfig['api'] {
+  return /anthropic|\/messages\/?$/i.test(baseUrl) ? 'anthropic' : 'openai'
+}
+
 /** A provider can be used when it's enabled and either has a key or doesn't need one. */
 export function providerReady(config: ProviderConfig | undefined, hasKey: boolean): boolean {
   return !!config && config.enabled && (hasKey || !config.requiresKey)
@@ -344,6 +349,8 @@ export const SettingsSchema = z.object({
           path: z.string().default(''),
           /** Run without a window. */
           headless: z.boolean().default(true),
+          /** Keep one browser profile in the data folder, so sites stay signed in between chats. Off = a fresh profile each time, deleted afterwards. */
+          keepLogins: z.boolean().default(false),
         })
         .prefault({}),
     })
@@ -355,6 +362,8 @@ export const SettingsSchema = z.object({
       enabled: z.boolean().default(true),
       /** Size limit per scope (project, global). */
       maxChars: z.number().int().min(500).max(50_000).default(6000),
+      /** After each finished turn, the memory model saves lasting facts (needs a memory or chat naming model). */
+      autoReview: z.boolean().default(true),
     })
     .prefault({}),
 
@@ -376,12 +385,30 @@ export const SettingsSchema = z.object({
 
   schedules: z.array(ScheduleSchema).default([]),
 
+  sessions: z
+    .object({
+      /** Delete chats not touched for this many days. null = keep them forever. */
+      retentionDays: z.number().int().min(1).max(3650).nullable().default(null),
+    })
+    .prefault({}),
+
+  /** Rebound keyboard shortcuts: action id → combo like "Mod+K" (Mod = ⌘ on macOS, Ctrl elsewhere). Missing = the default. */
+  shortcuts: z.record(z.string(), z.string()).default({}),
+
   voice: z
     .object({
       /** auto: the downloaded local model when there is one, else the transcription model under Models. */
       engine: z.enum(['auto', 'local', 'provider']).default('auto'),
       /** Which downloaded whisper.cpp model to use (and to download). */
       localModel: z.enum(['tiny', 'base', 'small']).default('base'),
+      /** Shows the mic button when an engine is set up. */
+      enabled: z.boolean().default(true),
+      /** A recording stops and is transcribed after this long. */
+      maxRecordingSec: z.number().int().min(10).max(600).default(120),
+      /** Spoken language as an ISO 639-1 code ("en", "tr"); empty = detect. */
+      language: z.string().max(8).default(''),
+      /** Send the message as soon as the recording is transcribed, instead of leaving it in the message box. */
+      autoSend: z.boolean().default(false),
     })
     .prefault({}),
 
@@ -400,6 +427,8 @@ export const SettingsSchema = z.object({
     .object({
       theme: z.enum(['system', 'dark', 'light', 'oled', 'sepia', 'contrast']).default('system'),
       fontSize: z.number().int().min(10).max(24).default(14),
+      /** Interface and chat font (a CSS font stack); empty = the system font. */
+      fontFamily: z.string().default(''),
       codeFontFamily: z.string().default('ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'),
       density: z.enum(['comfortable', 'compact']).default('comfortable'),
       expandToolCalls: z.boolean().default(false),
@@ -415,10 +444,26 @@ export const SettingsSchema = z.object({
       autoUpdate: z.boolean().default(true),
       /** System notification when a chat you're not looking at finishes or needs approval. */
       notifications: z.boolean().default(true),
+      /** Which background-chat events notify (when `notifications` is on). */
+      notify: z
+        .object({
+          finished: z.boolean().default(true),
+          /** Stopped with an error, at the step limit or at the budget. */
+          failed: z.boolean().default(true),
+          approval: z.boolean().default(true),
+          question: z.boolean().default(true),
+        })
+        .prefault({}),
+      /** Start the app when you log in (macOS and Windows). */
+      launchAtLogin: z.boolean().default(false),
+      /** On launch, show the last folder's most recent chat; off starts a new chat there. */
+      resumeLastChat: z.boolean().default(true),
+      /** Stop the computer from sleeping: never, while a chat is working, or while the app is open. */
+      keepAwake: z.enum(['off', 'working', 'always']).default('off'),
       lastWorkspace: z.string().nullable().default(null),
       /** Folders shown in the sidebar, in order. */
       openWorkspaces: z.array(z.string()).default([]),
-      /** Provider cards folded shut in Settings → Providers & Keys. */
+      /** Provider cards folded shut in Settings › Providers › API keys. */
       collapsedProviders: z.array(z.string()).default([]),
       recentWorkspaces: z.array(z.string()).default([]),
       /** The layout picker was answered (it shows once). */

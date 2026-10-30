@@ -106,7 +106,7 @@ export class OpenAICompatProvider implements Provider {
   /** `touch` is called whenever bytes arrive, to reset the stall timer. */
   private async *stream(req: ChatRequest, touch: () => void): AsyncIterable<StreamEvent> {
     if (!this.apiKey && this.config.requiresKey) {
-      throw new ProviderError(`No API key set for ${this.name}. Add one in Settings → Providers & Keys.`)
+      throw new ProviderError(`No API key set for ${this.name}. Add one in Settings › Providers › API keys.`)
     }
     const body: Record<string, unknown> = {
       model: req.model,
