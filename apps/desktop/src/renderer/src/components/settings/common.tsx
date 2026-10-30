@@ -15,6 +15,8 @@ export interface PageProps {
   update: UpdateStatus
   /** Closes Settings (e.g. to show a chat a page started). */
   close: () => void
+  /** Opens the bot dialog: a bot's id to edit it, nothing for a new one. */
+  editBot: (id?: string) => void
 }
 
 export const KEY_LINKS: Record<string, string> = {

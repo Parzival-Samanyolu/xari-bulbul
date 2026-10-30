@@ -13,7 +13,7 @@ export function IMessagePage({ app, save, onState, onError }: PageProps) {
   const st = app.imessage
   const [busy, setBusy] = useState<'' | 'test' | 'check'>('')
   const [sent, setSent] = useState(false)
-  const bots = app.settings.experimental.bots ? app.settings.bots.filter((b) => b.enabled) : []
+  const bots = app.settings.botOptions.enabled ? app.settings.bots.filter((b) => b.enabled) : []
   const run = (what: 'test' | 'check', p: () => Promise<typeof app>) => {
     setBusy(what)
     setSent(false)

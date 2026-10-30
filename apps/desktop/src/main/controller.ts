@@ -3,8 +3,13 @@ import path from 'node:path'
 import {
   Agent,
   activeBot,
+  botThreads,
+  chatBot,
   chatDefaults,
-  isImageAvatar,
+  chatPreview,
+  isBotChat,
+  latestBotThread,
+  shownBots,
   McpManager,
   MemoryStore,
   type MemoryFact,
@@ -91,7 +96,7 @@ import {
   type WhisperModelId,
   settingsPath,
 } from '@harness/core'
-import type { AppState, AttachmentInput, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
+import type { AppState, AttachmentInput, BotRow, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
 import { LocalModels } from './local-models'
 import { Scheduler } from './scheduler'
 import { SecretStore } from './secrets'
@@ -168,6 +173,8 @@ export class AppController {
   private index: Map<string, SessionMeta> | null = null
   /** Bot image avatars read so far: path → data URL ('' when unreadable). */
   private avatarCache = new Map<string, string>()
+  /** Bots that finished replying while another chat was on screen. */
+  private unreadBots = new Set<string>()
   readonly paths: AppState['paths']
 
   constructor(
@@ -306,6 +313,7 @@ export class AppController {
     if (JSON.stringify(prev.schedules) !== JSON.stringify(this.settings.schedules)) this.scheduler.arm()
     if (JSON.stringify(prev.gateways) !== JSON.stringify(this.settings.gateways)) this.imessage.sync()
     if (opts.prune !== false && prev.sessions.retentionDays !== this.settings.sessions.retentionDays) this.pruneSessions()
+    if (JSON.stringify(prev.bots) !== JSON.stringify(this.settings.bots)) this.cleanBotImages()
     for (const r of this.agents.values()) {
       r.agent.updateSettings(this.settings)
       // A bot chat follows its bot's mode when that changes (the bot turned off or on, its mode edited).
@@ -884,7 +892,8 @@ export class AppController {
   async setWorkspace(dir: string, opts: { resume?: boolean } = {}): Promise<AppState> {
     if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) throw new Error(`Not a folder: ${dir}`)
     const cwd = await this.enterFolder(dir)
-    const latest = opts.resume === false ? undefined : this.store.list({ cwd })[0]
+    // Bot chats live in the Bots tab; a folder resumes its latest plain chat.
+    const latest = opts.resume === false ? undefined : this.store.list({ cwd }).find((m) => !this.inBotsTab(m))
     const session = latest ? this.store.load(latest.id) : null
     this.activate(session ?? newSession(cwd, this.settings.models.default))
     return this.state()
@@ -980,6 +989,8 @@ export class AppController {
       browserProfileDir: this.browserProfileDir,
       onSave: (s) => {
         if (!s.messages.length || this.removed.has(id)) return
+        // The Bots tab shows a line of each bot chat's last message.
+        if (s.meta.botId) s.meta.preview = chatPreview(s.messages)
         this.store.save(s)
         this.index?.set(id, { ...s.meta })
       },
@@ -1033,9 +1044,15 @@ export class AppController {
     if (event.type === 'turn_end') {
       this.cancelPending(sessionId)
       if (sessionId !== this.activeId) {
-        const title = this.agents.get(sessionId)?.agent.session.meta.title ?? 'Chat'
+        const session = this.agents.get(sessionId)?.agent.session
         const body = ({ done: 'Finished.', error: 'Stopped with an error.', aborted: 'Stopped.', max_steps: 'Hit the step limit.', budget: 'Hit the budget limit.' })[event.reason]
-        this.notify({ sessionId, kind: event.reason === 'done' ? 'finished' : 'failed', title, body })
+        const kind = event.reason === 'done' ? 'finished' : 'failed'
+        const bot = session && !session.meta.gateway ? activeBot(this.settings, session.meta.botId) : undefined
+        if (bot) {
+          // A bot's reply: an unread dot on its row, and a notification with the reply unless muted.
+          if (event.reason !== 'aborted') this.unreadBots.add(bot.id)
+          if (!bot.muted && !this.settings.botOptions.muted) this.notify({ sessionId, kind, title: bot.name, body: (event.reason === 'done' && chatPreview(session!.messages, 160)) || body })
+        } else this.notify({ sessionId, kind, title: session?.meta.title ?? 'Chat', body })
       }
     }
     // Titles, session lists and running indicators change at these points.
@@ -1066,7 +1083,60 @@ export class AppController {
     } else this.activate(this.agents.get(id)!.agent.session)
     // A chat in another folder switches folders (and that folder's extensions).
     await this.enterFolder(this.agent!.session.meta.cwd)
+    const botId = this.agent!.session.meta.botId
+    if (botId) this.unreadBots.delete(botId)
     return this.state()
+  }
+
+  // ---------- bot chats ----------
+
+  /** A chat that belongs in the Bots tab (not the Sessions list). Gateway chats stay with the sessions. */
+  private inBotsTab(meta: SessionMeta): boolean {
+    return !meta.gateway && isBotChat(this.settings, meta)
+  }
+
+  /** Bot chats: the saved ones plus fresh ones not saved yet (a new conversation before its first message). */
+  private botMetas(): SessionMeta[] {
+    const saved = this.sessionMetas().filter((m) => m.botId && !m.gateway)
+    const ids = new Set(saved.map((m) => m.id))
+    const fresh = [...this.agents.values()].map((r) => r.agent.session.meta).filter((m) => m.botId && !m.gateway && !ids.has(m.id) && !this.removed.has(m.id))
+    return [...saved, ...fresh]
+  }
+
+  /** Opens a bot's ongoing chat (its most recent), or starts its first. */
+  async openBot(botId: string): Promise<AppState> {
+    if (!chatBot(this.settings, botId)) throw new Error('That bot no longer exists.')
+    const latest = latestBotThread(this.botMetas(), botId)
+    if (latest) return this.openSession(latest.id)
+    return this.newBotThread(botId)
+  }
+
+  /** A fresh chat with a bot, in its own folder when it has one, else the folder on screen. */
+  async newBotThread(botId: string): Promise<AppState> {
+    const bot = activeBot(this.settings, botId)
+    if (!bot) throw new Error(chatBot(this.settings, botId) ? 'That bot is turned off. Turn it on to start a chat.' : 'That bot no longer exists.')
+    const dir = bot.cwd && fs.existsSync(bot.cwd) ? bot.cwd : this.workspace
+    if (!dir) throw new Error('Open a folder first: bots work in a folder.')
+    this.unreadBots.delete(botId)
+    return this.createSession(dir, botId)
+  }
+
+  private botRows(): BotRow[] {
+    const bots = shownBots(this.settings)
+    if (!bots.length) return []
+    const metas = this.botMetas()
+    const running = new Set([...this.agents.entries()].filter(([, r]) => r.agent.running).map(([id]) => id))
+    const awaiting = new Set([...this.pending.values(), ...this.questions.values()].map((p) => p.sessionId))
+    return bots.map((b) => {
+      const threads = botThreads(metas, b.id)
+      return {
+        id: b.id,
+        threads: threads.map((m) => ({ id: m.id, title: m.title, updatedAt: m.updatedAt, preview: m.preview ?? '' })),
+        unread: this.unreadBots.has(b.id),
+        running: threads.some((m) => running.has(m.id)),
+        awaiting: threads.some((m) => awaiting.has(m.id)),
+      }
+    })
   }
 
   /** A new chat in `cwd` (or the current folder), with `botId`'s persona, model and mode when given. */
@@ -1237,42 +1307,64 @@ export class AppController {
 
   // ---------- bots ----------
 
-  /** Copies an image into `<data>/bots/` and makes it the bot's avatar. */
-  async setBotAvatar(botId: string, file: string): Promise<AppState> {
-    const bot = this.settings.bots.find((b) => b.id === botId)
-    if (!bot) throw new Error('That bot no longer exists.')
+  private get botImageDir(): string {
+    return path.join(this.dataDir, 'bots')
+  }
+
+  /** Copies a picture into `<data>/bots/` for a bot's avatar; the bot dialog saves the path. */
+  importBotAvatar(file: string): { path: string; url: string } {
     const ext = path.extname(file).toLowerCase()
     if (!BOT_IMAGE_TYPES[ext]) throw new Error('Choose a PNG, JPEG, GIF or WebP image.')
     if (fs.statSync(file).size > MAX_AVATAR_BYTES) throw new Error('Choose an image under 1 MB.')
-    const dir = path.join(this.dataDir, 'bots')
+    const dir = this.botImageDir
     fs.mkdirSync(dir, { recursive: true })
     // A new name each time, so the renderer never shows a cached old picture.
-    const target = path.join(dir, `${botId.replace(/[^\w-]/g, '_')}-${Date.now().toString(36)}${ext}`)
+    const target = path.join(dir, `avatar-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}${ext}`)
     fs.copyFileSync(file, target)
-    const old = bot.avatar
-    const bots = this.settings.bots.map((b) => (b.id === botId ? { ...b, avatar: target } : b))
-    const state = await this.setSettings({ ...this.settings, bots })
-    // Copies of a bot share its picture; delete it only when no bot uses it any more.
-    if (isImageAvatar(old) && path.dirname(old) === dir && !bots.some((b) => b.avatar === old)) fs.rmSync(old, { force: true })
-    return state
+    return { path: target, url: this.avatarUrl(target) }
   }
 
-  /** Image avatars as data URLs (the renderer can't read files). Cached by path. */
+  /** Deletes pictures no bot uses any more. Only day-old ones, so a picture picked in an open dialog stays. */
+  private cleanBotImages() {
+    const dir = this.botImageDir
+    const used = new Set(this.settings.bots.map((b) => (b.avatar.kind === 'image' ? b.avatar.image : undefined)).filter(Boolean))
+    let names: string[] = []
+    try {
+      names = fs.readdirSync(dir)
+    } catch {
+      return
+    }
+    for (const name of names) {
+      const file = path.join(dir, name)
+      try {
+        if (!used.has(file) && BOT_IMAGE_TYPES[path.extname(name).toLowerCase()] && Date.now() - fs.statSync(file).mtimeMs > DAY_MS) fs.rmSync(file, { force: true })
+      } catch {
+        /* gone already */
+      }
+    }
+  }
+
+  /** A picture as a data URL (the renderer can't read files). Cached by path; '' when unreadable. */
+  private avatarUrl(file: string): string {
+    let url = this.avatarCache.get(file)
+    if (url === undefined) {
+      try {
+        const type = BOT_IMAGE_TYPES[path.extname(file).toLowerCase()]
+        const data = fs.readFileSync(file)
+        url = type && data.length <= MAX_AVATAR_BYTES ? `data:${type};base64,${data.toString('base64')}` : ''
+      } catch {
+        url = ''
+      }
+      this.avatarCache.set(file, url)
+    }
+    return url
+  }
+
+  /** Picture avatars by bot id. */
   private botAvatars(): Record<string, string> {
     const out: Record<string, string> = {}
     for (const b of this.settings.bots) {
-      if (!isImageAvatar(b.avatar)) continue
-      let url = this.avatarCache.get(b.avatar)
-      if (url === undefined) {
-        try {
-          const type = BOT_IMAGE_TYPES[path.extname(b.avatar).toLowerCase()]
-          const data = fs.readFileSync(b.avatar)
-          url = type && data.length <= MAX_AVATAR_BYTES ? `data:${type};base64,${data.toString('base64')}` : ''
-        } catch {
-          url = ''
-        }
-        this.avatarCache.set(b.avatar, url)
-      }
+      const url = b.avatar.kind === 'image' && b.avatar.image ? this.avatarUrl(b.avatar.image) : ''
       if (url) out[b.id] = url
     }
     return out
@@ -1392,6 +1484,7 @@ export class AppController {
   private sessionLists(): Pick<AppState, 'sessions' | 'folders'> {
     const byFolder = new Map<string, AppState['sessions']>()
     for (const meta of this.sessionMetas()) {
+      if (this.inBotsTab(meta)) continue
       const cwd = meta.cwd.normalize('NFC')
       byFolder.set(cwd, [...(byFolder.get(cwd) ?? []), meta])
     }
@@ -1443,6 +1536,7 @@ export class AppController {
         tokens: Object.fromEntries(this.settings.mcp.servers.map((s) => [s.id, this.secrets.has(mcpSecretId(s.id))])),
       },
       botAvatars: this.botAvatars(),
+      bots: this.botRows(),
       imessage: this.imessage.status(),
       paths: this.paths,
     }

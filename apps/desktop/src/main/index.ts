@@ -83,13 +83,15 @@ function notify(n: BackgroundNotice) {
   note.show()
 }
 
-/** Shown before the renderer paints; close to the theme's --bg so the window doesn't flash. */
-function windowBackground(): string {
+/** The theme the window opens in ('system' resolved), passed to the page so its loading screen matches. */
+function windowTheme(): 'dark' | 'light' | 'oled' | 'sepia' | 'contrast' {
   const theme = controller?.getSettings().appearance.theme ?? 'system'
-  if (theme === 'oled' || theme === 'contrast') return '#000000'
-  if (theme === 'sepia') return '#f6efe1'
-  if (theme === 'dark' || (theme === 'system' && nativeTheme.shouldUseDarkColors)) return '#16171a'
-  return '#ffffff'
+  return theme === 'system' ? (nativeTheme.shouldUseDarkColors ? 'dark' : 'light') : theme
+}
+
+/** Shown before the renderer paints: each theme's --bg in sRGB, so the window doesn't flash. */
+function windowBackground(): string {
+  return { oled: '#000000', contrast: '#000000', sepia: '#f7efe0', dark: '#140d10', light: '#fffdfe' }[windowTheme()]
 }
 
 /** True when `url` is the app's own page (the dev server, or the bundled index.html). */
@@ -173,8 +175,10 @@ function createWindow() {
     if (details.reason !== 'clean-exit') telemetry?.event('crash.renderer_gone', { reason: details.reason, exitCode: details.exitCode })
   })
 
-  if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) win.loadURL(process.env.ELECTRON_RENDERER_URL)
-  else win.loadFile(path.join(__dirname, '../renderer/index.html'))
+  // The theme rides along in the URL so the page paints its loading screen in it before settings arrive.
+  const theme = windowTheme()
+  if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) win.loadURL(`${process.env.ELECTRON_RENDERER_URL}?theme=${theme}`)
+  else win.loadFile(path.join(__dirname, '../renderer/index.html'), { query: { theme } })
 }
 
 function handle(channel: string, fn: (...args: any[]) => unknown) {
@@ -281,10 +285,16 @@ function registerIpc() {
     const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: 'Folder for iMessage chats', defaultPath: c.state().workspace ?? undefined })
     return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]
   })
-  handle('bots.pickAvatar', async (botId: string) => {
+  handle('bots.pickAvatar', async () => {
     const r = await dialog.showOpenDialog(win!, { properties: ['openFile'], title: 'Bot picture', filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }] })
-    return r.canceled || !r.filePaths[0] ? null : c.setBotAvatar(botId, r.filePaths[0])
+    return r.canceled || !r.filePaths[0] ? null : c.importBotAvatar(r.filePaths[0])
   })
+  handle('bots.pickFolder', async () => {
+    const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: 'Folder for this bot', defaultPath: c.state().workspace ?? undefined })
+    return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]
+  })
+  handle('bots.open', (botId: string) => c.openBot(botId))
+  handle('bots.newThread', (botId: string) => c.newBotThread(botId))
   handle('voice.prepare', () => microphoneAccess())
   handle('voice.transcribe', (audio: Uint8Array, mediaType: string) => c.transcribe(audio, mediaType))
   handle('voice.download', () => c.downloadWhisper())

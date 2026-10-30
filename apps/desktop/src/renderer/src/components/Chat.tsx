@@ -1,11 +1,12 @@
-import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { AppState, ChatMessage, Checkpoint, MixtureInfo, PermissionAnswer, PermissionRequest, QuestionRequest, ToolDisplay } from '../../../shared/ipc'
 import { chatBot } from '@harness/core/bots'
 import type { LiveState, Notice, ToolLive } from '../App'
 import { api } from '../lib/api'
 import { Markdown } from '../lib/Markdown'
 import { Approval } from './Approval'
-import { BotAvatar, turnOnBot } from './Bots'
+import { turnOnBot } from './Bots'
+import { BotHeader } from './BotHeader'
 import { Question } from './Question'
 import { ProviderLogo } from './ProviderLogo'
 import { modelLabel } from '../lib/format'
@@ -28,6 +29,8 @@ interface Props {
   onUndoMemory: (memory: NonNullable<Notice['memory']>) => void
   onState: (s: AppState) => void
   onError: (e: unknown) => void
+  /** Opens the bot dialog for a bot. */
+  onEditBot: (id?: string) => void
 }
 
 type UserMessage = Extract<ChatMessage, { role: 'user' }>
@@ -36,7 +39,7 @@ type ToolMessage = Extract<ChatMessage, { role: 'tool' }>
 
 const FIX_LABEL = { providers: 'Open API keys', usage: 'Open Usage', agent: 'Open Agent limits' } as const
 
-export function Chat({ app, live, onDismiss, onSettings, approval, question, onRetry, onContinue, onRevert, onEdit, onUndoMemory, onState, onError }: Props) {
+export function Chat({ app, live, onDismiss, onSettings, approval, question, onRetry, onContinue, onRevert, onEdit, onUndoMemory, onState, onError, onEditBot }: Props) {
   const session = app.session
   const scroller = useRef<HTMLDivElement>(null)
   const stick = useRef(true)
@@ -95,13 +98,7 @@ export function Chat({ app, live, onDismiss, onSettings, approval, question, onR
       <div className="sr-only" aria-live="polite">
         {status}
       </div>
-      {bot && (
-        <header className="bot-head" style={{ '--bot': bot.color } as CSSProperties}>
-          <BotAvatar app={app} bot={bot} size={26} />
-          <span className="bot-head-name">{bot.name}</span>
-          {bot.tagline && <span className="muted small bot-head-tag">{bot.tagline}</span>}
-        </header>
-      )}
+      {bot && <BotHeader app={app} bot={bot} onState={onState} onError={onError} onEditBot={onEditBot} />}
       <div className="chat-inner">
         {bot && !botOn && (
           <div className="notice notice-warn" role="status">

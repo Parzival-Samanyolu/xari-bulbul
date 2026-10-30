@@ -13,6 +13,8 @@ export interface SessionMeta {
   updatedAt: number
   /** The bot this chat was started with (Settings › Bots). Kept when bots are turned off. */
   botId?: string
+  /** One line of the last message, kept for bot chats (the Bots tab shows it). */
+  preview?: string
   /** Mixture of Agents for this chat (the composer toggle). Unset follows `moa.enabled`. */
   moa?: boolean
   /** Set on chats a gateway runs, e.g. "imessage:+15551234567" (one chat per sender). */

@@ -4,7 +4,7 @@ import { SHORTCUTS } from '../../lib/shortcuts'
 import type { PageProps } from './common'
 import type { IconName } from './icons'
 import { DesktopPage, LimitsPage, OutputPage, TerminalPage, ToolAccessPage } from './pages/advanced'
-import { BotsPage, ExperimentalPage } from './pages/bots'
+import { BotsPage } from './pages/bots'
 import { IMessagePage } from './pages/gateways'
 import { PluginsPage, SchedulesPage, SessionsPage, UsagePage, VersionPage } from './pages/data'
 import { AppearancePage, ChatPage, NotificationsPage, ShortcutsPage, WorkspacePage } from './pages/general'
@@ -257,14 +257,6 @@ export const TREE: NodeDef[] = [
         page: OutputPage,
         rows: [['Max tool output', 'truncate characters']],
       },
-      {
-        id: 'advanced.experimental',
-        label: 'Experimental',
-        icon: 'flask',
-        description: 'Features in preview. They may change or go away.',
-        page: ExperimentalPage,
-        rows: [['Bots', 'experimental preview personas personality']],
-      },
     ],
   },
   {
@@ -343,10 +335,9 @@ export const TREE: NodeDef[] = [
     id: 'bots',
     label: 'Bots',
     icon: 'bot',
-    description: 'Saved agents with their own personality, model and tools. Pick one in the sidebar to chat with it.',
+    description: 'Characters to chat with, each with its own face, personality, memory and chat. They live in the sidebar’s Bots tab.',
     page: BotsPage,
-    when: (s) => s.experimental.bots,
-    rows: [['Your bots', 'add duplicate preview turn off persona'], ['Persona', 'personality system prompt'], ['Greeting', 'first message'], ['Avatar', 'emoji picture image color'], ['Thinking', 'bot reasoning'], ['Permission mode', 'bot mode plan auto'], ['Tools', 'bot tools'], ['Skills', 'bot skills'], ['Memory', 'bot memory own shared']],
+    rows: [['Show the Bots tab', 'sidebar companions characters'], ['Mute all bots', 'notifications'], ['Your bots', 'new edit delete turn off personality persona avatar face']],
   },
   {
     id: 'sessions',
@@ -409,6 +400,7 @@ const ALIASES: Record<string, string> = {
   memory: 'memory.persistent',
   data: 'about.version',
   voice: 'voice.stt',
+  'advanced.experimental': 'bots',
 }
 
 export function resolvePage(id: string | undefined, s?: Settings): string {

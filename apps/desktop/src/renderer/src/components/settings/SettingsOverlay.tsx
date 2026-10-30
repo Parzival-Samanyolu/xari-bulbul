@@ -15,6 +15,8 @@ interface Props {
   onState: (s: AppState) => void
   onClose: () => void
   update: UpdateStatus
+  /** Opens the bot dialog over Settings. */
+  onEditBot: (id?: string) => void
 }
 
 interface TreeItem {
@@ -31,7 +33,7 @@ const clean = (e: unknown) => String((e as Error)?.message ?? e).replace(/^Error
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), summary'
 
 /** Settings as an overlay over the dimmed app: a two-level sidebar, search, and one page at a time. */
-export function SettingsOverlay({ app, page, onPage, onState, onClose, update }: Props) {
+export function SettingsOverlay({ app, page, onPage, onState, onClose, update, onEditBot }: Props) {
   const { page: def, group } = pageEntry(page)
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set(group ? [group.id] : []))
   const [focusId, setFocusId] = useState(page)
@@ -237,7 +239,7 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update }:
   }
 
   const Page = def.page
-  const props: PageProps = { app, save, onState, onError: fail, go: open, update, close }
+  const props: PageProps = { app, save, onState, onError: fail, go: open, update, close, editBot: onEditBot }
   const searchKeys = formatCombo(shortcutFor(app.settings, 'modelPicker'), mac)
   const listOpen = query.trim() !== ''
 

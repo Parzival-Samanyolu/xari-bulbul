@@ -7,6 +7,7 @@ import { MicButton } from './MicButton'
 import { MakerLogo, ProviderLogo } from './ProviderLogo'
 import { ThinkingPicker } from './ThinkingPicker'
 import { moaOn, moaReady } from '@harness/core/moa'
+import { activeBot } from '@harness/core/bots'
 
 export const MODES: { id: PermissionMode; label: string; hint: string }[] = [
   { id: 'ask', label: 'Ask', hint: 'Ask before edits and commands' },
@@ -65,6 +66,7 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
   const [dragging, setDragging] = useState(false)
   const ref = useRef<HTMLTextAreaElement>(null)
   const sendWithEnter = app.settings.appearance.sendWithEnter
+  const bot = activeBot(app.settings, app.session?.meta.botId)
 
   useEffect(() => ref.current?.focus(), [app.session?.meta.id])
   useEffect(() => {
@@ -174,7 +176,8 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
     setHIdx(-1)
     setText('')
     // Built-in commands handled by the UI.
-    if (t === '/clear') return api.sessions.create().then(onState, onError)
+    // In a bot chat, /clear starts a new conversation with the same bot.
+    if (t === '/clear') return (bot ? api.bots.newThread(bot.id) : api.sessions.create()).then(onState, onError)
     if (t === '/model') return onOpenPicker()
     if (t === '/mode') return cycleMode()
     if (t === '/compact') return api.agent.compact().catch(onError)
@@ -268,7 +271,7 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
           value={text}
           rows={1}
           aria-label="Message"
-          placeholder={app.running ? 'Working… (Esc to stop)' : 'Ask Xarı Bülbül to do something… (/ for commands)'}
+          placeholder={app.running ? 'Working… (Esc to stop)' : bot ? `Message ${bot.name}` : 'Ask Xarı Bülbül to do something… (/ for commands)'}
           onChange={(e) => {
             setText(e.target.value)
             setSel(0)

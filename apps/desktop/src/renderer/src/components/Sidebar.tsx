@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AppState, SessionMeta } from '../../../shared/ipc'
-import { chatBot, shownBots } from '@harness/core/bots'
+import { isBotChat } from '@harness/core/bots'
 import { api } from '../lib/api'
 import { ago, basename } from '../lib/format'
-import { BotAvatar } from './Bots'
+import { BotsPanel } from './BotsPanel'
 
 interface Props {
   app: AppState
@@ -12,9 +12,13 @@ interface Props {
   onSettings: () => void
   onChat: () => void
   settingsOpen: boolean
+  /** Opens the bot dialog: a bot's id to edit it, nothing for a new one. */
+  onEditBot: (id?: string) => void
 }
 
-export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpen }: Props) {
+type Tab = 'sessions' | 'bots'
+
+export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpen, onEditBot }: Props) {
   const [menu, setMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -22,7 +26,20 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
   const openPaths = new Set(app.folders.map((f) => f.path))
   const recents = app.settings.app.recentWorkspaces.filter((w) => !openPaths.has(w))
   const mod = app.platform === 'darwin' ? '⌘' : 'Ctrl+'
-  const bots = shownBots(app.settings)
+  const botsOn = app.settings.botOptions.enabled
+  const onBotChat = !!app.session && isBotChat(app.settings, app.session.meta)
+  const [tab, setTab] = useState<Tab>(onBotChat ? 'bots' : 'sessions')
+  // Opening a chat shows the tab it belongs to (a notification click, ⌘1–9, a new chat).
+  useEffect(() => setTab(onBotChat ? 'bots' : 'sessions'), [current, onBotChat])
+  const shownTab: Tab = botsOn ? tab : 'sessions'
+  const unread = app.bots.filter((b) => b.unread).length
+  const tabKeys = (e: React.KeyboardEvent) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+    e.preventDefault()
+    const next: Tab = shownTab === 'sessions' ? 'bots' : 'sessions'
+    setTab(next)
+    document.getElementById(`side-tab-${next}`)?.focus()
+  }
   const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set(JSON.parse(localStorage.getItem('sidebar.collapsed') ?? '[]')))
   const toggle = (path: string) =>
     setCollapsed((prev) => {
@@ -84,7 +101,6 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
     const active = s.id === current && !settingsOpen
     const awaiting = app.awaitingSessions.includes(s.id)
     const working = app.runningSessions.includes(s.id)
-    const bot = chatBot(app.settings, s.botId)
     return (
       <li key={s.id} className={`session ${active ? 'active' : ''}`}>
         <button
@@ -96,11 +112,7 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
             if (s.id !== current) api.sessions.open(s.id).then(onState, onError)
           }}
         >
-          <span className="session-title">
-            {bot && <BotAvatar app={app} bot={bot} size={16} />}
-            {bot && <span className="sr-only">{bot.name}: </span>}
-            {s.title}
-          </span>
+          <span className="session-title">{s.title}</span>
           {awaiting ? (
             <span className="session-meta session-status awaiting">{app.questions.some((q) => q.sessionId === s.id) ? 'Has a question' : 'Needs approval'}</span>
           ) : working ? (
@@ -131,151 +143,161 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
   return (
     <aside className="sidebar" aria-label="Chats">
       <div className="sidebar-drag" />
-      <div className="workspace">
-        <button ref={trigger} className="workspace-btn" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
-          <span className="workspace-name">Folders</span>
-          <span className="chev" aria-hidden>
-            ＋
-          </span>
-          <span className="sr-only">Open a folder</span>
-        </button>
-        {menu && (
-          <div className="menu" role="menu" ref={menuRef} onKeyDown={onMenuKey}>
-            <button role="menuitem" onClick={() => pick(() => api.workspace.pick())}>
-              Open folder…
-            </button>
-            {recents.length > 0 && (
-              <div className="menu-label" role="presentation">
-                Recent
-              </div>
-            )}
-            {recents.map((w) => (
-              <button key={w} role="menuitem" title={w} onClick={() => pick(() => api.workspace.set(w))}>
-                {basename(w)}
-                <span className="muted small"> {w}</span>
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <button
-        className="new-chat"
-        disabled={!app.workspace}
-        title={app.workspace ? `New chat in ${basename(app.workspace)}` : undefined}
-        onClick={() => {
-          onChat()
-          api.sessions.create().then(onState, onError)
-        }}
-      >
-        + New chat <kbd>{mod}N</kbd>
-      </button>
-
-      {bots.length > 0 && (
-        <nav className="bots-row" aria-label="Bots">
-          {bots.map((b) => (
+      {botsOn && (
+        <div className="side-tabs" role="tablist" aria-label="Sidebar">
+          {(['sessions', 'bots'] as const).map((t) => (
             <button
-              key={b.id}
-              className="bot-pick"
-              disabled={!app.workspace}
-              aria-label={`New chat with ${b.name}`}
-              title={app.workspace ? `New chat with ${b.name}${b.tagline ? `: ${b.tagline}` : ''}` : 'Open a folder first'}
-              onClick={() => {
-                onChat()
-                api.sessions.create(undefined, b.id).then(onState, onError)
-              }}
+              key={t}
+              id={`side-tab-${t}`}
+              role="tab"
+              aria-selected={shownTab === t}
+              aria-controls={`side-panel-${t}`}
+              tabIndex={shownTab === t ? 0 : -1}
+              className={`side-tab ${shownTab === t ? 'on' : ''}`}
+              onClick={() => setTab(t)}
+              onKeyDown={tabKeys}
             >
-              <BotAvatar app={app} bot={b} size={30} />
+              {t === 'sessions' ? 'Sessions' : 'Bots'}
+              {t === 'bots' && unread > 0 && (
+                <span className="side-tab-dot" role="img" aria-label={`${unread} new ${unread === 1 ? 'reply' : 'replies'}`} />
+              )}
             </button>
           ))}
-        </nav>
+        </div>
       )}
-
-      <nav className="sessions" aria-label="Folders and chats">
-        {app.folders.length === 0 && <div className="muted small pad">Open a folder to start.</div>}
-        {app.folders.map((f, fi) => {
-          const isCurrent = f.path === app.workspace
-          const shut = collapsed.has(f.path)
-          const busy = f.sessions.some((s) => app.awaitingSessions.includes(s.id)) ? 'awaiting' : f.sessions.some((s) => app.runningSessions.includes(s.id)) ? 'working' : null
-          return (
-            <section
-              key={f.path}
-              className={`folder ${isCurrent ? 'current' : ''} ${drag?.from === f.path ? 'dragging' : ''} ${drag?.over === f.path ? (drag.after ? 'drop-after' : 'drop-before') : ''}`}
-              aria-label={basename(f.path)}
-              onDragOver={(e) => {
-                if (!drag) return
-                e.preventDefault()
-                const r = e.currentTarget.getBoundingClientRect()
-                const after = e.clientY > r.top + r.height / 2
-                if (drag.over !== f.path || drag.after !== after) setDrag({ ...drag, over: f.path, after })
-              }}
-              onDrop={(e) => {
-                e.preventDefault()
-                if (drag && drag.from !== f.path) move(drag.from, f.path, !!drag.after)
-                setDrag(null)
-              }}
-            >
-              <div
-                className="folder-head"
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.effectAllowed = 'move'
-                  e.dataTransfer.setData('text/plain', f.path)
-                  setDrag({ from: f.path })
-                }}
-                onDragEnd={() => setDrag(null)}
-              >
-                <button
-                  className="folder-toggle"
-                  aria-expanded={!shut}
-                  aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
-                  title={`${f.path}\nDrag or press Alt+↑/↓ to reorder`}
-                  onClick={() => toggle(f.path)}
-                  onKeyDown={(e) => onFolderKey(e, fi)}
-                >
-                  <span className="chev" aria-hidden>
-                    {shut ? '▸' : '▾'}
-                  </span>
-                  <span className="folder-name">{basename(f.path)}</span>
-                  {shut && busy && <span className={`folder-dot ${busy}`} aria-label={busy === 'awaiting' ? 'A chat needs approval' : 'A chat is working'} />}
+      {shownTab === 'bots' ? (
+        <div className="side-panel" id="side-panel-bots" role="tabpanel" aria-labelledby="side-tab-bots">
+          <BotsPanel app={app} onState={onState} onError={onError} onEditBot={onEditBot} onChat={onChat} settingsOpen={settingsOpen} />
+        </div>
+      ) : (
+        <div className="side-panel" id="side-panel-sessions" role={botsOn ? 'tabpanel' : undefined} aria-labelledby={botsOn ? 'side-tab-sessions' : undefined}>
+          <div className="workspace">
+            <button ref={trigger} className="workspace-btn" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
+              <span className="workspace-name">Folders</span>
+              <span className="chev" aria-hidden>
+                ＋
+              </span>
+              <span className="sr-only">Open a folder</span>
+            </button>
+            {menu && (
+              <div className="menu" role="menu" ref={menuRef} onKeyDown={onMenuKey}>
+                <button role="menuitem" onClick={() => pick(() => api.workspace.pick())}>
+                  Open folder…
                 </button>
-                <button
-                  className="folder-act"
-                  aria-label={`New chat in ${basename(f.path)}`}
-                  title="New chat"
-                  onClick={() => {
-                    onChat()
-                    if (shut) toggle(f.path)
-                    api.sessions.create(f.path).then(onState, onError)
-                  }}
-                >
-                  ＋
-                </button>
-                <button
-                  className="folder-act"
-                  aria-label={`Close ${basename(f.path)}`}
-                  title="Close folder (chats are kept)"
-                  onClick={() => {
-                    const running = f.sessions.filter((s) => app.runningSessions.includes(s.id)).length
-                    if (running && !confirm(`${running} chat${running > 1 ? 's are' : ' is'} still working in ${basename(f.path)}. Close the folder anyway? They'll finish in the background.`)) return
-                    api.workspace.close(f.path).then(onState, onError)
-                  }}
-                >
-                  ×
-                </button>
+                {recents.length > 0 && (
+                  <div className="menu-label" role="presentation">
+                    Recent
+                  </div>
+                )}
+                {recents.map((w) => (
+                  <button key={w} role="menuitem" title={w} onClick={() => pick(() => api.workspace.set(w))}>
+                    {basename(w)}
+                    <span className="muted small"> {w}</span>
+                  </button>
+                ))}
               </div>
-              {!shut && (
-                <ul>
-                  {f.sessions.length === 0 && <li className="muted small pad">No chats yet.</li>}
-                  {f.sessions.map((s) => (
-                    renderSession(s, isCurrent ? app.sessions.findIndex((x) => x.id === s.id) : -1)
-                  ))}
-                </ul>
-              )}
-            </section>
-          )
-        })}
-      </nav>
+            )}
+          </div>
+
+          <button
+            className="new-chat"
+            disabled={!app.workspace}
+            title={app.workspace ? `New chat in ${basename(app.workspace)}` : undefined}
+            onClick={() => {
+              onChat()
+              api.sessions.create().then(onState, onError)
+            }}
+          >
+            + New chat <kbd>{mod}N</kbd>
+          </button>
+
+          <nav className="sessions" aria-label="Folders and chats">
+            {app.folders.length === 0 && <div className="muted small pad">Open a folder to start.</div>}
+            {app.folders.map((f, fi) => {
+              const isCurrent = f.path === app.workspace
+              const shut = collapsed.has(f.path)
+              const busy = f.sessions.some((s) => app.awaitingSessions.includes(s.id)) ? 'awaiting' : f.sessions.some((s) => app.runningSessions.includes(s.id)) ? 'working' : null
+              return (
+                <section
+                  key={f.path}
+                  className={`folder ${isCurrent ? 'current' : ''} ${drag?.from === f.path ? 'dragging' : ''} ${drag?.over === f.path ? (drag.after ? 'drop-after' : 'drop-before') : ''}`}
+                  aria-label={basename(f.path)}
+                  onDragOver={(e) => {
+                    if (!drag) return
+                    e.preventDefault()
+                    const r = e.currentTarget.getBoundingClientRect()
+                    const after = e.clientY > r.top + r.height / 2
+                    if (drag.over !== f.path || drag.after !== after) setDrag({ ...drag, over: f.path, after })
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    if (drag && drag.from !== f.path) move(drag.from, f.path, !!drag.after)
+                    setDrag(null)
+                  }}
+                >
+                  <div
+                    className="folder-head"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.effectAllowed = 'move'
+                      e.dataTransfer.setData('text/plain', f.path)
+                      setDrag({ from: f.path })
+                    }}
+                    onDragEnd={() => setDrag(null)}
+                  >
+                    <button
+                      className="folder-toggle"
+                      aria-expanded={!shut}
+                      aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
+                      title={`${f.path}\nDrag or press Alt+↑/↓ to reorder`}
+                      onClick={() => toggle(f.path)}
+                      onKeyDown={(e) => onFolderKey(e, fi)}
+                    >
+                      <span className="chev" aria-hidden>
+                        {shut ? '▸' : '▾'}
+                      </span>
+                      <span className="folder-name">{basename(f.path)}</span>
+                      {shut && busy && <span className={`folder-dot ${busy}`} aria-label={busy === 'awaiting' ? 'A chat needs approval' : 'A chat is working'} />}
+                    </button>
+                    <button
+                      className="folder-act"
+                      aria-label={`New chat in ${basename(f.path)}`}
+                      title="New chat"
+                      onClick={() => {
+                        onChat()
+                        if (shut) toggle(f.path)
+                        api.sessions.create(f.path).then(onState, onError)
+                      }}
+                    >
+                      ＋
+                    </button>
+                    <button
+                      className="folder-act"
+                      aria-label={`Close ${basename(f.path)}`}
+                      title="Close folder (chats are kept)"
+                      onClick={() => {
+                        const running = f.sessions.filter((s) => app.runningSessions.includes(s.id)).length
+                        if (running && !confirm(`${running} chat${running > 1 ? 's are' : ' is'} still working in ${basename(f.path)}. Close the folder anyway? They'll finish in the background.`)) return
+                        api.workspace.close(f.path).then(onState, onError)
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+                  {!shut && (
+                    <ul>
+                      {f.sessions.length === 0 && <li className="muted small pad">No chats yet.</li>}
+                      {f.sessions.map((s) => (
+                        renderSession(s, isCurrent ? app.sessions.findIndex((x) => x.id === s.id) : -1)
+                      ))}
+                    </ul>
+                  )}
+                </section>
+              )
+            })}
+          </nav>
+        </div>
+      )}
 
       <button className={`sidebar-settings ${settingsOpen ? 'active' : ''}`} aria-pressed={settingsOpen} onClick={settingsOpen ? onChat : onSettings}>
         <span>

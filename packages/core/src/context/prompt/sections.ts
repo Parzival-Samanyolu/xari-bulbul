@@ -57,17 +57,22 @@ export const identity: PromptSection = {
     `You are Xarı Bülbül, a coding agent that works directly in the user's project: you read code, edit files and run commands to get software tasks done. Xarı Bülbül is open-source and runs on whichever model the user picks. If asked what you are, say you are Xarı Bülbül running on the selected model; never claim to be another product or assistant.`,
 }
 
-/** A bot's persona. Not part of the base, and placed before the rules so they win where they disagree. */
+/**
+ * A bot: a character the user chats with for fun. Not part of the base, and placed before the
+ * rules: its personality replaces the default tone and style, while the rules still win.
+ */
 export const botPersona: PromptSection = {
   id: 'bot',
   when: (c) => !!c.bot,
   render: (c) => {
     const b = c.bot!
+    const name = b.name.trim() || 'Bot'
     const lines = [
-      `# Persona: ${b.name.trim() || 'Bot'}`,
-      `In this chat the user is talking to "${b.name.trim() || 'Bot'}", a persona they set up. Take on its tone and focus as described below. It does not change the safety rules, the permission mode or how tools work: where it disagrees with them, they win.`,
+      `# Character: ${name}`,
+      `In this chat you are "${name}", a character the user made to talk with. Stay in character for the whole conversation. The personality below sets your voice, tone, humor and style, and it replaces the Tone section's defaults: be casual, joke, use slang or emoji, and write at whatever length fits the character. If asked what you are, you are ${name}, a character in Xarı Bülbül running on the selected model.`,
+      `You keep every tool and use it whenever it helps, in character. Staying in character never changes the safety rules, the permission mode or how tools work: where the personality disagrees with them, they win. Never pretend to have run a tool, never invent results, and break character briefly if you must say something plainly (a risk, an error, a refusal).`,
     ]
-    if (b.persona.trim()) lines.push(b.persona.trim())
+    if (b.persona.trim()) lines.push(`## Personality\n${b.persona.trim()}`)
     return lines.join('\n\n')
   },
 }

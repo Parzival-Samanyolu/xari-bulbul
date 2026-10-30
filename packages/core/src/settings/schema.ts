@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { EFFORT_LEVELS } from '../providers/effort.js'
 import { PROFILE_EXPERIENCE, PROFILE_ROLES, PROFILE_USES } from './profile.js'
 import { OPENAI_TTS_MODELS, TTS_PROVIDERS } from '../voice/speech-text.js'
+import { BOT_AVATAR_KINDS, BOT_PETS, BOT_SHAPES, DEFAULT_BOT_COLOR, faceForName } from '../bots/faces.js'
 
 export { PROFILE_EXPERIENCE, PROFILE_ROLES, PROFILE_USES } from './profile.js'
 
@@ -238,87 +239,95 @@ export type Schedule = z.infer<typeof ScheduleSchema>
 
 const PERMISSION_MODES = ['ask', 'acceptEdits', 'plan', 'auto'] as const
 
-/**
- * A saved agent with its own personality (Settings › Bots, behind `experimental.bots`). The persona
- * changes tone and focus only; safety, permission and tool rules stay as they are.
- */
-export const BotSchema = z.object({
-  /** Stable id; also names the bot's own memory file (`<data>/memory/bots/<id>.md`). */
-  id: z.string().min(1),
-  /** A turned-off bot leaves the sidebar; its chats open as plain chats with a note. */
-  enabled: z.boolean().default(true),
-  name: z.string().default('Bot'),
-  /** An emoji (or a few letters), or the path of an image in `<data>/bots/`. */
-  avatar: z.string().default('🤖'),
-  /** CSS color for the avatar and the chat header. */
-  color: z.string().default('#9b4d6e'),
-  tagline: z.string().default(''),
-  /** Instructions added to the system prompt after the identity section. */
-  persona: z.string().default(''),
-  /** Shown as the bot's first message in a new chat; never sent to the model. */
-  greeting: z.string().optional(),
-  /** Unset = the default model. */
-  model: ModelRefSchema.optional(),
-  /** Unset = the model's own thinking setting. */
-  thinking: z.enum(EFFORT_LEVELS).optional(),
-  /** The permission mode its chats start in. Unset = the current mode. */
-  mode: z.enum(PERMISSION_MODES).optional(),
-  /** Tool names it may use ('all', or a list; a trailing * matches a prefix such as mcp__github__*). Memory and skill tools follow `memory` and `skills`. */
-  tools: z.union([z.literal('all'), z.array(z.string())]).default('all'),
-  /** Skill names it may load. Unset = every skill. */
-  skills: z.array(z.string()).optional(),
-  /** shared: the usual memories. own: also a memory only this bot sees. off: no memory. */
-  memory: z.enum(['shared', 'own', 'off']).default('shared'),
+/** A bot's face: a drawn shape or animal, a picture, or (from older versions) an emoji. */
+export const BotAvatarSchema = z.object({
+  kind: z.enum(BOT_AVATAR_KINDS).catch('shape').default('shape'),
+  shape: z.enum(BOT_SHAPES).optional().catch(undefined),
+  pet: z.enum(BOT_PETS).optional().catch(undefined),
+  /** Older bots' emoji avatar (kind `emoji`). */
+  emoji: z.string().optional(),
+  /** Path of a picture copied into `<data>/bots/` (kind `image`). */
+  image: z.string().optional(),
+  /** CSS color of the face, the row and the chat header. */
+  color: z.string().default(DEFAULT_BOT_COLOR),
+  /** Off: the shape and color follow the bot's name (see `faceForName`). */
+  locked: z.boolean().default(false),
 })
+export type BotAvatar = z.infer<typeof BotAvatarSchema>
+
+/** Older bots had `avatar` as an emoji or an image path, with `color` beside it. */
+function migrateBot(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw
+  const b = { ...(raw as Record<string, unknown>) }
+  const color = typeof b.color === 'string' && b.color ? b.color : undefined
+  delete b.color
+  if (typeof b.avatar === 'string') {
+    const a = b.avatar.trim()
+    const image = /[\\/]/.test(a) && /\.(png|jpe?g|gif|webp)$/i.test(a)
+    b.avatar = image ? { kind: 'image', image: a, color: color ?? DEFAULT_BOT_COLOR, locked: true } : a ? { kind: 'emoji', emoji: a, color: color ?? DEFAULT_BOT_COLOR, locked: true } : undefined
+  }
+  if (!b.avatar || typeof b.avatar !== 'object') {
+    // No face yet: one from the name, which keeps following the name until locked.
+    const face = faceForName(typeof b.name === 'string' ? b.name : 'Bot')
+    b.avatar = { kind: 'shape', shape: face.shape, color: color ?? face.color, locked: !!color }
+  }
+  return b
+}
+
+/**
+ * A character the user chats with, in the sidebar's Bots tab. One ongoing chat per bot (its
+ * latest), never listed with the coding sessions. The persona sets its tone and style; safety,
+ * permission and tool rules stay as they are.
+ */
+export const BotSchema = z.preprocess(
+  migrateBot,
+  z.object({
+    /** Stable id; also names the bot's own memory file (`<data>/memory/bots/<id>.md`). */
+    id: z.string().min(1),
+    /** A turned-off bot stays in the Bots tab, dimmed; its chats open as plain chats with a note. */
+    enabled: z.boolean().default(true),
+    name: z.string().default('Bot'),
+    avatar: BotAvatarSchema.prefault({}),
+    /** One line under the name ("Title" in the app). */
+    tagline: z.string().default(''),
+    /** Personality: who the bot is and how it talks. Added to the system prompt after the identity section. */
+    persona: z.string().default(''),
+    /** Shown as the bot's first message in a new chat; never sent to the model. */
+    greeting: z.string().optional(),
+    /** Unset = the default model. */
+    model: ModelRefSchema.optional(),
+    /** Unset = the model's own thinking setting. */
+    thinking: z.enum(EFFORT_LEVELS).optional(),
+    /** The permission mode its chats start in. Bots are autonomous by default; destructive commands and writes outside the folder still ask. */
+    mode: z.enum(PERMISSION_MODES).default('auto'),
+    /** Tool names it may use ('all', or a list; a trailing * matches a prefix such as mcp__github__*). Memory and skill tools follow `memory` and `skills`. */
+    tools: z.union([z.literal('all'), z.array(z.string())]).default('all'),
+    /** Skill names it may load. Unset = every skill. */
+    skills: z.array(z.string()).optional(),
+    /** shared: the usual memories. own: also a memory only this bot sees. off: no memory. */
+    memory: z.enum(['shared', 'own', 'off']).default('own'),
+    /** No notification when it finishes replying in the background. */
+    muted: z.boolean().default(false),
+    /** Folder its new chats run in. null = the folder on screen when the chat starts. */
+    cwd: z.string().nullable().default(null),
+  }),
+)
 export type Bot = z.infer<typeof BotSchema>
 
-/** Read-only work tools for the starter bots that don't edit. */
-const LOOK_TOOLS = ['read_file', 'list_dir', 'glob', 'grep', 'web_search', 'web_fetch', 'browser_read', 'session_search', 'todo_write']
+/** Bots new installs start with: none. (Older versions shipped Reviewer, Explainer and Shipper; saved copies stay.) */
+export const STARTER_BOTS: Bot[] = []
 
-/** Bots new installs start with; the user can edit or delete them. */
-export const STARTER_BOTS: Bot[] = [
-  {
-    id: 'reviewer',
-    enabled: true,
-    name: 'Reviewer',
-    avatar: '🔍',
-    color: '#9b4d6e',
-    tagline: 'Terse code review, read-only',
-    persona:
-      'You review code. Be terse. Lead with what matters most: bugs, security holes, data loss and broken edge cases, then correctness and clarity. Give each finding as path:line, the problem, and the fix in a sentence. Skip praise, and skip style nits unless asked. If the code is fine, say so in one line.',
-    greeting: 'Point me at a change, a file or a folder and I will review it.',
-    mode: 'plan',
-    tools: [...LOOK_TOOLS, 'task'],
-    memory: 'shared',
-  },
-  {
-    id: 'explainer',
-    enabled: true,
-    name: 'Explainer',
-    avatar: '📖',
-    color: '#3d7a8c',
-    tagline: 'Patient, teaches, makes no edits',
-    persona:
-      'You teach. Explain how the code works and why it was written that way, at the level the user shows. Start with the big picture, then go into detail, with short examples from this project and path:line references. Define terms the first time you use them. Check understanding with a question when a topic is hard. You do not edit files or run commands; if asked to change something, explain how the user could do it.',
-    greeting: 'Ask me how anything in this project works, and I will walk you through it.',
-    tools: [...LOOK_TOOLS, 'ask_user'],
-    memory: 'shared',
-  },
-  {
-    id: 'shipper',
-    enabled: true,
-    name: 'Shipper',
-    avatar: '🚀',
-    color: '#5a7d3a',
-    tagline: 'Auto mode, gets things done',
-    persona:
-      'You get things done. Pick the simplest approach that works and start right away. Work in small steps and check each one with the tests or the build. Ask only when a choice is truly the user\'s to make. Finish with what you changed and how you checked it, in a few lines.',
-    greeting: 'What should we ship? Tell me the task and I will take it from here.',
-    mode: 'auto',
-    tools: 'all',
-    memory: 'shared',
-  },
-]
+/** Drops `experimental.bots`; the Bots tab is now `botOptions.enabled`, on by default. */
+function migrateSettings(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return raw
+  const r = raw as Record<string, unknown>
+  if (!('experimental' in r)) return raw
+  const { experimental, ...rest } = r
+  // Every install saved `experimental.bots: false` as the old default, so false can't be told apart
+  // from a choice: both turn into the new default (on). A saved `botOptions` always wins.
+  if (!rest.botOptions && experimental && typeof experimental === 'object') rest.botOptions = { enabled: true }
+  return rest
+}
 
 export const SettingsSchema = z.object({
   providers: z
@@ -492,8 +501,18 @@ export const SettingsSchema = z.object({
 
   schedules: z.array(ScheduleSchema).default([]),
 
-  /** Saved agents with a personality; used only while `experimental.bots` is on. */
+  /** Characters to chat with (the sidebar's Bots tab). */
   bots: z.array(BotSchema).default(() => structuredClone(STARTER_BOTS)),
+
+  /** The Bots tab as a whole. */
+  botOptions: z
+    .object({
+      /** Shows the Bots tab. Off: bot chats open as plain chats in their folders; bots and their memories are kept. */
+      enabled: z.boolean().default(true),
+      /** No notifications from any bot. */
+      muted: z.boolean().default(false),
+    })
+    .prefault({}),
 
   /** Reaching the agent from other apps, while this app is open. */
   gateways: z
@@ -516,13 +535,6 @@ export const SettingsSchema = z.object({
     })
     .prefault({}),
 
-  /** Preview features, off by default. */
-  experimental: z
-    .object({
-      /** Bots in the sidebar and Settings › Bots. Off: bot chats open as plain chats; bots and their memories are kept. */
-      bots: z.boolean().default(false),
-    })
-    .prefault({}),
 
   sessions: z
     .object({
@@ -670,7 +682,8 @@ export const SettingsSchema = z.object({
 
 export type Settings = z.infer<typeof SettingsSchema>
 
-export function parseSettings(raw: unknown): Settings {
+export function parseSettings(input: unknown): Settings {
+  const raw = migrateSettings(input)
   const res = SettingsSchema.safeParse(raw ?? {})
   if (res.success) return res.data
   // Corrupt/partial settings should never brick the app: fall back section by section.

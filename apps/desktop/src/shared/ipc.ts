@@ -219,6 +219,18 @@ export interface RendererError {
   stack?: string
 }
 
+/** A bot in the Bots tab, with its chats. */
+export interface BotRow {
+  id: string
+  /** Its chats, newest first; the first is the one it opens to. */
+  threads: { id: string; title: string; updatedAt: number; preview: string }[]
+  /** Finished replying while another chat was on screen; cleared when opened. */
+  unread: boolean
+  running: boolean
+  /** Waiting on an approval or a question. */
+  awaiting: boolean
+}
+
 export interface AppState {
   version: string
   platform: NodeJS.Platform
@@ -268,6 +280,8 @@ export interface AppState {
   voice: VoiceState
   /** Bots with a picture as their avatar: bot id → data URL. */
   botAvatars: Record<string, string>
+  /** The Bots tab: one row per bot in settings (empty while the tab is off). */
+  bots: BotRow[]
   /** The iMessage gateway (macOS): listening, missing Full Disk Access, Automation blocked… */
   imessage: IMessageStatus
   paths: { data: string; sessions: string; usage: string }
@@ -459,8 +473,14 @@ export interface HarnessApi {
     pickFolder(): Promise<string | null>
   }
   bots: {
-    /** Picks an image and makes it the bot's avatar (copied into the data folder). Null when cancelled. */
-    pickAvatar(botId: string): Promise<AppState | null>
+    /** Picks an image and copies it into the data folder; the dialog saves the path with the bot. Null when cancelled. */
+    pickAvatar(): Promise<{ path: string; url: string } | null>
+    /** Folder picker for a bot's own folder; only returns the path. */
+    pickFolder(): Promise<string | null>
+    /** Opens the bot's ongoing chat (its latest), or starts one. */
+    open(botId: string): Promise<AppState>
+    /** Starts a fresh chat with the bot; its earlier chats stay in its history. */
+    newThread(botId: string): Promise<AppState>
   }
   voice: {
     /** Asks the OS for microphone access (macOS); true when recording may start. */

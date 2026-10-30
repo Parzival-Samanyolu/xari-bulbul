@@ -49,22 +49,25 @@ describe('system prompt', () => {
     expect(buildSystemPrompt({ ...base, toolNames, subagent: { description: 'Find config loaders' } })).toMatchSnapshot()
   })
 
-  it('matches the snapshot with a bot persona, placed after identity and before the rules', () => {
+  it('matches the snapshot with a bot character, placed after identity and before the rules', () => {
     const p = buildSystemPrompt({
       ...base,
-      bot: { name: 'Reviewer', persona: 'You review code. Be terse.' },
-      memory: { global: ['Prefers pnpm'], project: [], bot: ['Flags missing tests first'] },
+      bot: { name: 'Pip', persona: 'A cheerful otter who loves puns and uses the odd 🦦.' },
+      memory: { global: ['Prefers pnpm'], project: [], bot: ['Laughs at fish puns'] },
     })
     expect(p).toMatchSnapshot()
     const at = (h: string) => p.indexOf(h)
-    expect(at('# Persona: Reviewer')).toBeGreaterThan(at('You are Xarı Bülbül'))
-    expect(at('# Persona: Reviewer')).toBeLessThan(at('# Tone'))
-    expect(at('# Safety and secrets')).toBeGreaterThan(at('You review code. Be terse.'))
+    expect(at('# Character: Pip')).toBeGreaterThan(at('You are Xarı Bülbül'))
+    expect(at('# Character: Pip')).toBeLessThan(at('# Tone'))
+    expect(at('## Personality\nA cheerful otter')).toBeGreaterThan(at('# Character: Pip'))
+    expect(at('# Safety and secrets')).toBeGreaterThan(at('A cheerful otter'))
+    // The personality sets the style; the rules still win.
+    expect(p).toContain('replaces the Tone section')
     expect(p).toContain('they win')
-    expect(p).toContain('## Your own notes (only you see these)\n- Flags missing tests first')
+    expect(p).toContain('## Your own notes (only you see these)\n- Laughs at fish puns')
     // An override replaces the base, but the persona stays after it.
     const o = buildSystemPrompt({ ...base, override: 'Custom base.', bot: { name: 'Reviewer', persona: 'Terse.' } })
-    expect(o.startsWith('Custom base.\n\n# Persona: Reviewer')).toBe(true)
+    expect(o.startsWith('Custom base.\n\n# Character: Reviewer')).toBe(true)
   })
 
   it('matches the snapshot with a profile, before the user instructions and not for subagents', () => {
