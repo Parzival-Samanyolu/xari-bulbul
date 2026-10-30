@@ -1260,13 +1260,70 @@ kbd {
   gap: 8px;
 }
 /* The tools wrap among themselves; Send stays at the right end of the first row's baseline. */
+.composer-box {
+  container-type: inline-size;
+}
+/* One row at every width: the model name shortens, and narrow windows get a compact mode picker. */
 .composer-tools {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   flex: 1;
   min-width: 0;
+}
+.composer-tools > * {
+  flex: none;
+}
+.composer-tools > .model-chip {
+  flex: 0 1 auto;
+  min-width: 72px;
+}
+.model-chip-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mode-compact {
+  display: none;
+  appearance: none;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85em;
+  padding: 3px 22px 3px 10px;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 12px) 55%, calc(100% - 8px) 55%;
+  background-size: 4px 4px;
+  background-repeat: no-repeat;
+  cursor: pointer;
+}
+@container (max-width: 900px) {
+  .composer-tools .modes {
+    display: none;
+  }
+  .composer-tools .mode-compact {
+    display: inline-flex;
+  }
+}
+.composer-tools > .thinking {
+  flex: 0 1 auto;
+  min-width: 52px;
+}
+.composer-tools > .thinking > .chip {
+  max-width: 100%;
+  text-overflow: ellipsis;
+}
+@container (max-width: 640px) {
+  .composer-tools .model-chip .muted.small {
+    display: none;
+  }
+  .composer-tools {
+    gap: 6px;
+  }
+}
+.composer-bar {
+  align-items: center;
 }
 .composer-bar > .btn {
   flex: none;
@@ -4372,4 +4429,9 @@ body.resizing * {
 }
 .local-search input {
   min-width: 220px;
+}
+@container (max-width: 500px) {
+  .composer-tools > .chip.mix {
+    display: none;
+  }
 }

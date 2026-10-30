@@ -287,11 +287,11 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
             </svg>
           </button>
           <MicButton app={app} onText={(t) => onVoice.current(t)} onError={onError} />
-          <button className="chip" onClick={onOpenPicker} title={`Switch model (${app.platform === 'darwin' ? '⌘K' : 'Ctrl+K'})`}>
+          <button className="chip model-chip" onClick={onOpenPicker} title={`Switch model (${app.platform === 'darwin' ? '⌘K' : 'Ctrl+K'})`}>
             <span className={`dot ${ready ? 'ok' : 'bad'}`} aria-label={ready ? 'Provider ready' : 'Provider needs setup'} />
             {model && <ProviderLogo id={model.providerId} size={13} />}
             {model && <MakerLogo modelId={model.modelId} providerId={model.providerId} size={13} />}
-            {model ? modelLabel(model.modelId) : 'Pick a model'}
+            <span className="model-chip-name">{model ? modelLabel(model.modelId) : 'Pick a model'}</span>
             <span className="muted small">{model?.providerId}</span>
           </button>
           {model && <ThinkingPicker app={app} model={model} onState={onState} onError={onError} />}
@@ -305,6 +305,20 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
               Mix{mixing ? ` · ${moa.proposers.length}` : ''}
             </button>
           )}
+          {/* Narrow windows: the same choice as one compact picker, so the bar never wraps. */}
+          <select
+            className="chip mode-compact"
+            aria-label="Permission mode"
+            title="Permission mode (Shift+Tab to cycle)"
+            value={app.mode}
+            onChange={(e) => api.agent.setMode(e.target.value as PermissionMode).then(onState, onError)}
+          >
+            {MODES.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label}
+              </option>
+            ))}
+          </select>
           <div className="modes" title="Permission mode (Shift+Tab to cycle)">
             {MODES.map((m) => (
               <button key={m.id} aria-pressed={app.mode === m.id} className={`mode mode-${m.id} ${app.mode === m.id ? 'on' : ''}`} title={m.hint} onClick={() => api.agent.setMode(m.id).then(onState, onError)}>
