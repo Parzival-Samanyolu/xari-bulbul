@@ -28,6 +28,8 @@ import {
   PROVIDER_PRESETS,
   ProviderError,
   BUILTIN_PROVIDERS,
+  LOCAL_PROVIDER_ID,
+  upsertLocalProvider,
   canTranscribe,
   checkpointChanges,
   listDir,
@@ -90,6 +92,7 @@ import {
   settingsPath,
 } from '@harness/core'
 import type { AppState, AttachmentInput, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
+import { LocalModels } from './local-models'
 import { Scheduler } from './scheduler'
 import { SecretStore } from './secrets'
 import { Terminals } from './terminals'
@@ -141,6 +144,8 @@ export class AppController {
   private readonly imessage: IMessageGateway
   private catchUpTimer: NodeJS.Timeout | null = null
   private voiceDownload: { ac: AbortController; progress: VoiceDownload } | null = null
+  /** Local models (llama.cpp): runtime, downloads and the running llama-server. */
+  readonly local: LocalModels
   private ext: LoadedExtensions = { tools: [], commands: [], skills: [], errors: [] }
   /** Plugins from the catalog that are installed (`<dataDir>/plugins.json`). */
   private plugins: InstalledPlugin[]
@@ -213,6 +218,21 @@ export class AppController {
       run: (sender, text) => this.runGatewayMessage(sender, text),
       onChange: () => this.pushState(),
     })
+
+    this.local = new LocalModels({
+      dataDir,
+      send,
+      providers: () => this.settings.providers,
+      setProviders: (providers, rebuild) => {
+        this.settings = { ...this.settings, providers }
+        this.saveSettings()
+        if (rebuild) this.buildRegistry()
+        this.pushState()
+      },
+      retries: () => this.settings.agent.requestRetries,
+    })
+    // A llama-server must not outlive the app, even when quitting skips dispose().
+    process.once('exit', () => this.local.server.killNow())
     this.buildRegistry()
   }
 
@@ -351,6 +371,7 @@ export class AppController {
       fillContext: true,
     })
     if (snapshot) this.registry.restoreCache(snapshot)
+    this.local?.register(this.registry)
     for (const r of this.agents.values()) r.agent.setRegistry(this.registry)
   }
 
@@ -705,7 +726,7 @@ export class AppController {
     const deadline = Date.now() + 1500
     while ([...this.agents.values()].some((r) => r.agent.running) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50))
     for (const r of this.agents.values()) r.agent.dispose()
-    await this.mcp.close()
+    await Promise.all([this.mcp.close(), this.local.dispose()])
   }
 
   // ---------- schedules ----------
@@ -1178,6 +1199,21 @@ export class AppController {
   setMoa(on: boolean): AppState {
     this.agent?.setMoa(!!on)
     return this.state()
+  }
+
+  /** Makes a downloaded local model the default for new chats and the chat on screen, and starts loading it. */
+  useLocalModel(id: string): AppState {
+    if (!this.local.hasModel(id)) throw new Error(`${id} isn't downloaded.`)
+    const ref = { providerId: LOCAL_PROVIDER_ID, modelId: id }
+    if (!this.settings.providers.some((p) => p.id === LOCAL_PROVIDER_ID)) {
+      this.settings = { ...this.settings, providers: upsertLocalProvider(this.settings.providers) }
+      this.buildRegistry()
+    }
+    this.settings = { ...this.settings, models: { ...this.settings.models, default: ref } }
+    this.count('feature.local_model')
+    // Loading takes a while; chats wait for it through the provider.
+    this.local.ensure(id).catch(() => {})
+    return this.setModel(ref)
   }
 
   /**

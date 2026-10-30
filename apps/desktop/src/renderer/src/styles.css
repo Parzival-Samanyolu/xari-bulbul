@@ -3758,3 +3758,46 @@ body.resizing * {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- local models ---------- */
+
+.badge.warn {
+  color: var(--warn);
+  border-color: color-mix(in srgb, var(--warn) 45%, transparent);
+}
+.badge.bad {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+}
+.local-card {
+  padding-bottom: 12px;
+}
+.local-card .provider-head b.ellipsis {
+  min-width: 0;
+}
+.local-lead {
+  margin: 10px 0 2px;
+  font-weight: 600;
+}
+.local-desc {
+  margin: 4px 0 8px;
+}
+.local-chips {
+  gap: 6px;
+}
+.local-server {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.local-server p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.local-search {
+  margin: 8px 0 12px;
+}
+.local-search input {
+  min-width: 220px;
+}

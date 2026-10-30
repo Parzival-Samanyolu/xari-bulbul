@@ -1,4 +1,6 @@
 // Contract between the Electron main process and the renderer. Type-only imports from core.
+import type { Fit, HfResult, LlamaRuntimeStatus, MachineInfo, ServerState } from '@harness/core'
+export type { Fit, HfResult, LlamaRuntimeStatus, MachineInfo, ServerState }
 import type {
   AgentEvent,
   ChatMessage,
@@ -167,6 +169,44 @@ export interface VoiceState {
   download: VoiceDownload | null
 }
 
+/** A local model, curated or added (Settings › Providers › Local models). */
+export interface LocalModelView {
+  id: string
+  name: string
+  description: string
+  source: 'curated' | 'hf' | 'file'
+  /** Bytes: weights plus image projector. */
+  size: number
+  /** Context the model would run with on this machine. */
+  ctx: number
+  /** Most context offered (the model's limit, capped at 32K). */
+  maxCtx: number
+  vision: boolean
+  fit: Fit
+  installed: boolean
+  /** Bytes of an unfinished download on disk (resumes from there). */
+  partial: number
+}
+
+/** A runtime or model download in progress. */
+export interface LocalDownload {
+  /** 'runtime', a model id, or `hf:<repo>/<file>`. */
+  target: string
+  label: string
+  received: number
+  total: number
+}
+
+export interface LocalStatus {
+  runtime: LlamaRuntimeStatus
+  machine: MachineInfo
+  models: LocalModelView[]
+  server: ServerState
+  download: LocalDownload | null
+  /** `<data>/llama`. */
+  dir: string
+}
+
 /** Feature use the renderer reports for share info (main turns these into counters). */
 export type TrackEvent =
   | { type: 'settings_page'; page: string }
@@ -247,6 +287,9 @@ export type UiEvent =
   | { type: 'state'; state: AppState }
   | { type: 'update'; status: UpdateStatus }
   | { type: 'voice_download'; download: VoiceDownload }
+  /** Local models: a fresh status (runtime, models, server) and download progress. */
+  | { type: 'local'; status: LocalStatus }
+  | { type: 'local_download'; download: LocalDownload }
   /** Output of a terminal opened with `term.open`. */
   | { type: 'term_data'; id: string; data: string }
   /** The terminal's shell ended (null: it was killed). */
@@ -433,6 +476,27 @@ export interface HarnessApi {
   tts: {
     /** One chunk of text → MP3 through the `voice.tts.openai` provider (the system voice plays in the page). */
     synthesize(text: string): Promise<SpeechAudio>
+  }
+  local: {
+    status(): Promise<LocalStatus>
+    /** Downloads the pinned llama.cpp build. Progress arrives as `local_download` events. */
+    installRuntime(): Promise<LocalStatus>
+    removeRuntime(): Promise<LocalStatus>
+    /** Downloads a curated model (resuming a partial one). */
+    download(id: string): Promise<LocalStatus>
+    /** Downloads a Hugging Face search result's picked quant. */
+    downloadHf(result: HfResult): Promise<LocalStatus>
+    cancelDownload(): Promise<LocalStatus>
+    /** Deletes a model's downloaded files; an added file is only forgotten. */
+    remove(id: string): Promise<LocalStatus>
+    /** GGUF repos on Hugging Face, each with a quant sized to this machine. */
+    search(query: string): Promise<HfResult[]>
+    /** Picks a .gguf file and adds it; null when cancelled. */
+    addFile(): Promise<LocalStatus | null>
+    /** Makes the model the default for new chats and the chat on screen, and starts loading it. */
+    use(id: string): Promise<AppState>
+    /** Stops the running llama-server. */
+    stop(): Promise<LocalStatus>
   }
   app: {
     /** Counts a feature use for share info; nothing is sent while it's off. */

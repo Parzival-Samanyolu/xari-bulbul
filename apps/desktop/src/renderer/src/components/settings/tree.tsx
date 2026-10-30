@@ -9,6 +9,7 @@ import { IMessagePage } from './pages/gateways'
 import { PluginsPage, SchedulesPage, SessionsPage, UsagePage, VersionPage } from './pages/data'
 import { AppearancePage, ChatPage, NotificationsPage, ShortcutsPage, WorkspacePage } from './pages/general'
 import { AuxModelsPage, FallbackPage, MainModelPage, MoaPage, SubagentsPage } from './pages/model'
+import { LocalModelsPage } from './pages/local'
 import { PrivacyPage, ProfilePage } from './pages/profile'
 import { AccountsPage, ApiKeysPage, CustomEndpointsPage } from './pages/providers'
 import { SafetyPage } from './pages/safety'
@@ -290,7 +291,14 @@ export const TREE: NodeDef[] = [
       { id: 'providers.accounts', label: 'Accounts', icon: 'accounts', description: 'Providers that are connected and ready to use.', page: AccountsPage, rows: [] },
       { id: 'providers.keys', label: 'API keys', icon: 'key', description: 'Paste a key to connect a provider. Keys stay in your system keychain.', page: ApiKeysPage, rows: [] },
       { id: 'providers.custom', label: 'Custom endpoints', icon: 'link', description: 'Local servers and other OpenAI- or Anthropic-compatible APIs.', page: CustomEndpointsPage, rows: [['Quick add', 'ollama lm studio deepseek local'], ['New endpoint', 'add endpoint url']] },
-      { id: 'providers.local', label: 'Local models', icon: 'monitor', description: 'Models that run on this computer.', page: Later, hidden: true },
+      {
+        id: 'providers.local',
+        label: 'Local models',
+        icon: 'monitor',
+        description: 'Models that run on this computer, with no account or key.',
+        page: LocalModelsPage,
+        rows: [['Local runtime', 'llama.cpp engine install offline'], ['This machine', 'gpu ram memory unified'], ['GPU memory', 'vram'], ['RAM', 'memory'], ['Models', 'download qwen gemma local'], ['Find more models', 'hugging face search gguf add model file']],
+      },
     ],
   },
   {
