@@ -66,6 +66,7 @@ const api: HarnessApi = {
     cancelDownload: call('voice.cancelDownload') as any,
     remove: call('voice.remove') as any,
   },
+  tts: { synthesize: call('tts.synthesize') as any },
   app: {
     track: call('app.track') as any,
     reportError: call('app.reportError') as any,

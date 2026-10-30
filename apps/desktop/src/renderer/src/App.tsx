@@ -8,6 +8,7 @@ import { Resizer, RightPanel } from './components/Panels'
 import { SettingsOverlay } from './components/settings/SettingsOverlay'
 import { resolvePage } from './components/settings/tree'
 import { isMac, matchesShortcut } from './lib/shortcuts'
+import { useSpeech } from './lib/speech'
 import { Sidebar } from './components/Sidebar'
 import { StatusBar } from './components/StatusBar'
 import { TerminalPanel } from './components/Terminal'
@@ -221,6 +222,9 @@ export function App() {
 
   const setState = useCallback((state: AppState | null | undefined) => state && dispatch({ type: 'state', state }), [])
   const fail = useCallback((e: unknown) => dispatch({ type: 'notice', level: 'error', text: String((e as Error)?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '') }), [])
+
+  // Read aloud: the speaker button on replies, automatic reading, and stopping on input.
+  useSpeech(app, (level, text) => dispatch({ type: 'notice', level, text }))
 
   useEffect(() => {
     api.getState().then(setState)

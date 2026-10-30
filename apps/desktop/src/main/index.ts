@@ -290,6 +290,7 @@ function registerIpc() {
   handle('voice.download', () => c.downloadWhisper())
   handle('voice.cancelDownload', () => c.cancelWhisperDownload())
   handle('voice.remove', (what: string) => c.removeWhisper(what))
+  handle('tts.synthesize', (text: string) => c.synthesizeSpeech(text))
   handle('app.track', (e: TrackEvent) => track(e))
   handle('app.reportError', (e: RendererError) => reportRendererError(e))
   handle('app.openExternal', (url: string) => {

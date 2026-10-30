@@ -42,6 +42,8 @@ import {
   removeWhisper,
   runWhisperCli,
   transcribe,
+  openaiSpeech,
+  speechModelTakesSpeed,
   WHISPER_MODELS,
   whisperModelPath,
   pushRecent,
@@ -87,7 +89,7 @@ import {
   type WhisperModelId,
   settingsPath,
 } from '@harness/core'
-import type { AppState, AttachmentInput, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, VoiceDownload, VoiceState } from '../shared/ipc'
+import type { AppState, AttachmentInput, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
 import { Scheduler } from './scheduler'
 import { SecretStore } from './secrets'
 import { Terminals } from './terminals'
@@ -462,6 +464,29 @@ export class AppController {
     if (!this.isReady(ref.providerId)) throw new Error(`Add a ${config.name} API key in Settings › Providers › API keys.`)
     const language = this.settings.voice.language.trim() || undefined
     return transcribe({ provider: config, apiKey: this.secrets.get(ref.providerId), model: ref.modelId.trim(), audio, mediaType, language }, { signal: AbortSignal.timeout(120_000) })
+  }
+
+  // ---------- text to speech ----------
+
+  /**
+   * One chunk of a reply → MP3 through an OpenAI-style provider (the system voice plays in the
+   * renderer). `playbackRate` is what the renderer should play it at: 1 when the service
+   * already applied `voice.tts.rate`.
+   */
+  async synthesizeSpeech(text: string): Promise<SpeechAudio> {
+    if (typeof text !== 'string' || !text.trim()) throw new Error('Nothing to say.')
+    const tts = this.settings.voice.tts
+    const input = text.slice(0, 2000)
+    if (tts.provider !== 'openai') throw new Error('Choose OpenAI under Settings › Voice › Text to speech.')
+    const providerId = tts.openai.providerId
+    const config = this.settings.providers.find((p) => p.id === providerId)
+    if (!config || config.api !== 'openai') throw new Error('Choose a provider for speech in Settings › Voice › Text to speech.')
+    if (!this.isReady(providerId)) throw new Error(`Add a ${config.name} API key in Settings › Providers › API keys.`)
+    const audio = await openaiSpeech(
+      { provider: config, apiKey: this.secrets.get(providerId), model: tts.openai.model, voice: tts.voice, text: input, rate: tts.rate },
+      { signal: AbortSignal.timeout(60_000) },
+    )
+    return { audio, mediaType: 'audio/mpeg', playbackRate: speechModelTakesSpeed(tts.openai.model) ? 1 : tts.rate }
   }
 
   /** Fetches whisper.cpp (if this platform has a published build and none is installed) and the chosen model. */

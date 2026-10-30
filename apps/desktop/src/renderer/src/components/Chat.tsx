@@ -9,6 +9,7 @@ import { BotAvatar, turnOnBot } from './Bots'
 import { Question } from './Question'
 import { ProviderLogo } from './ProviderLogo'
 import { modelLabel } from '../lib/format'
+import { SpeakButton } from './SpeakButton'
 
 type ToolCallT = NonNullable<Extract<ChatMessage, { role: 'assistant' }>['toolCalls']>[number]
 
@@ -149,6 +150,7 @@ export function Chat({ app, live, onDismiss, onSettings, approval, question, onR
                 question={owned(i, m.toolCalls) ? question : undefined}
                 checkpoint={cpOfTurn && settled(cpOfTurn.at) ? cpOfTurn : undefined}
                 onRevert={onRevert}
+                speakId={app.settings.voice.tts.provider !== 'off' ? `${session.meta.id}:${i}` : undefined}
               />,
               bar,
             ]
@@ -406,6 +408,8 @@ const AssistantMessage = memo(function AssistantMessage(props: {
   question?: { request: QuestionRequest; onAnswer: (text: string) => void }
   checkpoint?: Checkpoint
   onRevert: (at: number, file?: string) => void
+  /** Shows the read-aloud button (text to speech is on). */
+  speakId?: string
 }) {
   const { message: m, tools, results, displays, denied, approval, question, checkpoint, onRevert } = props
   return (
@@ -413,6 +417,7 @@ const AssistantMessage = memo(function AssistantMessage(props: {
       {m.reasoning && props.showReasoning && <Reasoning text={m.reasoning} />}
       {m.content && <Markdown text={m.content} />}
       {m.moa && <MixedFrom info={m.moa} />}
+      {m.content?.trim() && props.speakId && <SpeakButton id={props.speakId} text={m.content} />}
       {m.toolCalls?.map((c) => {
         const display = displays[c.id]
         const file = display?.kind === 'diff' && checkpoint && display.path in checkpoint.files ? display.path : undefined

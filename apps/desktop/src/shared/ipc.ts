@@ -49,6 +49,14 @@ export type {
   UsageSummary,
 }
 
+/** One spoken chunk from an OpenAI-style provider. */
+export interface SpeechAudio {
+  audio: Uint8Array
+  mediaType: 'audio/mpeg'
+  /** Play at this rate (1 when the service already applied `voice.tts.rate`). */
+  playbackRate: number
+}
+
 export interface SessionView {
   meta: SessionMeta
   messages: ChatMessage[]
@@ -421,6 +429,10 @@ export interface HarnessApi {
     cancelDownload(): Promise<AppState>
     /** Deletes a downloaded model, or the downloaded whisper.cpp ('binary'). */
     remove(what: string): Promise<AppState>
+  }
+  tts: {
+    /** One chunk of text → MP3 through the `voice.tts.openai` provider (the system voice plays in the page). */
+    synthesize(text: string): Promise<SpeechAudio>
   }
   app: {
     /** Counts a feature use for share info; nothing is sent while it's off. */

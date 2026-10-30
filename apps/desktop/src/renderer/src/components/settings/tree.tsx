@@ -13,6 +13,7 @@ import { PrivacyPage, ProfilePage } from './pages/profile'
 import { AccountsPage, ApiKeysPage, CustomEndpointsPage } from './pages/providers'
 import { SafetyPage } from './pages/safety'
 import { BrowserPage, ContextPage, MemoryPage, PasswordsPage, SpeechToTextPage, VoiceConversationPage } from './pages/system'
+import { TextToSpeechPage } from './pages/speech'
 import { ExtensionsPage, McpPage, SkillsPage, ToolsListPage, WebSearchPage } from './pages/tools'
 
 // The Settings tree. To add a page: write a component taking PageProps, add an entry here with
@@ -200,7 +201,14 @@ export const TREE: NodeDef[] = [
         page: SpeechToTextPage,
         rows: [['Engine', 'voice'], ['Language', 'spoken'], ['Local speech model', 'whisper offline'], ['Transcription model', 'whisper provider']],
       },
-      { id: 'voice.tts', label: 'Text to speech', icon: 'voice', description: 'Reading replies aloud.', page: Later, hidden: true },
+      {
+        id: 'voice.tts',
+        label: 'Text to speech',
+        icon: 'voice',
+        description: 'Reading replies aloud: the speaker button on replies, or every reply automatically.',
+        page: TextToSpeechPage,
+        rows: [['Provider', 'tts speech voice system openai'], ['Voice', 'speaker narrator'], ['Speed', 'rate'], ['Read responses aloud', 'read aloud automatically speak tts'], ['Test', 'sample sentence']],
+      },
     ],
   },
   {

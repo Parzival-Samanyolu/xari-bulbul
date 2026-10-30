@@ -2235,6 +2235,40 @@ button.sb-item:hover {
 .user-edit-btn:focus-visible {
   opacity: 1;
 }
+/* Read aloud: quiet until the reply is hovered or focused, and stays visible while it plays. */
+.speak-btn {
+  align-self: flex-start;
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 24px;
+  margin-top: -4px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  color: var(--muted);
+  opacity: 0;
+  cursor: pointer;
+}
+.assistant:hover .speak-btn,
+.speak-btn:focus-visible,
+.speak-btn.on {
+  opacity: 1;
+}
+.speak-btn:hover {
+  color: var(--text);
+  border-color: var(--border);
+}
+.speak-btn.on {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+@media (hover: none) {
+  .speak-btn {
+    opacity: 1;
+  }
+}
 .user-edit {
   align-self: stretch;
   display: flex;

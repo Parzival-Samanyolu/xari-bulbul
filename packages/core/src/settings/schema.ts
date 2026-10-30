@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { EFFORT_LEVELS } from '../providers/effort.js'
 import { PROFILE_EXPERIENCE, PROFILE_ROLES, PROFILE_USES } from './profile.js'
+import { OPENAI_TTS_MODELS, TTS_PROVIDERS } from '../voice/speech-text.js'
 
 export { PROFILE_EXPERIENCE, PROFILE_ROLES, PROFILE_USES } from './profile.js'
 
@@ -547,6 +548,29 @@ export const SettingsSchema = z.object({
       language: z.string().max(8).default(''),
       /** Send the message as soon as the recording is transcribed, instead of leaving it in the message box. */
       autoSend: z.boolean().default(false),
+      /** Text to speech: reading replies aloud. */
+      tts: z
+        .preprocess(
+          // A provider this version doesn't have (e.g. an earlier build's 'edge') falls back to the system voice; its voice name wouldn't fit.
+          (v) => (v && typeof v === 'object' && 'provider' in v && !(TTS_PROVIDERS as readonly unknown[]).includes((v as { provider: unknown }).provider) ? { ...v, provider: 'system', voice: null } : v),
+          z.object({
+          /** system: the OS voice in the app; openai: `/audio/speech` through a provider key. */
+          provider: z.enum(TTS_PROVIDERS).default('system'),
+          /** A voice of the chosen provider (system: the voice URI; openai: e.g. `alloy`); null = its default. */
+          voice: z.string().max(200).nullable().default(null),
+          /** Speak each finished reply in the chat on screen. */
+          readAloud: z.boolean().default(false),
+          rate: z.number().min(0.5).max(2).default(1),
+          openai: z
+            .object({
+              /** A provider speaking the OpenAI API, with a key. */
+              providerId: z.string().default('openai'),
+              model: z.enum(OPENAI_TTS_MODELS).default('gpt-4o-mini-tts'),
+            })
+            .prefault({}),
+          }),
+        )
+        .prefault({}),
     })
     .prefault({}),
 

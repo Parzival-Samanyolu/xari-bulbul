@@ -14,7 +14,8 @@
     "./profile": "./src/settings/profile.ts",
     "./mcp-presets": "./src/mcp/presets.ts",
     "./voice": "./src/voice/transcribe.ts",
-    "./wav": "./src/voice/wav.ts"
+    "./wav": "./src/voice/wav.ts",
+    "./speech": "./src/voice/speech-text.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

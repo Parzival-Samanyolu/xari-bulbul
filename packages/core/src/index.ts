@@ -48,6 +48,8 @@ export {
   type WhisperModelId,
 } from './voice/local.js'
 export { encodeWav, WHISPER_SAMPLE_RATE } from './voice/wav.js'
+export * from './voice/speech-text.js'
+export { openaiSpeech, buildSpeechRequest, speechModelTakesSpeed, type SpeechRequest } from './voice/openai-tts.js'
 export { nextRun, missedRun, parseTime, intervalMs, type ScheduleWhen } from './schedule/next.js'
 export { checkpointChanges, MAX_DIFF_BYTES, type FileChange } from './sessions/changes.js'
 export { listDir, readPreview, rootFor, TREE_SKIP, MAX_DIR_ENTRIES, MAX_PREVIEW_BYTES, type DirEntry, type DirListing, type FilePreview } from './host/files.js'
