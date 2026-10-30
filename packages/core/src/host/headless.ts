@@ -69,6 +69,11 @@ export async function runHeadless(o: HeadlessOptions): Promise<HeadlessResult> {
             if (o.format === 'text' && e.message.content.trim()) o.out('\n')
             finalText = ''
           }
+          // A reply that arrives whole (Mixture of Agents fell back to the chat model's draft) wasn't streamed.
+          else if (!finalText.trim() && e.message.content.trim()) {
+            finalText = e.message.content
+            if (o.format === 'text') o.out(finalText)
+          }
         }
         break
       case 'tool_start':
@@ -76,6 +81,9 @@ export async function runHeadless(o: HeadlessOptions): Promise<HeadlessResult> {
         break
       case 'notice':
         if (o.format !== 'stream-json') o.err(`${e.level === 'warn' ? 'warning' : 'note'}: ${e.text}\n`)
+        break
+      case 'fallback':
+        if (o.format !== 'stream-json') o.err(`note: ${e.text}\n`)
         break
       case 'error':
         lastError = e.message

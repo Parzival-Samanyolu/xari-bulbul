@@ -32,6 +32,7 @@ const api: HarnessApi = {
     stop: call('agent.stop') as any,
     setModel: call('agent.setModel') as any,
     setMode: call('agent.setMode') as any,
+    setMoa: call('agent.setMoa') as any,
     compact: call('agent.compact') as any,
     respond: call('agent.respond') as any,
     answer: call('agent.answer') as any,

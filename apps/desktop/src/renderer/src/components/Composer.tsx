@@ -6,6 +6,7 @@ import { modelLabel } from '../lib/format'
 import { MicButton } from './MicButton'
 import { MakerLogo, ProviderLogo } from './ProviderLogo'
 import { ThinkingPicker } from './ThinkingPicker'
+import { moaOn, moaReady } from '@harness/core/moa'
 
 export const MODES: { id: PermissionMode; label: string; hint: string }[] = [
   { id: 'ask', label: 'Ask', hint: 'Ask before edits and commands' },
@@ -230,6 +231,8 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
 
   const model = app.session?.meta.model
   const ready = model ? app.ready[model.providerId] : false
+  const moa = app.settings.moa
+  const mixing = moaOn(app.settings, app.session?.meta)
 
   return (
     <div className="composer">
@@ -288,6 +291,16 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
             <span className="muted small">{model?.providerId}</span>
           </button>
           {model && <ThinkingPicker app={app} model={model} onState={onState} onError={onError} />}
+          {model && moaReady(app.settings) && (
+            <button
+              className={`chip mix ${mixing ? 'on' : ''}`}
+              aria-pressed={mixing}
+              onClick={() => api.agent.setMoa(!mixing).then(onState, onError)}
+              title={`Mixture of Agents for this chat: ${moa.proposers.length} models answer, ${modelLabel(moa.aggregator!.modelId)} combines them. Each reply costs more.`}
+            >
+              Mix{mixing ? ` · ${moa.proposers.length}` : ''}
+            </button>
+          )}
           <div className="modes" title="Permission mode (Shift+Tab to cycle)">
             {MODES.map((m) => (
               <button key={m.id} aria-pressed={app.mode === m.id} className={`mode mode-${m.id} ${app.mode === m.id ? 'on' : ''}`} title={m.hint} onClick={() => api.agent.setMode(m.id).then(onState, onError)}>

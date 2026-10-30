@@ -9,7 +9,10 @@ import type { MemoryStore } from '../memory/store.js'
 import type { Permissions, PermissionAnswer } from '../permissions/permissions.js'
 import type { ProviderRegistry } from '../providers/registry.js'
 import { isContextOverflow } from '../providers/http.js'
-import { ProviderError, type ChatRequest } from '../providers/types.js'
+import { ProviderError, type ChatRequest, type Provider } from '../providers/types.js'
+import { failoverKind, failureLabel, fallbackChain, ProviderUnavailableError, shortModelName } from './fallback.js'
+import { moaOn } from '../moa/config.js'
+import { aggregatorMessages, collectText, mixtureTranscript, proposerMessages, runProposers } from '../moa/mixture.js'
 import { newSession, titleFrom, type Checkpoint, type Session } from '../sessions/store.js'
 import { generateTitle } from '../sessions/title.js'
 import { modelKey, type Bot, type Settings } from '../settings/schema.js'
@@ -48,6 +51,10 @@ export type AgentEvent =
   /** The memory review saved or removed facts after the turn. */
   | { type: 'memory'; added: MemoryFact[]; removed: MemoryFact[] }
   | { type: 'notice'; level: 'info' | 'warn'; text: string }
+  /** The model failed after its retries and the same step ran on a fallback model. `text` is the notice to show. */
+  | { type: 'fallback'; from: ModelRef; to: ModelRef; reason: string; text: string }
+  /** Mixture of Agents is writing the final reply: the proposers are answering, or the aggregator is combining. */
+  | { type: 'mixing'; phase: 'proposing' | 'combining'; models: ModelRef[] }
   | { type: 'error'; message: string }
   | { type: 'turn_end'; reason: TurnEndReason }
 
@@ -63,6 +70,14 @@ export interface PermissionRequest {
 
 export interface QuestionRequest extends UserQuestion {
   callId: string
+}
+
+/** A final answer held back so Mixture of Agents can use it as a draft. */
+interface Draft {
+  ref: ModelRef
+  content: string
+  reasoning: string
+  extra?: Record<string, unknown>
 }
 
 /** Files larger than this aren't kept for undo. */
@@ -148,6 +163,8 @@ export class Agent {
   private skills: Skill[] | undefined
   /** Launched on the first browser call, closed on stop/dispose. */
   private browser: BrowserHost | null = null
+  /** Models that failed this turn in a way retrying won't fix (not found, no key); left out until the next turn. */
+  private skipped = new Set<string>()
 
   constructor(private readonly o: AgentOptions) {
     this.session = o.session
@@ -173,6 +190,17 @@ export class Agent {
 
   setModel(ref: ModelRef): void {
     this.session.meta.model = ref
+    this.save()
+  }
+
+  /** Whether this chat's final answers are mixed from several models (and that's configured). */
+  get mixing(): boolean {
+    return !this.o.subagent && moaOn(this.settings, this.session.meta)
+  }
+
+  /** Turns Mixture of Agents on or off for this chat (the composer toggle). */
+  setMoa(on: boolean): void {
+    this.session.meta.moa = on
     this.save()
   }
 
@@ -297,20 +325,28 @@ export class Agent {
 
   private modelInfoTried = new Set<string>()
 
-  /** The context window and price come from the model list; fetch it once if nothing has yet. */
+  /**
+   * The context window and price come from the model list; fetch it once if nothing has yet. Also
+   * for the fallbacks (to compare context sizes) and the mixture models (for their cost).
+   */
   private async loadModelInfo(): Promise<void> {
-    const ref = this.model
-    const key = modelKey(ref)
-    if (this.modelInfoTried.has(key) || this.registry.cachedModel(ref.providerId, ref.modelId)) return
-    this.modelInfoTried.add(key)
+    const refs = [this.model, ...this.settings.models.fallbacks]
+    if (this.mixing) refs.push(...this.settings.moa.proposers, this.settings.moa.aggregator!)
+    const providers = new Set<string>()
+    for (const ref of refs) {
+      const key = modelKey(ref)
+      if (this.modelInfoTried.has(key) || !this.registry.has(ref.providerId) || this.registry.cachedModel(ref.providerId, ref.modelId)) continue
+      this.modelInfoTried.add(key)
+      providers.add(ref.providerId)
+    }
+    if (!providers.size) return
     let timer: ReturnType<typeof setTimeout> | undefined
     const timeout = new Promise<void>((resolve) => (timer = setTimeout(resolve, 5000)))
-    await Promise.race([this.registry.models(ref.providerId).catch(() => undefined), timeout])
+    await Promise.race([Promise.all([...providers].map((id) => this.registry.models(id).catch(() => undefined))), timeout])
     clearTimeout(timer)
   }
 
-  private contextLength(): number {
-    const ref = this.model
+  private contextLength(ref: ModelRef = this.model): number {
     const override = this.settings.models.overrides[modelKey(ref)]?.contextLength
     return (
       override ??
@@ -319,9 +355,9 @@ export class Agent {
     )
   }
 
-  private requestParams(): Pick<ChatRequest, 'temperature' | 'maxTokens' | 'reasoningEffort' | 'replayReasoning' | 'speed'> {
+  private requestParams(ref: ModelRef = this.model): Pick<ChatRequest, 'temperature' | 'maxTokens' | 'reasoningEffort' | 'replayReasoning' | 'speed'> {
     const m = this.settings.models
-    const o = m.overrides[modelKey(this.model)] ?? {}
+    const o = m.overrides[modelKey(ref)] ?? {}
     return {
       temperature: o.temperature ?? m.temperature ?? undefined,
       maxTokens: o.maxTokens ?? m.maxTokens ?? undefined,
@@ -332,19 +368,19 @@ export class Agent {
     }
   }
 
-  private systemPrompt(tools: Tool[]): string {
+  private systemPrompt(tools: Tool[], ref: ModelRef = this.model): string {
     return buildSystemPrompt({
       cwd: this.session.meta.cwd,
       mode: this.o.permissions.mode,
-      model: this.model.modelId,
+      model: ref.modelId,
       instructionFiles: this.settings.agent.projectInstructionFiles,
       customInstructions: this.settings.agent.customInstructions,
       override: this.settings.agent.systemPromptOverride,
       toolNames: tools.map((t) => t.name),
       subagent: this.o.subagent,
-      contextLength: this.contextLength(),
+      contextLength: this.contextLength(ref),
       env: this.env,
-      lean: this.leanPrompt(),
+      lean: this.leanPrompt(ref),
       memory: this.memoryOn ? this.promptMemory() : undefined,
       bot: this.bot && { name: this.bot.name, persona: this.bot.persona },
       profile: this.settings.profile,
@@ -358,11 +394,11 @@ export class Agent {
   }
 
   /** Small and free models follow a short prompt better than the full one. */
-  private leanPrompt(): boolean {
-    const style = this.settings.models.overrides[modelKey(this.model)]?.promptStyle ?? this.settings.agent.promptStyle
+  private leanPrompt(ref: ModelRef = this.model): boolean {
+    const style = this.settings.models.overrides[modelKey(ref)]?.promptStyle ?? this.settings.agent.promptStyle
     if (style !== 'auto') return style === 'lean'
-    const id = this.model.modelId
-    return id === 'openrouter/free' || id.endsWith(':free') || !!this.registry.cachedModel(this.model.providerId, id)?.free
+    const id = ref.modelId
+    return id === 'openrouter/free' || id.endsWith(':free') || !!this.registry.cachedModel(ref.providerId, id)?.free
   }
 
   private memory(scope: 'global' | 'project'): string[] {
@@ -383,6 +419,39 @@ export class Agent {
     }
     this.o.usage.record(record)
     return record
+  }
+
+  /** Records a side request's usage (a mixture model) and shows the new totals; the chat's context figure stays. */
+  private reportUsage(ref: ModelRef, usage: Usage) {
+    const record = this.recordUsage(ref, usage)
+    this.emit({ type: 'usage', record, summary: this.o.usage.summary(this.usageId), contextTokens: this.session.lastPromptTokens ?? 0, contextLength: this.contextLength() })
+  }
+
+  private modelName(ref: ModelRef): string {
+    return shortModelName(ref, this.registry.has(ref.providerId) ? this.registry.cachedModel(ref.providerId, ref.modelId)?.name : undefined)
+  }
+
+  private provider(ref: ModelRef): Provider {
+    if (!this.registry.has(ref.providerId)) throw new ProviderUnavailableError(ref.providerId)
+    return this.registry.get(ref.providerId)
+  }
+
+  /**
+   * Runs a background request (title, memory review, summary) on `primary`, moving down the
+   * fallback list when it fails in a way another model can fix.
+   */
+  private async withFallback<T>(primary: ModelRef, fn: (provider: Provider, ref: ModelRef) => Promise<T>): Promise<T> {
+    let last: unknown
+    for (const ref of fallbackChain(primary, this.settings.models.fallbacks, new Set())) {
+      try {
+        return await fn(this.provider(ref), ref)
+      } catch (err) {
+        last = err
+        const kind = failoverKind(err)
+        if (kind !== 'next' && kind !== 'skip') throw err
+      }
+    }
+    throw last
   }
 
   /** Send a user message and run the agent until it finishes, is stopped, or hits a limit. */
@@ -500,6 +569,7 @@ export class Agent {
     this.env = gatherEnvironment(this.session.meta.cwd, { shell: this.settings.agent.shell })
     this.reminders.startTurn(this.o.permissions.mode)
     this.failedCalls = []
+    this.skipped = new Set()
     await this.loadModelInfo()
     let reviewed = false
     try {
@@ -517,15 +587,18 @@ export class Agent {
 
         await this.maybeCompact(abort.signal)
         this.injectReminders()
-        const toolCalls = await this.step(abort.signal)
+        // With Mixture of Agents on, a final answer is held back and becomes the mixture's draft.
+        const { calls: toolCalls, draft } = await this.step(abort.signal, this.mixing)
         if (!toolCalls.length) {
           const review = reviewed ? null : this.reviewPrompt()
           if (review) {
+            if (draft) this.pushDraft(draft)
             // One nudge per turn: finish the rest, or say plainly what was skipped.
             reviewed = true
             this.push({ role: 'user', content: review, synthetic: 'review' })
             continue
           }
+          if (draft) await this.finishMixed(draft, abort.signal)
           reason = 'done'
           break
         }
@@ -619,11 +692,57 @@ export class Agent {
     return parts.join('\n\n')
   }
 
-  /** One model request. Appends the assistant message and returns its tool calls. */
-  private async step(signal: AbortSignal): Promise<ToolCall[]> {
-    const ref = { ...this.model }
-    const provider = this.registry.get(ref.providerId)
+  /**
+   * One model step: the chat's model, then each fallback in order when it fails in a way another
+   * model can fix. Appends the assistant message and returns its tool calls. With `hold`, a final
+   * answer (no tool calls) isn't streamed or appended but returned as a draft.
+   */
+  private async step(signal: AbortSignal, hold = false): Promise<{ calls: ToolCall[]; draft?: Draft }> {
     const tools = this.activeTools()
+    const main = { ...this.model }
+    const chain = fallbackChain(main, this.settings.models.fallbacks, this.skipped)
+    if (!chain.length) chain.push(main)
+    const failed: string[] = []
+    for (let i = 0; ; i++) {
+      const ref = chain[i]
+      const partial = { content: '' }
+      try {
+        const out = await this.request(ref, tools, signal, hold, partial)
+        const { content, reasoning, calls, usage, extra } = out
+        const draft = hold && !calls.length ? { ref, content, reasoning, extra } : undefined
+        if (!draft) this.push({ role: 'assistant', content, ...(calls.length ? { toolCalls: calls } : {}), ...(reasoning ? { reasoning } : {}), ...(extra ? { extra } : {}) })
+        if (usage) {
+          // Usage counts against the model that actually answered.
+          const record = this.recordUsage(ref, usage)
+          this.session.lastPromptTokens = usage.promptTokens + usage.completionTokens
+          this.emit({ type: 'usage', record, summary: this.o.usage.summary(this.usageId), contextTokens: this.session.lastPromptTokens, contextLength: this.contextLength(ref) })
+        }
+        return { calls, draft }
+      } catch (err) {
+        const kind = failoverKind(err, signal)
+        // Not found, no key, not connected: no point trying it again this turn.
+        if (kind === 'skip') this.skipped.add(modelKey(ref))
+        const next = kind ? chain.findIndex((c, j) => j > i && (kind !== 'context' || this.contextLength(c) > this.contextLength(ref))) : -1
+        if (next < 0) {
+          // Keep whatever was streamed before the interruption.
+          if (partial.content.trim() && !hold) this.push({ role: 'assistant', content: partial.content + '\n\n[interrupted]' })
+          if (!failed.length || !(err instanceof Error)) throw err
+          const note = ` Fallback models tried first: ${failed.join(', ')}.`
+          throw err instanceof ProviderError ? new ProviderError(err.message + note, err.status, err.retryable) : new Error(err.message + note)
+        }
+        const why = failureLabel(err)
+        failed.push(`${this.modelName(ref)} (${why})`)
+        const to = chain[next]
+        this.emit({ type: 'stream_reset' })
+        this.emit({ type: 'fallback', from: ref, to, reason: why, text: `${this.modelName(ref)} failed (${why}). Continued on ${this.modelName(to)}.` })
+        i = next - 1
+      }
+    }
+  }
+
+  /** One request to one model, with retries for replies that broke off and one summary on overflow. */
+  private async request(ref: ModelRef, tools: Tool[], signal: AbortSignal, hold: boolean, partial: { content: string }) {
+    const provider = this.provider(ref)
     const info = this.registry.cachedModel(ref.providerId, ref.modelId)
     if (info && !info.supportsTools && !this.warnedNoTools) {
       this.warnedNoTools = true
@@ -643,18 +762,21 @@ export class Agent {
       calls = []
       usage = undefined
       extra = undefined
+      partial.content = ''
       try {
         for await (const ev of provider.chat({
           model: ref.modelId,
-          messages: [{ role: 'system', content: this.systemPrompt(tools) }, ...this.session.messages],
+          messages: [{ role: 'system', content: this.systemPrompt(tools, ref) }, ...this.session.messages],
           tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
           signal,
           stallMs: this.settings.agent.stallTimeoutSec * 1000,
-          ...this.requestParams(),
+          ...this.requestParams(ref),
         })) {
           if (ev.type === 'text') {
             content += ev.delta
-            this.emit(ev)
+            partial.content = content
+            // A held answer may be replaced by the mixture, so it isn't shown while it streams.
+            if (!hold) this.emit(ev)
           } else if (ev.type === 'reasoning') {
             reasoning += ev.delta
             this.emit(ev)
@@ -663,7 +785,7 @@ export class Agent {
           else if (ev.type === 'extra') extra = ev.extra
           else if (ev.type === 'status') this.emit({ type: 'notice', level: 'info', text: ev.text })
         }
-        break
+        return { content, reasoning, calls, usage, extra }
       } catch (err) {
         // A reply that broke off midway (overloaded upstream, common on free models) is retried from scratch.
         if (err instanceof ProviderError && err.retryable && !signal.aborted && attempt < retries) {
@@ -679,25 +801,72 @@ export class Agent {
           this.emit({ type: 'notice', level: 'info', text: 'The conversation no longer fits the model. Summarizing older messages and retrying…' })
           if (await this.compact(signal)) continue
         }
-        // Keep whatever was streamed before the interruption.
-        if (content.trim()) this.push({ role: 'assistant', content: content + '\n\n[interrupted]' })
         throw err
       }
     }
+  }
 
-    this.push({ role: 'assistant', content, ...(calls.length ? { toolCalls: calls } : {}), ...(reasoning ? { reasoning } : {}), ...(extra ? { extra } : {}) })
-    if (usage) {
-      const record = this.recordUsage(ref, usage)
-      this.session.lastPromptTokens = usage.promptTokens + usage.completionTokens
-      this.emit({
-        type: 'usage',
-        record,
-        summary: this.o.usage.summary(this.usageId),
-        contextTokens: this.session.lastPromptTokens,
-        contextLength: this.contextLength(),
-      })
+  private pushDraft(d: Draft) {
+    this.push({ role: 'assistant', content: d.content, ...(d.reasoning ? { reasoning: d.reasoning } : {}), ...(d.extra ? { extra: d.extra } : {}) })
+  }
+
+  /**
+   * Mixture of Agents: the proposers answer the conversation in parallel (text only), then the
+   * aggregator writes the reply from their answers and the chat model's draft. If no proposer
+   * answers, or the aggregator fails, the draft is the reply.
+   */
+  private async finishMixed(draft: Draft, signal: AbortSignal): Promise<void> {
+    const cfg = this.settings.moa
+    const aggregator = cfg.aggregator!
+    const budget = checkBudget(this.o.usage.summary(this.usageId), this.settings.usage)
+    if (!budget.ok && this.settings.usage.budgetAction === 'stop') {
+      this.pushDraft(draft)
+      this.emit({ type: 'notice', level: 'info', text: 'Budget reached, so this reply was not mixed from other models.' })
+      return
     }
-    return calls
+    const transcript = mixtureTranscript(this.session.messages)
+    const lang = this.settings.profile.language
+    this.emit({ type: 'mixing', phase: 'proposing', models: cfg.proposers })
+    const proposals = await runProposers(cfg.proposers, async (ref) => {
+      const { text, usage } = await collectText(this.provider(ref), ref.modelId, proposerMessages(transcript, lang), signal)
+      if (usage) this.reportUsage(ref, usage)
+      return text
+    })
+    if (signal.aborted) {
+      this.pushDraft(draft)
+      throw signal.reason ?? new Error('Interrupted by user')
+    }
+    const answered = proposals.filter((p) => p.content)
+    if (!answered.length) {
+      this.pushDraft(draft)
+      this.emit({ type: 'notice', level: 'warn', text: "None of the mixture models answered, so this is the chat model's own reply." })
+      return
+    }
+    const withDraft = !!draft.content.trim()
+    const answers = [
+      ...(withDraft ? [{ label: `the agent's draft, ${this.modelName(draft.ref)}`, content: draft.content }] : []),
+      ...answered.map((p) => ({ label: this.modelName(p.model), content: p.content! })),
+    ]
+    this.emit({ type: 'mixing', phase: 'combining', models: [aggregator] })
+    let streamed = false
+    try {
+      const { text, usage } = await collectText(this.provider(aggregator), aggregator.modelId, aggregatorMessages(transcript, answers, lang), signal, (delta) => {
+        streamed = true
+        this.emit({ type: 'text', delta })
+      })
+      if (usage) this.reportUsage(aggregator, usage)
+      if (!text) throw new Error('empty reply')
+      this.push({
+        role: 'assistant',
+        content: text,
+        moa: { aggregator, proposals, ...(withDraft ? { draft: { model: draft.ref, content: draft.content } } : {}) },
+      })
+    } catch (err) {
+      if (streamed) this.emit({ type: 'stream_reset' })
+      this.pushDraft(draft)
+      if (signal.aborted) throw err
+      this.emit({ type: 'notice', level: 'warn', text: `${this.modelName(aggregator)} couldn't combine the answers (${failureLabel(err)}), so this is the chat model's own reply.` })
+    }
   }
 
   private sessionAccess(): SessionAccess | undefined {
@@ -827,7 +996,7 @@ export class Agent {
       onEvent: (e) => {
         if (e.type === 'tool_start' && e.name !== 'todo_write') progress(`→ ${e.name} ${e.subject}\n`)
         else if (e.type === 'tool_end' && e.result.isError) progress(`  ${e.denied ? 'denied' : 'failed'}: ${e.result.content.split('\n')[0].slice(0, 160)}\n`)
-        else if (e.type === 'notice') progress(`  ${e.text}\n`)
+        else if (e.type === 'notice' || e.type === 'fallback') progress(`  ${e.text}\n`)
         else if (e.type === 'error') (error = e.message), progress(`  error: ${e.message}\n`)
         else if (e.type === 'usage') {
           // Keep the parent's usage display current while the subagent spends tokens.
@@ -970,8 +1139,11 @@ export class Agent {
     const ref = this.settings.models.title
     if (!ref) return
     try {
-      const { title, usage } = await generateTitle(this.registry.get(ref.providerId), ref.modelId, text, AbortSignal.timeout(60_000))
-      if (usage) this.recordUsage(ref, usage)
+      const { title } = await this.withFallback(ref, async (provider, r) => {
+        const out = await generateTitle(provider, r.modelId, text, AbortSignal.timeout(60_000))
+        if (out.usage) this.recordUsage(r, out.usage)
+        return out
+      })
       if (!title || this.session.meta.title !== fallback) return
       this.session.meta.title = title
       this.save()
@@ -990,13 +1162,16 @@ export class Agent {
     const reply = messages.findLast((m) => m.role === 'assistant' && m.content.trim())
     if (!user || !reply || !user.content.trim()) return
     try {
-      const { review, usage } = await reviewExchange(
-        this.registry.get(ref.providerId),
-        ref.modelId,
-        { global: this.memory('global'), project: this.memory('project'), user: user.content, reply: reply.content },
-        AbortSignal.timeout(90_000),
-      )
-      if (usage) this.recordUsage(ref, usage)
+      const { review } = await this.withFallback(ref, async (provider, r) => {
+        const out = await reviewExchange(
+          provider,
+          r.modelId,
+          { global: this.memory('global'), project: this.memory('project'), user: user.content, reply: reply.content },
+          AbortSignal.timeout(90_000),
+        )
+        if (out.usage) this.recordUsage(r, out.usage)
+        return out
+      })
       // Memory may have been turned off while the review ran.
       if (!review || !this.memoryOn) return
       const { added, removed } = applyReview(this.o.memory.scoped(this.session.meta.cwd), review)
@@ -1010,13 +1185,14 @@ export class Agent {
   async compact(signal?: AbortSignal): Promise<boolean> {
     const split = compactionSplit(this.session.messages)
     if (split <= 0) return false
-    const ref = this.settings.models.compaction ?? this.model
-    const provider = this.registry.get(ref.providerId)
     const old = this.session.messages.slice(0, split)
-    const window = this.registry.cachedModel(ref.providerId, ref.modelId)?.contextLength ?? this.contextLength()
-    // ~4 characters per token; leave room for the prompt and the summary itself.
-    const { summary, usage } = await summarize(provider, ref.modelId, old, signal, Math.min(400_000, Math.floor(window * 0.6 * 4)))
-    if (usage) this.recordUsage(ref, usage)
+    const { summary } = await this.withFallback(this.settings.models.compaction ?? this.model, async (provider, ref) => {
+      const window = this.registry.cachedModel(ref.providerId, ref.modelId)?.contextLength ?? this.contextLength()
+      // ~4 characters per token; leave room for the prompt and the summary itself.
+      const out = await summarize(provider, ref.modelId, old, signal, Math.min(400_000, Math.floor(window * 0.6 * 4)))
+      if (out.usage) this.recordUsage(ref, out.usage)
+      return out
+    })
     if (!summary) return false
     this.session.messages = [
       { role: 'user', content: `[Summary of the earlier conversation]\n\n${summary}` },

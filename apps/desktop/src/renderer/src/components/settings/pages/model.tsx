@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { EFFORT_LABELS, EFFORT_LEVELS, refKey } from '@harness/core/catalog'
 import type { ModelRef, Settings } from '../../../../../shared/ipc'
-import { ListOfModels } from './parts'
+import { moaReady, MOA_MAX_PROPOSERS } from '@harness/core/moa'
+import { ListOfModels, OrderedModels } from './parts'
 import { NumberField, Row, Section, Select, Toggle } from '../../fields'
 import { ModelPicker } from '../../ModelPicker'
 import { ModelChoice, refText, type PageProps } from '../common'
@@ -189,5 +190,87 @@ export function SubagentsPage({ app, save, onState, onError }: PageProps) {
         <NumberField label="Max steps per subagent" value={a.maxSteps} min={1} max={500} onChange={(v) => save((s) => ((s.agent.subagents.maxSteps = v ?? 50), s))} />
       </Row>
     </Section>
+  )
+}
+
+const sameRef = (a: ModelRef) => (b: ModelRef) => refKey(a) === refKey(b)
+
+export function FallbackPage({ app, save, onState, onError }: PageProps) {
+  const list = app.settings.models.fallbacks
+  const [adding, setAdding] = useState(false)
+  return (
+    <>
+      <Section
+        title="Fallback models"
+        description="When the chat's model fails after its retries (an outage, a rate limit, a model that's gone, a missing key), the same step runs on the first fallback, then the next. The next step tries the chat's own model again. A note in the chat says when this happens."
+      >
+        <Row label="Fallback order" hint="Tried top to bottom. Subagents, chat naming, memory and summaries use this list too." wide>
+          <OrderedModels refs={list} ready={app.ready} onChange={(refs) => save((s) => ((s.models.fallbacks = refs), s))} />
+          <div>
+            <button className="btn" onClick={() => setAdding(true)}>
+              Add fallback model
+            </button>
+          </div>
+        </Row>
+      </Section>
+      <Section
+        title="When it doesn't switch"
+        description="Stopping a reply, budget limits, and a request the provider rejects as malformed never switch models, so real problems stay visible. A conversation too long for the model only moves to a fallback with a bigger context window. A model that isn't found or has no key is skipped for the rest of that turn."
+      />
+      {adding && (
+        <ModelPicker
+          app={app}
+          onClose={() => setAdding(false)}
+          onState={onState}
+          onError={onError}
+          onPick={(r) => save((s) => (s.models.fallbacks.some(sameRef(r)) || s.models.fallbacks.push(r), s))}
+          title="Add a fallback model…"
+        />
+      )}
+    </>
+  )
+}
+
+export function MoaPage({ app, save, onState, onError }: PageProps) {
+  const moa = app.settings.moa
+  const ready = moaReady(app.settings)
+  const [adding, setAdding] = useState(false)
+  const full = moa.proposers.length >= MOA_MAX_PROPOSERS
+  return (
+    <>
+      <Section
+        title="Mixture of Agents"
+        description="For a chat's final answer, several models answer the conversation side by side (text only, no tools), and a combining model writes the reply from their answers and the chat model's draft. Steps that read files or run commands still use the chat's model."
+      >
+        <Row label="On by default" hint={ready ? 'For chats where you haven\'t used the Mix toggle in the composer.' : 'Add at least 2 proposers and a combining model first.'}>
+          <Toggle label="On by default" value={moa.enabled && ready} disabled={!ready} onChange={(v) => save((s) => ((s.moa.enabled = v), s))} />
+        </Row>
+        <Row label="Proposers" hint={`2 to ${MOA_MAX_PROPOSERS} models that answer side by side. Models from different makers tend to catch each other's mistakes.`} wide>
+          <ListOfModels refs={moa.proposers} onRemove={(r) => save((s) => ((s.moa.proposers = s.moa.proposers.filter((x) => !sameRef(r)(x))), s))} />
+          <div>
+            <button className="btn" disabled={full} onClick={() => setAdding(true)}>
+              {full ? `${MOA_MAX_PROPOSERS} proposers at most` : 'Add proposer'}
+            </button>
+          </div>
+        </Row>
+        <Row label="Combining model" hint="Reads every answer and writes the reply. A strong model works best here.">
+          <ModelChoice app={app} onState={onState} onError={onError} value={moa.aggregator} empty="Choose…" resetLabel="clear" title="Combining model…" onChange={(r) => save((s) => ((s.moa.aggregator = r), s))} />
+        </Row>
+      </Section>
+      <Section
+        title="Cost"
+        description={`Each mixed reply makes ${Math.max(moa.proposers.length, 2) + 1} extra requests: one per proposer and one to combine. Each sends up to about 6,000 tokens of the conversation, and the combining request also carries every answer. All of it counts toward the chat's usage and budget. Once a budget set to stop is reached, replies aren't mixed.`}
+      />
+      {adding && (
+        <ModelPicker
+          app={app}
+          onClose={() => setAdding(false)}
+          onState={onState}
+          onError={onError}
+          onPick={(r) => save((s) => (s.moa.proposers.some(sameRef(r)) || s.moa.proposers.length >= MOA_MAX_PROPOSERS || s.moa.proposers.push(r), s))}
+          title="Add a proposer…"
+        />
+      )}
+    </>
   )
 }

@@ -1344,6 +1344,44 @@ kbd {
 .chip.fast {
   border-color: var(--accent);
 }
+.chip.mix.on {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+details.mixed {
+  margin-top: 6px;
+  font-size: 0.85em;
+}
+details.mixed > summary {
+  cursor: pointer;
+  color: var(--muted);
+  width: fit-content;
+}
+.mixed-list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0 0 0 12px;
+  border-left: 1px solid var(--border);
+  display: grid;
+  gap: 4px;
+}
+.mixed-list summary {
+  cursor: pointer;
+  width: fit-content;
+}
+.mixed-list svg {
+  vertical-align: -2px;
+}
+.mixed-failed {
+  padding-left: 14px;
+}
+.mixed-body {
+  margin: 6px 0 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--panel);
+  font-size: 1.05em;
+}
 .fast-tag {
   color: var(--accent);
 }
@@ -3649,4 +3687,14 @@ body.resizing * {
   .mode-choices {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+.list-field.ordered {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.list-field.ordered .order-num {
+  min-width: 1.2em;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
 }

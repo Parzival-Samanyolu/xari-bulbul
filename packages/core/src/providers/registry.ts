@@ -40,6 +40,11 @@ export class ProviderRegistry {
     return p
   }
 
+  /** True when the provider is set up and enabled. */
+  has(id: string): boolean {
+    return this.providers.has(id)
+  }
+
   list(): Provider[] {
     return [...this.providers.values()]
   }

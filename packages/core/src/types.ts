@@ -29,6 +29,8 @@ export type ChatMessage =
       reasoning?: string
       /** Provider data replayed with this turn (Anthropic's content blocks with thinking signatures). */
       extra?: Record<string, unknown>
+      /** Set when Mixture of Agents wrote this reply: what was combined. Display only, never sent to a model. */
+      moa?: MixtureInfo
     }
   | {
       role: 'tool'
@@ -38,6 +40,23 @@ export type ChatMessage =
       /** Images the tool returned (a browser screenshot); sent to the model with the result. */
       images?: ImageAttachment[]
     }
+
+/** One answer that went into a mixed reply. */
+export interface MixtureProposal {
+  model: ModelRef
+  /** The answer, when the model gave one. */
+  content?: string
+  /** Why it was left out (failed or empty). */
+  error?: string
+}
+
+export interface MixtureInfo {
+  /** The model that combined the answers into the reply. */
+  aggregator: ModelRef
+  proposals: MixtureProposal[]
+  /** The chat model's own answer (it could use tools), also given to the aggregator. */
+  draft?: { model: ModelRef; content: string }
+}
 
 /** A text file the user attached; its contents go to the model after the message text. */
 export interface FileAttachment {

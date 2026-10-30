@@ -7,7 +7,7 @@ import { DesktopPage, LimitsPage, OutputPage, TerminalPage, ToolAccessPage } fro
 import { BotsPage, ExperimentalPage } from './pages/bots'
 import { PluginsPage, SchedulesPage, SessionsPage, UsagePage, VersionPage } from './pages/data'
 import { AppearancePage, ChatPage, NotificationsPage, ShortcutsPage, WorkspacePage } from './pages/general'
-import { AuxModelsPage, MainModelPage, SubagentsPage } from './pages/model'
+import { AuxModelsPage, FallbackPage, MainModelPage, MoaPage, SubagentsPage } from './pages/model'
 import { PrivacyPage, ProfilePage } from './pages/profile'
 import { AccountsPage, ApiKeysPage, CustomEndpointsPage } from './pages/providers'
 import { SafetyPage } from './pages/safety'
@@ -63,7 +63,14 @@ export const TREE: NodeDef[] = [
         page: MainModelPage,
         rows: [['Default model', 'new chats'], ['Reasoning effort', 'thinking'], ['Context window', 'context length tokens override'], ['Temperature'], ['Max output tokens', 'length'], ['Fallback context size', 'ollama'], ['Free models only', 'switcher picker paid'], ['Only models that can use tools', 'switcher picker'], ['Favorites', 'pinned switcher'], ['Per-model overrides', 'speed fast batch replay reasoning']],
       },
-      { id: 'model.fallback', label: 'Fallback models', icon: 'reset', description: 'Models the chat moves to when the main model fails.', page: Later, hidden: true },
+      {
+        id: 'model.fallback',
+        label: 'Fallback models',
+        icon: 'reset',
+        description: 'Models the chat moves to when the main model fails.',
+        page: FallbackPage,
+        rows: [['Fallback models', 'failover backup outage rate limit 429 error'], ['Fallback order', 'reorder priority'], ["When it doesn't switch", 'abort context window budget']],
+      },
       {
         id: 'model.aux',
         label: 'Auxiliary models',
@@ -80,7 +87,14 @@ export const TREE: NodeDef[] = [
         page: SubagentsPage,
         rows: [['Allow subagents', 'task tool delegate'], ['Subagent model'], ['Subagents can edit', 'write'], ['Run at once', 'parallel'], ['Max steps per subagent']],
       },
-      { id: 'model.moa', label: 'Mixture of Agents', icon: 'subagents', description: 'Several models answer; one combines their answers.', page: Later, hidden: true },
+      {
+        id: 'model.moa',
+        label: 'Mixture of Agents',
+        icon: 'subagents',
+        description: 'Several models answer; one combines their answers.',
+        page: MoaPage,
+        rows: [['Mixture of Agents', 'moa mix ensemble'], ['On by default', 'mix toggle'], ['Proposers', 'models answer'], ['Combining model', 'aggregator'], ['Cost', 'price usage budget']],
+      },
     ],
   },
   {

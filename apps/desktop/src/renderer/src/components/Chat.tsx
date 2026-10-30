@@ -1,5 +1,5 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
-import type { AppState, ChatMessage, Checkpoint, PermissionAnswer, PermissionRequest, QuestionRequest, ToolDisplay } from '../../../shared/ipc'
+import type { AppState, ChatMessage, Checkpoint, MixtureInfo, PermissionAnswer, PermissionRequest, QuestionRequest, ToolDisplay } from '../../../shared/ipc'
 import { chatBot } from '@harness/core/bots'
 import type { LiveState, Notice, ToolLive } from '../App'
 import { api } from '../lib/api'
@@ -7,6 +7,8 @@ import { Markdown } from '../lib/Markdown'
 import { Approval } from './Approval'
 import { BotAvatar, turnOnBot } from './Bots'
 import { Question } from './Question'
+import { ProviderLogo } from './ProviderLogo'
+import { modelLabel } from '../lib/format'
 
 type ToolCallT = NonNullable<Extract<ChatMessage, { role: 'assistant' }>['toolCalls']>[number]
 
@@ -410,6 +412,7 @@ const AssistantMessage = memo(function AssistantMessage(props: {
     <div className="assistant">
       {m.reasoning && props.showReasoning && <Reasoning text={m.reasoning} />}
       {m.content && <Markdown text={m.content} />}
+      {m.moa && <MixedFrom info={m.moa} />}
       {m.toolCalls?.map((c) => {
         const display = displays[c.id]
         const file = display?.kind === 'diff' && checkpoint && display.path in checkpoint.files ? display.path : undefined
@@ -432,11 +435,50 @@ const AssistantMessage = memo(function AssistantMessage(props: {
   )
 })
 
+/** "Mixed from N models": who answered, and each answer on request. */
+function MixedFrom({ info }: { info: MixtureInfo }) {
+  const answers = [
+    ...(info.draft ? [{ model: info.draft.model, content: info.draft.content, error: undefined, note: 'chat model draft' }] : []),
+    ...info.proposals.map((p) => ({ ...p, note: '' })),
+  ]
+  const used = answers.filter((a) => a.content).length
+  return (
+    <details className="mixed">
+      <summary>
+        Mixed from {used} {used === 1 ? 'model' : 'models'}
+        <span className="muted"> · combined by {modelLabel(info.aggregator.modelId)}</span>
+      </summary>
+      <ul className="mixed-list">
+        {answers.map((a, i) => (
+          <li key={i}>
+            {a.content ? (
+              <details>
+                <summary>
+                  <ProviderLogo id={a.model.providerId} size={12} /> {modelLabel(a.model.modelId)}
+                  {a.note && <span className="muted"> · {a.note}</span>}
+                </summary>
+                <div className="mixed-body">
+                  <Markdown text={a.content} />
+                </div>
+              </details>
+            ) : (
+              <div className="mixed-failed">
+                <ProviderLogo id={a.model.providerId} size={12} /> {modelLabel(a.model.modelId)}
+                <span className="muted"> · left out: {a.error}</span>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
+    </details>
+  )
+}
+
 function LiveReply({ live, showReasoning }: { live: LiveState; showReasoning: boolean }) {
   return (
     <div className="assistant live">
       {live.streamReasoning && showReasoning && <Reasoning text={live.streamReasoning} open />}
-      {live.streamText ? <Markdown text={live.streamText} /> : <Thinking tools={live.tools} />}
+      {live.streamText ? <Markdown text={live.streamText} /> : <Thinking tools={live.tools} status={live.status} />}
     </div>
   )
 }
@@ -455,7 +497,7 @@ function owns(callId: string, request: PermissionRequest): boolean {
   return request.callId === callId || request.callId.startsWith(`${callId}/`)
 }
 
-function Thinking({ tools }: { tools: Record<string, ToolLive> }) {
+function Thinking({ tools, status }: { tools: Record<string, ToolLive>; status?: string }) {
   const running = Object.values(tools).find((t) => !t.done)
   return (
     <div className="thinking">
@@ -464,7 +506,7 @@ function Thinking({ tools }: { tools: Record<string, ToolLive> }) {
         <i />
         <i />
       </span>
-      {running ? (running.name === 'task' ? 'Subagent working…' : `Running ${running.name}…`) : 'Working…'}
+      {running ? (running.name === 'task' ? 'Subagent working…' : `Running ${running.name}…`) : (status ?? 'Working…')}
     </div>
   )
 }

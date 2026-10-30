@@ -25,13 +25,26 @@ export function ctx(cwd: string, over: Partial<ToolContext> = {}): ToolContext {
 
 /** Replays a scripted list of responses, one per chat() call, and records the requests. */
 export class MockProvider implements Provider {
-  readonly id = 'mock'
-  readonly name = 'Mock'
+  readonly id: string
+  readonly name: string
   requests: ChatRequest[] = []
-  /** Each entry is one reply; an `{ events, fail }` entry streams events and then throws. */
-  constructor(private script: (StreamEvent[] | { events: StreamEvent[]; fail: Error })[]) {}
+  private readonly contextLength: number
+  private readonly modelName: string
+  /**
+   * Each entry is one reply; an `{ events, fail }` entry streams events and then throws. `id` and
+   * `contextLength` let a test register several providers (fallbacks, mixture models); each lists one model, `m`.
+   */
+  constructor(
+    private script: (StreamEvent[] | { events: StreamEvent[]; fail: Error })[],
+    opts: { id?: string; contextLength?: number; modelName?: string } = {},
+  ) {
+    this.id = opts.id ?? 'mock'
+    this.name = opts.id ? opts.id[0].toUpperCase() + opts.id.slice(1) : 'Mock'
+    this.contextLength = opts.contextLength ?? 100_000
+    this.modelName = opts.modelName ?? 'M'
+  }
   async listModels(): Promise<ModelInfo[]> {
-    return [{ id: 'm', name: 'M', providerId: 'mock', contextLength: 100_000, pricing: { prompt: 1e-6, completion: 2e-6 }, free: false, supportsTools: true }]
+    return [{ id: 'm', name: this.modelName, providerId: this.id, contextLength: this.contextLength, pricing: { prompt: 1e-6, completion: 2e-6 }, free: false, supportsTools: true }]
   }
   async *chat(req: ChatRequest): AsyncIterable<StreamEvent> {
     this.requests.push(structuredClone({ ...req, signal: undefined }))

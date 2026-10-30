@@ -338,6 +338,8 @@ export const SettingsSchema = z.object({
       memoryReview: ModelRefSchema.nullable().default(null),
       /** Speech-to-text model for the composer's mic button (an OpenAI-style `/audio/transcriptions` endpoint). Empty = off. */
       transcription: ModelRefSchema.nullable().default(null),
+      /** Tried in order when the chat's model fails after its retries (rate limit, outage, not found, no key). */
+      fallbacks: z.array(ModelRefSchema).default([]),
       favorites: z.array(ModelRefSchema).default([]),
       /** Most recently used models, newest first (maintained automatically). */
       recent: z.array(ModelRefSchema).default([]),
@@ -358,6 +360,23 @@ export const SettingsSchema = z.object({
       reasoningEffort: z.enum(EFFORT_LEVELS).nullable().default(null),
       /** Fallback context size when a provider doesn't report one. */
       defaultContextLength: z.number().int().positive().default(128_000),
+    })
+    .prefault({}),
+
+  /** Mixture of Agents: several models answer, one combines their answers into the reply. */
+  moa: z
+    .object({
+      /** On for chats that haven't set it themselves (the composer toggle). Only works once configured. */
+      enabled: z.boolean().default(false),
+      /** 2 to 4 models that answer in parallel, text only. */
+      proposers: z
+        .array(ModelRefSchema)
+        .default([])
+        .transform((l) => l.slice(0, 4)),
+      /** Writes the reply from the proposals. */
+      aggregator: ModelRefSchema.nullable().default(null),
+      /** final: only the turn's final answer is mixed; tool steps run on the chat's model. */
+      mode: z.enum(['final']).default('final'),
     })
     .prefault({}),
 

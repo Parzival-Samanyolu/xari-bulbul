@@ -53,6 +53,8 @@ export interface LiveState {
   tools: Record<string, ToolLive>
   notices: Notice[]
   context?: { tokens: number; length: number }
+  /** What the chat is doing while nothing streams (Mixture of Agents asking its models). */
+  status?: string
   lastUsage?: { prompt: number; completion: number; cost: number | null }
 }
 
@@ -115,7 +117,7 @@ function reducer(m: Model, a: Action): Model {
   })
   switch (e.type) {
     case 'turn_start':
-      return setLive({ ...live, streamText: '', streamReasoning: '', notices: live.notices.filter((n) => n.level !== 'error') }, running(true))
+      return setLive({ ...live, streamText: '', streamReasoning: '', status: undefined, notices: live.notices.filter((n) => n.level !== 'error') }, running(true))
     case 'text':
       return setLive({ ...live, streamText: live.streamText + e.delta })
     case 'reasoning':
@@ -123,7 +125,7 @@ function reducer(m: Model, a: Action): Model {
     case 'stream_reset':
       return setLive({ ...live, streamText: '', streamReasoning: '' })
     case 'message': {
-      const clear = e.message.role === 'assistant' ? { streamText: '', streamReasoning: '' } : {}
+      const clear = e.message.role === 'assistant' ? { streamText: '', streamReasoning: '', status: undefined } : {}
       if (!shown || !app.session) return setLive({ ...live, ...clear })
       const messages = app.session.messages.slice(0, e.index)
       messages[e.index] = e.message
@@ -162,6 +164,10 @@ function reducer(m: Model, a: Action): Model {
       return setLive(addNotice(live, 'info', `Summarized ${e.removedMessages} older messages to free up context.`))
     case 'notice':
       return setLive(addNotice(live, e.level, e.text))
+    case 'fallback':
+      return setLive(addNotice(live, 'info', e.text))
+    case 'mixing':
+      return setLive({ ...live, status: e.phase === 'proposing' ? `Asking ${e.models.length} models…` : 'Combining their answers…' })
     case 'memory': {
       const notice: Notice = { id: ++noticeId, level: 'info', text: memoryText(e.added, e.removed), memory: { sessionId: id, added: e.added, removed: e.removed } }
       return setLive({ ...live, notices: [...live.notices, notice].slice(-5) })
@@ -172,7 +178,7 @@ function reducer(m: Model, a: Action): Model {
       let notices = live.notices
       // The step-limit notice comes right before turn_end: give it a Continue button.
       if (e.reason === 'max_steps' && notices.length) notices = [...notices.slice(0, -1), { ...notices.at(-1)!, resume: true }]
-      return setLive({ ...live, notices, streamText: '', streamReasoning: '' }, running(false))
+      return setLive({ ...live, notices, streamText: '', streamReasoning: '', status: undefined }, running(false))
     }
   }
   return m

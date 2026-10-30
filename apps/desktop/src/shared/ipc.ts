@@ -9,6 +9,7 @@ import type {
   LocalWhisperStatus,
   McpServerStatus,
   MemoryFact,
+  MixtureInfo,
   ModelInfo,
   ModelRef,
   PermissionAnswer,
@@ -32,6 +33,7 @@ export type {
   LocalWhisperStatus,
   McpServerStatus,
   MemoryFact,
+  MixtureInfo,
   ModelInfo,
   ModelRef,
   PermissionAnswer,
@@ -319,6 +321,8 @@ export interface HarnessApi {
     stop(): Promise<void>
     setModel(ref: ModelRef): Promise<AppState>
     setMode(mode: PermissionMode): Promise<AppState>
+    /** Mixture of Agents on or off for the chat on screen. */
+    setMoa(on: boolean): Promise<AppState>
     compact(): Promise<boolean>
     respond(sessionId: string, callId: string, answer: PermissionAnswer): Promise<void>
     /** Answers an ask_user question ('' dismisses it). */

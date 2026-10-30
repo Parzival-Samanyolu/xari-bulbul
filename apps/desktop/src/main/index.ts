@@ -230,6 +230,7 @@ function registerIpc() {
   handle('agent.stop', () => c.stop())
   handle('agent.setModel', (ref) => c.setModel(ref))
   handle('agent.setMode', (mode) => c.setMode(mode))
+  handle('agent.setMoa', (on) => c.setMoa(on))
   handle('agent.compact', () => c.compact())
   handle('agent.respond', (sessionId, id, answer) => c.respond(sessionId, id, answer))
   handle('agent.answer', (sessionId, id, text) => c.answer(sessionId, id, text))

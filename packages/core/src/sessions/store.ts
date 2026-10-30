@@ -13,6 +13,8 @@ export interface SessionMeta {
   updatedAt: number
   /** The bot this chat was started with (Settings › Bots). Kept when bots are turned off. */
   botId?: string
+  /** Mixture of Agents for this chat (the composer toggle). Unset follows `moa.enabled`. */
+  moa?: boolean
 }
 
 export interface Session {

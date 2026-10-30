@@ -1050,6 +1050,12 @@ export class AppController {
     return this.state()
   }
 
+  /** Mixture of Agents for the chat on screen; new chats follow `moa.enabled`. */
+  setMoa(on: boolean): AppState {
+    this.agent?.setMoa(!!on)
+    return this.state()
+  }
+
   /**
    * Changes the mode of the chat on screen. In a plain chat it's the mode for every chat whose bot
    * doesn't set one; a bot with its own mode keeps the change to that chat.
