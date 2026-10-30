@@ -271,6 +271,16 @@ function registerIpc() {
     const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: 'Folder for this schedule', defaultPath: c.state().workspace ?? undefined })
     return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]
   })
+  handle('imessage.test', () => c.imessageTest())
+  handle('imessage.check', () => c.imessageCheck())
+  handle('imessage.openPrivacy', (pane: 'disk' | 'automation') => {
+    if (process.platform !== 'darwin') return
+    return shell.openExternal(`x-apple.systempreferences:com.apple.preference.security?${pane === 'automation' ? 'Privacy_Automation' : 'Privacy_AllFiles'}`)
+  })
+  handle('imessage.pickFolder', async () => {
+    const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: 'Folder for iMessage chats', defaultPath: c.state().workspace ?? undefined })
+    return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]
+  })
   handle('bots.pickAvatar', async (botId: string) => {
     const r = await dialog.showOpenDialog(win!, { properties: ['openFile'], title: 'Bot picture', filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }] })
     return r.canceled || !r.filePaths[0] ? null : c.setBotAvatar(botId, r.filePaths[0])
@@ -333,6 +343,7 @@ app.whenReady().then(async () => {
   await controller.restoreWorkspace()
   controller.startMcp()
   controller.startSchedules()
+  controller.startGateways()
   createWindow()
   initUpdater(send, controller.getSettings().app.autoUpdate)
   applyDesktopSettings()

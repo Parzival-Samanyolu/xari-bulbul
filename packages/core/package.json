@@ -10,6 +10,7 @@
     "./catalog": "./src/providers/catalog.ts",
     "./bots": "./src/bots/bots.ts",
     "./moa": "./src/moa/config.ts",
+    "./gateway-senders": "./src/gateways/senders.ts",
     "./profile": "./src/settings/profile.ts",
     "./mcp-presets": "./src/mcp/presets.ts",
     "./voice": "./src/voice/transcribe.ts",

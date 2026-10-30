@@ -86,3 +86,5 @@ export {
   type TelemetryProps,
   type TelemetrySink,
 } from './telemetry/client.js'
+export * from './gateways/imessage.js'
+export * from './gateways/imessage-gateway.js'

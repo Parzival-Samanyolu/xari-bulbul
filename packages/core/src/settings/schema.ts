@@ -494,6 +494,27 @@ export const SettingsSchema = z.object({
   /** Saved agents with a personality; used only while `experimental.bots` is on. */
   bots: z.array(BotSchema).default(() => structuredClone(STARTER_BOTS)),
 
+  /** Reaching the agent from other apps, while this app is open. */
+  gateways: z
+    .object({
+      /** macOS only: texts from your own numbers/Apple ID emails run in a chat; the reply goes back through Messages. */
+      imessage: z
+        .object({
+          enabled: z.boolean().default(false),
+          /** Allowed senders, normalized: phones as E.164 (+15551234567), emails lowercased. Empty = nobody. */
+          senders: z.array(z.string()).default([]),
+          /** Folder the chats run in. Required. */
+          cwd: z.string().default(''),
+          /** A bot for the chats (only while bots are on). */
+          botId: z.string().nullable().default(null),
+          /** Ask by default, so approvals come back to the app. */
+          mode: z.enum(PERMISSION_MODES).default('ask'),
+          pollSeconds: z.number().int().min(2).max(300).default(5),
+        })
+        .prefault({}),
+    })
+    .prefault({}),
+
   /** Preview features, off by default. */
   experimental: z
     .object({

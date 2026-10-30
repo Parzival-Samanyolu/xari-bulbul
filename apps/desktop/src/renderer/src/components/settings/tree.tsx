@@ -5,6 +5,7 @@ import type { PageProps } from './common'
 import type { IconName } from './icons'
 import { DesktopPage, LimitsPage, OutputPage, TerminalPage, ToolAccessPage } from './pages/advanced'
 import { BotsPage, ExperimentalPage } from './pages/bots'
+import { IMessagePage } from './pages/gateways'
 import { PluginsPage, SchedulesPage, SessionsPage, UsagePage, VersionPage } from './pages/data'
 import { AppearancePage, ChatPage, NotificationsPage, ShortcutsPage, WorkspacePage } from './pages/general'
 import { AuxModelsPage, FallbackPage, MainModelPage, MoaPage, SubagentsPage } from './pages/model'
@@ -45,6 +46,8 @@ export interface GroupDef {
 export type NodeDef = PageDef | GroupDef
 
 export const isGroup = (n: NodeDef): n is GroupDef => 'children' in n
+
+const MAC = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform || navigator.userAgent)
 
 /** A page for a feature that isn't built yet. Hidden, so never shown. */
 const Later: ComponentType<PageProps> = () => null
@@ -282,7 +285,23 @@ export const TREE: NodeDef[] = [
       { id: 'providers.local', label: 'Local models', icon: 'monitor', description: 'Models that run on this computer.', page: Later, hidden: true },
     ],
   },
-  { id: 'gateways', label: 'Gateways', icon: 'gateway', description: 'Reach the agent from other apps.', page: Later, hidden: true },
+  {
+    id: 'gateways',
+    label: 'Gateways',
+    icon: 'gateway',
+    children: [
+      {
+        id: 'gateways.imessage',
+        label: 'iMessage',
+        icon: 'chat',
+        description: 'Text the agent from your own phone. Runs while the app is open.',
+        page: IMessagePage,
+        // Messages and its database exist only on macOS.
+        hidden: !MAC,
+        rows: [['Receive texts from iMessage', 'imessage messages sms text phone gateway'], ['Allowed senders', 'phone number email apple id'], ['Folder', 'imessage chats'], ['Permission mode', 'imessage ask auto'], ['Check for new texts every', 'poll interval seconds'], ['Send test message', 'connected automation']],
+      },
+    ],
+  },
   {
     id: 'shortcuts',
     label: 'Keyboard shortcuts',

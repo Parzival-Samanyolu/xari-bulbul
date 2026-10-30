@@ -6,6 +6,7 @@ import type {
   DirListing,
   FileChange,
   FilePreview,
+  IMessageStatus,
   LocalWhisperStatus,
   McpServerStatus,
   MemoryFact,
@@ -24,6 +25,7 @@ import type {
 } from '@harness/core'
 
 export type {
+  IMessageStatus,
   AgentEvent,
   ChatMessage,
   Checkpoint,
@@ -218,6 +220,8 @@ export interface AppState {
   voice: VoiceState
   /** Bots with a picture as their avatar: bot id → data URL. */
   botAvatars: Record<string, string>
+  /** The iMessage gateway (macOS): listening, missing Full Disk Access, Automation blocked… */
+  imessage: IMessageStatus
   paths: { data: string; sessions: string; usage: string }
 }
 
@@ -391,6 +395,16 @@ export interface HarnessApi {
     /** Starts the schedule in a new chat now, unless its last run is still going. */
     runNow(id: string): Promise<AppState>
     /** Folder picker that only returns the path (doesn't open the folder). */
+    pickFolder(): Promise<string | null>
+  }
+  imessage: {
+    /** Texts "Xarı Bülbül is connected." to the first allowed sender. Throws with the reason when it can't. */
+    test(): Promise<AppState>
+    /** Reads chat.db again now (after granting Full Disk Access). */
+    check(): Promise<AppState>
+    /** Opens System Settings at Full Disk Access or Automation. */
+    openPrivacy(pane: 'disk' | 'automation'): Promise<void>
+    /** Folder picker that only returns the path. */
     pickFolder(): Promise<string | null>
   }
   bots: {

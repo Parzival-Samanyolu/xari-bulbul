@@ -13,6 +13,7 @@ import {
   SAVE_SKILL_TOOL,
   SEARCH_KEY_ID,
   findBrowser,
+  IMessageGateway,
   SessionStore,
   USER_EXT_DIR,
   UsageTracker,
@@ -135,6 +136,7 @@ export class AppController {
   private readonly mcp: McpManager
   private mcpTimer: NodeJS.Timeout | null = null
   private readonly scheduler: Scheduler
+  private readonly imessage: IMessageGateway
   private catchUpTimer: NodeJS.Timeout | null = null
   private voiceDownload: { ac: AbortController; progress: VoiceDownload } | null = null
   private ext: LoadedExtensions = { tools: [], commands: [], skills: [], errors: [] }
@@ -203,6 +205,12 @@ export class AppController {
       (s) => this.runScheduled(s),
       () => this.pushState(),
     )
+    this.imessage = new IMessageGateway({
+      stateFile: path.join(dataDir, 'gateways.json'),
+      config: () => this.settings.gateways.imessage,
+      run: (sender, text) => this.runGatewayMessage(sender, text),
+      onChange: () => this.pushState(),
+    })
     this.buildRegistry()
   }
 
@@ -274,6 +282,7 @@ export class AppController {
     }
     if (JSON.stringify(prev.mcp) !== JSON.stringify(this.settings.mcp)) void this.mcp.sync(this.settings.mcp.servers)
     if (JSON.stringify(prev.schedules) !== JSON.stringify(this.settings.schedules)) this.scheduler.arm()
+    if (JSON.stringify(prev.gateways) !== JSON.stringify(this.settings.gateways)) this.imessage.sync()
     if (opts.prune !== false && prev.sessions.retentionDays !== this.settings.sessions.retentionDays) this.pruneSessions()
     for (const r of this.agents.values()) {
       r.agent.updateSettings(this.settings)
@@ -281,7 +290,10 @@ export class AppController {
       const id = r.agent.session.meta.botId
       const before = activeBot(prev, id)?.mode
       const after = activeBot(this.settings, id)?.mode
-      if (id && before !== after) r.permissions.setMode(after ?? this.mode)
+      // Gateway chats follow the gateway's mode instead.
+      if (r.agent.session.meta.gateway) {
+        if (prev.gateways.imessage.mode !== this.settings.gateways.imessage.mode) r.permissions.setMode(this.settings.gateways.imessage.mode)
+      } else if (id && before !== after) r.permissions.setMode(after ?? this.mode)
     }
     return this.state()
   }
@@ -660,6 +672,7 @@ export class AppController {
   async dispose() {
     if (this.catchUpTimer) clearTimeout(this.catchUpTimer)
     this.scheduler.dispose()
+    this.imessage.dispose()
     this.voiceDownload?.ac.abort()
     this.cancelPending()
     this.terminals.dispose()
@@ -709,6 +722,90 @@ export class AppController {
     this.registry.models(session.meta.model.providerId).catch(() => {})
     this.count('feature.schedule_run')
     await running.agent.send(expandSlashCommand(s.prompt, ext.commands) ?? s.prompt)
+  }
+
+  // ---------- gateways ----------
+
+  /** Starts the iMessage gateway if it's on (macOS only). */
+  startGateways() {
+    this.imessage.sync()
+  }
+
+  async imessageTest(): Promise<AppState> {
+    await this.imessage.sendTest()
+    return this.state()
+  }
+
+  /** Reads chat.db again now, e.g. right after Full Disk Access was granted. */
+  async imessageCheck(): Promise<AppState> {
+    this.imessage.sync()
+    await this.imessage.poll()
+    return this.state()
+  }
+
+  /**
+   * Runs a text in the sender's chat (reused while it exists, else a new one in the gateway's
+   * folder and bot), in the background like a schedule. Resolves with the reply to text back.
+   */
+  private async runGatewayMessage(sender: string, text: string): Promise<string | null> {
+    const cfg = this.settings.gateways.imessage
+    const tag = `imessage:${sender}`
+    let running = [...this.agents.values()].find((r) => r.agent.session.meta.gateway === tag)
+    if (!running) {
+      const meta = this.sessionMetas().find((m) => m.gateway === tag && !this.removed.has(m.id))
+      const saved = meta ? this.store.load(meta.id) : null
+      if (saved) {
+        running = this.createAgent(saved, await this.toolsFor(saved.meta.cwd.normalize('NFC')))
+        this.agents.set(saved.meta.id, running)
+      }
+    }
+    if (!running) {
+      const cwd = path.resolve(cfg.cwd).normalize('NFC')
+      if (!cfg.cwd.trim() || !fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) return `The folder for iMessage chats is missing. Choose one in Xarı Bülbül › Settings › Gateways.`
+      const bot = cfg.botId ? activeBot(this.settings, cfg.botId) : undefined
+      const { model } = chatDefaults(this.settings, bot?.id, { model: this.settings.models.default, mode: this.mode })
+      const session = newSession(cwd, model, { botId: bot?.id })
+      session.meta.title = `💬 iMessage · ${sender}`
+      session.meta.gateway = tag
+      // Show the folder in the sidebar so the chat is visible.
+      if (!this.settings.app.openWorkspaces.includes(cwd)) {
+        this.settings = { ...this.settings, app: { ...this.settings.app, openWorkspaces: [...this.settings.app.openWorkspaces, cwd] } }
+        this.saveSettings()
+      }
+      running = this.createAgent(session, await this.toolsFor(cwd))
+      this.agents.set(session.meta.id, running)
+    }
+    this.prune()
+    const agent = running.agent
+    const { providerId } = agent.model
+    const config = this.settings.providers.find((p) => p.id === providerId)
+    if (!config?.enabled || !this.isReady(providerId)) return `The chat's model can't be reached (${config?.name ?? providerId} is off or has no API key). Open Xarı Bülbül to fix it.`
+    // A turn you started in the app for this chat finishes first.
+    while (agent.running) await new Promise((r) => setTimeout(r, 500))
+    if (this.removed.has(agent.session.meta.id)) return null
+    this.registry.models(providerId).catch(() => {})
+    const from = agent.session.messages.length
+    const reason = await agent.send(text)
+    const reply = agent.session.messages
+      .slice(from)
+      .filter((m) => m.role === 'assistant' && m.content.trim() && !m.content.endsWith('[interrupted]'))
+      .at(-1)?.content
+    if (reason === 'done') return reply ?? null
+    const why = ({ error: 'stopped with an error', aborted: 'was stopped', max_steps: 'hit the step limit', budget: 'hit the budget limit' } as const)[reason]
+    return `${reply ? `${reply}\n\n` : ''}(The turn ${why}. Open Xarı Bülbül to see it.)`
+  }
+
+  /** The tools and skills a chat in `cwd` gets: that folder's extensions plus MCP tools. */
+  private async toolsFor(cwd: string): Promise<{ tools: Tool[]; skills: LoadedExtensions['skills'] }> {
+    if (cwd === this.workspace) return { tools: this.tools, skills: this.ext.skills }
+    const ext = await this.loadExtensionsFor(cwd)
+    return { tools: assembleTools(ext.tools, this.mcp.tools()).tools, skills: ext.skills }
+  }
+
+  /** A gateway chat waiting on an approval or question texts its sender once. */
+  private gatewayAttention(agent: Agent, subject: string) {
+    const tag = agent.session.meta.gateway
+    if (tag?.startsWith('imessage:')) void this.imessage.needsAttention(tag.slice('imessage:'.length), subject.trim().slice(0, 200))
   }
 
   private extensionsInfo(): ExtensionsInfo {
@@ -820,8 +917,8 @@ export class AppController {
 
   private createAgent(session: Session, own?: { tools: Tool[]; skills: LoadedExtensions['skills'] }): Running {
     const id = session.meta.id
-    // A bot's chats start in the bot's mode.
-    const mode = activeBot(this.settings, session.meta.botId)?.mode ?? this.mode
+    // A bot's chats start in the bot's mode; gateway chats in the gateway's.
+    const mode = session.meta.gateway ? this.settings.gateways.imessage.mode : (activeBot(this.settings, session.meta.botId)?.mode ?? this.mode)
     const permissions = new Permissions({ ...this.settings.permissions, mode }, session.meta.cwd)
     const agent = new Agent({
       session,
@@ -847,12 +944,14 @@ export class AppController {
           this.pending.set(`${id}:${request.callId}`, { sessionId: id, resolve })
           this.send({ type: 'permission', sessionId: id, request })
           if (id !== this.activeId) this.notify({ sessionId: id, kind: 'approval', title: agent.session.meta.title, body: `Needs approval: ${request.tool} ${request.subject}`.trim() })
+          this.gatewayAttention(agent, `${request.tool} ${request.subject}`)
           this.pushState()
         }),
       askUser: (request) =>
         new Promise<string>((resolve) => {
           this.questions.set(`${id}:${request.callId}`, { sessionId: id, request, resolve })
           if (id !== this.activeId) this.notify({ sessionId: id, kind: 'question', title: agent.session.meta.title, body: `Has a question: ${request.question}` })
+          this.gatewayAttention(agent, `a question: ${request.question}`)
           this.pushState()
         }),
     })
@@ -1062,12 +1161,12 @@ export class AppController {
    */
   setMode(mode: PermissionMode): AppState {
     const shown = this.activeId ? this.agents.get(this.activeId) : undefined
-    if (shown && this.botMode(shown.agent)) {
+    if (shown && (this.botMode(shown.agent) || shown.agent.session.meta.gateway)) {
       shown.permissions.setMode(mode)
       return this.state()
     }
     this.mode = mode
-    for (const r of this.agents.values()) if (!this.botMode(r.agent)) r.permissions.setMode(mode)
+    for (const r of this.agents.values()) if (!this.botMode(r.agent) && !r.agent.session.meta.gateway) r.permissions.setMode(mode)
     return this.state()
   }
 
@@ -1283,6 +1382,7 @@ export class AppController {
         tokens: Object.fromEntries(this.settings.mcp.servers.map((s) => [s.id, this.secrets.has(mcpSecretId(s.id))])),
       },
       botAvatars: this.botAvatars(),
+      imessage: this.imessage.status(),
       paths: this.paths,
     }
   }

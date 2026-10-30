@@ -31,6 +31,8 @@ export function exportSettings(s: Settings): Record<string, unknown> {
   delete app.openWorkspaces
   delete app.recentWorkspaces
   delete app.panels
+  // Phone numbers and a folder on this machine.
+  delete (out as Partial<Settings>).gateways
   out.mcp.servers = out.mcp.servers.filter((x) => !x.plugin).map(scrubServer)
   out.providers = out.providers.map((p) => ({ ...p, headers: Object.fromEntries(Object.entries(p.headers).filter(([k]) => !SECRET_NAME.test(k))) }))
   return out as unknown as Record<string, unknown>
@@ -53,7 +55,9 @@ export function importSettings(raw: unknown, current: Settings): ImportResult {
     if (res.error.issues.length > 8) errors.push(`…and ${res.error.issues.length - 8} more.`)
     return { ok: false, errors }
   }
-  return { ok: true, settings: restoreSecrets(keepLocal(res.data, current), current) }
+  const settings = restoreSecrets(keepLocal(res.data, current), current)
+  // Exports leave gateways out; a file without them keeps this machine's.
+  return { ok: true, settings: 'gateways' in raw ? settings : { ...settings, gateways: current.gateways } }
 }
 
 /** Exports blank secret MCP env values and drop secret headers; importing on a machine that has them keeps them. */

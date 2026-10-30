@@ -15,6 +15,8 @@ export interface SessionMeta {
   botId?: string
   /** Mixture of Agents for this chat (the composer toggle). Unset follows `moa.enabled`. */
   moa?: boolean
+  /** Set on chats a gateway runs, e.g. "imessage:+15551234567" (one chat per sender). */
+  gateway?: string
 }
 
 export interface Session {

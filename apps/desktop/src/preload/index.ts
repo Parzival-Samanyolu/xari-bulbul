@@ -57,6 +57,7 @@ const api: HarnessApi = {
   extensions: { reload: call('extensions.reload') as any, openDir: call('extensions.openDir') as any },
   skills: { remove: call('skills.remove') as any },
   schedules: { runNow: call('schedules.runNow') as any, pickFolder: call('schedules.pickFolder') as any },
+  imessage: { test: call('imessage.test') as any, check: call('imessage.check') as any, openPrivacy: call('imessage.openPrivacy') as any, pickFolder: call('imessage.pickFolder') as any },
   bots: { pickAvatar: call('bots.pickAvatar') as any },
   voice: {
     prepare: call('voice.prepare') as any,
