@@ -25,14 +25,27 @@ Event names look like `app.start`, `feature.voice_input` or `error.provider`, an
 values; strings are capped at 500 characters. Error events carry a message and a stack trace
 with user paths removed by the app.
 
+Three events have a fixed shape, checked by `validate.js` (only these props, of these types; any
+other event name takes any flat props, so older clients keep working):
+
+| Event          | Props | When |
+|----------------|-------|------|
+| `usage.model`  | `provider`, `model` (slugs), `turns`, `input`, `output`, `cached`, `errors` (numbers ≥ 0), `cost?` (USD) | summed per provider and model since the last send (every ~5 minutes). `turns` counts model requests. Custom providers and endpoints are sent as `custom`/`custom`; the app's llama.cpp server as `local`, with the model's file name only for the app's curated downloads |
+| `app.snapshot` | `os_version` (major.minor), `locale` (`tr-TR`), `ram` (`4`/`8`/`16`/`32+` GB), `cpus`, `screen` (width bucket), `packaged`, `layout`, `theme`, `mode`, `provider` (default provider, `custom` for custom ones), `providers`/`mcp`/`plugins`/`skills`/`bots` (counts), `features` (comma list of what's on: `bots,voice,tts,memory,moa,fallbacks,local_models,imessage,whatsapp,schedules`), `role`, `experience` (from setup, or `unset`) | once per app start (after first-run setup on a new install) |
+| `app.session`  | `minutes`, `chats` (chats sent in) | on quit |
+
+Counters (`{count}` per send) include `feature.chat_sent`, `feature.tool {kind}`, `feature.tool_failed {kind}`,
+`feature.subagent`, `feature.compaction`, `feature.moa_turn`, `feature.fallback {from, to}` (provider ids, `custom` for
+custom ones), `feature.approval {outcome: asked|allowed|allowed_always|denied}` and `feature.checkpoint_revert {scope}`.
+
 The server also stores the time it received the batch.
 
 ## What is never collected
 
 - IP addresses. The client IP is used only for in-memory rate limiting, as a hash salted with
   a random value that is replaced every UTC day and never written anywhere. Caddy has no access log.
-- Prompts, replies, code, file names, paths, API keys, account names or emails. The app never
-  sends them. The server rejects any field it does not know about, and any nested or non-scalar value.
+- Prompts, replies, code, file names, paths, API keys, account names or emails, the profile name,
+  bot names or personas, custom provider names, URLs, or MCP server names. The app never sends them. The server rejects any field it does not know about, and any nested or non-scalar value.
 - Cookies, user agents and any other request headers.
 
 Anything that fails validation is rejected whole (HTTP 400) and nothing from it is stored.
@@ -125,9 +138,14 @@ Open `https://193-122-49-121.sslip.io/?token=TOKEN` for the dashboard, or fetch 
 curl -s "https://193-122-49-121.sslip.io/v1/stats?token=TOKEN" | jq
 ```
 
-Everything except `recentErrors` covers the last 30 days:
+Everything except `recentErrors`, `totals.installsEver` and `totals.active` covers the last 30 days:
 
-- `totals`: events and distinct installs
+- `totals`: events and distinct installs; `installsEver` (all kept events), `active: {d1, d7, d30}`
+- `models`: `{d1, d7, d30}`, each `{byTurns, byTokens}`: the top 20 `[{provider, model, turns, input, output, cached, tokens, cost, errors, installs}]`; `cost` is null when no request had a known cost
+- `tokensPerDay`: `[{day, input, output, cached, turns}]`
+- `providers`: `[{provider, turns, installs, pct}]`, the share of model requests
+- `setups`: from the latest `app.snapshot` of each install: `installs`, then `[{value, installs, pct}]` for `os`, `locale`, `ram`, `cpus`, `screen`, `layout`, `theme`, `mode`, `provider`, `role`, `experience`, `packaged`; `features: [{feature, installs, pct}]`; `averages` of the counts
+- `sessions`: `{count, medianMinutes, medianChats, avgChats}`
 - `dailyActiveInstalls`: `[{day, installs}]`, UTC days, by receive time
 - `versions`: `[{version, installs}]`
 - `os`: `[{os, arch, installs}]`

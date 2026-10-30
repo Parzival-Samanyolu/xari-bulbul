@@ -79,3 +79,44 @@ test('prototype-polluting keys are rejected', () => {
   const body = JSON.parse(`{"installId":"${ID}","appVersion":"1.0.0","os":"linux","arch":"x64","events":[{"name":"x","ts":${NOW},"props":{"__proto__":{"a":1}}}]}`)
   err(body)
 })
+
+const ev = (name, props) => good({ events: [{ name, ts: NOW, props }] })
+const MODEL = { provider: 'openrouter', model: 'openai/gpt-5', turns: 2, input: 1200, output: 300, cached: 0, errors: 0, cost: 0.0042 }
+const SNAP = {
+  os_version: '15.1', locale: 'tr-TR', ram: '32+', cpus: '16+', screen: '<1280', packaged: true, layout: 'elite', theme: 'dark',
+  mode: 'auto', provider: 'custom', providers: 3, mcp: 1, plugins: 2, skills: 4, bots: 1, features: 'bots,memory,local_models', role: 'developer', experience: 'some',
+}
+
+test('accepts the new events: usage.model, app.snapshot, app.session', () => {
+  assert.equal(validateBatch(ev('usage.model', MODEL), NOW).ok, true)
+  const { cost: _, ...noCost } = MODEL
+  assert.equal(validateBatch(ev('usage.model', noCost), NOW).ok, true)
+  assert.equal(validateBatch(ev('usage.model', { ...MODEL, provider: 'custom', model: 'custom' }), NOW).ok, true)
+  assert.equal(validateBatch(ev('app.snapshot', SNAP), NOW).ok, true)
+  assert.equal(validateBatch(ev('app.snapshot', { ...SNAP, features: '' }), NOW).ok, true)
+  assert.equal(validateBatch(ev('app.session', { minutes: 42, chats: 3 }), NOW).ok, true)
+})
+
+test('rejects new events that are out of shape', () => {
+  assert.match(err(ev('usage.model', { ...MODEL, prompt: 'hi' })), /unknown prop prompt/)
+  assert.match(err(ev('usage.model', { ...MODEL, turns: -1 })), /turns/)
+  assert.match(err(ev('usage.model', { ...MODEL, input: '12' })), /input/)
+  assert.match(err(ev('usage.model', { provider: 'x', model: 'y' })), /needs turns/)
+  assert.match(err(ev('usage.model', undefined)), /needs provider/)
+  assert.match(err(ev('usage.model', { ...MODEL, model: 'my model with spaces' })), /model/)
+  assert.match(err(ev('app.snapshot', { ...SNAP, name: 'Murad' })), /unknown prop name/)
+  assert.match(err(ev('app.snapshot', { ...SNAP, locale: '/Users/murad' + ' x' })), /locale/)
+  assert.match(err(ev('app.snapshot', { ...SNAP, packaged: 'yes' })), /packaged/)
+  assert.match(err(ev('app.snapshot', { ...SNAP, features: 'Bots; rm -rf' })), /features/)
+  assert.match(err(ev('app.session', { minutes: 3 })), /needs chats/)
+})
+
+test('old clients keep working: other names take any flat props', () => {
+  const r = validateBatch(good({ events: [
+    { name: 'app.start', ts: NOW, props: { packaged: true } },
+    { name: 'feature.chat_sent', ts: NOW, props: { bot: false, count: 3 } },
+    { name: 'onboarding.finished', ts: NOW, props: { step: 'done' } },
+    { name: 'error.main', ts: NOW, props: { message: 'Error: x', stack: 'at <app>/out/main/index.js:1:2' } },
+  ] }), NOW)
+  assert.equal(r.ok, true)
+})

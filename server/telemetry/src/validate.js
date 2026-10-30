@@ -22,6 +22,44 @@ const EVENT_KEYS = new Set(['name', 'ts', 'props'])
 const MIN_TS = Date.UTC(2024, 0, 1)
 const FUTURE_SLACK_MS = 24 * 60 * 60 * 1000
 
+// Events with a known shape are checked against it: listed props only, of the listed type.
+// 'n' = a finite number >= 0, 's' = a string, 'b' = a boolean. A '?' suffix makes it optional.
+// Older clients never send these names, so they are unaffected.
+const SLUG = /^[A-Za-z0-9._:/@+-]{1,200}$/
+const KNOWN_EVENTS = {
+  'usage.model': {
+    provider: 's', model: 's', turns: 'n', input: 'n', output: 'n', cached: 'n', errors: 'n', 'cost?': 'n',
+  },
+  'app.session': { minutes: 'n', chats: 'n' },
+  'app.snapshot': {
+    'os_version?': 's', 'locale?': 's', 'ram?': 's', 'cpus?': 's', 'screen?': 's', 'packaged?': 'b',
+    'layout?': 's', 'theme?': 's', 'mode?': 's', 'provider?': 's', 'providers?': 'n', 'mcp?': 'n',
+    'plugins?': 'n', 'skills?': 'n', 'bots?': 'n', 'features?': 's', 'role?': 's', 'experience?': 's',
+  },
+}
+const SHAPES = Object.fromEntries(Object.entries(KNOWN_EVENTS).map(([name, spec]) => [name, Object.fromEntries(
+  Object.entries(spec).map(([k, t]) => [k.replace(/\?$/, ''), { type: t, optional: k.endsWith('?') }]),
+)]))
+
+function checkShape(name, props) {
+  const shape = SHAPES[name]
+  if (!shape) return null
+  const p = props ?? {}
+  for (const k of Object.keys(p)) if (!shape[k]) return `unknown prop ${k} for ${name}`
+  for (const [k, { type, optional }] of Object.entries(shape)) {
+    const v = p[k]
+    if (v === undefined) {
+      if (optional) continue
+      return `${name} needs ${k}`
+    }
+    if (type === 'n' && !(typeof v === 'number' && v >= 0)) return `${name}.${k} must be a number >= 0`
+    if (type === 'b' && typeof v !== 'boolean') return `${name}.${k} must be a boolean`
+    if (type === 's' && !(typeof v === 'string' && (SLUG.test(v) || (k === 'features' && /^[a-z0-9_,]{0,200}$/.test(v)) || (k === 'screen' && v === '<1280'))))
+      return `${name}.${k} must be a short slug`
+  }
+  return null
+}
+
 const isPlainObject = (v) =>
   v !== null && typeof v === 'object' && !Array.isArray(v) && Object.getPrototypeOf(v) === Object.prototype
 
@@ -54,6 +92,8 @@ export function validateBatch(body, now = Date.now()) {
       if (typeof r === 'string') return fail(r)
       props = r
     }
+    const shapeError = checkShape(ev.name, props)
+    if (shapeError) return fail(shapeError)
     out.push({ name: ev.name, ts: ev.ts, props })
   }
   return { ok: true, batch: { installId: installId.toLowerCase(), appVersion, os, arch, events: out } }
