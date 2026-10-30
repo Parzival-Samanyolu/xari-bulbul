@@ -236,7 +236,7 @@ describe('WhatsApp licensing', () => {
     const files = ['package.json', 'pnpm-lock.yaml']
     for (const group of ['packages', 'apps']) {
       for (const d of fs.readdirSync(path.join(ROOT, group))) {
-        if (fs.existsSync(path.join(ROOT, group, d, 'package.json'))) files.push(path.join(group, d, 'package.json'))
+        if (fs.existsSync(path.join(ROOT, group, d, 'package.json'))) files.push(`${group}/${d}/package.json`)
       }
     }
     files.push('bench/package.json')
@@ -250,7 +250,7 @@ describe('WhatsApp licensing', () => {
   })
 
   it('ships the bridge as an extra resource, outside app.asar, with Baileys pinned', () => {
-    const yml = fs.readFileSync(path.join(ROOT, 'apps/desktop/electron-builder.yml'), 'utf8')
+    const yml = fs.readFileSync(path.join(ROOT, 'apps/desktop/electron-builder.yml'), 'utf8').replace(/\r\n/g, '\n')
     expect(yml).toMatch(/^extraResources:\n\s+- from: resources\/whatsapp-bridge\n\s+to: whatsapp-bridge/m)
     const files = yml.match(/^files:\n((?:\s+- .*\n)+)/m)?.[1] ?? ''
     expect(files).not.toMatch(/resources/)

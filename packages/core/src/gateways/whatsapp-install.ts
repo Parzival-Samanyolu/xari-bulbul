@@ -22,7 +22,7 @@ export function findOnPath(name: string, envPath = process.env.PATH ?? '', platf
   for (const dir of envPath.split(sep)) {
     if (!dir) continue
     for (const ext of exts) {
-      const p = path.join(dir, name + ext)
+      const p = (platform === 'win32' ? path.win32 : path.posix).join(dir, name + ext)
       if (exists(p)) return p
     }
   }
