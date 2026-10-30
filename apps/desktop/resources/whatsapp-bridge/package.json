@@ -1,0 +1,16 @@
+{
+  "name": "xari-bulbul-whatsapp-bridge",
+  "version": "1.0.0",
+  "description": "Links Xarı Bülbül to your WhatsApp account. Installed on your computer when you turn WhatsApp on; not part of the app bundle.",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "main": "bridge.mjs",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "qrcode": "1.5.4"
+  }
+}

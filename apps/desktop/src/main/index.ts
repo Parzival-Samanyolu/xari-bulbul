@@ -181,6 +181,15 @@ function createWindow() {
   else win.loadFile(path.join(__dirname, '../renderer/index.html'), { query: { theme } })
 }
 
+/**
+ * The WhatsApp bridge's source: an extra resource next to app.asar when packaged (electron-builder
+ * `extraResources`), the repo folder in development. Only our MIT source ships; its npm
+ * dependencies are installed into the data folder when the user turns WhatsApp on.
+ */
+function whatsappBridgeSource(): string {
+  return app.isPackaged ? path.join(process.resourcesPath, 'whatsapp-bridge') : path.join(app.getAppPath(), 'resources', 'whatsapp-bridge')
+}
+
 function handle(channel: string, fn: (...args: any[]) => unknown) {
   ipcMain.handle(channel, async (_e, ...args) => fn(...args))
 }
@@ -285,6 +294,14 @@ function registerIpc() {
     const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: 'Folder for iMessage chats', defaultPath: c.state().workspace ?? undefined })
     return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]
   })
+  handle('whatsapp.retry', () => c.whatsappRetry())
+  handle('whatsapp.pair', (phone: string) => c.whatsappPair(String(phone ?? '')))
+  handle('whatsapp.unlink', () => c.whatsappUnlink())
+  handle('whatsapp.test', () => c.whatsappTest())
+  handle('whatsapp.pickFolder', async () => {
+    const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: 'Folder for the WhatsApp chat', defaultPath: c.state().workspace ?? undefined })
+    return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]
+  })
   handle('bots.pickAvatar', async () => {
     const r = await dialog.showOpenDialog(win!, { properties: ['openFile'], title: 'Bot picture', filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }] })
     return r.canceled || !r.filePaths[0] ? null : c.importBotAvatar(r.filePaths[0])
@@ -360,7 +377,7 @@ app.whenReady().then(async () => {
     ready: () => !!controller?.getSettings().app.onboarded,
     scrub: defaultScrubContext(app.getAppPath()),
   })
-  controller = new AppController(app.getPath('userData'), app.getVersion(), send, notify, { telemetry, shareInfoOff: !url })
+  controller = new AppController(app.getPath('userData'), app.getVersion(), send, notify, { telemetry, shareInfoOff: !url, whatsappBridge: whatsappBridgeSource() })
   telemetry.event('app.start', { packaged: app.isPackaged })
   telemetry.start()
   registerIpc()

@@ -5,7 +5,7 @@ import type { PageProps } from './common'
 import type { IconName } from './icons'
 import { DesktopPage, LimitsPage, OutputPage, TerminalPage, ToolAccessPage } from './pages/advanced'
 import { BotsPage } from './pages/bots'
-import { IMessagePage } from './pages/gateways'
+import { IMessagePage, WhatsAppPage } from './pages/gateways'
 import { PluginsPage, SchedulesPage, SessionsPage, UsagePage, VersionPage } from './pages/data'
 import { AppearancePage, ChatPage, NotificationsPage, ShortcutsPage, WorkspacePage } from './pages/general'
 import { AuxModelsPage, FallbackPage, MainModelPage, MoaPage, SubagentsPage } from './pages/model'
@@ -307,6 +307,14 @@ export const TREE: NodeDef[] = [
         // Messages and its database exist only on macOS.
         hidden: !MAC,
         rows: [['Receive texts from iMessage', 'imessage messages sms text phone gateway'], ['Allowed senders', 'phone number email apple id'], ['Folder', 'imessage chats'], ['Permission mode', 'imessage ask auto'], ['Check for new texts every', 'poll interval seconds'], ['Send test message', 'connected automation']],
+      },
+      {
+        id: 'gateways.whatsapp',
+        label: 'WhatsApp',
+        icon: 'chat',
+        description: 'Message the agent from your own WhatsApp “Message yourself” chat. Runs while the app is open.',
+        page: WhatsAppPage,
+        rows: [['Use WhatsApp', 'whatsapp phone message gateway baileys link qr'], ['Folder', 'whatsapp chat'], ['Permission mode', 'whatsapp ask auto'], ['Reply prefix', 'whatsapp marker emoji']],
       },
     ],
   },

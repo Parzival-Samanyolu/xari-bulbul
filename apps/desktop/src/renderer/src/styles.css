@@ -2212,6 +2212,38 @@ button.sb-item:hover {
   margin: 6px 0 0;
   padding-left: 18px;
 }
+.wa-link {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+.wa-link ol {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+/* The QR code keeps its own white background so phones can read it in every theme. */
+.wa-qr {
+  width: 200px;
+  height: 200px;
+  flex: none;
+  border-radius: 8px;
+  background: #fff;
+  image-rendering: pixelated;
+}
+.wa-code {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: none;
+}
+.wa-code b {
+  font-size: 1.6rem;
+  letter-spacing: 0.12em;
+}
 .gw-senders {
   display: flex;
   flex-direction: column;

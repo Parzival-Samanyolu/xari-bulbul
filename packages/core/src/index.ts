@@ -91,3 +91,6 @@ export {
 } from './telemetry/client.js'
 export * from './gateways/imessage.js'
 export * from './gateways/imessage-gateway.js'
+export * from './gateways/whatsapp.js'
+export * from './gateways/whatsapp-install.js'
+export * from './gateways/whatsapp-gateway.js'

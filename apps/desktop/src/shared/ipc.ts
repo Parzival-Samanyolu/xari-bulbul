@@ -9,6 +9,7 @@ import type {
   FileChange,
   FilePreview,
   IMessageStatus,
+  WhatsAppStatus,
   LocalWhisperStatus,
   McpServerStatus,
   MemoryFact,
@@ -28,6 +29,7 @@ import type {
 
 export type {
   IMessageStatus,
+  WhatsAppStatus,
   AgentEvent,
   ChatMessage,
   Checkpoint,
@@ -284,6 +286,8 @@ export interface AppState {
   bots: BotRow[]
   /** The iMessage gateway (macOS): listening, missing Full Disk Access, Automation blocked… */
   imessage: IMessageStatus
+  /** The WhatsApp gateway: installing, linking (QR), connected… */
+  whatsapp: WhatsAppStatus
   paths: { data: string; sessions: string; usage: string }
 }
 
@@ -469,6 +473,18 @@ export interface HarnessApi {
     check(): Promise<AppState>
     /** Opens System Settings at Full Disk Access or Automation. */
     openPrivacy(pane: 'disk' | 'automation'): Promise<void>
+    /** Folder picker that only returns the path. */
+    pickFolder(): Promise<string | null>
+  }
+  whatsapp: {
+    /** Starts the bridge again (Retry, Link again, Show a new code). */
+    retry(): Promise<AppState>
+    /** Asks for a pairing code for this phone number instead of the QR code. */
+    pair(phone: string): Promise<AppState>
+    /** Logs this computer out of WhatsApp and deletes the link. */
+    unlink(): Promise<AppState>
+    /** Sends "Xarı Bülbül is connected." to your "Message yourself" chat. */
+    test(): Promise<AppState>
     /** Folder picker that only returns the path. */
     pickFolder(): Promise<string | null>
   }

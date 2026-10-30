@@ -532,6 +532,23 @@ export const SettingsSchema = z.object({
           pollSeconds: z.number().int().min(2).max(300).default(5),
         })
         .prefault({}),
+      /**
+       * Your own WhatsApp account, linked like WhatsApp Web: messages you write in "Message
+       * yourself" run in one chat and the reply comes back there. Nothing else is read as a prompt.
+       * Turning it on downloads Baileys into the data folder (see `gateways/whatsapp-install.ts`).
+       */
+      whatsapp: z
+        .object({
+          enabled: z.boolean().default(false),
+          /** Folder the chat runs in. Required. */
+          cwd: z.string().default(''),
+          /** A bot for the chat (only while bots are on). */
+          botId: z.string().nullable().default(null),
+          mode: z.enum(PERMISSION_MODES).default('ask'),
+          /** Starts every reply, so replies read as the bot's in your own chat. Messages starting with it are never prompts. */
+          prefix: z.string().max(40).default('🌸 '),
+        })
+        .prefault({}),
     })
     .prefault({}),
 

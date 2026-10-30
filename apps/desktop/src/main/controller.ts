@@ -19,6 +19,7 @@ import {
   SEARCH_KEY_ID,
   findBrowser,
   IMessageGateway,
+  WhatsAppGateway,
   SessionStore,
   USER_EXT_DIR,
   UsageTracker,
@@ -147,6 +148,7 @@ export class AppController {
   private mcpTimer: NodeJS.Timeout | null = null
   private readonly scheduler: Scheduler
   private readonly imessage: IMessageGateway
+  private readonly whatsapp: WhatsAppGateway
   private catchUpTimer: NodeJS.Timeout | null = null
   private voiceDownload: { ac: AbortController; progress: VoiceDownload } | null = null
   /** Local models (llama.cpp): runtime, downloads and the running llama-server. */
@@ -182,7 +184,7 @@ export class AppController {
     private readonly version: string,
     private readonly send: (e: UiEvent) => void,
     private readonly notify: (n: BackgroundNotice) => void = () => {},
-    private readonly opts: { telemetry?: TelemetrySink; shareInfoOff?: boolean } = {},
+    private readonly opts: { telemetry?: TelemetrySink; shareInfoOff?: boolean; /** The app's copy of the WhatsApp bridge source. */ whatsappBridge?: string } = {},
   ) {
     this.paths = {
       data: dataDir,
@@ -222,8 +224,15 @@ export class AppController {
     this.imessage = new IMessageGateway({
       stateFile: path.join(dataDir, 'gateways.json'),
       config: () => this.settings.gateways.imessage,
-      run: (sender, text) => this.runGatewayMessage(sender, text),
+      run: (sender, text) => this.runGatewayMessage('imessage', sender, text),
       onChange: () => this.pushState(),
+    })
+    this.whatsapp = new WhatsAppGateway({
+      dataDir,
+      bridgeSource: opts.whatsappBridge ?? path.join(dataDir, 'whatsapp-bridge-source'),
+      config: () => this.settings.gateways.whatsapp,
+      run: (text) => this.runGatewayMessage('whatsapp', 'self', text),
+      onChange: () => this.pushStateSoon(),
     })
 
     this.local = new LocalModels({
@@ -311,7 +320,8 @@ export class AppController {
     }
     if (JSON.stringify(prev.mcp) !== JSON.stringify(this.settings.mcp)) void this.mcp.sync(this.settings.mcp.servers)
     if (JSON.stringify(prev.schedules) !== JSON.stringify(this.settings.schedules)) this.scheduler.arm()
-    if (JSON.stringify(prev.gateways) !== JSON.stringify(this.settings.gateways)) this.imessage.sync()
+    if (JSON.stringify(prev.gateways.imessage) !== JSON.stringify(this.settings.gateways.imessage)) this.imessage.sync()
+    if (JSON.stringify(prev.gateways.whatsapp) !== JSON.stringify(this.settings.gateways.whatsapp)) this.whatsapp.sync()
     if (opts.prune !== false && prev.sessions.retentionDays !== this.settings.sessions.retentionDays) this.pruneSessions()
     if (JSON.stringify(prev.bots) !== JSON.stringify(this.settings.bots)) this.cleanBotImages()
     for (const r of this.agents.values()) {
@@ -321,8 +331,10 @@ export class AppController {
       const before = activeBot(prev, id)?.mode
       const after = activeBot(this.settings, id)?.mode
       // Gateway chats follow the gateway's mode instead.
-      if (r.agent.session.meta.gateway) {
-        if (prev.gateways.imessage.mode !== this.settings.gateways.imessage.mode) r.permissions.setMode(this.settings.gateways.imessage.mode)
+      const gateway = r.agent.session.meta.gateway
+      if (gateway) {
+        const kind = gatewayKind(gateway)
+        if (prev.gateways[kind].mode !== this.settings.gateways[kind].mode) r.permissions.setMode(this.settings.gateways[kind].mode)
       } else if (id && before !== after) r.permissions.setMode(after ?? this.mode)
     }
     return this.state()
@@ -727,6 +739,7 @@ export class AppController {
     if (this.catchUpTimer) clearTimeout(this.catchUpTimer)
     this.scheduler.dispose()
     this.imessage.dispose()
+    this.whatsapp.dispose()
     this.voiceDownload?.ac.abort()
     this.cancelPending()
     this.terminals.dispose()
@@ -780,9 +793,31 @@ export class AppController {
 
   // ---------- gateways ----------
 
-  /** Starts the iMessage gateway if it's on (macOS only). */
+  /** Starts the iMessage gateway (macOS only) and the WhatsApp bridge if they're on. */
   startGateways() {
     this.imessage.sync()
+    this.whatsapp.sync()
+  }
+
+  /** Starts the WhatsApp bridge again: Retry, Link again, Show a new code. */
+  whatsappRetry(): AppState {
+    this.whatsapp.retry()
+    return this.state()
+  }
+
+  async whatsappPair(phone: string): Promise<AppState> {
+    await this.whatsapp.pairWithPhone(phone)
+    return this.state()
+  }
+
+  async whatsappUnlink(): Promise<AppState> {
+    await this.whatsapp.unlink()
+    return this.state()
+  }
+
+  async whatsappTest(): Promise<AppState> {
+    await this.whatsapp.sendTest()
+    return this.state()
   }
 
   async imessageTest(): Promise<AppState> {
@@ -800,10 +835,12 @@ export class AppController {
   /**
    * Runs a text in the sender's chat (reused while it exists, else a new one in the gateway's
    * folder and bot), in the background like a schedule. Resolves with the reply to text back.
+   * WhatsApp has one sender, you ("self"), so one chat.
    */
-  private async runGatewayMessage(sender: string, text: string): Promise<string | null> {
-    const cfg = this.settings.gateways.imessage
-    const tag = `imessage:${sender}`
+  private async runGatewayMessage(kind: 'imessage' | 'whatsapp', sender: string, text: string): Promise<string | null> {
+    const cfg = this.settings.gateways[kind]
+    const label = kind === 'imessage' ? 'iMessage' : 'WhatsApp'
+    const tag = `${kind}:${sender}`
     let running = [...this.agents.values()].find((r) => r.agent.session.meta.gateway === tag)
     if (!running) {
       const meta = this.sessionMetas().find((m) => m.gateway === tag && !this.removed.has(m.id))
@@ -815,11 +852,11 @@ export class AppController {
     }
     if (!running) {
       const cwd = path.resolve(cfg.cwd).normalize('NFC')
-      if (!cfg.cwd.trim() || !fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) return `The folder for iMessage chats is missing. Choose one in Xarı Bülbül › Settings › Gateways.`
+      if (!cfg.cwd.trim() || !fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) return `The folder for ${label} chats is missing. Choose one in Xarı Bülbül › Settings › Gateways › ${label}.`
       const bot = cfg.botId ? activeBot(this.settings, cfg.botId) : undefined
       const { model } = chatDefaults(this.settings, bot?.id, { model: this.settings.models.default, mode: this.mode })
       const session = newSession(cwd, model, { botId: bot?.id })
-      session.meta.title = `💬 iMessage · ${sender}`
+      session.meta.title = kind === 'imessage' ? `💬 iMessage · ${sender}` : '💬 WhatsApp'
       session.meta.gateway = tag
       // Show the folder in the sidebar so the chat is visible.
       if (!this.settings.app.openWorkspaces.includes(cwd)) {
@@ -860,6 +897,7 @@ export class AppController {
   private gatewayAttention(agent: Agent, subject: string) {
     const tag = agent.session.meta.gateway
     if (tag?.startsWith('imessage:')) void this.imessage.needsAttention(tag.slice('imessage:'.length), subject.trim().slice(0, 200))
+    else if (tag?.startsWith('whatsapp:')) void this.whatsapp.needsAttention(subject.trim().slice(0, 200))
   }
 
   private extensionsInfo(): ExtensionsInfo {
@@ -973,7 +1011,7 @@ export class AppController {
   private createAgent(session: Session, own?: { tools: Tool[]; skills: LoadedExtensions['skills'] }): Running {
     const id = session.meta.id
     // A bot's chats start in the bot's mode; gateway chats in the gateway's.
-    const mode = session.meta.gateway ? this.settings.gateways.imessage.mode : (activeBot(this.settings, session.meta.botId)?.mode ?? this.mode)
+    const mode = session.meta.gateway ? this.settings.gateways[gatewayKind(session.meta.gateway)].mode : (activeBot(this.settings, session.meta.botId)?.mode ?? this.mode)
     const permissions = new Permissions({ ...this.settings.permissions, mode }, session.meta.cwd)
     const agent = new Agent({
       session,
@@ -1538,6 +1576,7 @@ export class AppController {
       botAvatars: this.botAvatars(),
       bots: this.botRows(),
       imessage: this.imessage.status(),
+      whatsapp: this.whatsapp.status(),
       paths: this.paths,
     }
   }
@@ -1545,4 +1584,20 @@ export class AppController {
   pushState() {
     this.send({ type: 'state', state: this.state() })
   }
+
+  private pushTimer: NodeJS.Timeout | null = null
+
+  /** One state push for a burst of changes (WhatsApp install progress, connection updates). */
+  private pushStateSoon() {
+    if (this.pushTimer) return
+    this.pushTimer = setTimeout(() => {
+      this.pushTimer = null
+      this.pushState()
+    }, 100)
+  }
+}
+
+/** Which gateway a chat's `meta.gateway` tag belongs to. */
+function gatewayKind(tag: string): 'imessage' | 'whatsapp' {
+  return tag.startsWith('whatsapp:') ? 'whatsapp' : 'imessage'
 }

@@ -13,6 +13,17 @@ files:
   - '!**/node_modules/node-pty/{src,deps,third_party,scripts,typings}/**'
   - '!**/node_modules/node-pty/prebuilds/**/*.pdb'
   - '!**/node_modules/node-pty/prebuilds/win32-arm64/**'
+# The WhatsApp bridge ships as our own MIT source only, outside app.asar. Its npm dependencies
+# (Baileys and the GPL-3.0 libsignal) are never bundled or installed during the build: the app
+# installs them into the data folder when the user turns WhatsApp on.
+extraResources:
+  - from: resources/whatsapp-bridge
+    to: whatsapp-bridge
+    filter:
+      - bridge.mjs
+      - package.json
+      - package-lock.json
+      - README.md
 afterPack: scripts/after-pack.cjs
 afterSign: scripts/self-sign.cjs
 asarUnpack:
