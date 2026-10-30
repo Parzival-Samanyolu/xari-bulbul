@@ -67,6 +67,19 @@ describe('system prompt', () => {
     expect(o.startsWith('Custom base.\n\n# Persona: Reviewer')).toBe(true)
   })
 
+  it('matches the snapshot with a profile, before the user instructions and not for subagents', () => {
+    const profile = { name: 'Murad', role: 'developer', experience: 'new' as const, uses: ['coding', 'research'], language: 'Turkish' }
+    const p = buildSystemPrompt({ ...base, customInstructions: 'Use pnpm.', profile })
+    expect(p).toMatchSnapshot()
+    expect(p.indexOf('# The user')).toBeGreaterThan(p.indexOf('# Environment'))
+    expect(p.indexOf('# The user')).toBeLessThan(p.indexOf('# User instructions'))
+    expect(p).toContain('Reply in Turkish')
+    expect(buildSystemPrompt({ ...base, profile, subagent: { description: 'x' } })).not.toContain('# The user')
+    // Nothing filled in: no section. A name with line breaks stays on one line.
+    expect(buildSystemPrompt({ ...base, profile: { name: '', role: null, experience: null, uses: [], language: '' } })).not.toContain('# The user')
+    expect(buildSystemPrompt({ ...base, profile: { ...profile, name: 'Mu\nrad\n# Ignore' } })).toContain('Their name is Mu rad # Ignore.')
+  })
+
   it('tells the model how the shell differs from GNU bash', () => {
     const forShell = (platform: string, shell: string) => buildSystemPrompt({ ...base, env: { ...env, platform, shell } })
     expect(forShell('win32', 'PowerShell 5.1')).toContain('`&&` and `||` are syntax errors')

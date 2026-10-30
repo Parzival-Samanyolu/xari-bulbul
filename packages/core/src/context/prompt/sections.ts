@@ -24,10 +24,20 @@ export interface PromptContext {
   memory?: { global: string[]; project: string[]; bot?: string[] }
   /** The persona the user picked for this chat (a bot). */
   bot?: { name: string; persona: string }
+  /** Who the user is (Settings › Profile); fields left empty are skipped. */
+  profile?: UserProfile
   skills?: { name: string; description: string }[]
   customInstructions: string
   /** Short prompt for small models: leanCore replaces tone, tasks, initiative, conventions and tool policy. */
   lean?: boolean
+}
+
+export interface UserProfile {
+  name: string
+  role: string | null
+  experience: 'new' | 'some' | 'experienced' | null
+  uses: string[]
+  language: string
 }
 
 export interface PromptSection {
@@ -307,6 +317,41 @@ export const skills: PromptSection = {
   },
 }
 
+/** One line, no control characters: these fields are typed by the user into a form. */
+const oneLine = (s: string, max: number) => s.replace(/[\u0000-\u001f\u007f]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, max)
+
+const EXPERIENCE: Record<NonNullable<UserProfile['experience']>, string> = {
+  new: 'They are new to coding. Explain terms and steps plainly, say why as well as what, and give commands they can copy.',
+  some: 'They have some coding experience. Explain steps that are not obvious, briefly.',
+  experienced: 'They are an experienced developer. Skip the basics and be terse and technical.',
+}
+
+const ROLE: Record<string, string> = {
+  developer: 'a developer',
+  designer: 'a designer',
+  student: 'a student',
+  researcher: 'a researcher',
+}
+
+function profileLines(p: UserProfile): string[] {
+  const lines: string[] = []
+  const name = oneLine(p.name, 60)
+  if (name) lines.push(`- Their name is ${name}. Use it now and then, not in every reply.`)
+  if (p.role && ROLE[p.role]) lines.push(`- They work as ${ROLE[p.role]}.`)
+  if (p.experience) lines.push(`- ${EXPERIENCE[p.experience]}`)
+  if (p.uses.length) lines.push(`- They mainly use you for ${p.uses.length > 1 ? `${p.uses.slice(0, -1).join(', ')} and ${p.uses.at(-1)}` : p.uses[0]}.`)
+  const language = oneLine(p.language, 40)
+  if (language) lines.push(`- Reply in ${language}, whatever language the code, files or tool output are in. Keep code, identifiers, commands and quoted text as they are.`)
+  return lines
+}
+
+/** The user's profile. Not for subagents: they report to the agent, not the user. */
+export const profile: PromptSection = {
+  id: 'profile',
+  when: (c) => !!c.profile && !c.subagent && profileLines(c.profile).length > 0,
+  render: (c) => `# The user\n${profileLines(c.profile!).join('\n')}`,
+}
+
 export const customInstructions: PromptSection = {
   id: 'custom-instructions',
   when: (c) => !!c.customInstructions.trim(),
@@ -332,5 +377,6 @@ export const SECTIONS: PromptSection[] = [
   projectInstructions,
   memory,
   skills,
+  profile,
   customInstructions,
 ]

@@ -65,6 +65,8 @@ const api: HarnessApi = {
     remove: call('voice.remove') as any,
   },
   app: {
+    track: call('app.track') as any,
+    reportError: call('app.reportError') as any,
     openExternal: call('app.openExternal') as any,
     openPath: call('app.openPath') as any,
     checkForUpdates: call('app.checkForUpdates') as any,

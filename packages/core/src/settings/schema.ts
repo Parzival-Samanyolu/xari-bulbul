@@ -1,5 +1,8 @@
 import { z } from 'zod'
 import { EFFORT_LEVELS } from '../providers/effort.js'
+import { PROFILE_EXPERIENCE, PROFILE_ROLES, PROFILE_USES } from './profile.js'
+
+export { PROFILE_EXPERIENCE, PROFILE_ROLES, PROFILE_USES } from './profile.js'
 
 // Every user-facing setting lives here, with defaults. Secrets (API keys) are NOT
 // part of settings; hosts store them separately (desktop: OS-encrypted via safeStorage).
@@ -507,6 +510,27 @@ export const SettingsSchema = z.object({
     })
     .prefault({}),
 
+  /** Who the user is, from onboarding or Settings › Profile. Shapes the prompt's `profile` section. */
+  profile: z
+    .object({
+      /** What the agent calls the user; empty = no name. */
+      name: z.string().max(80).default(''),
+      role: z.enum(PROFILE_ROLES).nullable().default(null),
+      experience: z.enum(PROFILE_EXPERIENCE).nullable().default(null),
+      /** What they mainly use the app for. */
+      uses: z.array(z.enum(PROFILE_USES)).default([]),
+      /** The language the agent replies in, in English ("Turkish"); empty = the language of the user's messages. The UI stays English. */
+      language: z.string().max(40).default(''),
+    })
+    .prefault({}),
+
+  privacy: z
+    .object({
+      /** Send anonymous usage counts and error reports (Settings › About › Privacy). Never prompts, code, file names, paths or keys. */
+      shareUsage: z.boolean().default(true),
+    })
+    .prefault({}),
+
   usage: z
     .object({
       showCost: z.boolean().default(true),
@@ -561,6 +585,8 @@ export const SettingsSchema = z.object({
       /** Provider cards folded shut in Settings › Providers › API keys. */
       collapsedProviders: z.array(z.string()).default([]),
       recentWorkspaces: z.array(z.string()).default([]),
+      /** First-run setup was finished or skipped. Existing installs are marked onboarded at launch. */
+      onboarded: z.boolean().default(false),
       /** The layout picker was answered (it shows once). */
       layoutChosen: z.boolean().default(false),
       /** Plugin suggestions dismissed on the Welcome screen. */

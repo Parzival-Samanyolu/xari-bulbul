@@ -155,10 +155,24 @@ export interface VoiceState {
   download: VoiceDownload | null
 }
 
+/** Feature use the renderer reports for share info (main turns these into counters). */
+export type TrackEvent =
+  | { type: 'settings_page'; page: string }
+  | { type: 'onboarding'; outcome: 'finished' | 'skipped'; step: string }
+
+/** An uncaught error in the page; main scrubs it before it's queued. */
+export interface RendererError {
+  kind: 'error' | 'rejection' | 'crash'
+  message: string
+  stack?: string
+}
+
 export interface AppState {
   version: string
   platform: NodeJS.Platform
   settings: Settings
+  /** Share info can't send in this build or session (XB_TELEMETRY=0 or an empty XB_TELEMETRY_URL). */
+  shareInfoOff: boolean
   keys: Record<string, boolean>
   /** Enabled and either has a key or doesn't need one. */
   ready: Record<string, boolean>
@@ -391,6 +405,10 @@ export interface HarnessApi {
     remove(what: string): Promise<AppState>
   }
   app: {
+    /** Counts a feature use for share info; nothing is sent while it's off. */
+    track(e: TrackEvent): Promise<void>
+    /** Reports an uncaught error in the page for share info. */
+    reportError(e: RendererError): Promise<void>
     openExternal(url: string): Promise<void>
     openPath(path: string): Promise<void>
     checkForUpdates(): Promise<void>

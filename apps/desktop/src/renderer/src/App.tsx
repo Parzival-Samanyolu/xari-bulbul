@@ -11,6 +11,7 @@ import { isMac, matchesShortcut } from './lib/shortcuts'
 import { Sidebar } from './components/Sidebar'
 import { StatusBar } from './components/StatusBar'
 import { TerminalPanel } from './components/Terminal'
+import { Onboarding } from './components/Onboarding'
 import { Welcome } from './components/Welcome'
 
 export interface ToolLive {
@@ -320,12 +321,19 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [app?.settings, app?.platform, app?.workspace, app?.running, app?.sessions, app?.session?.meta.id, approval, pickerOpen, settingsPage, setState, fail, toggleBottom, toggleRight])
 
+  // Share info counts which Settings pages get opened (page ids only).
+  useEffect(() => {
+    if (settingsPage) void api.app.track({ type: 'settings_page', page: settingsPage }).catch(() => {})
+  }, [settingsPage])
+
   if (!app) return <div className="boot">Loading…</div>
+  // First run: full-window setup until it's finished or skipped.
+  if (!app.settings.app.onboarded) return <Onboarding app={app} onState={setState} onError={fail} />
 
   /** Opens Settings at a page id, or an older tab id ('providers', 'usage', …). */
   const openSettings = (tab?: string) => setSettingsPage(resolvePage(tab, app.settings))
   const anyReady = Object.values(app.ready).some(Boolean)
-  const welcome = !app.workspace || !anyReady || !app.settings.app.layoutChosen
+  const welcome = !app.workspace || !anyReady
   const showRight = !!app.workspace && !!panels?.rightOpen
   const showBottom = !!app.workspace && !!panels?.bottomOpen
 

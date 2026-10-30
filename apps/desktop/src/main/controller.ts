@@ -81,8 +81,10 @@ import {
   type Session,
   type SessionMeta,
   type Settings,
+  type TelemetrySink,
   type Tool,
   type WhisperModelId,
+  settingsPath,
 } from '@harness/core'
 import type { AppState, AttachmentInput, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, VoiceDownload, VoiceState } from '../shared/ipc'
 import { Scheduler } from './scheduler'
@@ -164,6 +166,7 @@ export class AppController {
     private readonly version: string,
     private readonly send: (e: UiEvent) => void,
     private readonly notify: (n: BackgroundNotice) => void = () => {},
+    private readonly opts: { telemetry?: TelemetrySink; shareInfoOff?: boolean } = {},
   ) {
     this.paths = {
       data: dataDir,
@@ -173,6 +176,7 @@ export class AppController {
     this.settings = this.loadSettings()
     this.mode = this.settings.permissions.mode
     this.secrets = new SecretStore(path.join(dataDir, 'secrets.json'))
+    this.markExistingInstallOnboarded()
     this.usage = new UsageTracker(this.paths.usage)
     this.store = new SessionStore(this.paths.sessions)
     this.memory = new MemoryStore(path.join(dataDir, 'memory'), this.settings.memory.maxChars)
@@ -200,6 +204,41 @@ export class AppController {
       () => this.pushState(),
     )
     this.buildRegistry()
+  }
+
+  /** Share-info counter (a no-op unless main passed a client and the user allows it). */
+  private count(name: string, props?: Record<string, string | number | boolean>) {
+    try {
+      this.opts.telemetry?.count(name, props)
+    } catch {
+      /* never let share info break a feature */
+    }
+  }
+
+  /**
+   * First-run setup is for new installs. A settings file from before it existed (no
+   * `app.onboarded`) that shows the app was used (a saved key, chats, folders, a custom provider
+   * or a layout choice) counts as onboarded, so existing users never see it.
+   */
+  private markExistingInstallOnboarded() {
+    if (this.settings.app.onboarded) return
+    let raw: { app?: Record<string, unknown> } | null = null
+    try {
+      raw = JSON.parse(fs.readFileSync(settingsPath(this.dataDir), 'utf8'))
+    } catch {
+      return
+    }
+    if (!raw || typeof raw !== 'object' || (raw.app && 'onboarded' in raw.app)) return
+    const s = this.settings
+    const used =
+      s.app.layoutChosen ||
+      s.app.openWorkspaces.length > 0 ||
+      s.app.recentWorkspaces.length > 0 ||
+      s.providers.some((p) => !BUILTIN_PROVIDERS.some((b) => b.id === p.id) || this.secrets.has(p.id)) ||
+      (fs.existsSync(this.paths.sessions) && fs.readdirSync(this.paths.sessions).some((f) => f.endsWith('.json')))
+    // Saved either way, so the check runs once: a new user who quits halfway through setup still sees it next time.
+    this.settings = { ...s, app: { ...s.app, onboarded: used } }
+    this.saveSettings()
   }
 
   /** The agent for the chat shown in the window. */
@@ -399,6 +438,7 @@ export class AppController {
     if (!(audio instanceof Uint8Array)) throw new Error('No recording received.')
     const voice = this.voiceState()
     if (!this.settings.voice.enabled) throw new Error('Voice input is turned off in Settings › Voice.')
+    this.count('feature.voice_input', { engine: voice.engine === 'local' ? 'local' : 'provider' })
     if (voice.engine === 'local') {
       if (!/^audio\/(x-)?wav\b/.test(mediaType)) throw new Error('Local transcription needs a WAV recording.')
       return runWhisperCli({ bin: voice.local.binary!.path, model: whisperModelPath(this.dataDir, voice.local.model as WhisperModelId), wav: audio, language: this.settings.voice.language.trim(), signal: AbortSignal.timeout(300_000) })
@@ -547,6 +587,8 @@ export class AppController {
       const record: InstalledPlugin = { id, pin: entry.pin, scope, ...(cwd ? { cwd } : {}), installedAt: Date.now(), enabled: true, files }
       this.plugins = [...this.plugins.filter((p) => p.id !== id), record]
       writeInstalled(this.dataDir, this.plugins)
+      // Catalog ids only (checked above), never a path.
+      this.count('feature.plugin_installed', { id })
     } finally {
       this.pluginBusy = null
     }
@@ -665,6 +707,7 @@ export class AppController {
     const running = this.createAgent(session, { tools, skills: ext.skills })
     this.agents.set(session.meta.id, running)
     this.registry.models(session.meta.model.providerId).catch(() => {})
+    this.count('feature.schedule_run')
     await running.agent.send(expandSlashCommand(s.prompt, ext.commands) ?? s.prompt)
   }
 
@@ -837,6 +880,11 @@ export class AppController {
     this.send({ type: 'agent', sessionId, event })
     // A saved skill shows up in Settings and in the folder's other chats.
     if (event.type === 'tool_end' && event.name === SAVE_SKILL_TOOL && !event.result.isError) void this.reloadExtensions().then(() => this.pushState())
+    // Share info gets the tool's kind only: MCP and extension tool names can carry the user's own names.
+    if (event.type === 'tool_start') {
+      const tool = this.tools.find((t) => t.name === event.name)
+      this.count('feature.tool', { kind: tool?.source === 'mcp' ? 'mcp' : tool?.source && tool.source !== 'builtin' ? 'extension' : (tool?.kind ?? 'other') })
+    }
     if (event.type === 'turn_end') {
       this.cancelPending(sessionId)
       if (sessionId !== this.activeId) {
@@ -974,6 +1022,7 @@ export class AppController {
       }
     }
     const expanded = expandSlashCommand(text, this.ext.commands) ?? text
+    this.count('feature.chat_sent', { bot: !!activeBot(this.settings, this.agent!.session.meta.botId) })
     await this.agent!.send(expanded, { files, images })
   }
 
@@ -1199,6 +1248,7 @@ export class AppController {
       version: this.version,
       platform: process.platform,
       settings: this.settings,
+      shareInfoOff: !!this.opts.shareInfoOff,
       keys,
       ready,
       keyStorage: this.secrets.storage,

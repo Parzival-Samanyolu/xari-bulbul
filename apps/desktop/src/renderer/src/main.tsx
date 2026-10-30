@@ -1,9 +1,23 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
+import { api } from './lib/api'
 import './styles.css'
 
-createRoot(document.getElementById('root')!).render(
+// Uncaught errors go to main for share info, which scrubs them and sends nothing while it's off.
+const report = (kind: 'error' | 'rejection' | 'crash', e: unknown) => {
+  const err = e instanceof Error ? e : null
+  void api.app.reportError({ kind, message: err ? err.message : String(e), stack: err?.stack }).catch(() => {})
+}
+window.addEventListener('error', (e) => report('error', e.error ?? e.message))
+window.addEventListener('unhandledrejection', (e) => report('rejection', e.reason))
+
+createRoot(document.getElementById('root')!, {
+  onUncaughtError: (error, info) => {
+    console.error(error, info.componentStack)
+    report('crash', error)
+  },
+}).render(
   <StrictMode>
     <App />
   </StrictMode>,

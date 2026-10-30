@@ -12,11 +12,11 @@ function scrubServer(s: McpServerConfig): McpServerConfig {
 }
 
 /** This machine's folders and window state; kept on import and reset, left out of exports. */
-type LocalApp = Pick<Settings['app'], 'lastWorkspace' | 'openWorkspaces' | 'recentWorkspaces' | 'panels' | 'layoutChosen' | 'skippedPlugins' | 'collapsedProviders'>
+type LocalApp = Pick<Settings['app'], 'lastWorkspace' | 'openWorkspaces' | 'recentWorkspaces' | 'panels' | 'layoutChosen' | 'onboarded' | 'skippedPlugins' | 'collapsedProviders'>
 
 function localApp(s: Settings): LocalApp {
-  const { lastWorkspace, openWorkspaces, recentWorkspaces, panels, layoutChosen, skippedPlugins, collapsedProviders } = s.app
-  return { lastWorkspace, openWorkspaces, recentWorkspaces, panels, layoutChosen, skippedPlugins, collapsedProviders }
+  const { lastWorkspace, openWorkspaces, recentWorkspaces, panels, layoutChosen, onboarded, skippedPlugins, collapsedProviders } = s.app
+  return { lastWorkspace, openWorkspaces, recentWorkspaces, panels, layoutChosen, onboarded, skippedPlugins, collapsedProviders }
 }
 
 /**

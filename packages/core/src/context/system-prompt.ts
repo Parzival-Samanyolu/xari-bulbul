@@ -4,9 +4,9 @@ import os from 'node:os'
 import path from 'node:path'
 import { resolveShell } from '../tools/shell.js'
 import type { PermissionMode } from '../types.js'
-import { SECTIONS, type PromptContext, type PromptEnvironment } from './prompt/sections.js'
+import { SECTIONS, type PromptContext, type PromptEnvironment, type UserProfile } from './prompt/sections.js'
 
-export type { PromptEnvironment } from './prompt/sections.js'
+export type { PromptEnvironment, UserProfile } from './prompt/sections.js'
 
 const MAX_FILE_CHARS = 40_000
 const MAX_TOTAL_CHARS = 80_000
@@ -82,6 +82,8 @@ export interface SystemPromptInput {
   memory?: { global: string[]; project: string[]; bot?: string[] }
   /** The chat's bot persona, if any. */
   bot?: { name: string; persona: string }
+  /** Settings › Profile. */
+  profile?: UserProfile
   /** Skills the agent can load; undefined when there are none or skills are off. */
   skills?: { name: string; description: string }[]
   /** Set when this prompt is for a subagent working on a delegated task. */
@@ -107,6 +109,7 @@ export function buildSystemPrompt(i: SystemPromptInput): string {
     instructions: loadProjectInstructions(i.cwd, i.instructionFiles),
     memory: i.memory,
     bot: i.bot,
+    profile: i.profile,
     skills: i.skills,
     customInstructions: i.customInstructions,
     lean: i.lean,

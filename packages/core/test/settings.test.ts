@@ -21,6 +21,13 @@ describe('settings defaults', () => {
     expect(s.tools.browser.keepLogins).toBe(false)
     expect(s.appearance.fontFamily).toBe('')
     expect(s.shortcuts).toEqual({})
+    expect(s.app.onboarded).toBe(false)
+    expect(s.privacy.shareUsage).toBe(true)
+    expect(s.profile).toEqual({ name: '', role: null, experience: null, uses: [], language: '' })
+    // A bad profile value falls back to the profile defaults, not the whole file.
+    const bad = parseSettings({ profile: { uses: ['juggling'] }, appearance: { theme: 'dark' } })
+    expect(bad.profile.uses).toEqual([])
+    expect(bad.appearance.theme).toBe('dark')
   })
 
   it('guesses the API of a custom endpoint from its URL', () => {
@@ -37,6 +44,7 @@ describe('settings import, export and reset', () => {
     s.app.lastWorkspace = '/work/a'
     s.app.recentWorkspaces = ['/work/a']
     s.app.layoutChosen = true
+    s.app.onboarded = true
     s.appearance.theme = 'dark'
     s.mcp.servers = [
       { id: 'gh', name: 'gh', enabled: true, transport: 'stdio', command: 'npx', args: ['gh'], env: { GITHUB_TOKEN: 'ghp_secret', REGION: 'eu' } },
@@ -94,6 +102,8 @@ describe('settings import, export and reset', () => {
     expect(s.appearance.theme).toBe('system')
     expect(s.app.openWorkspaces).toEqual(['/work/a'])
     expect(s.app.layoutChosen).toBe(true)
+    // Reset doesn't bring back first-run setup.
+    expect(s.app.onboarded).toBe(true)
     expect(s.mcp.servers.map((x) => x.id)).toEqual(['blender'])
   })
 })

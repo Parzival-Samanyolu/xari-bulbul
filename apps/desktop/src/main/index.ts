@@ -2,13 +2,34 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow, dialog, ipcMain, nativeTheme, Notification, powerSaveBlocker, session, shell, systemPreferences, type WebContents } from 'electron'
-import { IPC_EVENT, type UiEvent } from '../shared/ipc'
+import { Telemetry, defaultScrubContext, telemetryUrl } from '@harness/core'
+import { IPC_EVENT, type RendererError, type TrackEvent, type UiEvent } from '../shared/ipc'
 import { AppController, type BackgroundNotice } from './controller'
 import { loadShellPath } from './shell-path'
 import { initUpdater, checkForUpdates, installUpdate } from './updater'
 
 let win: BrowserWindow | null = null
 let controller: AppController
+/** Share info. Made once the data folder is known; sends only while the user allows it and after first-run setup. */
+let telemetry: Telemetry | null = null
+
+/** Page ids and step names from the renderer: short slugs only. */
+const SLUG = /^[a-z0-9_.-]{1,40}$/
+
+function track(e: TrackEvent) {
+  if (!telemetry || !e || typeof e !== 'object') return
+  if (e.type === 'settings_page' && SLUG.test(e.page)) telemetry.count('feature.settings_page', { page: e.page })
+  else if (e.type === 'onboarding' && (e.outcome === 'finished' || e.outcome === 'skipped') && SLUG.test(e.step)) telemetry.event(`onboarding.${e.outcome}`, { step: e.step })
+}
+
+function reportRendererError(e: RendererError) {
+  if (!telemetry || !e || typeof e !== 'object') return
+  const kind = e.kind === 'crash' ? 'crash.renderer' : e.kind === 'rejection' ? 'error.renderer_rejection' : 'error.renderer'
+  const err = new Error(String(e.message ?? '').replace(/^\w*Error: /, '').slice(0, 2000))
+  // The page's stack starts with the message line, which `error` skips.
+  err.stack = String(e.stack ?? '').slice(0, 5000)
+  telemetry.error(kind, err)
+}
 
 function send(e: UiEvent) {
   // State pushes come at every turn start and end, which is when "keep awake while working" changes.
@@ -42,6 +63,8 @@ function applyDesktopSettings() {
 async function settingsChanged<T>(p: Promise<T> | T): Promise<T> {
   const r = await p
   applyDesktopSettings()
+  // Turning share info off forgets whatever was waiting to be sent.
+  if (!controller.getSettings().privacy.shareUsage) telemetry?.drop()
   return r
 }
 
@@ -144,6 +167,10 @@ function createWindow() {
       e.preventDefault()
       if (/^https?:\/\//.test(url)) shell.openExternal(url)
     }
+  })
+
+  win.webContents.on('render-process-gone', (_e, details) => {
+    if (details.reason !== 'clean-exit') telemetry?.event('crash.renderer_gone', { reason: details.reason, exitCode: details.exitCode })
   })
 
   if (!app.isPackaged && process.env.ELECTRON_RENDERER_URL) win.loadURL(process.env.ELECTRON_RENDERER_URL)
@@ -252,6 +279,8 @@ function registerIpc() {
   handle('voice.download', () => c.downloadWhisper())
   handle('voice.cancelDownload', () => c.cancelWhisperDownload())
   handle('voice.remove', (what: string) => c.removeWhisper(what))
+  handle('app.track', (e: TrackEvent) => track(e))
+  handle('app.reportError', (e: RendererError) => reportRendererError(e))
   handle('app.openExternal', (url: string) => {
     if (/^https?:\/\//.test(url)) return shell.openExternal(url)
   })
@@ -276,9 +305,28 @@ app.on('second-instance', () => {
 // Separate profile for development/testing: HARNESS_DATA_DIR=/tmp/harness pnpm dev
 if (process.env.HARNESS_DATA_DIR) app.setPath('userData', path.resolve(process.env.HARNESS_DATA_DIR))
 
+// Uncaught errors in main, for share info. The monitor leaves Electron's own handling as it is.
+process.on('uncaughtExceptionMonitor', (err) => telemetry?.error('crash.main', err))
+process.on('unhandledRejection', (reason) => {
+  console.error('Unhandled rejection:', reason)
+  telemetry?.error('error.main_rejection', reason)
+})
+
 app.whenReady().then(async () => {
   loadShellPath()
-  controller = new AppController(app.getPath('userData'), app.getVersion(), send, notify)
+  const url = telemetryUrl()
+  telemetry = new Telemetry({
+    dataDir: app.getPath('userData'),
+    appVersion: app.getVersion(),
+    url,
+    enabled: () => !!controller?.getSettings().privacy.shareUsage,
+    // Nothing leaves before first-run setup has shown the switch.
+    ready: () => !!controller?.getSettings().app.onboarded,
+    scrub: defaultScrubContext(app.getAppPath()),
+  })
+  controller = new AppController(app.getPath('userData'), app.getVersion(), send, notify, { telemetry, shareInfoOff: !url })
+  telemetry.event('app.start', { packaged: app.isPackaged })
+  telemetry.start()
   registerIpc()
   setPermissionHandlers()
   await controller.restoreWorkspace()
@@ -303,7 +351,7 @@ app.on('before-quit', (e) => {
   e.preventDefault()
   disposed = true
   const done = () => app.quit()
-  Promise.race([controller.dispose(), new Promise((r) => setTimeout(r, 2000))]).then(done, done)
+  Promise.race([Promise.all([controller.dispose(), telemetry?.flush()]), new Promise((r) => setTimeout(r, 2000))]).then(done, done)
 })
 
 app.on('window-all-closed', () => {

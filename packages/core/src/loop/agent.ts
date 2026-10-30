@@ -347,6 +347,7 @@ export class Agent {
       lean: this.leanPrompt(),
       memory: this.memoryOn ? this.promptMemory() : undefined,
       bot: this.bot && { name: this.bot.name, persona: this.bot.persona },
+      profile: this.settings.profile,
       skills: this.allowedSkills?.map((s) => ({ name: s.name, description: s.description })),
     })
   }

@@ -8,6 +8,7 @@ import { BotsPage, ExperimentalPage } from './pages/bots'
 import { PluginsPage, SchedulesPage, SessionsPage, UsagePage, VersionPage } from './pages/data'
 import { AppearancePage, ChatPage, NotificationsPage, ShortcutsPage, WorkspacePage } from './pages/general'
 import { AuxModelsPage, MainModelPage, SubagentsPage } from './pages/model'
+import { PrivacyPage, ProfilePage } from './pages/profile'
 import { AccountsPage, ApiKeysPage, CustomEndpointsPage } from './pages/providers'
 import { SafetyPage } from './pages/safety'
 import { BrowserPage, ContextPage, MemoryPage, PasswordsPage, SpeechToTextPage, VoiceConversationPage } from './pages/system'
@@ -89,6 +90,14 @@ export const TREE: NodeDef[] = [
     description: 'How messages are sent and shown, and the instructions every chat gets.',
     page: ChatPage,
     rows: [['Enter sends message', 'send key newline'], ['Show model reasoning', 'thinking'], ['Expand tool calls'], ['Custom instructions', 'prompt'], ['System prompt', 'short lean full'], ['System prompt override']],
+  },
+  {
+    id: 'profile',
+    label: 'Profile',
+    icon: 'user',
+    description: 'Who you are, so the agent can pitch its answers to you.',
+    page: ProfilePage,
+    rows: [['Name', 'call me'], ['Role', 'job developer designer student researcher'], ['Experience', 'beginner level skill'], ['Main uses', 'coding writing research automation learning'], ['Reply language', 'language turkish azerbaijani translate answer']],
   },
   {
     id: 'appearance',
@@ -305,7 +314,7 @@ export const TREE: NodeDef[] = [
     icon: 'about',
     children: [
       { id: 'about.version', label: 'Version & updates', icon: 'tag', description: 'Which version you have, and how it updates.', page: VersionPage, rows: [['Version'], ['Check for updates automatically', 'auto update'], ['Source code', 'github license']] },
-      { id: 'about.privacy', label: 'Privacy', icon: 'safety', description: 'What the app shares, if anything.', page: Later, hidden: true },
+      { id: 'about.privacy', label: 'Privacy', icon: 'safety', description: 'What the app shares, if anything.', page: PrivacyPage, rows: [['Share anonymous usage info', 'telemetry analytics crash error reports share info usage data']] },
     ],
   },
 ]

@@ -145,8 +145,8 @@ describe('bots in the agent', () => {
     s.models.reasoningEffort = 'low'
     expect((await run(s, { botId: 'critic' })).provider.requests[0].reasoningEffort).toBe('high')
     expect((await run(s)).provider.requests[0].reasoningEffort).toBe('low')
-    s.models.overrides['mock:m'] = { reasoningEffort: 'minimal' }
-    expect((await run(s, { botId: 'critic' })).provider.requests[0].reasoningEffort).toBe('minimal')
+    s.models.overrides['mock:m'] = { reasoningEffort: 'medium' }
+    expect((await run(s, { botId: 'critic' })).provider.requests[0].reasoningEffort).toBe('medium')
   })
 
   it("lists only the bot's skills", async () => {

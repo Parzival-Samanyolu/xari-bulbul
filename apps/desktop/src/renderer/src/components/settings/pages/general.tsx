@@ -38,7 +38,7 @@ export function ChatPage({ app, save }: PageProps) {
   )
 }
 
-const THEMES = [
+export const THEMES = [
   { value: 'system', label: 'System' },
   { value: 'dark', label: 'Dark' },
   { value: 'light', label: 'Light' },

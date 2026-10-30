@@ -68,3 +68,19 @@ export {
   type PluginRoot,
   type PluginScope,
 } from './plugins/install.js'
+export {
+  TELEMETRY_URL,
+  TELEMETRY_LIMITS,
+  Telemetry,
+  cleanProps,
+  cleanVersion,
+  defaultScrubContext,
+  installId,
+  scrubText,
+  telemetryUrl,
+  type ScrubContext,
+  type TelemetryEvent,
+  type TelemetryOptions,
+  type TelemetryProps,
+  type TelemetrySink,
+} from './telemetry/client.js'

@@ -2278,25 +2278,6 @@ label.question-option.on {
 
 /* ---------- layout picker ---------- */
 
-.layout-card {
-  margin: 28px 0 0;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--panel);
-}
-.layout-card h2 {
-  margin: 0;
-  font-size: 1.1em;
-}
-.layout-card > p {
-  margin: 2px 0 12px;
-}
-.layout-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 12px;
-}
 .layout-tiles {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3357,5 +3338,315 @@ body.resizing * {
 @media (prefers-reduced-motion: reduce) {
   .bot-pick {
     transition: none;
+  }
+}
+
+/* ---------- first-run setup ---------- */
+
+.onboard {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-y: auto;
+  background: var(--bg);
+}
+/* The window has no title bar on macOS: this strip moves it. */
+.onboard-drag {
+  position: fixed;
+  inset: 0 0 auto 0;
+  height: 28px;
+  -webkit-app-region: drag;
+  z-index: 1;
+}
+.onboard-welcome {
+  justify-content: center;
+}
+.onboard-hello {
+  width: min(520px, 100% - 48px);
+  padding-bottom: 8vh;
+}
+.onboard-hello h1 {
+  margin: 0;
+  font-size: 2em;
+}
+.onboard-hello p {
+  margin: 6px 0 28px;
+  max-width: 44ch;
+}
+.onboard-start {
+  min-width: 120px;
+}
+.onboard-frame {
+  width: min(640px, 100% - 48px);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 40px 0 24px;
+}
+.onboard-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+}
+.onboard-progress {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  flex: 1;
+}
+.onboard-progress li {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.8em;
+}
+.onboard-bar {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border);
+}
+.onboard-progress li.done .onboard-bar,
+.onboard-progress li.on .onboard-bar {
+  background: var(--accent);
+}
+.onboard-progress li.on {
+  color: var(--text);
+  font-weight: 600;
+}
+.onboard-head .link {
+  margin-top: 10px;
+  white-space: nowrap;
+}
+.onboard-body {
+  flex: 1;
+  padding: 32px 0 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.onboard-body h2 {
+  margin: 0;
+  font-size: 1.45em;
+}
+.onboard-body h2:focus {
+  outline: none;
+}
+.onboard-body h2 + p {
+  margin: -16px 0 0;
+}
+.onboard-field {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.onboard-field > legend,
+.onboard-field > label,
+.onboard-label {
+  padding: 0;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+.onboard-field > label {
+  margin-bottom: 0;
+}
+.onboard-field > input {
+  max-width: 320px;
+}
+.choice-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.choice-chip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 4px 14px;
+  border: 1px solid var(--control-border);
+  border-radius: 99px;
+  cursor: pointer;
+  user-select: none;
+}
+.choice-chip input,
+.provider-choice input,
+.mode-choice input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.choice-chip:hover,
+.provider-choice:hover,
+.mode-choice:hover {
+  border-color: var(--muted);
+}
+.choice-chip.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.choice-chip:has(input:focus-visible),
+.provider-choice:has(input:focus-visible),
+.mode-choice:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.provider-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.provider-choice,
+.mode-choice {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+.provider-choice.on,
+.mode-choice.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.provider-choice-text,
+.mode-choice > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.provider-choice-text b {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.provider-choice .muted,
+.mode-choice .muted {
+  color: var(--muted);
+}
+.provider-choice.on .muted,
+.mode-choice.on .muted {
+  color: var(--text);
+}
+.onboard-other {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.onboard-connect {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.onboard-connect > label {
+  font-weight: 600;
+}
+.onboard-connect p {
+  margin: 0;
+}
+.onboard-connect [role='status']:empty {
+  display: none;
+}
+.mode-choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.onboard-field > p,
+.onboard-field > div > p {
+  margin: 0;
+}
+.onboard-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.onboard-row > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.onboard-row label,
+.onboard-row > span > span:first-child {
+  font-weight: 600;
+}
+.onboard-summary {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 6px 24px;
+}
+.onboard-summary > div {
+  display: contents;
+}
+.onboard-summary dt {
+  color: var(--muted);
+}
+.onboard-summary dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.share-info {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+}
+.share-info p {
+  margin: 0;
+}
+.share-info-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.share-info-head > span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.share-info-text {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-width: 60ch;
+}
+.onboard-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+@media (max-width: 720px) {
+  .provider-choices,
+  .mode-choices {
+    grid-template-columns: minmax(0, 1fr);
   }
 }
