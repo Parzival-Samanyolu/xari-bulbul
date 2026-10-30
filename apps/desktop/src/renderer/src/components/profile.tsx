@@ -25,10 +25,10 @@ export function ShareInfoText() {
   return (
     <div className="share-info-text small">
       <p>
-        <b>Sent:</b> the app version, your operating system, which features you use (as counts), and error reports with file paths removed. They're tied to a random install id, not to you.
+        <b>Sent:</b> the app version; your OS version, language and memory size; which features you use (as counts); which models and providers you use, with token counts and cost; your app settings (on/off, not their contents); the role and experience you picked in setup; how long the app stays open; and error reports with file paths removed. Custom providers and endpoints are sent as “custom”. All of it is tied to a random install id, not to you.
       </p>
       <p>
-        <b>Never sent:</b> your prompts, code, file names, paths, API keys or chat content.
+        <b>Never sent:</b> your prompts, code, file names, paths, API keys, chat content, or names you give things.
       </p>
     </div>
   )

@@ -1,7 +1,8 @@
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, Notification, powerSaveBlocker, session, shell, systemPreferences, type WebContents } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, nativeTheme, Notification, powerSaveBlocker, screen, session, shell, systemPreferences, type WebContents } from 'electron'
 import { Telemetry, defaultScrubContext, telemetryUrl } from '@harness/core'
 import { IPC_EVENT, type RendererError, type TrackEvent, type UiEvent } from '../shared/ipc'
 import { AppController, type BackgroundNotice } from './controller'
@@ -19,7 +20,36 @@ const SLUG = /^[a-z0-9_.-]{1,40}$/
 function track(e: TrackEvent) {
   if (!telemetry || !e || typeof e !== 'object') return
   if (e.type === 'settings_page' && SLUG.test(e.page)) telemetry.count('feature.settings_page', { page: e.page })
-  else if (e.type === 'onboarding' && (e.outcome === 'finished' || e.outcome === 'skipped') && SLUG.test(e.step)) telemetry.event(`onboarding.${e.outcome}`, { step: e.step })
+  else if (e.type === 'onboarding' && (e.outcome === 'finished' || e.outcome === 'skipped') && SLUG.test(e.step)) {
+    telemetry.event(`onboarding.${e.outcome}`, { step: e.step })
+    // A first run's snapshot waits for setup, so it carries the profile and layout just chosen.
+    sendSnapshot()
+  }
+}
+
+let snapshotSent = false
+/** Share info's `app.snapshot`, once per app start: system buckets and the shape of the settings. */
+function sendSnapshot() {
+  if (snapshotSent || !telemetry || !controller) return
+  snapshotSent = true
+  try {
+    let display: { width: number; height: number } | undefined
+    try {
+      display = screen.getPrimaryDisplay().size
+    } catch {
+      /* no display yet */
+    }
+    const system = {
+      osVersion: process.getSystemVersion?.() ?? os.release(),
+      locale: app.getSystemLocale?.() || app.getLocale(),
+      ramBytes: os.totalmem(),
+      cpus: os.availableParallelism?.() ?? os.cpus().length,
+      screen: display,
+    }
+    telemetry.event('app.snapshot', controller.telemetrySnapshot(system, app.isPackaged))
+  } catch {
+    /* never let share info break startup */
+  }
 }
 
 function reportRendererError(e: RendererError) {
@@ -387,6 +417,7 @@ app.whenReady().then(async () => {
   controller.startSchedules()
   controller.startGateways()
   createWindow()
+  if (controller.getSettings().app.onboarded) sendSnapshot()
   initUpdater(send, controller.getSettings().app.autoUpdate)
   applyDesktopSettings()
   // Session retention: once at launch, then daily while the app stays open.
@@ -404,6 +435,11 @@ app.on('before-quit', (e) => {
   if (disposed || !controller) return
   e.preventDefault()
   disposed = true
+  try {
+    telemetry?.event('app.session', controller.telemetrySession())
+  } catch {
+    /* quitting goes on */
+  }
   const done = () => app.quit()
   Promise.race([Promise.all([controller.dispose(), telemetry?.flush()]), new Promise((r) => setTimeout(r, 2000))]).then(done, done)
 })

@@ -93,6 +93,12 @@ import {
   type SessionMeta,
   type Settings,
   type TelemetrySink,
+  type SystemInfo,
+  appSession,
+  appSnapshot,
+  installedModels,
+  telemetryModel,
+  telemetryProvider,
   type Tool,
   type WhisperModelId,
   settingsPath,
@@ -177,6 +183,9 @@ export class AppController {
   private avatarCache = new Map<string, string>()
   /** Bots that finished replying while another chat was on screen. */
   private unreadBots = new Set<string>()
+  /** For share info's `app.session`: when the app started and which chats got a message since. */
+  private readonly startedAt = Date.now()
+  private readonly chatsSentIn = new Set<string>()
   readonly paths: AppState['paths']
 
   constructor(
@@ -196,6 +205,10 @@ export class AppController {
     this.secrets = new SecretStore(path.join(dataDir, 'secrets.json'))
     this.markExistingInstallOnboarded()
     this.usage = new UsageTracker(this.paths.usage)
+    // Every model request (chat steps, subagents, titles, memory review, compaction) counts toward share info's per-model totals.
+    this.usage.onRecord((r) =>
+      this.modelUsage({ providerId: r.providerId, modelId: r.modelId }, { turns: 1, input: r.promptTokens, output: r.completionTokens, cached: r.cachedTokens, cost: r.cost }),
+    )
     this.store = new SessionStore(this.paths.sessions)
     this.memory = new MemoryStore(path.join(dataDir, 'memory'), this.settings.memory.maxChars)
     this.terminals = new Terminals(send)
@@ -259,6 +272,46 @@ export class AppController {
     } catch {
       /* never let share info break a feature */
     }
+  }
+
+  /** Share-info model totals, with custom providers and endpoints sent as 'custom'. */
+  private modelUsage(ref: ModelRef, delta: Parameters<TelemetrySink['modelUsage']>[2]) {
+    try {
+      if (!this.opts.telemetry) return
+      const { provider, model } = telemetryModel(ref, this.settings.providers)
+      this.opts.telemetry.modelUsage(provider, model, delta)
+    } catch {
+      /* never let share info break a feature */
+    }
+  }
+
+  /** A tool's kind for share info: MCP and extension tool names can carry the user's own names. */
+  private toolKind(name: string): string {
+    const tool = this.tools.find((t) => t.name === name)
+    return tool?.source === 'mcp' ? 'mcp' : tool?.source && tool.source !== 'builtin' ? 'extension' : (tool?.kind ?? 'other')
+  }
+
+  /** Share info's `app.snapshot`: system buckets and the shape of the settings, never names, paths or contents. */
+  telemetrySnapshot(system: SystemInfo, packaged: boolean) {
+    return appSnapshot(this.settings, system, {
+      connectedProviders: this.settings.providers.filter((p) => p.enabled && this.isReady(p.id)).length,
+      plugins: this.plugins.length,
+      skills: this.ext.skills.length,
+      localModels: (() => {
+        try {
+          return installedModels(this.dataDir).length
+        } catch {
+          return 0
+        }
+      })(),
+      voice: this.voiceState().engine != null,
+      packaged,
+    })
+  }
+
+  /** Share info's `app.session`: minutes the app has been open and how many chats got a message. */
+  telemetrySession() {
+    return appSession(this.startedAt, Date.now(), this.chatsSentIn.size)
   }
 
   /**
@@ -1037,6 +1090,7 @@ export class AppController {
         new Promise<PermissionAnswer>((resolve) => {
           // Call ids are only unique within a chat (providers reuse ids like "call_0").
           this.pending.set(`${id}:${request.callId}`, { sessionId: id, resolve })
+          this.count('feature.approval', { outcome: 'asked' })
           this.send({ type: 'permission', sessionId: id, request })
           if (id !== this.activeId) this.notify({ sessionId: id, kind: 'approval', title: agent.session.meta.title, body: `Needs approval: ${request.tool} ${request.subject}`.trim() })
           this.gatewayAttention(agent, `${request.tool} ${request.subject}`)
@@ -1076,8 +1130,19 @@ export class AppController {
     if (event.type === 'tool_end' && event.name === SAVE_SKILL_TOOL && !event.result.isError) void this.reloadExtensions().then(() => this.pushState())
     // Share info gets the tool's kind only: MCP and extension tool names can carry the user's own names.
     if (event.type === 'tool_start') {
-      const tool = this.tools.find((t) => t.name === event.name)
-      this.count('feature.tool', { kind: tool?.source === 'mcp' ? 'mcp' : tool?.source && tool.source !== 'builtin' ? 'extension' : (tool?.kind ?? 'other') })
+      this.count('feature.tool', { kind: this.toolKind(event.name) })
+      if (event.name === 'task') this.count('feature.subagent')
+    }
+    if (event.type === 'tool_end' && event.result.isError && !event.denied) this.count('feature.tool_failed', { kind: this.toolKind(event.name) })
+    if (event.type === 'compacted') this.count('feature.compaction')
+    if (event.type === 'mixing' && event.phase === 'proposing') this.count('feature.moa_turn')
+    if (event.type === 'fallback') {
+      this.count('feature.fallback', { from: telemetryProvider(event.from.providerId, this.settings.providers), to: telemetryProvider(event.to.providerId, this.settings.providers) })
+      this.modelUsage(event.from, { errors: 1 })
+    }
+    if (event.type === 'turn_end' && event.reason === 'error') {
+      const agent = this.agents.get(sessionId)?.agent
+      if (agent) this.modelUsage(agent.model, { errors: 1 })
     }
     if (event.type === 'turn_end') {
       this.cancelPending(sessionId)
@@ -1244,10 +1309,13 @@ export class AppController {
 
   async editMessage(index: number, text: string, revert: boolean): Promise<void> {
     const agent = this.readyAgent()
+    if (revert) this.count('feature.checkpoint_revert', { scope: 'edit' })
+    this.chatsSentIn.add(agent.session.meta.id)
     await agent.editAndResend(index, expandSlashCommand(text, this.ext.commands) ?? text, { revert })
   }
 
   revert(at: number, file?: string): AppState {
+    if (this.agent) this.count('feature.checkpoint_revert', { scope: file ? 'file' : 'all' })
     this.agent?.revert(at, file)
     return this.state()
   }
@@ -1276,6 +1344,7 @@ export class AppController {
     }
     const expanded = expandSlashCommand(text, this.ext.commands) ?? text
     this.count('feature.chat_sent', { bot: !!activeBot(this.settings, this.agent!.session.meta.botId) })
+    this.chatsSentIn.add(this.agent!.session.meta.id)
     await this.agent!.send(expanded, { files, images })
   }
 
@@ -1290,6 +1359,7 @@ export class AppController {
     const key = `${sessionId}:${callId}`
     const p = this.pending.get(key)
     this.pending.delete(key)
+    if (p) this.count('feature.approval', { outcome: answer?.type === 'deny' ? 'denied' : answer?.type === 'allowAlways' ? 'allowed_always' : 'allowed' })
     p?.resolve(answer)
     if (p) this.pushState()
   }

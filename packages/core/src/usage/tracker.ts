@@ -63,6 +63,7 @@ function startOfDay(ts: number): number {
  */
 export class UsageTracker {
   private records: UsageRecord[] = []
+  private listeners = new Set<(r: UsageRecord) => void>()
 
   constructor(private readonly file: string | null) {
     if (file && fs.existsSync(file)) {
@@ -83,6 +84,19 @@ export class UsageTracker {
       fs.mkdirSync(path.dirname(this.file), { recursive: true })
       fs.appendFileSync(this.file, JSON.stringify(r) + '\n')
     }
+    for (const fn of this.listeners) {
+      try {
+        fn(r)
+      } catch {
+        /* a listener never breaks recording */
+      }
+    }
+  }
+
+  /** Called with every new record (chat steps, subagents, titles, memory review, compaction). Returns an unsubscribe. */
+  onRecord(fn: (r: UsageRecord) => void): () => void {
+    this.listeners.add(fn)
+    return () => this.listeners.delete(fn)
   }
 
   summary(sessionId?: string, now = Date.now()): UsageSummary {

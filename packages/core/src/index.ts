@@ -88,7 +88,22 @@ export {
   type TelemetryOptions,
   type TelemetryProps,
   type TelemetrySink,
+  type ModelUsageDelta,
 } from './telemetry/client.js'
+export {
+  SNAPSHOT_FEATURES,
+  appSession,
+  appSnapshot,
+  cpuBucket,
+  localeBucket,
+  osVersionBucket,
+  ramBucket,
+  screenBucket,
+  telemetryModel,
+  telemetryProvider,
+  type SetupCounts,
+  type SystemInfo,
+} from './telemetry/shape.js'
 export * from './gateways/imessage.js'
 export * from './gateways/imessage-gateway.js'
 export * from './gateways/whatsapp.js'

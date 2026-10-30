@@ -7,7 +7,8 @@ import { pathToFileURL } from 'node:url'
 // Share info: anonymous usage counts and error reports, sent in batches to the collector in
 // server/telemetry. Its validation is strict (unknown fields, nested props or a bad name reject
 // the whole batch), so everything here is shaped to that contract before it is queued.
-// Never sent: prompts, replies, code, file names, paths, keys, chat content.
+// Also per-model token totals (custom providers as 'custom') and a setup snapshot (telemetry/shape.ts).
+// Never sent: prompts, replies, code, file names, paths, keys, chat content, names the user gives things.
 
 export const TELEMETRY_URL = 'https://193-122-49-121.sslip.io/v1/events'
 
@@ -39,10 +40,30 @@ export interface TelemetryEvent {
   props?: TelemetryProps
 }
 
+/** Token use of one model since the last send; summed into one `usage.model` event per provider and model. */
+export interface ModelUsageDelta {
+  /** Model requests (each step of a turn, subagent, title or memory request is one). */
+  turns?: number
+  input?: number
+  output?: number
+  cached?: number
+  /** USD; null or missing when unknown. */
+  cost?: number | null
+  /** Requests that failed after their retries. */
+  errors?: number
+}
+
 /** What the app's code calls; a no-op stand-in is fine where share info doesn't apply. */
 export interface TelemetrySink {
   /** A counter: events with the same name and props are summed into one `{count}` event per send. */
   count(name: string, props?: TelemetryProps): void
+  /** One event as is. */
+  event(name: string, props?: Record<string, unknown>): void
+  /**
+   * Adds to a model's totals. `provider` and `model` must already be shaped for sending
+   * (`telemetryModel`): custom providers and endpoints are 'custom'.
+   */
+  modelUsage(provider: string, model: string, delta: ModelUsageDelta): void
 }
 
 /**
@@ -197,9 +218,22 @@ interface Queued extends TelemetryEvent {
   attempts: number
 }
 
+interface ModelTotals {
+  ts: number
+  provider: string
+  model: string
+  turns: number
+  input: number
+  output: number
+  cached: number
+  cost: number | null
+  errors: number
+}
+
 export class Telemetry implements TelemetrySink {
   private queue: Queued[] = []
   private counters = new Map<string, { name: string; ts: number; props?: TelemetryProps; count: number }>()
+  private models = new Map<string, ModelTotals>()
   private errorKeys = new Set<string>()
   private timer: NodeJS.Timeout | null = null
   private sending: Promise<void> | null = null
@@ -238,6 +272,23 @@ export class Telemetry implements TelemetrySink {
     else this.counters.set(key, { name, ts: this.now, props: clean, count: 1 })
   }
 
+  modelUsage(provider: string, model: string, d: ModelUsageDelta): void {
+    if (!this.active) return this.drop()
+    const p = provider.slice(0, 64)
+    const m = model.slice(0, 200)
+    if (!p || !m) return
+    const key = `${p}\u0000${m}`
+    let t = this.models.get(key)
+    if (!t) this.models.set(key, (t = { ts: this.now, provider: p, model: m, turns: 0, input: 0, output: 0, cached: 0, cost: null, errors: 0 }))
+    const n = (v: number | undefined) => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? v : 0)
+    t.turns += n(d.turns)
+    t.input += n(d.input)
+    t.output += n(d.output)
+    t.cached += n(d.cached)
+    t.errors += n(d.errors)
+    if (typeof d.cost === 'number' && Number.isFinite(d.cost) && d.cost >= 0) t.cost = (t.cost ?? 0) + d.cost
+  }
+
   /**
    * An error or crash (`name` starts with `error.` or `crash.`): the message and stack, scrubbed
    * and cut to 500 characters each. The same error is reported once per run.
@@ -257,6 +308,7 @@ export class Telemetry implements TelemetrySink {
   drop(): void {
     this.queue = []
     this.counters.clear()
+    this.models.clear()
   }
 
   /** Sends on a timer until `stop`. */
@@ -287,6 +339,13 @@ export class Telemetry implements TelemetrySink {
     if (this.o.ready && !this.o.ready()) return
     for (const c of this.counters.values()) this.push({ name: c.name, ts: c.ts, props: { ...c.props, count: c.count }, attempts: 0 })
     this.counters.clear()
+    for (const t of this.models.values()) {
+      const props: TelemetryProps = { provider: t.provider, model: t.model, turns: t.turns, input: t.input, output: t.output, cached: t.cached, errors: t.errors }
+      // Rounded to a millionth of a dollar; left out when no request of the batch had a known cost.
+      if (t.cost != null) props.cost = Math.round(t.cost * 1e6) / 1e6
+      this.push({ name: 'usage.model', ts: t.ts, props, attempts: 0 })
+    }
+    this.models.clear()
     if (!this.queue.length) return
     let id: string
     try {
