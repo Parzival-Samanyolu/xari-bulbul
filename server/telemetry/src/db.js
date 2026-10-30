@@ -104,8 +104,12 @@ class Store {
       sessions: this.sessions(since),
       dailyActiveInstalls: all(`SELECT day, COUNT(DISTINCT install_id) AS installs
         FROM events WHERE received_at >= ? GROUP BY day ORDER BY day`, since),
-      versions: all(`SELECT app_version AS version, COUNT(DISTINCT install_id) AS installs
-        FROM events WHERE received_at >= ? GROUP BY app_version ORDER BY installs DESC, version DESC`, since),
+      // Each install counts once, under the version it sent most recently.
+      versions: all(`SELECT version, COUNT(*) AS installs FROM (
+          SELECT e.install_id, e.app_version AS version FROM events e
+          JOIN (SELECT install_id, MAX(id) AS last FROM events WHERE received_at >= ? GROUP BY install_id) l
+            ON e.id = l.last)
+        GROUP BY version ORDER BY installs DESC, version DESC`, since),
       os: all(`SELECT os, arch, COUNT(DISTINCT install_id) AS installs
         FROM events WHERE received_at >= ? GROUP BY os, arch ORDER BY installs DESC, os, arch`, since),
       topEvents: all(`SELECT name, COUNT(*) AS count, COUNT(DISTINCT install_id) AS installs

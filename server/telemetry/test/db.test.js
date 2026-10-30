@@ -170,3 +170,11 @@ test('indexes for the new queries exist', () => {
   const plan = store.db.prepare("EXPLAIN QUERY PLAN SELECT MAX(id) FROM events WHERE name = 'app.snapshot' AND received_at >= 0 GROUP BY install_id").all()
   assert.ok(plan.some((r) => /INDEX events_name/.test(r.detail)), JSON.stringify(plan))
 })
+
+test('versions: an install that updated counts once, under its newest version', () => {
+  store.insertBatch(batch(A, '5.0.0', 'darwin', 'arm64', ['app.start']), NOW - 2 * DAY)
+  store.insertBatch(batch(A, '5.0.1', 'darwin', 'arm64', ['app.start']), NOW - DAY)
+  store.insertBatch(batch(A, '5.0.2', 'darwin', 'arm64', ['app.start']), NOW)
+  store.insertBatch(batch(B, '5.0.1', 'linux', 'x64', ['app.start']), NOW)
+  assert.deepEqual(store.stats(NOW).versions, [{ version: '5.0.2', installs: 1 }, { version: '5.0.1', installs: 1 }])
+})
