@@ -179,8 +179,8 @@ function reducer(m: Model, a: Action): Model {
       return setLive(addNotice(live, 'error', e.message, true))
     case 'turn_end': {
       let notices = live.notices
-      // The step-limit notice comes right before turn_end: give it a Continue button.
-      if (e.reason === 'max_steps' && notices.length) notices = [...notices.slice(0, -1), { ...notices.at(-1)!, resume: true }]
+      // The step-limit and repeat notices come right before turn_end: give them a Continue button.
+      if ((e.reason === 'max_steps' || e.reason === 'repeating') && notices.length) notices = [...notices.slice(0, -1), { ...notices.at(-1)!, resume: true }]
       return setLive({ ...live, notices, streamText: '', streamReasoning: '', status: undefined }, running(false))
     }
   }

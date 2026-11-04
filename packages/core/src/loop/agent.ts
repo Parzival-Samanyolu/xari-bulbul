@@ -3,6 +3,7 @@ import path from 'node:path'
 import { compactionSplit, estimateTokens, summarize } from '../context/compact.js'
 import { buildSystemPrompt, gatherEnvironment, type PromptEnvironment } from '../context/system-prompt.js'
 import { Reminders } from './reminders.js'
+import { RepeatGuard, repeatNudge } from './repetition.js'
 import { runHooks, type HookOutcome } from './hooks.js'
 import { applyReview, reviewExchange, type MemoryFact } from '../memory/review.js'
 import type { MemoryStore } from '../memory/store.js'
@@ -30,7 +31,8 @@ import type { SessionAccess, SubagentInput, Tool, ToolContext, ToolResult, UserQ
 import type { ChatMessage, FileAttachment, ImageAttachment, ModelRef, TodoItem, ToolCall, Usage } from '../types.js'
 import { checkBudget, computeCost, type UsageRecord, type UsageSummary, type UsageTracker } from '../usage/tracker.js'
 
-export type TurnEndReason = 'done' | 'aborted' | 'max_steps' | 'error' | 'budget'
+/** `repeating`: stopped because the model kept making the same call with the same result. */
+export type TurnEndReason = 'done' | 'aborted' | 'max_steps' | 'error' | 'budget' | 'repeating'
 
 export type AgentEvent =
   | { type: 'turn_start' }
@@ -132,6 +134,16 @@ function semaphore(n: number): () => Promise<() => void> {
     })
 }
 
+/** Settles with `p`, or rejects as soon as `signal` aborts. */
+function untilAborted<T>(p: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(signal.reason)
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason ?? new Error('Interrupted by user'))
+    signal.addEventListener('abort', onAbort, { once: true })
+    p.then(resolve, reject).finally(() => signal.removeEventListener('abort', onAbort))
+  })
+}
+
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve) => {
     const t = setTimeout(done, ms)
@@ -156,6 +168,9 @@ export class Agent {
   readonly jobs: JobRegistry
   private env: PromptEnvironment | undefined
   private readonly reminders = new Reminders()
+  private readonly repeats = new RepeatGuard()
+  /** A nudge about repeated calls, delivered with the next reminders. */
+  private repeatNote: string | null = null
   /** Index of the user message that started the running turn (where its checkpoint attaches). */
   private turnAt = -1
   private warnedNoTools = false
@@ -568,12 +583,19 @@ export class Agent {
     this.warnedNoTools = false
     this.env = gatherEnvironment(this.session.meta.cwd, { shell: this.settings.agent.shell })
     this.reminders.startTurn(this.o.permissions.mode)
+    this.repeats.startTurn()
+    this.repeatNote = null
     this.failedCalls = []
     this.skipped = new Set()
     await this.loadModelInfo()
     let reviewed = false
     try {
       for (let step = 0; step < this.settings.agent.maxStepsPerTurn; step++) {
+        // Stop may come between steps (during a review nudge, model info, or compaction).
+        if (abort.signal.aborted) {
+          reason = 'aborted'
+          break
+        }
         const budget = checkBudget(this.o.usage.summary(this.usageId), this.settings.usage)
         if (!budget.ok) {
           const msg = `${budget.which === 'session' ? 'Session' : 'Daily'} budget reached ($${budget.spent.toFixed(4)} of $${budget.limit.toFixed(2)}).`
@@ -589,6 +611,13 @@ export class Agent {
         this.injectReminders()
         // With Mixture of Agents on, a final answer is held back and becomes the mixture's draft.
         const { calls: toolCalls, draft } = await this.step(abort.signal, this.mixing)
+        // A provider may end its stream quietly on abort instead of throwing.
+        if (abort.signal.aborted) {
+          if (draft) this.pushDraft(draft)
+          for (const c of toolCalls) this.interrupted(c)
+          reason = 'aborted'
+          break
+        }
         if (!toolCalls.length) {
           const review = reviewed ? null : this.reviewPrompt()
           if (review) {
@@ -620,6 +649,13 @@ export class Agent {
           reason = 'aborted'
           break
         }
+        const verdict = this.repeats.observe(this.stepRecord(toolCalls))
+        if (verdict.action === 'nudge') this.repeatNote = repeatNudge(verdict.what, verdict.count)
+        else if (verdict.action === 'stop') {
+          reason = 'repeating'
+          this.emit({ type: 'notice', level: 'warn', text: `Stopped: the model repeated ${verdict.what} ${verdict.count} times with the same result. Send "continue" to keep going.` })
+          break
+        }
       }
       const open = this.unfinishedTodos()
       if (reason === 'done' && open.length) {
@@ -649,6 +685,23 @@ export class Agent {
     return reason
   }
 
+  /** The step that made `calls`, with their results, for repeat detection. */
+  private stepRecord(calls: ToolCall[]) {
+    const ids = new Set(calls.map((c) => c.id))
+    const msgs = this.session.messages
+    const results = new Map<string, string>()
+    let text = ''
+    for (let i = msgs.length - 1; i >= 0; i--) {
+      const m = msgs[i]
+      if (m.role === 'tool' && ids.has(m.toolCallId)) results.set(m.toolCallId, m.content)
+      else if (m.role === 'assistant' && m.toolCalls?.some((c) => ids.has(c.id))) {
+        text = m.content
+        break
+      }
+    }
+    return { text, calls: calls.map((c) => ({ name: c.name, arguments: c.arguments, result: results.get(c.id) ?? '' })) }
+  }
+
   private unfinishedTodos(): TodoItem[] {
     return (this.session.todos ?? []).filter((t) => t.status !== 'completed')
   }
@@ -673,6 +726,8 @@ export class Agent {
       ].filter((b) => b !== null),
       context: { used: this.session.lastPromptTokens ?? 0, length: this.contextLength() },
     })
+    if (this.repeatNote) notes.push(this.repeatNote)
+    this.repeatNote = null
     if (!notes.length) return
     const content = notes.map((n) => `<system-reminder>\n${n}\n</system-reminder>`).join('\n')
     this.push({ role: 'user', content, synthetic: 'reminder' })
@@ -792,6 +847,7 @@ export class Agent {
           this.emit({ type: 'stream_reset' })
           this.emit({ type: 'notice', level: 'info', text: `${err.message} Retrying (${attempt + 1}/${retries})…` })
           await sleep(1000 * 2 ** attempt, signal)
+          if (signal.aborted) throw signal.reason ?? new Error('Interrupted by user')
           continue
         }
         // Too long for the model: summarize older history once and try again.
@@ -974,6 +1030,8 @@ export class Agent {
     // A bot's tool limits hold for the helpers it starts too.
     const tools = filterBotTools(this.tools, this.bot).filter((t) => t.name !== TASK_TOOL && t.name !== 'todo_write' && (!readOnly || t.readOnly))
     const model = cfg.model ?? this.model
+    // An abort that came before the listener below would never reach the child.
+    if (signal.aborted) return { content: 'Subagent interrupted by user.', isError: true }
     const progress = (text: string) => this.emit({ type: 'tool_progress', callId, text })
     let error = ''
     const child = new Agent({
@@ -1012,7 +1070,14 @@ export class Agent {
       const report = [...child.session.messages].reverse().find((m) => m.role === 'assistant' && m.content.trim())?.content.trim() ?? ''
       if (reason === 'aborted') return { content: 'Subagent interrupted by user.', isError: true }
       if (reason === 'error') return { content: `Subagent failed: ${error || 'unknown error'}${report ? `\n\nPartial report:\n${report}` : ''}`, isError: true }
-      const note = reason === 'max_steps' ? `\n\n[Subagent hit its ${cfg.maxSteps}-step limit; the report may be incomplete.]` : reason === 'budget' ? '\n\n[Stopped by the budget limit.]' : ''
+      const note =
+        reason === 'max_steps'
+          ? `\n\n[Subagent hit its ${cfg.maxSteps}-step limit; the report may be incomplete.]`
+          : reason === 'budget'
+            ? '\n\n[Stopped by the budget limit.]'
+            : reason === 'repeating'
+              ? '\n\n[Subagent stopped because it kept repeating the same call; the report may be incomplete.]'
+              : ''
       return { content: (report || 'The subagent finished without a report.') + note }
     } finally {
       signal.removeEventListener('abort', onAbort)
@@ -1097,10 +1162,13 @@ export class Agent {
       if (answer.type === 'allowAlways') this.o.permissions.remember(tool, subject)
     }
 
+    // Stop may come while hooks run, or right after an approval.
+    if (signal.aborted) return finish({ content: 'Interrupted by user before running.', isError: true }, true)
     started = Date.now()
     let result: ToolResult
     try {
-      result = await tool.execute(input, this.toolContext(call.id, signal))
+      // A tool that ignores the signal (an MCP server, an extension) must not hold up Stop.
+      result = await untilAborted(tool.execute(input, this.toolContext(call.id, signal)), signal)
     } catch (e) {
       result = { content: signal.aborted ? 'Interrupted by user.' : (e as Error).message, isError: true }
     }

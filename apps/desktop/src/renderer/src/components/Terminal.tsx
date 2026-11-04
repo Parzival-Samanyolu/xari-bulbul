@@ -39,18 +39,40 @@ function isAppShortcut(e: KeyboardEvent, mac: boolean): boolean {
   return e.ctrlKey && ((k === 'j' && !e.altKey) || (e.altKey && e.code === 'KeyB'))
 }
 
+type ClipAction = 'copy' | 'paste'
+
+/**
+ * Copy and paste keys: Ctrl+Shift+C/V everywhere, ⌘C/⌘V on macOS, Ctrl+V on Windows, and
+ * Ctrl+C off macOS only while text is selected (otherwise it stays the shell's interrupt).
+ */
+function clipboardKey(e: KeyboardEvent, platform: string, hasSelection: boolean): ClipAction | null {
+  const c = e.code
+  if (c !== 'KeyC' && c !== 'KeyV') return null
+  const action: ClipAction = c === 'KeyC' ? 'copy' : 'paste'
+  if (e.altKey) return null
+  if (e.ctrlKey && e.shiftKey && !e.metaKey) return action
+  if (platform === 'darwin') return e.metaKey && !e.ctrlKey && !e.shiftKey ? action : null
+  if (!e.ctrlKey || e.shiftKey || e.metaKey) return null
+  if (action === 'copy') return hasSelection ? 'copy' : null
+  return platform === 'win32' ? 'paste' : null
+}
+
 interface ViewProps {
   cwd: string
   active: boolean
-  mac: boolean
+  platform: string
   font: string
   onExit: () => void
+  onRestart: () => void
+  onClose: () => void
   onError: (e: unknown) => void
 }
 
 /** One xterm bound to one PTY in main. The PTY starts on mount and is killed on unmount. */
-function TerminalView({ cwd, active, mac, font, onExit, onError }: ViewProps) {
+function TerminalView({ cwd, active, platform, font, onExit, onRestart, onClose, onError }: ViewProps) {
+  const mac = platform === 'darwin'
   const host = useRef<HTMLDivElement>(null)
+  const [menu, setMenu] = useState<{ x: number; y: number; selection: boolean } | null>(null)
   const xterm = useRef<XTerm | null>(null)
   const fit = useRef<FitAddon | null>(null)
   const ptyId = useRef<string | null>(null)
@@ -63,7 +85,19 @@ function TerminalView({ cwd, active, mac, font, onExit, onError }: ViewProps) {
     const fitter = new FitAddon()
     term.loadAddon(fitter)
     term.open(el)
-    term.attachCustomKeyEventHandler((e) => !isAppShortcut(e, mac))
+    term.attachCustomKeyEventHandler((e) => {
+      const clip = clipboardKey(e, platform, term.hasSelection())
+      if (clip) {
+        // Handled here: not the shell's, and not an app shortcut.
+        e.preventDefault()
+        e.stopPropagation()
+        // Like Windows Terminal: after Ctrl+C copies, the next Ctrl+C interrupts again.
+        const plainCtrl = clip === 'copy' && e.ctrlKey && !e.shiftKey
+        if (e.type === 'keydown') void clipboard(term, clip, onError).then(() => plainCtrl && term.clearSelection())
+        return false
+      }
+      return !isAppShortcut(e, mac)
+    })
     xterm.current = term
     fit.current = fitter
     try {
@@ -143,7 +177,122 @@ function TerminalView({ cwd, active, mac, font, onExit, onError }: ViewProps) {
     xterm.current?.focus()
   }, [active])
 
-  return <div ref={host} className="term-host" hidden={!active} />
+  const openMenu = (x: number, y: number) => {
+    const term = xterm.current
+    if (term) setMenu({ x, y, selection: term.hasSelection() })
+  }
+  const closeMenu = () => {
+    setMenu(null)
+    xterm.current?.focus()
+  }
+  const run = (fn: (term: XTerm) => void) => {
+    const term = xterm.current
+    closeMenu()
+    if (term) fn(term)
+  }
+  const keys = mac ? { copy: '⌘C', paste: '⌘V' } : { copy: 'Ctrl+Shift+C', paste: 'Ctrl+Shift+V' }
+
+  return (
+    <>
+      <div
+        ref={host}
+        className="term-host"
+        hidden={!active}
+        onContextMenu={(e) => {
+          e.preventDefault()
+          openMenu(e.clientX, e.clientY)
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
+            e.preventDefault()
+            e.stopPropagation()
+            const r = host.current!.getBoundingClientRect()
+            openMenu(r.left + 24, r.top + 24)
+          }
+        }}
+      />
+      {menu && active && (
+        <TermMenu x={menu.x} y={menu.y} onClose={closeMenu}>
+          <button role="menuitem" disabled={!menu.selection} onClick={() => run((t) => void clipboard(t, 'copy', onError))}>
+            Copy<span className="term-menu-key">{keys.copy}</span>
+          </button>
+          <button role="menuitem" onClick={() => run((t) => void clipboard(t, 'paste', onError))}>
+            Paste<span className="term-menu-key">{keys.paste}</span>
+          </button>
+          <button role="menuitem" onClick={() => run((t) => t.selectAll())}>
+            Select all
+          </button>
+          <button role="menuitem" onClick={() => run((t) => t.clear())}>
+            Clear
+          </button>
+          <div className="term-menu-sep" role="separator" />
+          <button role="menuitem" onClick={() => run(() => onRestart())}>
+            Restart terminal
+          </button>
+          <button role="menuitem" className="danger" onClick={() => run(() => onClose())}>
+            Close terminal
+          </button>
+        </TermMenu>
+      )}
+    </>
+  )
+}
+
+/** Copies the selection, or pastes the clipboard into the shell (bracketed when the shell asks for it). */
+async function clipboard(term: XTerm, action: ClipAction, onError: (e: unknown) => void) {
+  try {
+    if (action === 'copy') {
+      const text = term.getSelection()
+      if (text) await navigator.clipboard.writeText(text)
+    } else {
+      const text = await navigator.clipboard.readText()
+      if (text) term.paste(text)
+    }
+  } catch (e) {
+    onError(e)
+  }
+}
+
+/** Right-click menu on a terminal, styled like the app's other menus. */
+function TermMenu({ x, y, onClose, children }: { x: number; y: number; onClose: () => void; children: React.ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState({ left: x, top: y })
+  const closeRef = useRef(onClose)
+  closeRef.current = onClose
+
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    // Keep it on screen.
+    const r = el.getBoundingClientRect()
+    setPos({ left: Math.max(8, Math.min(x, window.innerWidth - r.width - 8)), top: Math.max(8, Math.min(y, window.innerHeight - r.height - 8)) })
+    el.querySelector<HTMLButtonElement>('button:not([disabled])')?.focus()
+    const onDown = (e: MouseEvent) => !el.contains(e.target as Node) && closeRef.current()
+    const onBlur = () => closeRef.current()
+    window.addEventListener('mousedown', onDown)
+    window.addEventListener('blur', onBlur)
+    return () => {
+      window.removeEventListener('mousedown', onDown)
+      window.removeEventListener('blur', onBlur)
+    }
+  }, [x, y])
+
+  const onKey = (e: React.KeyboardEvent) => {
+    const items = [...(ref.current?.querySelectorAll<HTMLButtonElement>('button:not([disabled])') ?? [])]
+    const i = items.indexOf(document.activeElement as HTMLButtonElement)
+    // Keys stay in the menu: Escape here shouldn't also stop the chat.
+    e.stopPropagation()
+    if (e.key === 'Escape') (e.preventDefault(), onClose())
+    else if (e.key === 'ArrowDown') (e.preventDefault(), items[(i + 1) % items.length]?.focus())
+    else if (e.key === 'ArrowUp') (e.preventDefault(), items[(i - 1 + items.length) % items.length]?.focus())
+    else if (e.key === 'Tab') onClose()
+  }
+
+  return (
+    <div className="menu term-menu" role="menu" aria-label="Terminal" ref={ref} style={{ left: pos.left, top: pos.top }} onKeyDown={onKey} onContextMenu={(e) => e.preventDefault()}>
+      {children}
+    </div>
+  )
 }
 
 interface Tab {
@@ -167,7 +316,6 @@ export function TerminalPanel({ app, visible, onError }: PanelProps) {
   const [active, setActive] = useState<Record<string, number>>({})
   const mine = tabs.filter((t) => t.cwd === cwd)
   const current = cwd ? (mine.find((t) => t.key === active[cwd]) ?? mine.at(-1)) : undefined
-  const mac = app.platform === 'darwin'
 
   /** Starts a terminal in the folder; with `ifNone`, only when the folder has none yet. */
   const add = (ifNone = false) => {
@@ -178,6 +326,12 @@ export function TerminalPanel({ app, visible, onError }: PanelProps) {
     if (!ifNone) setActive((a) => ({ ...a, [cwd]: t.key }))
   }
   const close = (key: number) => setTabs((ts) => ts.filter((t) => t.key !== key))
+  /** A fresh shell in the same tab: the new key remounts the view, which kills the old PTY. */
+  const restart = (key: number) => {
+    const next = ++tabKey
+    setTabs((ts) => ts.map((t) => (t.key === key ? { ...t, key: next } : t)))
+    setActive((a) => Object.fromEntries(Object.entries(a).map(([k, v]) => [k, v === key ? next : v])))
+  }
 
   // Opening the panel in a folder with no terminal starts one.
   useEffect(() => {
@@ -219,9 +373,11 @@ export function TerminalPanel({ app, visible, onError }: PanelProps) {
             key={t.key}
             cwd={t.cwd}
             active={visible && t.key === current?.key}
-            mac={mac}
+            platform={app.platform}
             font={app.settings.appearance.codeFontFamily}
             onExit={() => close(t.key)}
+            onRestart={() => restart(t.key)}
+            onClose={() => close(t.key)}
             onError={onError}
           />
         ))}
