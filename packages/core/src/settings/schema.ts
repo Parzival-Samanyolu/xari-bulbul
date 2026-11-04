@@ -6,6 +6,9 @@ import { BOT_AVATAR_KINDS, BOT_PETS, BOT_SHAPES, DEFAULT_BOT_COLOR, faceForName 
 
 export { PROFILE_EXPERIENCE, PROFILE_ROLES, PROFILE_USES } from './profile.js'
 
+/** Upper limit for `agent.maxStepsPerTurn`. */
+export const MAX_STEPS_PER_TURN = 500
+
 // Every user-facing setting lives here, with defaults. Secrets (API keys) are NOT
 // part of settings; hosts store them separately (desktop: OS-encrypted via safeStorage).
 
@@ -392,7 +395,8 @@ export const SettingsSchema = z.object({
 
   agent: z
     .object({
-      maxStepsPerTurn: z.number().int().min(1).max(1000).default(200),
+      /** Earlier versions allowed up to 1000; a saved value above the cap is lowered to it instead of failing. */
+      maxStepsPerTurn: z.preprocess((v) => (typeof v === 'number' && v > MAX_STEPS_PER_TURN ? MAX_STEPS_PER_TURN : v), z.number().int().min(1).max(MAX_STEPS_PER_TURN).default(200)),
       /** In Plan mode, send model steps through the provider's Batch API (about half price, slower). */
       batchInPlanMode: z.boolean().default(false),
       /** lean: a short system prompt that small models follow better. auto = lean for free models. */

@@ -45,7 +45,7 @@ export function LimitsPage({ app, save }: PageProps) {
   return (
     <Section>
       <Row label="Max steps per message" hint="Model requests per message before the agent pauses and asks to continue. A safety net against loops.">
-        <NumberField label="Max steps per message" value={a.maxStepsPerTurn} min={1} max={1000} onChange={(v) => save((s) => ((s.agent.maxStepsPerTurn = v ?? 200), s))} />
+        <NumberField label="Max steps per message" value={a.maxStepsPerTurn} min={1} max={500} onChange={(v) => save((s) => ((s.agent.maxStepsPerTurn = v ?? 200), s))} />
       </Row>
       <Row label="Request retries" hint="Retries after rate limits (429) and server errors.">
         <NumberField label="Request retries" value={a.requestRetries} min={0} max={10} onChange={(v) => save((s) => ((s.agent.requestRetries = v ?? 3), s))} />

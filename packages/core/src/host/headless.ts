@@ -13,6 +13,7 @@ export function exitCodeFor(reason: TurnEndReason): number {
     case 'budget':
       return EXIT.budget
     case 'max_steps':
+    case 'repeating':
       return EXIT.maxSteps
     case 'aborted':
       return EXIT.interrupted

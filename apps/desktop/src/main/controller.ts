@@ -935,7 +935,7 @@ export class AppController {
       .filter((m) => m.role === 'assistant' && m.content.trim() && !m.content.endsWith('[interrupted]'))
       .at(-1)?.content
     if (reason === 'done') return reply ?? null
-    const why = ({ error: 'stopped with an error', aborted: 'was stopped', max_steps: 'hit the step limit', budget: 'hit the budget limit' } as const)[reason]
+    const why = ({ error: 'stopped with an error', aborted: 'was stopped', max_steps: 'hit the step limit', budget: 'hit the budget limit', repeating: 'kept repeating itself' } as const)[reason]
     return `${reply ? `${reply}\n\n` : ''}(The turn ${why}. Open Xarı Bülbül to see it.)`
   }
 
@@ -1148,7 +1148,7 @@ export class AppController {
       this.cancelPending(sessionId)
       if (sessionId !== this.activeId) {
         const session = this.agents.get(sessionId)?.agent.session
-        const body = ({ done: 'Finished.', error: 'Stopped with an error.', aborted: 'Stopped.', max_steps: 'Hit the step limit.', budget: 'Hit the budget limit.' })[event.reason]
+        const body = ({ done: 'Finished.', error: 'Stopped with an error.', aborted: 'Stopped.', max_steps: 'Hit the step limit.', budget: 'Hit the budget limit.', repeating: 'Stopped: it kept repeating itself.' })[event.reason]
         const kind = event.reason === 'done' ? 'finished' : 'failed'
         const bot = session && !session.meta.gateway ? activeBot(this.settings, session.meta.botId) : undefined
         if (bot) {

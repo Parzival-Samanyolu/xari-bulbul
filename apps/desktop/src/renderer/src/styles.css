@@ -2817,6 +2817,23 @@ body.resizing * {
 .term-host[hidden] {
   display: none;
 }
+.term-menu {
+  position: fixed;
+  right: auto;
+  width: 220px;
+  z-index: 45;
+}
+.term-menu-key {
+  float: right;
+  margin-left: 12px;
+  color: var(--muted);
+  font-size: 0.85em;
+}
+.term-menu-sep {
+  height: 1px;
+  margin: 4px 2px;
+  background: var(--border);
+}
 .sb-toggle.on {
   color: var(--accent);
 }

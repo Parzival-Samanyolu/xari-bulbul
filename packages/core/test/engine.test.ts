@@ -225,7 +225,8 @@ describe('agent loop additions', () => {
 
   it('nudges about a stale checklist', async () => {
     const steps: ConstructorParameters<typeof MockProvider>[0] = [[call('t', 'todo_write', { todos: [{ content: 'one', status: 'in_progress' }, { content: 'two', status: 'pending' }] })]]
-    for (let i = 0; i < 8; i++) steps.push([call(`g${i}`, 'glob', { pattern: '*.txt' })])
+    // Different patterns each step, so repeat detection stays out of it.
+    for (let i = 0; i < 8; i++) steps.push([call(`g${i}`, 'glob', { pattern: `*${i}*.txt` })])
     steps.push([call('t2', 'todo_write', { todos: [{ content: 'one', status: 'completed' }, { content: 'two', status: 'completed' }] })], [text('done')])
     const { agent, provider } = await setup(steps)
     await agent.send('go')
