@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { pathToFileURL } from 'node:url'
-import { app, BrowserWindow, dialog, ipcMain, nativeTheme, Notification, powerSaveBlocker, screen, session, shell, systemPreferences, type WebContents } from 'electron'
+import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, Notification, powerSaveBlocker, screen, session, shell, systemPreferences, type WebContents } from 'electron'
 import { Telemetry, defaultScrubContext, telemetryUrl } from '@harness/core'
 import { IPC_EVENT, type RendererError, type TrackEvent, type UiEvent } from '../shared/ipc'
 import { AppController, type BackgroundNotice } from './controller'
@@ -352,6 +352,9 @@ function registerIpc() {
   })
   handle('bots.open', (botId: string) => c.openBot(botId))
   handle('bots.newThread', (botId: string) => c.newBotThread(botId))
+  handle('bots.imageProvider', () => c.botImageProvider())
+  handle('bots.generateAvatar', (input) => c.generateBotAvatar(input))
+  handle('bots.saveAvatar', (png) => c.saveBotAvatar(png))
   handle('voice.prepare', () => microphoneAccess())
   handle('voice.transcribe', (audio: Uint8Array, mediaType: string) => c.transcribe(audio, mediaType))
   handle('voice.download', () => c.downloadWhisper())
@@ -425,6 +428,10 @@ app.whenReady().then(async () => {
   log.init(app.getPath('userData'))
   log.info('app', `Started Xarı Bülbül ${app.getVersion()}`, { platform: process.platform, arch: process.arch, os: process.getSystemVersion?.() ?? os.release(), electron: process.versions.electron, packaged: app.isPackaged })
   loadShellPath()
+  // Windows/Linux: Electron's default menu binds Ctrl+R, Ctrl+W, Ctrl+Shift+I and others, which the
+  // terminal and composer need. Text fields keep their editing keys without a menu. macOS keeps it
+  // (Cmd+Q, Cmd+H and the Edit menu live there).
+  if (process.platform !== 'darwin' && app.isPackaged) Menu.setApplicationMenu(null)
   const url = telemetryUrl()
   telemetry = new Telemetry({
     dataDir: app.getPath('userData'),

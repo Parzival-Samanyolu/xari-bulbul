@@ -10,7 +10,12 @@ import {
   providerAccounts,
   DEFAULT_ACCOUNT_ID,
   activeBot,
+  avatarPrompt,
   botThreads,
+  generateImage,
+  hasAvatarFile,
+  IMAGE_MODELS,
+  imageProviderKind,
   chatBot,
   chatDefaults,
   chatPreview,
@@ -110,7 +115,7 @@ import {
   type WhisperModelId,
   settingsPath,
 } from '@harness/core'
-import type { AccountView, AppState, AttachmentInput, BotRow, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
+import type { AccountView, AppState, AttachmentInput, BotAvatarRequest, BotRow, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
 import { LocalModels } from './local-models'
 import { log } from './logger'
 import type { KnownChild } from './resources'
@@ -1564,10 +1569,53 @@ export class AppController {
     return { path: target, url: this.avatarUrl(target) }
   }
 
+  /** The provider an AI avatar would use: the first enabled OpenAI, then OpenRouter, with a key. */
+  private imageProviderConfig() {
+    const ready = this.settings.providers.filter((p) => p.enabled && imageProviderKind(p) && this.isReady(p.id))
+    return ready.find((p) => imageProviderKind(p) === 'openai') ?? ready.find((p) => imageProviderKind(p) === 'openrouter') ?? null
+  }
+
+  botImageProvider(): { id: string; name: string; model: string } | null {
+    const p = this.imageProviderConfig()
+    return p ? { id: p.id, name: p.name, model: IMAGE_MODELS[imageProviderKind(p)!][0] } : null
+  }
+
+  /** A picture for a bot's avatar from its name and personality. Keys stay here; the renderer pixelates the result. */
+  async generateBotAvatar(input: BotAvatarRequest): Promise<{ dataUrl: string; provider: string; model: string }> {
+    const p = this.imageProviderConfig()
+    if (!p) throw new Error('No provider here can make pictures. Add an OpenAI or OpenRouter API key in Settings › Providers, or use a sprite.')
+    const str = (v: unknown, n: number) => (typeof v === 'string' ? v.slice(0, n) : '')
+    const prompt = avatarPrompt({ name: str(input?.name, 40), tagline: str(input?.tagline, 120), persona: str(input?.persona, 2000) }, str(input?.prompt, 600))
+    const img = await generateImage({
+      kind: imageProviderKind(p)!,
+      baseUrl: p.baseUrl,
+      apiKey: this.activeKey(p.id) ?? '',
+      headers: p.headers,
+      prompt,
+      signal: AbortSignal.timeout(120_000),
+    }).catch((e: Error) => {
+      throw new Error(e.name === 'TimeoutError' ? `${p.name} took too long to make the picture.` : `${p.name}: ${e.message}`)
+    })
+    return { dataUrl: `data:${img.mediaType};base64,${img.base64}`, provider: p.name, model: img.model }
+  }
+
+  /** Saves a pixel avatar the renderer drew (PNG bytes) into `<data>/bots/`; the bot dialog saves the path. */
+  saveBotAvatar(png: Uint8Array): { path: string; url: string } {
+    const bytes = png instanceof Uint8Array ? Buffer.from(png) : null
+    const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    if (!bytes || bytes.length < PNG.length || !bytes.subarray(0, 8).equals(PNG)) throw new Error('That avatar is not a PNG image.')
+    if (bytes.length > MAX_AVATAR_BYTES) throw new Error('That avatar is too large.')
+    const dir = this.botImageDir
+    fs.mkdirSync(dir, { recursive: true })
+    const target = path.join(dir, `pixel-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.png`)
+    fs.writeFileSync(target, bytes)
+    return { path: target, url: this.avatarUrl(target) }
+  }
+
   /** Deletes pictures no bot uses any more. Only day-old ones, so a picture picked in an open dialog stays. */
   private cleanBotImages() {
     const dir = this.botImageDir
-    const used = new Set(this.settings.bots.map((b) => (b.avatar.kind === 'image' ? b.avatar.image : undefined)).filter(Boolean))
+    const used = new Set(this.settings.bots.map((b) => (hasAvatarFile(b.avatar) ? b.avatar.image : undefined)).filter(Boolean))
     let names: string[] = []
     try {
       names = fs.readdirSync(dir)
@@ -1604,7 +1652,7 @@ export class AppController {
   private botAvatars(): Record<string, string> {
     const out: Record<string, string> = {}
     for (const b of this.settings.bots) {
-      const url = b.avatar.kind === 'image' && b.avatar.image ? this.avatarUrl(b.avatar.image) : ''
+      const url = hasAvatarFile(b.avatar) ? this.avatarUrl(b.avatar.image!) : ''
       if (url) out[b.id] = url
     }
     return out

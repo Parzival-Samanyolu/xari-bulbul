@@ -37,6 +37,12 @@ export function BotsPanel({ app, onState, onError, onEditBot, onChat, settingsOp
   const muted = app.settings.botOptions.muted
   const currentBot = app.session?.meta.botId
   const [menu, setMenu] = useState<{ bot: Bot; x: number; y: number; opener: HTMLElement | null } | null>(null)
+  // The "5m" times age while nothing else changes.
+  const [, tick] = useState(0)
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 60_000)
+    return () => clearInterval(t)
+  }, [])
 
   const save = (s: Settings) => api.settings.set(s).then(onState, onError)
   const open = (b: Bot) => {
@@ -84,21 +90,23 @@ export function BotsPanel({ app, onState, onError, onEditBot, onChat, settingsOp
             const last = row.threads[0]
             const active = currentBot === b.id && !settingsOpen
             const status = !b.enabled ? 'off' : row.awaiting ? 'awaiting' : row.running ? 'working' : 'on'
-            const statusText = { off: 'Turned off', awaiting: 'Needs you', working: 'Typing…', on: '' }[status]
-            const preview = row.running
-              ? 'Typing…'
+            const statusText = { off: 'Turned off', awaiting: 'Needs you', working: 'Working', on: '' }[status]
+            const preview = !b.enabled
+              ? 'Turned off'
               : row.awaiting
                 ? app.questions.some((q) => row.threads.some((t) => t.id === q.sessionId))
                   ? 'Has a question'
                   : 'Needs approval'
-                : last?.preview || b.tagline || (b.enabled ? 'Say hi' : 'Turned off')
+                : row.running
+                  ? 'Typing…'
+                  : last?.preview || b.tagline || 'Say hi'
             const openMenu = (x: number, y: number, opener: HTMLElement | null) => setMenu({ bot: b, x, y, opener })
             return (
-              <li key={b.id} className={`bot-row ${active ? 'active' : ''} ${b.enabled ? '' : 'off'} ${row.unread ? 'unread' : ''}`}>
+              <li key={b.id} className={`bot-row ${active ? 'active' : ''} ${b.enabled ? '' : 'off'} ${row.unread ? 'unread' : ''} ${status}`}>
                 <button
                   className="bot-row-open"
                   aria-current={active ? 'page' : undefined}
-                  aria-label={[b.name, statusText, row.unread ? 'New reply' : '', preview].filter(Boolean).join('. ')}
+                  aria-label={[b.name || 'Bot', statusText, row.unread ? 'New reply' : '', b.muted ? 'Muted' : '', preview !== statusText ? preview : ''].filter(Boolean).join('. ')}
                   onClick={() => open(b)}
                   onContextMenu={(e) => {
                     e.preventDefault()
@@ -113,7 +121,8 @@ export function BotsPanel({ app, onState, onError, onEditBot, onChat, settingsOp
                   }}
                 >
                   <span className="bot-row-face">
-                    <BotAvatar app={app} bot={b} size={34} />
+                    {/* A working bot's face wobbles; the others stay still. */}
+                    <BotAvatar app={app} bot={b} size={34} mood={status === 'working' ? 'thinking' : undefined} />
                     <span className={`bot-status ${status}`} aria-hidden />
                   </span>
                   <span className="bot-row-text">

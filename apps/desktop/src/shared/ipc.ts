@@ -262,6 +262,14 @@ export interface ResourceSample {
   gpu: { name: string | null }
 }
 
+/** What an AI avatar is made from: the bot as typed in the editor, plus the user's own prompt. */
+export interface BotAvatarRequest {
+  name: string
+  tagline: string
+  persona: string
+  prompt: string
+}
+
 /** A bot in the Bots tab, with its chats. */
 export interface BotRow {
   id: string
@@ -334,7 +342,7 @@ export interface AppState {
   browserLogins: boolean
   /** How the mic button transcribes; null hides it. */
   voice: VoiceState
-  /** Bots with a picture as their avatar: bot id → data URL. */
+  /** Bots with a picture or pixel-art avatar: bot id → data URL. */
   botAvatars: Record<string, string>
   /** The Bots tab: one row per bot in settings (empty while the tab is off). */
   bots: BotRow[]
@@ -557,6 +565,12 @@ export interface HarnessApi {
     open(botId: string): Promise<AppState>
     /** Starts a fresh chat with the bot; its earlier chats stay in its history. */
     newThread(botId: string): Promise<AppState>
+    /** Which provider would make an AI avatar (the first OpenAI or OpenRouter one with a key), or null if none can. */
+    imageProvider(): Promise<{ id: string; name: string; model: string } | null>
+    /** Makes a picture for a bot's avatar with that provider. The renderer pixelates it, then saves it with `saveAvatar`. */
+    generateAvatar(input: BotAvatarRequest): Promise<{ dataUrl: string; provider: string; model: string }>
+    /** Saves a pixel avatar's PNG bytes into the data folder; the dialog saves the path with the bot. */
+    saveAvatar(png: Uint8Array): Promise<{ path: string; url: string }>
   }
   voice: {
     /** Asks the OS for microphone access (macOS); true when recording may start. */

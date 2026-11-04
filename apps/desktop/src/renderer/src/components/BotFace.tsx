@@ -1,4 +1,4 @@
-import { memo, type ReactNode } from 'react'
+import { memo, useState, type CSSProperties, type ReactNode } from 'react'
 import type { BotFace as Face, BotPet, BotShape } from '@harness/core/bots'
 
 // Bot faces as plain SVG on a 100×100 grid: deterministic, no images, crisp from 16 to 96 px.
@@ -129,7 +129,7 @@ function Eyes({ y, x, r, color = INK }: { y: number; x: number; r: number; color
   return (
     <>
       {[50 - x, 50 + x].map((cx) => (
-        <g key={cx}>
+        <g key={cx} className="bf-eye">
           <ellipse cx={cx} cy={y} rx={r * 0.82} ry={r} fill={color} />
           <circle cx={cx + r * 0.3} cy={y - r * 0.38} r={r * 0.3} fill="#fff" />
         </g>
@@ -227,10 +227,14 @@ function PetFace({ pet, color }: { pet: BotPet; color: string }) {
         <circle cx={29} cy={31} r={16} fill={color} {...line} />
         <circle cx={71} cy={31} r={16} fill={color} {...line} />
         <ellipse cx={50} cy={62} rx={44} ry={30} fill={color} {...line} />
-        <circle cx={29} cy={31} r={10} fill="#fff" />
-        <circle cx={71} cy={31} r={10} fill="#fff" />
-        <circle cx={30} cy={32} r={5.5} fill={INK} />
-        <circle cx={72} cy={32} r={5.5} fill={INK} />
+        <g className="bf-eye">
+          <circle cx={29} cy={31} r={10} fill="#fff" />
+          <circle cx={30} cy={32} r={5.5} fill={INK} />
+        </g>
+        <g className="bf-eye">
+          <circle cx={71} cy={31} r={10} fill="#fff" />
+          <circle cx={72} cy={32} r={5.5} fill={INK} />
+        </g>
         <path d="M26 64Q50 82 74 64" fill="none" stroke={INK} strokeWidth={3.4} strokeLinecap="round" />
         <circle cx={22} cy={64} r={5} fill={light} opacity={0.7} />
         <circle cx={78} cy={64} r={5} fill={light} opacity={0.7} />
@@ -242,10 +246,14 @@ function PetFace({ pet, color }: { pet: BotPet; color: string }) {
         <path d="M30 80Q50 66 70 80Q66 90 50 91Q34 90 30 80Z" fill={light} opacity={0.75} />
         <circle cx={33} cy={48} r={15} fill={light} />
         <circle cx={67} cy={48} r={15} fill={light} />
-        <circle cx={33} cy={48} r={7.5} fill={INK} />
-        <circle cx={67} cy={48} r={7.5} fill={INK} />
-        <circle cx={35.5} cy={45} r={2.4} fill="#fff" />
-        <circle cx={69.5} cy={45} r={2.4} fill="#fff" />
+        <g className="bf-eye">
+          <circle cx={33} cy={48} r={7.5} fill={INK} />
+          <circle cx={35.5} cy={45} r={2.4} fill="#fff" />
+        </g>
+        <g className="bf-eye">
+          <circle cx={67} cy={48} r={7.5} fill={INK} />
+          <circle cx={69.5} cy={45} r={2.4} fill="#fff" />
+        </g>
         <path d="M44 60L56 60L50 71Z" fill={dark} stroke={dark} strokeWidth={2} strokeLinejoin="round" />
       </>
     ),
@@ -256,10 +264,14 @@ function PetFace({ pet, color }: { pet: BotPet; color: string }) {
         <circle cx={50} cy={56} r={39} fill={shade(color, -0.78)} {...line} />
         <ellipse cx={33} cy={52} rx={11} ry={14} transform="rotate(25 33 52)" fill={dark} />
         <ellipse cx={67} cy={52} rx={11} ry={14} transform="rotate(-25 67 52)" fill={dark} />
-        <circle cx={34} cy={51} r={4.6} fill="#fff" />
-        <circle cx={66} cy={51} r={4.6} fill="#fff" />
-        <circle cx={35} cy={51.5} r={2.6} fill={INK} />
-        <circle cx={65} cy={51.5} r={2.6} fill={INK} />
+        <g className="bf-eye">
+          <circle cx={34} cy={51} r={4.6} fill="#fff" />
+          <circle cx={35} cy={51.5} r={2.6} fill={INK} />
+        </g>
+        <g className="bf-eye">
+          <circle cx={66} cy={51} r={4.6} fill="#fff" />
+          <circle cx={65} cy={51.5} r={2.6} fill={INK} />
+        </g>
         <ellipse cx={50} cy={67} rx={6.5} ry={4.5} fill={INK} />
         <path d="M44 75Q50 80 56 75" fill="none" stroke={INK} strokeWidth={2.4} strokeLinecap="round" />
       </>
@@ -268,21 +280,52 @@ function PetFace({ pet, color }: { pet: BotPet; color: string }) {
   return <>{parts[pet] ?? parts.cat}</>
 }
 
+/** What a face is doing: resting (breathes, blinks), working, streaming a reply, or glad it finished. */
+export type BotMood = 'idle' | 'thinking' | 'talking' | 'happy'
+
 interface Props {
   face: Face
   size: number
-  /** The picture's data URL, for image faces. */
+  /** The picture's data URL, for image and pixel faces. */
   image?: string
   /** For a standalone face (a picker tile): its accessible name. Decorative when unset. */
   label?: string
   /** Shown instead of a picture that isn't available. */
   fallback?: string
+  /** Animates the face (stepped, and off with reduced motion). Still when unset. */
+  mood?: BotMood
 }
 
 /** One bot face at `size` px. */
-export const BotFaceView = memo(function BotFaceView({ face, size, image, label, fallback }: Props) {
+export const BotFaceView = memo(function BotFaceView({ face, size, image, label, fallback, mood }: Props) {
   const a11y = label ? { role: 'img', 'aria-label': label } : { 'aria-hidden': true as const }
-  if (face.kind === 'image' || face.kind === 'emoji') {
+  const body = drawFace(face, size, image, fallback, mood ? {} : a11y)
+  if (!mood) return body
+  // One "pixel" of motion: a sixteenth of the face, at least 1px.
+  const style = { width: size, height: size, '--px': `${Math.max(1, Math.round(size / 16))}px` } as CSSProperties
+  return (
+    <span className="bot-anim" data-mood={mood} data-kind={face.kind} style={style} {...a11y}>
+      {body}
+    </span>
+  )
+})
+
+/** A sprite scaled by a whole number when that still fills most of the tile, so every pixel stays the same size. */
+function PixelImage({ src, size }: { src: string; size: number }) {
+  const [natural, setNatural] = useState(0)
+  const k = natural ? Math.floor(size / natural) : 0
+  const side = k >= 1 && k * natural >= size * 0.7 ? k * natural : Math.round(size * 0.92)
+  return <img src={src} alt="" draggable={false} width={side} height={side} onLoad={(e) => setNatural(e.currentTarget.naturalWidth)} />
+}
+
+function drawFace(face: Face, size: number, image: string | undefined, fallback: string | undefined, a11y: object) {
+  if (face.kind === 'pixel' && image)
+    return (
+      <span className="bot-face bot-face-pixel" style={{ width: size, height: size, '--bot': face.color } as CSSProperties} {...a11y}>
+        <PixelImage src={image} size={size} />
+      </span>
+    )
+  if (face.kind === 'image' || face.kind === 'emoji' || face.kind === 'pixel') {
     const text = face.kind === 'emoji' ? face.emoji : fallback || '?'
     return (
       <span
@@ -290,7 +333,7 @@ export const BotFaceView = memo(function BotFaceView({ face, size, image, label,
         style={{ width: size, height: size, fontSize: Math.round(size * 0.55), background: face.color, borderColor: shade(face.color, 0.42) }}
         {...a11y}
       >
-        {face.kind === 'image' && image ? <img src={image} alt="" /> : text}
+        {face.kind === 'image' && image ? <img src={image} alt="" draggable={false} /> : text}
       </span>
     )
   }
@@ -299,4 +342,4 @@ export const BotFaceView = memo(function BotFaceView({ face, size, image, label,
       {face.kind === 'pet' ? <PetFace pet={face.pet} color={face.color} /> : <ShapeFace shape={face.shape} color={face.color} />}
     </svg>
   )
-})
+}

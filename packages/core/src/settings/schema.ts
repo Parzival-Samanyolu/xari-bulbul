@@ -258,15 +258,17 @@ export type Schedule = z.infer<typeof ScheduleSchema>
 
 const PERMISSION_MODES = ['ask', 'acceptEdits', 'plan', 'auto'] as const
 
-/** A bot's face: a drawn shape or animal, a picture, or (from older versions) an emoji. */
+/** A bot's face: a drawn shape or animal, a picture, pixel art, or (from older versions) an emoji. Unknown kinds fall back to a shape. */
 export const BotAvatarSchema = z.object({
   kind: z.enum(BOT_AVATAR_KINDS).catch('shape').default('shape'),
   shape: z.enum(BOT_SHAPES).optional().catch(undefined),
   pet: z.enum(BOT_PETS).optional().catch(undefined),
   /** Older bots' emoji avatar (kind `emoji`). */
   emoji: z.string().optional(),
-  /** Path of a picture copied into `<data>/bots/` (kind `image`). */
+  /** Path of a picture in `<data>/bots/` (kind `image`, or the PNG of kind `pixel`). */
   image: z.string().optional(),
+  /** What the pixel avatar was made from: the user's extra prompt for an AI picture. Kept so the editor shows it again. */
+  prompt: z.string().optional().catch(undefined),
   /** CSS color of the face, the row and the chat header. */
   color: z.string().default(DEFAULT_BOT_COLOR),
   /** Off: the shape and color follow the bot's name (see `faceForName`). */
