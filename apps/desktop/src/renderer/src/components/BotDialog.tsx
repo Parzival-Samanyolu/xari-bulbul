@@ -145,6 +145,21 @@ export function BotDialog({ app, botId, onClose, onState }: Props) {
     }
   }
 
+  /** A picture from disk, pixelated like an AI one (32×32, 16 colors). */
+  const pixelateFile = async () => {
+    setError(null)
+    try {
+      const r = await api.bots.pickAvatar()
+      if (!r) return
+      const png = await pixelatePicture(r.url)
+      if (!alive.current) return
+      applyPixel(png, undefined)
+      setPixelNote('Picture pixelated to 32×32.')
+    } catch (e) {
+      setError(clean(e))
+    }
+  }
+
   /** Shows a pixel avatar made here. `prompt` is set (maybe '') for AI pictures and unset for sprites. */
   const applyPixel = (png: PixelPng, prompt: string | undefined) => {
     setPixel(png)
@@ -411,6 +426,12 @@ export function BotDialog({ app, botId, onClose, onState }: Props) {
                             ? `Draws with ${painter.name} (${painter.model}) from the name, personality and your description, then pixelates it. Your provider may charge for each picture.`
                             : 'Needs an OpenAI or OpenRouter API key (Settings › Providers).'}
                       </span>
+                    </div>
+                    <div className="bd-pixel-row">
+                      <button type="button" className="btn" onClick={pixelateFile} disabled={generating}>
+                        Pixelate a picture…
+                      </button>
+                      <span className="muted small">Turns a photo or drawing from your computer into pixel art.</span>
                     </div>
                     <p className="muted small bd-note" role="status">
                       {pixelNote}
