@@ -171,7 +171,7 @@ export interface VoiceState {
   download: VoiceDownload | null
 }
 
-/** A local model, curated or added (Settings › Providers › Local models). */
+/** A local model, curated or added (Settings › Models › Local models). */
 export interface LocalModelView {
   id: string
   name: string
@@ -219,6 +219,47 @@ export interface RendererError {
   kind: 'error' | 'rejection' | 'crash'
   message: string
   stack?: string
+}
+
+export type LogLevel = 'debug' | 'info' | 'warn' | 'error'
+
+/** One line of the app log (`<data>/logs/app-YYYY-MM-DD.log`). Secrets are redacted before writing. */
+export interface LogEntry {
+  /** Epoch ms. */
+  t: number
+  level: LogLevel
+  /** Where it came from: app, agent, provider, tool, mcp, updater, renderer… */
+  src: string
+  msg: string
+  data?: Record<string, string | number | boolean | null>
+}
+
+/** One process in the resource monitor. */
+export interface ProcessUsage {
+  pid: number
+  /** app: Electron's own processes. The rest are programs the app started. */
+  kind: 'app' | 'mcp' | 'terminal' | 'local' | 'child'
+  /** Electron's process type (Browser, Tab, GPU, Utility…), or Child. */
+  type: string
+  label: string
+  /** Percent of one CPU core; null when not measured (programs the app started, on Windows). */
+  cpu: number | null
+  /** Bytes in RAM (working set / resident); null when not measured. */
+  memory: number | null
+  /** Processes counted in this row (a program and everything it started), when more than one. */
+  count?: number
+}
+
+export interface ResourceSample {
+  at: number
+  processes: ProcessUsage[]
+  /** Electron's processes together. */
+  app: { memory: number; cpu: number }
+  /** Programs the app started, together. `measured` is false where they can't be measured (Windows). */
+  children: { memory: number; cpu: number; measured: boolean }
+  system: { total: number; free: number; cpus: number }
+  /** Electron doesn't report GPU memory, so only the name. */
+  gpu: { name: string | null }
 }
 
 /** A bot in the Bots tab, with its chats. */
@@ -537,12 +578,23 @@ export interface HarnessApi {
   app: {
     /** Counts a feature use for share info; nothing is sent while it's off. */
     track(e: TrackEvent): Promise<void>
-    /** Reports an uncaught error in the page for share info. */
+    /** Reports an uncaught error in the page: written to the app log, and for share info. */
     reportError(e: RendererError): Promise<void>
     openExternal(url: string): Promise<void>
     openPath(path: string): Promise<void>
     checkForUpdates(): Promise<void>
     installUpdate(): Promise<void>
+  }
+  logs: {
+    /** The newest entries, newest first. */
+    read(): Promise<LogEntry[]>
+    openFolder(): Promise<void>
+    /** Saves every kept entry as a text file; false when cancelled. */
+    export(): Promise<boolean>
+  }
+  monitor: {
+    /** Memory and CPU now. Call it only while a readout is on screen. */
+    sample(): Promise<ResourceSample>
   }
   onEvent(cb: (e: UiEvent) => void): () => void
 }

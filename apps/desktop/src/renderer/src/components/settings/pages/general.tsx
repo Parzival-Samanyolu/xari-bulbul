@@ -8,33 +8,37 @@ import { PROMPT_STYLES } from './model'
 
 export function ChatPage({ app, save }: PageProps) {
   const a = app.settings.appearance
-  const g = app.settings.agent
   const mod = app.platform === 'darwin' ? '⌘Enter' : 'Ctrl+Enter'
   return (
-    <>
-      <Section title="Messages">
-        <Row label="Enter sends message" hint={`Off: Enter adds a new line and ${mod} sends.`}>
-          <Toggle label="Enter sends message" value={a.sendWithEnter} onChange={(v) => save((s) => ((s.appearance.sendWithEnter = v), s))} />
-        </Row>
-        <Row label="Show model reasoning" hint="The thinking that reasoning models stream before they answer.">
-          <Toggle label="Show model reasoning" value={a.showReasoning} onChange={(v) => save((s) => ((s.appearance.showReasoning = v), s))} />
-        </Row>
-        <Row label="Expand tool calls" hint="Open each tool call's details by default. Diffs are always open.">
-          <Toggle label="Expand tool calls" value={a.expandToolCalls} onChange={(v) => save((s) => ((s.appearance.expandToolCalls = v), s))} />
-        </Row>
-      </Section>
-      <Section title="Instructions">
-        <Row label="Custom instructions" hint="Added to every chat, in every project." wide>
-          <TextField label="Custom instructions" multiline rows={5} value={g.customInstructions} placeholder="e.g. Always use pnpm. Prefer small commits. Write tests with vitest." onChange={(v) => save((s) => ((s.agent.customInstructions = v), s))} />
-        </Row>
-        <Row label="System prompt" hint="Short drops the detailed guidance, which small models follow better. Auto uses it for free models.">
-          <Select label="System prompt" value={g.promptStyle} options={PROMPT_STYLES as { value: typeof g.promptStyle; label: string }[]} onChange={(v) => save((s) => ((s.agent.promptStyle = v), s))} />
-        </Row>
-        <Row label="System prompt override" hint="Replaces the built-in system prompt entirely. Leave empty to use the built-in one." wide>
-          <TextField label="System prompt override" multiline mono rows={6} value={g.systemPromptOverride} placeholder="Built-in prompt" onChange={(v) => save((s) => ((s.agent.systemPromptOverride = v), s))} />
-        </Row>
-      </Section>
-    </>
+    <Section>
+      <Row label="Enter sends message" hint={`Off: Enter adds a new line and ${mod} sends.`}>
+        <Toggle label="Enter sends message" value={a.sendWithEnter} onChange={(v) => save((s) => ((s.appearance.sendWithEnter = v), s))} />
+      </Row>
+      <Row label="Show model reasoning" hint="The thinking that reasoning models stream before they answer.">
+        <Toggle label="Show model reasoning" value={a.showReasoning} onChange={(v) => save((s) => ((s.appearance.showReasoning = v), s))} />
+      </Row>
+      <Row label="Expand tool calls" hint="Open each tool call's details by default. Diffs are always open.">
+        <Toggle label="Expand tool calls" value={a.expandToolCalls} onChange={(v) => save((s) => ((s.appearance.expandToolCalls = v), s))} />
+      </Row>
+    </Section>
+  )
+}
+
+/** Custom instructions and the system prompt (Agent tab). */
+export function InstructionsPage({ app, save }: PageProps) {
+  const g = app.settings.agent
+  return (
+    <Section>
+      <Row label="Custom instructions" hint="Added to every chat, in every project." wide>
+        <TextField label="Custom instructions" multiline rows={5} value={g.customInstructions} placeholder="e.g. Always use pnpm. Prefer small commits. Write tests with vitest." onChange={(v) => save((s) => ((s.agent.customInstructions = v), s))} />
+      </Row>
+      <Row label="System prompt" hint="Short drops the detailed guidance, which small models follow better. Auto uses it for free models.">
+        <Select label="System prompt" value={g.promptStyle} options={PROMPT_STYLES as { value: typeof g.promptStyle; label: string }[]} onChange={(v) => save((s) => ((s.agent.promptStyle = v), s))} />
+      </Row>
+      <Row label="System prompt override" hint="Replaces the built-in system prompt entirely. Leave empty to use the built-in one." wide>
+        <TextField label="System prompt override" multiline mono rows={6} value={g.systemPromptOverride} placeholder="Built-in prompt" onChange={(v) => save((s) => ((s.agent.systemPromptOverride = v), s))} />
+      </Row>
+    </Section>
   )
 }
 

@@ -6,6 +6,8 @@ import { app, BrowserWindow, dialog, ipcMain, nativeTheme, Notification, powerSa
 import { Telemetry, defaultScrubContext, telemetryUrl } from '@harness/core'
 import { IPC_EVENT, type RendererError, type TrackEvent, type UiEvent } from '../shared/ipc'
 import { AppController, type BackgroundNotice } from './controller'
+import { errText, log } from './logger'
+import { sampleResources } from './resources'
 import { loadShellPath } from './shell-path'
 import { initUpdater, checkForUpdates, installUpdate } from './updater'
 
@@ -53,7 +55,10 @@ function sendSnapshot() {
 }
 
 function reportRendererError(e: RendererError) {
-  if (!telemetry || !e || typeof e !== 'object') return
+  if (!e || typeof e !== 'object') return
+  const frame = String(e.stack ?? '').split('\n').find((l) => /^\s+at /.test(l))?.trim()
+  log.error('renderer', `${e.kind === 'crash' ? 'Crash' : e.kind === 'rejection' ? 'Unhandled rejection' : 'Error'}: ${String(e.message ?? '').slice(0, 1000)}`, frame ? { at: frame.slice(0, 300) } : undefined)
+  if (!telemetry) return
   const kind = e.kind === 'crash' ? 'crash.renderer' : e.kind === 'rejection' ? 'error.renderer_rejection' : 'error.renderer'
   const err = new Error(String(e.message ?? '').replace(/^\w*Error: /, '').slice(0, 2000))
   // The page's stack starts with the message line, which `error` skips.
@@ -202,7 +207,9 @@ function createWindow() {
   })
 
   win.webContents.on('render-process-gone', (_e, details) => {
-    if (details.reason !== 'clean-exit') telemetry?.event('crash.renderer_gone', { reason: details.reason, exitCode: details.exitCode })
+    if (details.reason === 'clean-exit') return
+    log.error('app', `The window's process ended: ${details.reason}`, { exitCode: details.exitCode })
+    telemetry?.event('crash.renderer_gone', { reason: details.reason, exitCode: details.exitCode })
   })
 
   // The theme rides along in the URL so the page paints its loading screen in it before settings arrive.
@@ -372,6 +379,18 @@ function registerIpc() {
   })
   handle('app.checkForUpdates', () => checkForUpdates())
   handle('app.installUpdate', () => installUpdate())
+  handle('logs.read', () => log.read())
+  handle('logs.openFolder', async () => {
+    if (log.folder) await shell.openPath(log.folder)
+  })
+  handle('logs.export', async () => {
+    const day = new Date().toISOString().slice(0, 10)
+    const r = await dialog.showSaveDialog(win!, { defaultPath: `xari-bulbul-log-${day}.txt`, filters: [{ name: 'Text', extensions: ['txt', 'log'] }] })
+    if (r.canceled || !r.filePath) return false
+    fs.writeFileSync(r.filePath, log.exportText())
+    return true
+  })
+  handle('monitor.sample', () => sampleResources(c.knownProcesses()))
 }
 
 app.setName('Xarı Bülbül')
@@ -389,13 +408,19 @@ app.on('second-instance', () => {
 if (process.env.HARNESS_DATA_DIR) app.setPath('userData', path.resolve(process.env.HARNESS_DATA_DIR))
 
 // Uncaught errors in main, for share info. The monitor leaves Electron's own handling as it is.
-process.on('uncaughtExceptionMonitor', (err) => telemetry?.error('crash.main', err))
+process.on('uncaughtExceptionMonitor', (err) => {
+  log.error('app', `Uncaught exception: ${errText(err)}`, { at: err?.stack?.split('\n')[1]?.trim().slice(0, 300) })
+  telemetry?.error('crash.main', err)
+})
 process.on('unhandledRejection', (reason) => {
   console.error('Unhandled rejection:', reason)
+  log.error('app', `Unhandled rejection: ${errText(reason)}`, reason instanceof Error ? { at: reason.stack?.split('\n')[1]?.trim().slice(0, 300) } : undefined)
   telemetry?.error('error.main_rejection', reason)
 })
 
 app.whenReady().then(async () => {
+  log.init(app.getPath('userData'))
+  log.info('app', `Started Xarı Bülbül ${app.getVersion()}`, { platform: process.platform, arch: process.arch, os: process.getSystemVersion?.() ?? os.release(), electron: process.versions.electron, packaged: app.isPackaged })
   loadShellPath()
   const url = telemetryUrl()
   telemetry = new Telemetry({
@@ -435,6 +460,7 @@ app.on('before-quit', (e) => {
   if (disposed || !controller) return
   e.preventDefault()
   disposed = true
+  log.info('app', 'Quitting')
   try {
     telemetry?.event('app.session', controller.telemetrySession())
   } catch {
@@ -442,6 +468,11 @@ app.on('before-quit', (e) => {
   }
   const done = () => app.quit()
   Promise.race([Promise.all([controller.dispose(), telemetry?.flush()]), new Promise((r) => setTimeout(r, 2000))]).then(done, done)
+})
+
+// Helper processes (GPU, network, utilities) that crash or are killed.
+app.on('child-process-gone', (_e, d) => {
+  if (d.reason !== 'clean-exit') log.error('app', `${d.name ?? d.type} process ended: ${d.reason}`, { type: d.type, exitCode: d.exitCode })
 })
 
 app.on('window-all-closed', () => {

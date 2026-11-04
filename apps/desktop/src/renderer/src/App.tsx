@@ -6,7 +6,7 @@ import { Composer } from './components/Composer'
 import { ModelPicker } from './components/ModelPicker'
 import { Resizer, RightPanel } from './components/Panels'
 import { SettingsOverlay } from './components/settings/SettingsOverlay'
-import { resolvePage } from './components/settings/tree'
+import { pageEntry, resolvePage } from './components/settings/tree'
 import { isMac, matchesShortcut } from './lib/shortcuts'
 import { useSpeech } from './lib/speech'
 import { Sidebar } from './components/Sidebar'
@@ -343,16 +343,17 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [app?.settings, app?.platform, app?.workspace, app?.running, app?.sessions, app?.session?.meta.id, approval, pickerOpen, settingsPage, setState, fail, toggleBottom, toggleRight])
 
-  // Share info counts which Settings pages get opened (page ids only).
+  // Share info counts which Settings tabs get opened (tab ids only).
+  const settingsTab = settingsPage ? pageEntry(settingsPage).tab.id : null
   useEffect(() => {
-    if (settingsPage) void api.app.track({ type: 'settings_page', page: settingsPage }).catch(() => {})
-  }, [settingsPage])
+    if (settingsTab) void api.app.track({ type: 'settings_page', page: settingsTab }).catch(() => {})
+  }, [settingsTab])
 
   if (!app) return <Loading error={bootError} onRetry={boot} />
   // First run: full-window setup until it's finished or skipped.
   if (!app.settings.app.onboarded) return <Onboarding app={app} onState={setState} onError={fail} />
 
-  /** Opens Settings at a page id, or an older tab id ('providers', 'usage', …). */
+  /** Opens Settings at a tab id ('providers', 'usage', …) or a section id ('model.aux'). */
   const openSettings = (tab?: string) => setSettingsPage(resolvePage(tab, app.settings))
   const anyReady = Object.values(app.ready).some(Boolean)
   const welcome = !app.workspace || !anyReady
@@ -405,6 +406,7 @@ export function App() {
         live={live}
         onOpenPicker={() => setPickerOpen(true)}
         onUsage={() => openSettings('usage')}
+        onResources={() => openSettings('logs.performance')}
         update={update}
         panels={app.workspace && panels ? { bottom: showBottom, right: showRight, onBottom: toggleBottom, onRight: toggleRight } : undefined}
       />

@@ -72,6 +72,10 @@ export interface LlamaServerOptions {
 /** One llama-server process: start (stopping any other), wait until `/health` says it's loaded, stop. */
 export class LlamaServer {
   private proc: ChildProcess | null = null
+  /** The running llama-server's process id, for the app's resource monitor. */
+  get pid(): number | null {
+    return this.proc?.pid ?? null
+  }
   private starting: Promise<string> | null = null
   private spec: ServerSpec | null = null
   private _state: ServerState = { state: 'stopped' }
@@ -246,7 +250,7 @@ export class LocalLlamaProvider implements Provider {
 
   async *chat(req: ChatRequest): AsyncIterable<StreamEvent> {
     const known = this.opts.models().find((m) => m.id === req.model)
-    if (!known) throw new Error(`${req.model} isn't downloaded. Download it in Settings › Providers › Local models.`)
+    if (!known) throw new Error(`${req.model} isn't downloaded. Download it in Settings › Models › Local models.`)
     if (!this.opts.isReady(req.model)) yield { type: 'status', text: `Loading ${known.name} on this computer. This can take a few minutes.` }
     const url = await this.opts.ensure(req.model)
     if (this.inner?.url !== url) this.inner = { url, provider: new OpenAICompatProvider({ config: { ...this.opts.config, baseUrl: url }, apiKey: this.opts.apiKey, retries: this.opts.retries, fetch: this.opts.fetch }) }

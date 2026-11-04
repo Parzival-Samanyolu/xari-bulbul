@@ -672,6 +672,8 @@ export const SettingsSchema = z.object({
       resumeLastChat: z.boolean().default(true),
       /** Stop the computer from sleeping: never, while a chat is working, or while the app is open. */
       keepAwake: z.enum(['off', 'working', 'always']).default('off'),
+      /** The desktop status bar shows the app's memory and CPU (Settings › Logs & performance). */
+      showResources: z.boolean().default(false),
       lastWorkspace: z.string().nullable().default(null),
       /** Folders shown in the sidebar, in order. */
       openWorkspaces: z.array(z.string()).default([]),

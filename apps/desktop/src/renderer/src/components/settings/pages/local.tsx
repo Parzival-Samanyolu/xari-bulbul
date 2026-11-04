@@ -29,7 +29,7 @@ function Progress({ d }: { d: LocalDownload }) {
   )
 }
 
-/** Settings › Providers › Local models. */
+/** Settings › Models › Local models. */
 export function LocalModelsPage({ app, onState, onError }: PageProps) {
   const [status, setStatus] = useState<LocalStatus | null>(null)
   const [live, setLive] = useState<LocalDownload | null>(null)

@@ -408,7 +408,7 @@ function HowStep({ app, save, heading }: StepProps) {
       <div className="onboard-row">
         <span>
           <span id="ob-voice-l">Voice input</span>
-          <span className="muted small">A mic button in the message box for dictating. Choose how speech becomes text in Settings › Voice.</span>
+          <span className="muted small">A mic button in the message box for dictating. Choose how speech becomes text in Settings › Agent › Speech to text.</span>
         </span>
         <Toggle label="Voice input" value={s.voice.enabled} onChange={(v) => save((x) => (x.voice.enabled = v))} />
       </div>
@@ -464,7 +464,7 @@ function DoneStep({ app, save, heading }: StepProps) {
           <Toggle label="Share anonymous usage info" value={s.privacy.shareUsage} onChange={(v) => save((x) => (x.privacy.shareUsage = v))} />
         </div>
         <ShareInfoText />
-        <p className="muted small">Change this any time in Settings › About › Privacy.</p>
+        <p className="muted small">Change this any time in Settings › Data & updates › Privacy.</p>
       </section>
       {!app.ready[def.providerId] && <p className="small warn">No model is connected yet. Add one later in Settings › Providers, or go Back.</p>}
     </>

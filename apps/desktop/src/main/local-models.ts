@@ -1,4 +1,4 @@
-// Settings › Providers › Local models: the llama.cpp runtime, model downloads, Hugging Face
+// Settings › Models › Local models: the llama.cpp runtime, model downloads, Hugging Face
 // search, and the one llama-server that serves the chosen model to the "Local (llama.cpp)" provider.
 
 import {
@@ -146,9 +146,9 @@ export class LocalModels {
   /** Starts (or switches) llama-server to the model; resolves to its base URL. */
   async ensure(id: string): Promise<string> {
     const model = installedModels(this.host.dataDir).find((m) => m.id === id)
-    if (!model) throw new Error(`${id} isn't downloaded. Download it in Settings › Providers › Local models.`)
+    if (!model) throw new Error(`${id} isn't downloaded. Download it in Settings › Models › Local models.`)
     const runtime = llamaRuntimeStatus(this.host.dataDir)
-    if (!runtime.binary) throw new Error('The local runtime is not installed. Install it in Settings › Providers › Local models.')
+    if (!runtime.binary) throw new Error('The local runtime is not installed. Install it in Settings › Models › Local models.')
     const machine = await this.machineInfo()
     const ctx = modelFit({ size: model.size, maxContext: model.contextLength, kvPerToken: model.kvPerToken }, machine).ctx
     return this.server.ensure({ bin: runtime.binary.path, modelId: model.id, model: model.file, mmproj: model.mmproj, ctx })

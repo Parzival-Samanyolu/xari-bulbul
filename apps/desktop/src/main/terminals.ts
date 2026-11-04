@@ -56,6 +56,11 @@ export class Terminals {
 
   constructor(private readonly send: (e: UiEvent) => void) {}
 
+  /** Process ids of the open shells, for the resource monitor. */
+  pids(): number[] {
+    return [...this.terms.values()].map((t) => t.pty.pid)
+  }
+
   /** Starts a shell in `cwd`; output arrives as `term_data` events, the end as `term_exit`. */
   open(cwd: string, cols: number, rows: number): string {
     const { spawn } = loadPty()

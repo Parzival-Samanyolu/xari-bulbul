@@ -10,7 +10,7 @@ export interface PageProps {
   save: Save
   onState: (s: AppState) => void
   onError: (e: unknown) => void
-  /** Opens another settings page. */
+  /** Opens a Settings tab, or a section (by id, see tree.tsx) scrolled into view. */
   go: (pageId: string) => void
   update: UpdateStatus
   /** Closes Settings (e.g. to show a chat a page started). */
