@@ -15,6 +15,8 @@ export interface ChatRequest {
   signal?: AbortSignal
   /** Give up when no data arrives for this long (hosted OpenAI-compatible providers only). 0 or unset = wait. */
   stallMs?: number
+  /** Throw rate-limit and quota errors at once instead of retrying (another account will be tried). */
+  failFast?: boolean
 }
 
 export type StreamEvent =
@@ -43,6 +45,8 @@ export class ProviderError extends Error {
     message: string,
     readonly status?: number,
     readonly retryable = false,
+    /** From a Retry-After header, when the provider sent one. */
+    readonly retryAfterMs?: number,
   ) {
     super(message)
     this.name = 'ProviderError'

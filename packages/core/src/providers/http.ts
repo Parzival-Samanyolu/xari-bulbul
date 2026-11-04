@@ -7,6 +7,8 @@ export async function requestWithRetry(
   retries: number,
   url: string,
   init: RequestInit,
+  /** Statuses to throw at once instead of retrying (e.g. a 429 when another account can take over). */
+  noRetry: readonly number[] = [],
 ): Promise<Response> {
   let attempt = 0
   while (true) {
@@ -22,12 +24,12 @@ export async function requestWithRetry(
     if (res.ok) return res
     const retryable = [408, 409, 429].includes(res.status) || res.status >= 500
     const text = await res.text().catch(() => '')
-    if (retryable && attempt++ < retries) {
-      const retryAfter = Number(res.headers.get('retry-after'))
+    const retryAfter = Number(res.headers.get('retry-after'))
+    if (retryable && !noRetry.includes(res.status) && attempt++ < retries) {
       await sleep(retryAfter > 0 ? retryAfter * 1000 : backoff(attempt), init.signal)
       continue
     }
-    throw new ProviderError(`${providerName} error ${res.status}: ${extractError(text)}`, res.status, retryable)
+    throw new ProviderError(`${providerName} error ${res.status}: ${extractError(text)}`, res.status, retryable, retryAfter > 0 ? retryAfter * 1000 : undefined)
   }
 }
 

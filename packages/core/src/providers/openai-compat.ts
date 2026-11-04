@@ -1,5 +1,6 @@
 import type { ChatMessage, ImageAttachment, ModelInfo, ToolCall, Usage } from '../types.js'
 import type { ProviderConfig } from '../settings/schema.js'
+import { ROTATE_STATUSES } from './accounts.js'
 import { midStreamError, requestWithRetry } from './http.js'
 import { readSseData } from './sse.js'
 import { ProviderError, type ChatRequest, type Provider, type StreamEvent } from './types.js'
@@ -187,7 +188,7 @@ export class OpenAICompatProvider implements Provider {
       headers: this.headers(),
       body: JSON.stringify(body),
       signal: req.signal,
-    }).catch((e) => {
+    }, req.failFast ? ROTATE_STATUSES : []).catch((e) => {
       // NVIDIA lists many models it no longer serves ("Function '…': Not found for account").
       if (!(e instanceof ProviderError && e.status === 404 && /model|function/i.test(e.message))) throw e
       const set = UNAVAILABLE.get(this.config.baseUrl) ?? new Set<string>()
@@ -248,8 +249,8 @@ export class OpenAICompatProvider implements Provider {
     }
   }
 
-  private request(url: string, init: RequestInit): Promise<Response> {
-    return requestWithRetry(this.fetchImpl, this.name, this.retries, url, init)
+  private request(url: string, init: RequestInit, noRetry: readonly number[] = []): Promise<Response> {
+    return requestWithRetry(this.fetchImpl, this.name, this.retries, url, init, noRetry)
   }
 }
 

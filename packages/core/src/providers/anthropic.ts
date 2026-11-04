@@ -1,5 +1,6 @@
 import type { ChatMessage, ModelInfo, ToolCall, Usage } from '../types.js'
 import type { ProviderConfig } from '../settings/schema.js'
+import { ROTATE_STATUSES } from './accounts.js'
 import { midStreamError, requestWithRetry } from './http.js'
 import { userText } from './openai-compat.js'
 import { readSseData } from './sse.js'
@@ -181,7 +182,7 @@ export class AnthropicProvider implements Provider {
         headers: this.headers(fast ? [...betas, FAST_MODE_BETA] : betas),
         body: JSON.stringify(fast ? { ...body, speed: 'fast' } : body),
         signal: req.signal,
-      })
+      }, req.failFast ? ROTATE_STATUSES : [])
     // A fast request gets one try: fast mode has its own rate limit, and on a 429 the standard tier may still have room.
     const res = await (fast ? send(0) : send()).catch((e) => {
       if (!fast || !(e instanceof ProviderError && (e.retryable || e.status == null))) throw e

@@ -9,6 +9,14 @@ export { PROFILE_EXPERIENCE, PROFILE_ROLES, PROFILE_USES } from './profile.js'
 // Every user-facing setting lives here, with defaults. Secrets (API keys) are NOT
 // part of settings; hosts store them separately (desktop: OS-encrypted via safeStorage).
 
+export const ProviderAccountSchema = z.object({
+  id: z.string().regex(/^[a-z0-9-]+$/),
+  label: z.string().min(1),
+  /** Off: kept, but never used or rotated to. */
+  enabled: z.boolean().default(true),
+})
+export type ProviderAccount = z.infer<typeof ProviderAccountSchema>
+
 export const ProviderConfigSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
@@ -22,6 +30,14 @@ export const ProviderConfigSchema = z.object({
   requiresKey: z.boolean().default(true),
   /** Wire protocol: OpenAI chat completions, or Anthropic's Messages API. */
   api: z.enum(['openai', 'anthropic']).default('openai'),
+  /**
+   * Named accounts, each with its own key (stored as `<providerId>#<accountId>`; the `default`
+   * account uses the plain `<providerId>` id). Order is the rotation order. Unset or empty: one
+   * implicit default account, which is how single-key setups keep working.
+   */
+  accounts: z.array(ProviderAccountSchema).optional(),
+  /** The account tried first. Unset: the first enabled one. */
+  activeAccount: z.string().optional(),
 })
 export type ProviderConfig = z.infer<typeof ProviderConfigSchema>
 

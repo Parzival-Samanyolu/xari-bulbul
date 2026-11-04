@@ -1,5 +1,6 @@
 import type { ModelInfo } from '../types.js'
 import type { ProviderConfig } from '../settings/schema.js'
+import { AccountCooldowns, accountKeyId, accountOrder, RotatingProvider } from './accounts.js'
 import { AnthropicProvider } from './anthropic.js'
 import { contextIndex, fillContext, publicContextIndex } from './context-catalog.js'
 import { OpenAICompatProvider } from './openai-compat.js'
@@ -20,14 +21,32 @@ export class ProviderRegistry {
       fetch?: typeof fetch
       /** Fill context sizes a provider doesn't report from OpenRouter's public model list. */
       fillContext?: boolean
+      /** Pass the same instance across rebuilds so cooled-down accounts stay remembered. */
+      cooldowns?: AccountCooldowns
     } = {},
   ) {
+    this.cooldowns = opts.cooldowns ?? new AccountCooldowns()
     for (const config of configs) {
       if (!config.enabled) continue
-      const o = { config, apiKey: getKey(config.id), retries: opts.retries, fetch: opts.fetch }
-      this.providers.set(config.id, config.api === 'anthropic' ? new AnthropicProvider(o) : new OpenAICompatProvider(o))
+      const make = (apiKey: string | undefined): Provider => {
+        const o = { config, apiKey, retries: opts.retries, fetch: opts.fetch }
+        return config.api === 'anthropic' ? new AnthropicProvider(o) : new OpenAICompatProvider(o)
+      }
+      // Accounts that can serve: keyed ones, or every enabled one when the provider needs no key.
+      const accounts = accountOrder(config)
+        .map((account) => ({ account, key: getKey(accountKeyId(config.id, account.id)) }))
+        .filter((a) => a.key || !config.requiresKey)
+      this.providers.set(
+        config.id,
+        accounts.length > 1
+          ? new RotatingProvider(config, accounts.map((a) => ({ account: a.account, provider: make(a.key) })), this.cooldowns)
+          : make(accounts[0]?.key),
+      )
     }
   }
+
+  /** Accounts resting after a rate limit, quota or key error. */
+  readonly cooldowns: AccountCooldowns
 
   /** For tests and custom (non OpenAI-compatible) providers. */
   register(provider: Provider): void {

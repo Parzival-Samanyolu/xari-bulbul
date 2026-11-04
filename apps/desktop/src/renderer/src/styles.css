@@ -3285,6 +3285,34 @@ body.resizing * {
 .key-details {
   padding: 0 0 12px 27px;
 }
+.provider-acct {
+  flex-wrap: wrap;
+  padding: 5px 0;
+}
+.provider-acct + .provider-acct {
+  border-top: 1px solid var(--border);
+}
+.acct-name {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.acct-rename {
+  width: 200px;
+}
+.acct-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.acct-add input:first-child {
+  width: 160px;
+}
+.acct-add input.mono {
+  flex: 1;
+  min-width: 200px;
+}
 
 .account-list {
   display: flex;

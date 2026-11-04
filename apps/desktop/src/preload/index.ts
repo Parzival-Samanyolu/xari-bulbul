@@ -17,6 +17,7 @@ const api: HarnessApi = {
     import: call('settings.import') as any,
   },
   keys: { set: call('keys.set') as any },
+  accounts: { add: call('accounts.add') as any, setKey: call('accounts.setKey') as any, remove: call('accounts.remove') as any },
   providers: { test: call('providers.test') as any, probe: call('providers.probe') as any },
   browser: { clearLogins: call('browser.clearLogins') as any },
   models: { list: call('models.list') as any },

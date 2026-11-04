@@ -4,6 +4,7 @@ export { exportSettings, importSettings, resetSettings, type ImportResult } from
 export * from './providers/types.js'
 export { OpenAICompatProvider } from './providers/openai-compat.js'
 export { ProviderRegistry, type KeyLookup } from './providers/registry.js'
+export * from './providers/accounts.js'
 export * from './tools/index.js'
 export * from './permissions/permissions.js'
 export * from './usage/tracker.js'

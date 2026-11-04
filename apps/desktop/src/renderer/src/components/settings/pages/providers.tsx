@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { AppState, EndpointProbe, ProviderTestResult, Settings } from '../../../../../shared/ipc'
+import type { AccountView, AppState, EndpointProbe, ProviderTestResult, Settings } from '../../../../../shared/ipc'
 import { api } from '../../../lib/api'
 import { NumberField, Row, Section, TextField, Toggle } from '../../fields'
 import { ProviderLogo } from '../../ProviderLogo'
@@ -29,6 +29,8 @@ function useModelCounts(ids: string[]): Record<string, number | string> {
   return counts
 }
 
+const accountsText = (views: AccountView[] | undefined) => (views && views.length > 1 ? `${views.length} accounts` : 'API key')
+
 const countText = (n: number | string | undefined) => (n === undefined ? 'Loading models…' : typeof n === 'string' ? n : `${n} ${n === 1 ? 'model' : 'models'}`)
 
 // ---------------------------------------------------------------- Accounts
@@ -38,7 +40,9 @@ export function AccountsPage({ app, save, onState, onError, go }: PageProps) {
   const counts = useModelCounts(connected.map((p) => p.id))
   const disconnect = (p: Provider) => {
     if (p.requiresKey) {
-      if (confirm(`Disconnect ${p.name}? Its saved API key is removed.`)) api.keys.set(p.id, null).then(onState, onError)
+      const keyed = (app.accounts[p.id] ?? []).filter((a) => a.hasKey)
+      if (!confirm(`Disconnect ${p.name}? ${keyed.length > 1 ? `The saved keys of all ${keyed.length} accounts are removed.` : 'Its saved API key is removed.'}`)) return
+      keyed.reduce<Promise<AppState | null>>((prev, a) => prev.then(() => api.accounts.setKey(p.id, a.id, null)), Promise.resolve(null)).then((s) => s && onState(s), onError)
     } else save((s) => ((s.providers = s.providers.map((x) => (x.id === p.id ? { ...x, enabled: false } : x))), s))
   }
   if (!connected.length)
@@ -67,7 +71,7 @@ export function AccountsPage({ app, save, onState, onError, go }: PageProps) {
             <div className="account-text">
               <b>{p.name}</b>
               <span className="muted small">
-                {countText(counts[p.id])} · {p.requiresKey ? 'API key' : 'No key needed'}
+                {countText(counts[p.id])} · {p.requiresKey ? accountsText(app.accounts[p.id]) : 'No key needed'}
               </span>
             </div>
             <button className="btn ghost" onClick={() => disconnect(p)}>
@@ -99,6 +103,8 @@ function ProviderKeyRow({ p, index, app, save, onState, onError }: { p: Provider
   }, [open, ready])
   const status = !p.enabled ? 'Turned off' : ready ? 'Connected' : 'Not connected'
   const detailsId = `key-details-${p.id}`
+  const accounts = app.accounts[p.id] ?? []
+  const multi = accounts.length > 1
   return (
     <li className={`key-item ${open ? 'open' : ''}`}>
       <div className="key-line">
@@ -109,7 +115,11 @@ function ProviderKeyRow({ p, index, app, save, onState, onError }: { p: Provider
           {!builtin && <span className="badge">custom</span>}
           <Icon name={open ? 'chevronDown' : 'chevronRight'} size={14} className="muted" />
         </button>
-        {p.requiresKey ? (
+        {p.requiresKey && multi ? (
+          <span className="muted small">
+            {accounts.length} accounts · {accounts.find((a) => a.active)?.label ?? 'none turned on'} first
+          </span>
+        ) : p.requiresKey ? (
           <SecretInput
             id={`key-${p.id}`}
             label={`${p.name} API key`}
@@ -146,13 +156,14 @@ function ProviderKeyRow({ p, index, app, save, onState, onError }: { p: Provider
                   Get a key ↗
                 </button>
               )}
-              {hasKey && (
+              {hasKey && !multi && (
                 <button className="link danger small" onClick={() => api.keys.set(p.id, null).then(onState, onError)}>
                   Remove key
                 </button>
               )}
             </div>
           </Row>
+          {p.requiresKey && <ProviderAccounts p={p} index={index} accounts={accounts} save={save} onState={onState} onError={onError} />}
           <Row label="Base URL" labelFor={`url-${p.id}`} search="">
             <TextField id={`url-${p.id}`} mono value={p.baseUrl} onChange={(v) => /^https?:\/\/\S+$/.test(v.trim()) && save((s) => ((s.providers[index].baseUrl = v.trim()), s))} />
           </Row>
@@ -165,6 +176,165 @@ function ProviderKeyRow({ p, index, app, save, onState, onError }: { p: Provider
         </div>
       )}
     </li>
+  )
+}
+
+const restingText = (c: AccountView['cooling']) =>
+  c && c.until > Date.now() ? `Resting until ${new Date(c.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}: ${c.reason}` : null
+
+type AccountMeta = { id: string; label: string; enabled: boolean }
+
+/**
+ * A provider's accounts, each with its own key, tried in order from the active one. Renaming,
+ * turning off, reordering and the active pick are settings; adding, keys and removing go through main.
+ */
+function ProviderAccounts({ p, index, accounts, save, onState, onError }: { p: Provider; index: number; accounts: AccountView[] } & Pick<PageProps, 'save' | 'onState' | 'onError'>) {
+  const [adding, setAdding] = useState(false)
+  const [label, setLabel] = useState('')
+  const [key, setKey] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [renaming, setRenaming] = useState<{ id: string; label: string } | null>(null)
+  const [replacing, setReplacing] = useState<string | null>(null)
+  const multi = accounts.length > 1
+  const edit = (fn: (list: AccountMeta[]) => AccountMeta[], activeAccount?: string) =>
+    save((s) => {
+      const pr = s.providers[index]
+      pr.accounts = fn(accounts.map(({ id, label, enabled }) => ({ id, label, enabled })))
+      if (activeAccount !== undefined) pr.activeAccount = activeAccount
+      return s
+    })
+  const move = (i: number, by: number) =>
+    edit((list) => {
+      ;[list[i], list[i + by]] = [list[i + by], list[i]]
+      return list
+    })
+  const add = () => {
+    if (!label.trim() || !key.trim() || busy) return
+    setBusy(true)
+    api.accounts
+      .add(p.id, label.trim(), key.trim())
+      .then((s) => {
+        onState(s)
+        setAdding(false)
+        setLabel('')
+        setKey('')
+      }, onError)
+      .finally(() => setBusy(false))
+  }
+  const rename = () => {
+    if (renaming?.label.trim()) edit((list) => list.map((a) => (a.id === renaming.id ? { ...a, label: renaming.label.trim() } : a)))
+    setRenaming(null)
+  }
+  const status = (a: AccountView) => (!a.enabled ? 'Turned off' : !a.hasKey ? 'No key' : (restingText(a.cooling) ?? 'Key saved'))
+  const target = accounts.find((a) => a.id === replacing)
+  return (
+    <Row
+      wide
+      label="Accounts"
+      hint={
+        multi
+          ? 'Requests use the active account. When it hits a rate limit, runs out of credits or has its key rejected, they move to the next one in this order.'
+          : 'Add another account to switch to it automatically when this one hits a rate limit or runs out of credits.'
+      }
+      search=""
+    >
+      {multi && (
+        <ol className="list-field ordered" aria-label={`${p.name} accounts`}>
+          {accounts.map((a, i) => (
+            <li key={a.id} className="list-item provider-acct">
+              <span className="muted small order-num">{i + 1}</span>
+              <StatusDot on={a.enabled && a.hasKey && !restingText(a.cooling)} label={status(a)} />
+              {renaming?.id === a.id ? (
+                <input
+                  className="acct-rename"
+                  aria-label={`New name for ${a.label}`}
+                  autoFocus
+                  value={renaming.label}
+                  onChange={(e) => setRenaming({ id: a.id, label: e.target.value })}
+                  onBlur={rename}
+                  onKeyDown={(e) => (e.key === 'Enter' ? rename() : e.key === 'Escape' ? setRenaming(null) : undefined)}
+                />
+              ) : (
+                <span className="acct-name">
+                  <b>{a.label}</b>
+                  <span className={`small ${restingText(a.cooling) ? 'warn' : 'muted'}`}>{status(a)}</span>
+                </span>
+              )}
+              {a.active ? (
+                <span className="badge ok">Active</span>
+              ) : (
+                a.enabled &&
+                a.hasKey && (
+                  <button className="link small" onClick={() => edit((list) => list, a.id)}>
+                    Make active
+                  </button>
+                )
+              )}
+              <span className="spacer" />
+              <button className="link small" disabled={i === 0} aria-label={`Move ${a.label} up`} onClick={() => move(i, -1)}>
+                Up
+              </button>
+              <button className="link small" disabled={i === accounts.length - 1} aria-label={`Move ${a.label} down`} onClick={() => move(i, 1)}>
+                Down
+              </button>
+              <button className="link small" aria-label={`Rename ${a.label}`} onClick={() => setRenaming({ id: a.id, label: a.label })}>
+                Rename
+              </button>
+              <button className="link small" aria-label={`${a.hasKey ? 'Replace' : 'Add'} the ${a.label} key`} onClick={() => setReplacing(replacing === a.id ? null : a.id)}>
+                {a.hasKey ? 'Replace key' : 'Add key'}
+              </button>
+              <Toggle label={`${a.label} turned on`} value={a.enabled} onChange={(v) => edit((list) => list.map((x) => (x.id === a.id ? { ...x, enabled: v } : x)))} />
+              <button
+                className="link danger small"
+                aria-label={`Remove ${a.label}`}
+                onClick={() => confirm(`Remove the ${a.label} account? Its saved key is removed.`) && api.accounts.remove(p.id, a.id).then(onState, onError)}
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ol>
+      )}
+      {target && (
+        <SecretInput
+          id={`acct-key-${p.id}-${target.id}`}
+          label={`${target.label} API key`}
+          saved={target.hasKey}
+          placeholder={`Paste the ${target.label} key`}
+          onSave={(v) =>
+            api.accounts.setKey(p.id, target.id, v).then((s) => {
+              onState(s)
+              setReplacing(null)
+            }, onError)
+          }
+        />
+      )}
+      {adding ? (
+        <form
+          className="acct-add"
+          onSubmit={(e) => {
+            e.preventDefault()
+            add()
+          }}
+        >
+          <input aria-label="Account name" placeholder="Name, e.g. Work" value={label} onChange={(e) => setLabel(e.target.value)} autoFocus />
+          <input type="password" className="mono" autoComplete="off" spellCheck={false} aria-label="Account API key" placeholder={`Paste ${p.name} key`} value={key} onChange={(e) => setKey(e.target.value)} />
+          <button type="submit" className="btn primary" disabled={!label.trim() || !key.trim() || busy}>
+            Add
+          </button>
+          <button type="button" className="btn ghost" onClick={() => setAdding(false)}>
+            Cancel
+          </button>
+        </form>
+      ) : (
+        <div className="inline">
+          <button className="btn" onClick={() => setAdding(true)}>
+            + Add account
+          </button>
+          {!multi && accounts[0]?.hasKey && <span className="muted small">The saved key becomes the “{accounts[0].label}” account.</span>}
+        </div>
+      )}
+    </Row>
   )
 }
 
@@ -316,7 +486,7 @@ export function CustomEndpointsPage({ app, save, onState, onError }: PageProps) 
   const remove = (p: Provider) => {
     if (!confirm(`Remove ${p.name}? Its saved key is removed too.`)) return
     save((s) => ((s.providers = s.providers.filter((x) => x.id !== p.id)), s))
-    if (app.keys[p.id]) api.keys.set(p.id, null).then(onState, onError)
+    for (const a of app.accounts[p.id] ?? []) if (a.hasKey) api.accounts.setKey(p.id, a.id, null).then(onState, onError)
   }
 
   const quick = app.providerPresets.filter((p) => !existing.has(p.id))

@@ -2,6 +2,13 @@ import fs from 'node:fs'
 import path from 'node:path'
 import {
   Agent,
+  AccountCooldowns,
+  accountKeyId,
+  accountOrder,
+  activeAccountKey,
+  hasAccountKey,
+  providerAccounts,
+  DEFAULT_ACCOUNT_ID,
   activeBot,
   botThreads,
   chatBot,
@@ -103,7 +110,7 @@ import {
   type WhisperModelId,
   settingsPath,
 } from '@harness/core'
-import type { AppState, AttachmentInput, BotRow, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
+import type { AccountView, AppState, AttachmentInput, BotRow, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
 import { LocalModels } from './local-models'
 import { Scheduler } from './scheduler'
 import { SecretStore } from './secrets'
@@ -146,6 +153,8 @@ const MAX_AVATAR_BYTES = 1_000_000
 export class AppController {
   private settings: Settings
   private readonly secrets: SecretStore
+  /** Provider accounts resting after a rate limit, quota or key error; kept across registry rebuilds. */
+  private readonly cooldowns = new AccountCooldowns()
   private registry!: ProviderRegistry
   private readonly usage: UsageTracker
   private readonly store: SessionStore
@@ -333,7 +342,7 @@ export class AppController {
       s.app.layoutChosen ||
       s.app.openWorkspaces.length > 0 ||
       s.app.recentWorkspaces.length > 0 ||
-      s.providers.some((p) => !BUILTIN_PROVIDERS.some((b) => b.id === p.id) || this.secrets.has(p.id)) ||
+      s.providers.some((p) => !BUILTIN_PROVIDERS.some((b) => b.id === p.id) || this.hasKey(p)) ||
       (fs.existsSync(this.paths.sessions) && fs.readdirSync(this.paths.sessions).some((f) => f.endsWith('.json')))
     // Saved either way, so the check runs once: a new user who quits halfway through setup still sees it next time.
     this.settings = { ...s, app: { ...s.app, onboarded: used } }
@@ -442,6 +451,7 @@ export class AppController {
     this.registry = new ProviderRegistry(this.settings.providers, (id) => this.secrets.get(id), {
       retries: this.settings.agent.requestRetries,
       fillContext: true,
+      cooldowns: this.cooldowns,
     })
     if (snapshot) this.registry.restoreCache(snapshot)
     this.local?.register(this.registry)
@@ -450,8 +460,68 @@ export class AppController {
 
   setKey(providerId: string, key: string | null): AppState {
     this.secrets.set(providerId, key)
+    this.cooldowns.clear(providerId, DEFAULT_ACCOUNT_ID)
     this.buildRegistry()
     return this.state()
+  }
+
+  /** Any enabled account of the provider has a key. */
+  private hasKey(config: Settings['providers'][number]): boolean {
+    return hasAccountKey(config, (id) => this.secrets.has(id))
+  }
+
+  /** Key of the provider's active account, for one-off requests outside the registry (voice). */
+  private activeKey(providerId: string): string | undefined {
+    const config = this.settings.providers.find((p) => p.id === providerId)
+    return config ? activeAccountKey(config, (id) => this.secrets.get(id), this.cooldowns) : undefined
+  }
+
+  private accountViews(config: Settings['providers'][number]): AccountView[] {
+    const first = accountOrder(config)[0]?.id
+    return providerAccounts(config).map((a) => {
+      const cool = this.cooldowns.get(config.id, a.id)
+      return { ...a, active: a.id === first, hasKey: this.secrets.has(accountKeyId(config.id, a.id)), cooling: cool ? { until: cool.until, reason: cool.reason } : null }
+    })
+  }
+
+  /** Adds a named account with its own key. The first extra account turns the single key into the "Default" account. */
+  async addAccount(providerId: string, label: string, key: string): Promise<AppState> {
+    const config = this.settings.providers.find((p) => p.id === providerId)
+    if (!config) throw new Error(`Unknown provider "${providerId}".`)
+    const name = String(label ?? '').trim()
+    if (!name) throw new Error('Give the account a name.')
+    if (!String(key ?? '').trim()) throw new Error('Paste the account’s API key.')
+    const accounts = providerAccounts(config)
+    const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'account'
+    let id = base === DEFAULT_ACCOUNT_ID ? `${base}-2` : base
+    for (let n = 2; accounts.some((a) => a.id === id); n++) id = `${base}-${n}`
+    // Key first: if the keychain refuses, settings stay as they were.
+    this.secrets.set(accountKeyId(providerId, id), key)
+    this.cooldowns.clear(providerId, id)
+    return this.setSettings({ ...this.settings, providers: this.settings.providers.map((p) => (p.id === providerId ? { ...p, accounts: [...accounts, { id, label: name, enabled: true }] } : p)) })
+  }
+
+  /** Replaces (or with null, removes) one account's key. */
+  setAccountKey(providerId: string, accountId: string, key: string | null): AppState {
+    this.secrets.set(accountKeyId(providerId, accountId), key)
+    this.cooldowns.clear(providerId, accountId)
+    this.buildRegistry()
+    return this.state()
+  }
+
+  /** Removes an account and its stored key. The last account can't be removed; remove its key instead. */
+  async removeAccount(providerId: string, accountId: string): Promise<AppState> {
+    const config = this.settings.providers.find((p) => p.id === providerId)
+    const accounts = config ? providerAccounts(config) : []
+    if (!config || !accounts.some((a) => a.id === accountId)) throw new Error('That account no longer exists.')
+    if (accounts.length < 2) throw new Error('A provider keeps at least one account. Remove its key instead.')
+    this.secrets.set(accountKeyId(providerId, accountId), null)
+    this.cooldowns.clear(providerId, accountId)
+    const rest = accounts.filter((a) => a.id !== accountId)
+    return this.setSettings({
+      ...this.settings,
+      providers: this.settings.providers.map((p) => (p.id === providerId ? { ...p, accounts: rest, activeAccount: p.activeAccount === accountId ? undefined : p.activeAccount } : p)),
+    })
   }
 
   async listModels(providerId: string, refresh = false) {
@@ -459,13 +529,14 @@ export class AppController {
   }
 
   private isReady(providerId: string): boolean {
-    return providerReady(this.settings.providers.find((p) => p.id === providerId), this.secrets.has(providerId))
+    const config = this.settings.providers.find((p) => p.id === providerId)
+    return providerReady(config, !!config && this.hasKey(config))
   }
 
   async testProvider(providerId: string): Promise<ProviderTestResult> {
     const config = this.settings.providers.find((p) => p.id === providerId)
     if (!config?.enabled) return { ok: false, message: 'This provider is turned off.' }
-    if (config.requiresKey && !this.secrets.has(providerId)) return { ok: false, message: 'No API key set.' }
+    if (config.requiresKey && !this.hasKey(config)) return { ok: false, message: 'No API key set.' }
     try {
       const models = await this.registry.models(providerId, { refresh: true })
       // Anthropic and OpenAI refuse to list models without a valid key, so the list proves it
@@ -557,7 +628,7 @@ export class AppController {
     if (!canTranscribe(config)) throw new Error(`${config.name} has no transcription endpoint.`)
     if (!this.isReady(ref.providerId)) throw new Error(`Add a ${config.name} API key in Settings › Providers › API keys.`)
     const language = this.settings.voice.language.trim() || undefined
-    return transcribe({ provider: config, apiKey: this.secrets.get(ref.providerId), model: ref.modelId.trim(), audio, mediaType, language }, { signal: AbortSignal.timeout(120_000) })
+    return transcribe({ provider: config, apiKey: this.activeKey(ref.providerId), model: ref.modelId.trim(), audio, mediaType, language }, { signal: AbortSignal.timeout(120_000) })
   }
 
   // ---------- text to speech ----------
@@ -577,7 +648,7 @@ export class AppController {
     if (!config || config.api !== 'openai') throw new Error('Choose a provider for speech in Settings › Voice › Text to speech.')
     if (!this.isReady(providerId)) throw new Error(`Add a ${config.name} API key in Settings › Providers › API keys.`)
     const audio = await openaiSpeech(
-      { provider: config, apiKey: this.secrets.get(providerId), model: tts.openai.model, voice: tts.voice, text: input, rate: tts.rate },
+      { provider: config, apiKey: this.activeKey(providerId), model: tts.openai.model, voice: tts.voice, text: input, rate: tts.rate },
       { signal: AbortSignal.timeout(60_000) },
     )
     return { audio, mediaType: 'audio/mpeg', playbackRate: speechModelTakesSpeed(tts.openai.model) ? 1 : tts.rate }
@@ -1605,9 +1676,11 @@ export class AppController {
   state(): AppState {
     const keys: Record<string, boolean> = {}
     const ready: Record<string, boolean> = {}
+    const accounts: Record<string, AccountView[]> = {}
     for (const p of this.settings.providers) {
-      keys[p.id] = this.secrets.has(p.id)
+      keys[p.id] = this.hasKey(p)
       ready[p.id] = providerReady(p, keys[p.id])
+      accounts[p.id] = this.accountViews(p)
     }
     // Web search keys live next to API keys.
     for (const id of Object.values(SEARCH_KEY_ID)) keys[id] = this.secrets.has(id)
@@ -1618,6 +1691,7 @@ export class AppController {
       shareInfoOff: !!this.opts.shareInfoOff,
       keys,
       ready,
+      accounts,
       keyStorage: this.secrets.storage,
       providerPresets: PROVIDER_PRESETS,
       builtinProviders: BUILTIN_PROVIDERS.map((p) => p.id),

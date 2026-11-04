@@ -233,6 +233,17 @@ export interface BotRow {
   awaiting: boolean
 }
 
+export interface AccountView {
+  id: string
+  label: string
+  enabled: boolean
+  /** Tried first. */
+  active: boolean
+  hasKey: boolean
+  /** Resting after a rate limit, quota or key error until `until` (epoch ms). */
+  cooling: { until: number; reason: string } | null
+}
+
 export interface AppState {
   version: string
   platform: NodeJS.Platform
@@ -242,6 +253,8 @@ export interface AppState {
   keys: Record<string, boolean>
   /** Enabled and either has a key or doesn't need one. */
   ready: Record<string, boolean>
+  /** Each provider's accounts in order; a single-key provider has one implicit "Default" account. */
+  accounts: Record<string, AccountView[]>
   keyStorage: 'os' | 'basic'
   providerPresets: { id: string; name: string; baseUrl: string; requiresKey: boolean }[]
   /** Ids of providers that ship with the app and can't be removed. */
@@ -361,6 +374,12 @@ export interface HarnessApi {
   }
   keys: {
     set(providerId: string, key: string | null): Promise<AppState>
+  }
+  /** Named accounts (API keys) per provider. Rename, turn off, reorder and pick the active one through settings. */
+  accounts: {
+    add(providerId: string, label: string, key: string): Promise<AppState>
+    setKey(providerId: string, accountId: string, key: string | null): Promise<AppState>
+    remove(providerId: string, accountId: string): Promise<AppState>
   }
   providers: {
     test(providerId: string): Promise<ProviderTestResult>
