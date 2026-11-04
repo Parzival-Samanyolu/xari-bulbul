@@ -282,6 +282,19 @@ export interface BotRow {
   awaiting: boolean
 }
 
+/** A lobby in the Bots tab, with its ongoing group chat. */
+export interface LobbyRow {
+  id: string
+  /** The transcript it opens to; null before anyone said anything. */
+  sessionId: string | null
+  /** The last line, with who said it ("Ali: …"). */
+  preview: string
+  updatedAt: number
+  /** Its bots talked while another chat was on screen; cleared when opened. */
+  unread: boolean
+  running: boolean
+}
+
 export interface AccountView {
   id: string
   label: string
@@ -346,6 +359,8 @@ export interface AppState {
   botAvatars: Record<string, string>
   /** The Bots tab: one row per bot in settings (empty while the tab is off). */
   bots: BotRow[]
+  /** The Bots tab's lobbies (empty while the tab is off). */
+  lobbies: LobbyRow[]
   /** The iMessage gateway (macOS): listening, missing Full Disk Access, Automation blocked… */
   imessage: IMessageStatus
   /** The WhatsApp gateway: installing, linking (QR), connected… */
@@ -571,6 +586,12 @@ export interface HarnessApi {
     generateAvatar(input: BotAvatarRequest): Promise<{ dataUrl: string; provider: string; model: string }>
     /** Saves a pixel avatar's PNG bytes into the data folder; the dialog saves the path with the bot. */
     saveAvatar(png: Uint8Array): Promise<{ path: string; url: string }>
+  }
+  lobbies: {
+    /** Opens the lobby's group chat (its latest transcript), or starts one. */
+    open(lobbyId: string): Promise<AppState>
+    /** More rounds of the bots on screen talking among themselves. Resolves when they stop. */
+    keepTalking(): Promise<void>
   }
   voice: {
     /** Asks the OS for microphone access (macOS); true when recording may start. */

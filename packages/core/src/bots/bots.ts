@@ -1,4 +1,4 @@
-import type { Bot, BotAvatar, Settings } from '../settings/schema.js'
+import type { Bot, BotAvatar, Lobby, Settings } from '../settings/schema.js'
 import type { ChatMessage, ModelRef, PermissionMode } from '../types.js'
 import { faceForName, type BotPet, type BotShape } from './faces.js'
 
@@ -142,4 +142,28 @@ export function chatPreview(messages: ChatMessage[], max = 100): string {
     return line.length > max ? `${line.slice(0, max - 1)}…` : line
   }
   return ''
+}
+
+// ---------------------------------------------------------------- lobbies
+
+type LobbySettings = Pick<Settings, 'bots' | 'botOptions' | 'lobbies'>
+
+/** Lobbies in the Bots tab: none while the tab is off. */
+export function shownLobbies(settings: LobbySettings): Lobby[] {
+  return settings.botOptions.enabled ? settings.lobbies : []
+}
+
+/** A lobby's members that still exist, in speaking order (turned-off ones too). */
+export function lobbyBots(settings: Pick<Settings, 'bots'>, lobby: Lobby): Bot[] {
+  return lobby.botIds.map((id) => settings.bots.find((b) => b.id === id)).filter((b): b is Bot => !!b)
+}
+
+/** The members that take part: existing and turned on. */
+export function lobbySpeakers(settings: Pick<Settings, 'bots'>, lobby: Lobby): Bot[] {
+  return lobbyBots(settings, lobby).filter((b) => b.enabled)
+}
+
+/** A new lobby with a fresh id, unique among `taken`. */
+export function newLobby(name: string, botIds: string[], taken: string[]): Lobby {
+  return { id: newBotId(`lobby-${name}`, taken), name, botIds, maxRounds: 3 }
 }

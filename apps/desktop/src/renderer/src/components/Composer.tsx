@@ -67,6 +67,8 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
   const ref = useRef<HTMLTextAreaElement>(null)
   const sendWithEnter = app.settings.appearance.sendWithEnter
   const bot = activeBot(app.settings, app.session?.meta.botId)
+  /** A lobby on screen: chat only, so no attachments, commands, model or mode; you can jump in while the bots talk. */
+  const lobby = app.session?.meta.lobbyId ? (app.settings.lobbies.find((l) => l.id === app.session!.meta.lobbyId) ?? null) : undefined
 
   useEffect(() => ref.current?.focus(), [app.session?.meta.id])
   useEffect(() => {
@@ -76,7 +78,7 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
     el.style.height = Math.min(el.scrollHeight, 280) + 'px'
   }, [text])
 
-  const slash = /^\/(\S*)$/.exec(text)
+  const slash = lobby === undefined ? /^\/(\S*)$/.exec(text) : null
   const matches = useMemo(
     () => (slash ? app.extensions.commands.filter((c) => c.name.startsWith(slash[1])).slice(0, 8) : []),
     [slash?.[1], app.extensions.commands],
@@ -88,7 +90,7 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
   }
 
   const add = (files: File[]) => {
-    if (!files.length) return
+    if (!files.length || lobby !== undefined) return
     toPending(files).then((p) => setAttachments((a) => [...a, ...p]), onError)
     ref.current?.focus()
   }
@@ -158,6 +160,18 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
 
   const submit = async (raw = text) => {
     const t = raw.trim()
+    if (lobby !== undefined) {
+      // Sending while the bots talk interrupts them.
+      if (!t) return
+      setHistory((h) => [t, ...h.filter((x) => x !== t)].slice(0, 50))
+      setHIdx(-1)
+      setText('')
+      api.agent.send(t).catch((e) => {
+        setText((cur) => cur || t)
+        onError(e)
+      })
+      return
+    }
     if ((!t && !attachments.length) || app.running) return
     if (attachments.length) {
       const sending = attachments
@@ -188,7 +202,7 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
   // recording finishes long after the render that started it.
   const onVoice = useRef((_t: string) => {})
   onVoice.current = (t: string) => {
-    if (app.settings.voice.autoSend && !app.running) submit(text.trim() ? `${text.trimEnd()} ${t}` : t)
+    if (app.settings.voice.autoSend && (!app.running || lobby !== undefined)) submit(text.trim() ? `${text.trimEnd()} ${t}` : t)
     else insert(t)
   }
 
@@ -206,7 +220,7 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
       setSel(0)
       return
     }
-    if (e.key === 'Tab' && e.shiftKey) {
+    if (e.key === 'Tab' && e.shiftKey && lobby === undefined) {
       e.preventDefault()
       cycleMode()
       return
@@ -271,7 +285,17 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
           value={text}
           rows={1}
           aria-label="Message"
-          placeholder={app.running ? 'Working… (Esc to stop)' : bot ? `Message ${bot.name}` : 'Ask Xarı Bülbül to do something… (/ for commands)'}
+          placeholder={
+            lobby !== undefined
+              ? app.running
+                ? 'Jump in, or press Esc to stop them'
+                : `Message ${lobby?.name ?? 'the lobby'}. @name a bot to ask it first`
+              : app.running
+                ? 'Working… (Esc to stop)'
+                : bot
+                  ? `Message ${bot.name}`
+                  : 'Ask Xarı Bülbül to do something… (/ for commands)'
+          }
           onChange={(e) => {
             setText(e.target.value)
             setSel(0)
@@ -281,53 +305,63 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
         />
         <div className="composer-bar">
           <div className="composer-tools">
-          <button className="icon-btn attach" onClick={pick} aria-label="Attach files" title="Attach files (or drop / paste them)">
-            <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden>
-              <path d="M10.5 4.5 5.8 9.2a1.4 1.4 0 0 0 2 2l5-5a2.8 2.8 0 0 0-4-4l-5.2 5.2a4.2 4.2 0 0 0 6 6l4.4-4.4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
-          <MicButton app={app} onText={(t) => onVoice.current(t)} onError={onError} />
-          <button className="chip model-chip" onClick={onOpenPicker} title={`Switch model (${app.platform === 'darwin' ? '⌘K' : 'Ctrl+K'})`}>
-            <span className={`dot ${ready ? 'ok' : 'bad'}`} aria-label={ready ? 'Provider ready' : 'Provider needs setup'} />
-            {model && <ProviderLogo id={model.providerId} size={13} />}
-            {model && <MakerLogo modelId={model.modelId} providerId={model.providerId} size={13} />}
-            <span className="model-chip-name">{model ? modelLabel(model.modelId) : 'Pick a model'}</span>
-            <span className="muted small">{model?.providerId}</span>
-          </button>
-          {model && <ThinkingPicker app={app} model={model} onState={onState} onError={onError} />}
-          {model && moaReady(app.settings) && (
-            <button
-              className={`chip mix ${mixing ? 'on' : ''}`}
-              aria-pressed={mixing}
-              onClick={() => api.agent.setMoa(!mixing).then(onState, onError)}
-              title={`Mixture of Agents for this chat: ${moa.proposers.length} models answer, ${modelLabel(moa.aggregator!.modelId)} combines them. Each reply costs more.`}
-            >
-              Mix{mixing ? ` · ${moa.proposers.length}` : ''}
-            </button>
-          )}
-          {/* Narrow windows: the same choice as one compact picker, so the bar never wraps. */}
-          <select
-            className="chip mode-compact"
-            aria-label="Permission mode"
-            title="Permission mode (Shift+Tab to cycle)"
-            value={app.mode}
-            onChange={(e) => api.agent.setMode(e.target.value as PermissionMode).then(onState, onError)}
-          >
-            {MODES.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.label}
-              </option>
-            ))}
-          </select>
-          <div className="modes" title="Permission mode (Shift+Tab to cycle)">
-            {MODES.map((m) => (
-              <button key={m.id} aria-pressed={app.mode === m.id} className={`mode mode-${m.id} ${app.mode === m.id ? 'on' : ''}`} title={m.hint} onClick={() => api.agent.setMode(m.id).then(onState, onError)}>
-                {m.label}
+          {lobby !== undefined ? (
+            <MicButton app={app} onText={(t) => onVoice.current(t)} onError={onError} />
+          ) : (
+            <>
+              <button className="icon-btn attach" onClick={pick} aria-label="Attach files" title="Attach files (or drop / paste them)">
+                <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden>
+                  <path d="M10.5 4.5 5.8 9.2a1.4 1.4 0 0 0 2 2l5-5a2.8 2.8 0 0 0-4-4l-5.2 5.2a4.2 4.2 0 0 0 6 6l4.4-4.4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
               </button>
-            ))}
+              <MicButton app={app} onText={(t) => onVoice.current(t)} onError={onError} />
+              <button className="chip model-chip" onClick={onOpenPicker} title={`Switch model (${app.platform === 'darwin' ? '⌘K' : 'Ctrl+K'})`}>
+                <span className={`dot ${ready ? 'ok' : 'bad'}`} aria-label={ready ? 'Provider ready' : 'Provider needs setup'} />
+                {model && <ProviderLogo id={model.providerId} size={13} />}
+                {model && <MakerLogo modelId={model.modelId} providerId={model.providerId} size={13} />}
+                <span className="model-chip-name">{model ? modelLabel(model.modelId) : 'Pick a model'}</span>
+                <span className="muted small">{model?.providerId}</span>
+              </button>
+              {model && <ThinkingPicker app={app} model={model} onState={onState} onError={onError} />}
+              {model && moaReady(app.settings) && (
+                <button
+                  className={`chip mix ${mixing ? 'on' : ''}`}
+                  aria-pressed={mixing}
+                  onClick={() => api.agent.setMoa(!mixing).then(onState, onError)}
+                  title={`Mixture of Agents for this chat: ${moa.proposers.length} models answer, ${modelLabel(moa.aggregator!.modelId)} combines them. Each reply costs more.`}
+                >
+                  Mix{mixing ? ` · ${moa.proposers.length}` : ''}
+                </button>
+            )}
+              {/* Narrow windows: the same choice as one compact picker, so the bar never wraps. */}
+              <select
+                className="chip mode-compact"
+                aria-label="Permission mode"
+                title="Permission mode (Shift+Tab to cycle)"
+                value={app.mode}
+                onChange={(e) => api.agent.setMode(e.target.value as PermissionMode).then(onState, onError)}
+              >
+                {MODES.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.label}
+                  </option>
+                ))}
+              </select>
+              <div className="modes" title="Permission mode (Shift+Tab to cycle)">
+                {MODES.map((m) => (
+                  <button key={m.id} aria-pressed={app.mode === m.id} className={`mode mode-${m.id} ${app.mode === m.id ? 'on' : ''}`} title={m.hint} onClick={() => api.agent.setMode(m.id).then(onState, onError)}>
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           </div>
-          </div>
-          {app.running ? (
+          {app.running && lobby !== undefined && text.trim() ? (
+            <button className="btn primary" onClick={() => submit()} title="Stops the reply in progress and sends yours">
+              Send ↵
+            </button>
+          ) : app.running ? (
             <button className="btn stop" onClick={() => api.agent.stop()}>
               ■ Stop
             </button>

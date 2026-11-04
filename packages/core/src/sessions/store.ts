@@ -17,6 +17,8 @@ export interface SessionMeta {
   preview?: string
   /** Mixture of Agents for this chat (the composer toggle). Unset follows `moa.enabled`. */
   moa?: boolean
+  /** Set on a lobby's transcript (Settings `lobbies`): a group chat with several bots. */
+  lobbyId?: string
   /** Set on chats a gateway runs, e.g. "imessage:+15551234567" (one chat per sender) or "whatsapp:self". */
   gateway?: string
 }
@@ -45,9 +47,13 @@ export interface Checkpoint {
   files: Record<string, string | null>
 }
 
-export function newSession(cwd: string, model: ModelRef, opts: { botId?: string } = {}): Session {
+export function newSession(cwd: string, model: ModelRef, opts: { botId?: string; lobbyId?: string } = {}): Session {
   const now = Date.now()
-  return { meta: { id: randomUUID(), title: 'New chat', cwd, model, createdAt: now, updatedAt: now, ...(opts.botId ? { botId: opts.botId } : {}) }, messages: [], todos: [] }
+  return {
+    meta: { id: randomUUID(), title: 'New chat', cwd, model, createdAt: now, updatedAt: now, ...(opts.botId ? { botId: opts.botId } : {}), ...(opts.lobbyId ? { lobbyId: opts.lobbyId } : {}) },
+    messages: [],
+    todos: [],
+  }
 }
 
 /** One JSON file per session. Written atomically (tmp + rename). */

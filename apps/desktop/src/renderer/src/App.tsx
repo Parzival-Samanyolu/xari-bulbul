@@ -15,6 +15,7 @@ import { TerminalPanel } from './components/Terminal'
 import { Onboarding } from './components/Onboarding'
 import { Welcome } from './components/Welcome'
 import { BotDialog } from './components/BotDialog'
+import { LobbyDialog } from './components/LobbyDialog'
 import { Loading } from './components/Loading'
 
 export interface ToolLive {
@@ -59,6 +60,8 @@ export interface LiveState {
   /** What the chat is doing while nothing streams (Mixture of Agents asking its models). */
   status?: string
   lastUsage?: { prompt: number; completion: number; cost: number | null }
+  /** Lobbies: the bot replying now. */
+  speaker?: string | null
 }
 
 const emptyLive: LiveState = { streamText: '', streamReasoning: '', tools: {}, notices: [] }
@@ -120,7 +123,9 @@ function reducer(m: Model, a: Action): Model {
   })
   switch (e.type) {
     case 'turn_start':
-      return setLive({ ...live, streamText: '', streamReasoning: '', status: undefined, notices: live.notices.filter((n) => n.level !== 'error') }, running(true))
+      return setLive({ ...live, streamText: '', streamReasoning: '', status: undefined, speaker: null, notices: live.notices.filter((n) => n.level !== 'error') }, running(true))
+    case 'speaker':
+      return setLive({ ...live, speaker: e.botId, streamText: '', streamReasoning: '' })
     case 'text':
       return setLive({ ...live, streamText: live.streamText + e.delta })
     case 'reasoning':
@@ -181,7 +186,7 @@ function reducer(m: Model, a: Action): Model {
       let notices = live.notices
       // The step-limit and repeat notices come right before turn_end: give them a Continue button.
       if ((e.reason === 'max_steps' || e.reason === 'repeating') && notices.length) notices = [...notices.slice(0, -1), { ...notices.at(-1)!, resume: true }]
-      return setLive({ ...live, notices, streamText: '', streamReasoning: '', status: undefined }, running(false))
+      return setLive({ ...live, notices, streamText: '', streamReasoning: '', status: undefined, speaker: null }, running(false))
     }
   }
   return m
@@ -203,6 +208,9 @@ export function App() {
   /** The bot dialog: `{}` for a new bot, `{ botId }` to edit one; null while closed. */
   const [botDialog, setBotDialog] = useState<{ botId?: string } | null>(null)
   const editBot = useCallback((botId?: string) => setBotDialog({ botId }), [])
+  /** The lobby dialog: `{}` for a new lobby, `{ lobbyId }` to edit one; null while closed. */
+  const [lobbyDialog, setLobbyDialog] = useState<{ lobbyId?: string } | null>(null)
+  const editLobby = useCallback((lobbyId?: string) => setLobbyDialog({ lobbyId }), [])
   /** Startup failed before the first state arrived. */
   const [bootError, setBootError] = useState<string | null>(null)
   const [update, setUpdate] = useState<UpdateStatus>({ state: 'idle' })
@@ -356,13 +364,14 @@ export function App() {
   /** Opens Settings at a tab id ('providers', 'usage', …) or a section id ('model.aux'). */
   const openSettings = (tab?: string) => setSettingsPage(resolvePage(tab, app.settings))
   const anyReady = Object.values(app.ready).some(Boolean)
-  const welcome = !app.workspace || !anyReady
+  // A lobby needs no folder: it only talks.
+  const welcome = (!app.workspace && !app.session?.meta.lobbyId) || !anyReady
   const showRight = !!app.workspace && !!panels?.rightOpen
   const showBottom = !!app.workspace && !!panels?.bottomOpen
 
   return (
     <div className="app">
-      <Sidebar app={app} onState={setState} onError={fail} onSettings={() => openSettings()} settingsOpen={!!settingsPage} onChat={() => setSettingsPage(null)} onEditBot={editBot} />
+      <Sidebar app={app} onState={setState} onError={fail} onSettings={() => openSettings()} settingsOpen={!!settingsPage} onChat={() => setSettingsPage(null)} onEditBot={editBot} onEditLobby={editLobby} />
       <main className="main">
         {welcome ? (
           <Welcome app={app} onState={setState} onError={fail} onSettings={openSettings} />
@@ -383,6 +392,7 @@ export function App() {
               onState={setState}
               onError={fail}
               onEditBot={editBot}
+              onEditLobby={editLobby}
             />
             <Composer app={app} onState={setState} onError={fail} onOpenPicker={() => setPickerOpen(true)} />
           </>
@@ -412,6 +422,7 @@ export function App() {
       />
       {pickerOpen && <ModelPicker app={app} onClose={() => setPickerOpen(false)} onState={setState} onError={fail} />}
       {settingsPage && <SettingsOverlay app={app} page={settingsPage} onPage={setSettingsPage} onState={setState} onClose={() => setSettingsPage(null)} update={update} onEditBot={editBot} />}
+      {lobbyDialog && <LobbyDialog key={lobbyDialog.lobbyId ?? 'new'} app={app} lobbyId={lobbyDialog.lobbyId} onClose={() => setLobbyDialog(null)} onState={setState} onError={fail} />}
       {botDialog && <BotDialog key={botDialog.botId ?? 'new'} app={app} botId={botDialog.botId} onClose={() => setBotDialog(null)} onState={setState} />}
     </div>
   )

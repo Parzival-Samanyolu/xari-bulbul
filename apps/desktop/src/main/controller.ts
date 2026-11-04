@@ -22,6 +22,10 @@ import {
   isBotChat,
   latestBotThread,
   shownBots,
+  LobbyChat,
+  lobbyBots,
+  lobbySpeakers,
+  shownLobbies,
   McpManager,
   MemoryStore,
   type MemoryFact,
@@ -115,7 +119,7 @@ import {
   type WhisperModelId,
   settingsPath,
 } from '@harness/core'
-import type { AccountView, AppState, AttachmentInput, BotAvatarRequest, BotRow, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
+import type { AccountView, AppState, AttachmentInput, BotAvatarRequest, BotRow, LobbyRow, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
 import { LocalModels } from './local-models'
 import { log } from './logger'
 import type { KnownChild } from './resources'
@@ -199,6 +203,10 @@ export class AppController {
   private avatarCache = new Map<string, string>()
   /** Bots that finished replying while another chat was on screen. */
   private unreadBots = new Set<string>()
+  /** Open lobby transcripts by session id; they keep talking while another chat is on screen. */
+  private lobbies = new Map<string, LobbyChat>()
+  /** Lobbies whose bots said something while another chat was on screen. */
+  private unreadLobbies = new Set<string>()
   /** For share info's `app.session`: when the app started and which chats got a message since. */
   private readonly startedAt = Date.now()
   private readonly chatsSentIn = new Set<string>()
@@ -362,6 +370,11 @@ export class AppController {
     return (this.activeId && this.agents.get(this.activeId)?.agent) || null
   }
 
+  /** The lobby shown in the window, if the chat on screen is one. */
+  private get lobby(): LobbyChat | null {
+    return (this.activeId && this.lobbies.get(this.activeId)) || null
+  }
+
   // ---------- settings ----------
 
   private loadSettings(): Settings {
@@ -394,6 +407,7 @@ export class AppController {
     if (JSON.stringify(prev.gateways.whatsapp) !== JSON.stringify(this.settings.gateways.whatsapp)) this.whatsapp.sync()
     if (opts.prune !== false && prev.sessions.retentionDays !== this.settings.sessions.retentionDays) this.pruneSessions()
     if (JSON.stringify(prev.bots) !== JSON.stringify(this.settings.bots)) this.cleanBotImages()
+    this.lobbiesChanged(prev)
     for (const r of this.agents.values()) {
       r.agent.updateSettings(this.settings)
       // A bot chat follows its bot's mode when that changes (the bot turned off or on, its mode edited).
@@ -433,7 +447,7 @@ export class AppController {
   pruneSessions(now = Date.now()): number {
     const days = this.settings.sessions.retentionDays
     if (!days) return 0
-    const gone = this.store.prune(now - days * DAY_MS, (id) => this.agents.has(id) || this.awaiting(id))
+    const gone = this.store.prune(now - days * DAY_MS, (id) => this.agents.has(id) || this.lobbies.has(id) || this.awaiting(id))
     for (const id of gone) this.index?.delete(id)
     if (gone.length) this.pushState()
     return gone.length
@@ -464,6 +478,7 @@ export class AppController {
     if (snapshot) this.registry.restoreCache(snapshot)
     this.local?.register(this.registry)
     for (const r of this.agents.values()) r.agent.setRegistry(this.registry)
+    for (const l of this.lobbies?.values() ?? []) l.setRegistry(this.registry)
   }
 
   setKey(providerId: string, key: string | null): AppState {
@@ -876,6 +891,7 @@ export class AppController {
     this.cancelPending()
     this.terminals.dispose()
     for (const r of this.agents.values()) r.agent.stop()
+    for (const l of this.lobbies.values()) l.stop()
     const deadline = Date.now() + 1500
     while ([...this.agents.values()].some((r) => r.agent.running) && Date.now() < deadline) await new Promise((r) => setTimeout(r, 50))
     for (const r of this.agents.values()) r.agent.dispose()
@@ -1063,7 +1079,7 @@ export class AppController {
     if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) throw new Error(`Not a folder: ${dir}`)
     const cwd = await this.enterFolder(dir)
     // Bot chats live in the Bots tab; a folder resumes its latest plain chat.
-    const latest = opts.resume === false ? undefined : this.store.list({ cwd }).find((m) => !this.inBotsTab(m))
+    const latest = opts.resume === false ? undefined : this.store.list({ cwd }).find((m) => !this.inBotsTab(m) && !m.lobbyId)
     const session = latest ? this.store.load(latest.id) : null
     this.activate(session ?? newSession(cwd, this.settings.models.default))
     return this.state()
@@ -1316,9 +1332,11 @@ export class AppController {
   }
 
   async openSession(id: string): Promise<AppState> {
+    if (this.lobbies.has(id) || this.index?.get(id)?.lobbyId) return this.showLobby(id)
     if (!this.agents.has(id)) {
       const s = this.store.load(id)
       if (!s) throw new Error('Session not found')
+      if (s.meta.lobbyId) return this.showLobby(id, s)
       this.activate(s)
     } else this.activate(this.agents.get(id)!.agent.session)
     // A chat in another folder switches folders (and that folder's extensions).
@@ -1397,6 +1415,9 @@ export class AppController {
   }
 
   private discard(id: string) {
+    const lobby = this.lobbies.get(id)
+    lobby?.stop()
+    this.lobbies.delete(id)
     const r = this.agents.get(id)
     this.removed.add(id)
     this.cancelPending(id)
@@ -1418,12 +1439,163 @@ export class AppController {
 
   removeAllSessions(): AppState {
     const model = this.plainModel()
-    for (const id of [...this.agents.keys()]) this.discard(id)
+    for (const id of [...this.agents.keys(), ...this.lobbies.keys()]) this.discard(id)
     this.store.deleteAll()
     this.index = null
     this.activeId = null
     if (this.workspace) this.activate(newSession(this.workspace, model))
     return this.state()
+  }
+
+  // ---------- lobbies ----------
+
+  /** A lobby's transcripts, newest first: saved ones plus an open one not saved yet. */
+  private lobbyMetas(lobbyId: string): SessionMeta[] {
+    const saved = this.sessionMetas().filter((m) => m.lobbyId === lobbyId && !this.removed.has(m.id))
+    const ids = new Set(saved.map((m) => m.id))
+    const fresh = [...this.lobbies.values()].map((l) => l.session.meta).filter((m) => m.lobbyId === lobbyId && !ids.has(m.id) && !this.removed.has(m.id))
+    return [...fresh, ...saved].sort((a, b) => b.updatedAt - a.updatedAt)
+  }
+
+  /** Opens a lobby's ongoing group chat (its latest transcript), or starts one. */
+  async openLobby(lobbyId: string): Promise<AppState> {
+    const lobby = shownLobbies(this.settings).find((l) => l.id === lobbyId)
+    if (!lobby) throw new Error('That lobby no longer exists.')
+    const latest = this.lobbyMetas(lobbyId)[0]
+    if (latest) return this.showLobby(latest.id)
+    const first = lobbySpeakers(this.settings, lobby)[0]
+    // Lobbies use no tools, so the folder only matters for where the transcript says it lives.
+    const session = newSession(this.workspace ?? this.dataDir, first?.model ?? this.settings.models.default, { lobbyId })
+    session.meta.title = lobby.name
+    this.lobbies.set(session.meta.id, this.createLobby(session))
+    return this.showLobby(session.meta.id)
+  }
+
+  /** Puts a lobby transcript on screen, loading it if needed. */
+  private showLobby(id: string, loaded?: Session): AppState {
+    if (!this.lobbies.has(id)) {
+      const s = loaded ?? this.store.load(id)
+      if (!s?.meta.lobbyId) throw new Error('Session not found')
+      this.lobbies.set(id, this.createLobby(s))
+    }
+    this.activeId = id
+    const lobbyId = this.lobbies.get(id)!.session.meta.lobbyId!
+    this.unreadLobbies.delete(lobbyId)
+    // Idle lobbies off screen are dropped; their transcripts are saved.
+    for (const [other, l] of this.lobbies) if (other !== id && !l.running) this.lobbies.delete(other)
+    // Warm the members' model lists so context sizes and prices are known.
+    const conf = this.lobbies.get(id)!.lobby
+    for (const m of conf ? lobbySpeakers(this.settings, conf) : []) {
+      const ref = m.model ?? this.settings.models.default
+      if (this.registry.has(ref.providerId)) this.registry.models(ref.providerId).catch(() => {})
+    }
+    return this.state()
+  }
+
+  private createLobby(session: Session): LobbyChat {
+    const id = session.meta.id
+    return new LobbyChat({
+      session,
+      settings: this.settings,
+      registry: this.registry,
+      usage: this.usage,
+      onSave: (s) => {
+        if (!s.messages.length || this.removed.has(id)) return
+        s.meta.preview = this.lobbyPreview(s)
+        this.store.save(s)
+        this.index?.set(id, { ...s.meta })
+      },
+      onEvent: (event) => this.onLobbyEvent(id, event),
+    })
+  }
+
+  /** One line of the last thing said in a lobby, with who said it. */
+  private lobbyPreview(s: Session): string {
+    const last = s.messages.findLast((m) => (m.role === 'user' && !m.synthetic) || (m.role === 'assistant' && m.content.trim()))
+    const line = chatPreview(last ? [last] : [], 100)
+    if (!line) return ''
+    if (last?.role === 'assistant' && last.speaker) {
+      const name = this.settings.bots.find((b) => b.id === last.speaker!.id)?.name.trim() || last.speaker.name
+      return `${name}: ${line}`
+    }
+    return `You: ${line}`
+  }
+
+  private onLobbyEvent(sessionId: string, event: AgentEvent) {
+    if (this.removed.has(sessionId)) return
+    this.send({ type: 'agent', sessionId, event })
+    try {
+      this.logAgentEvent(sessionId, event)
+    } catch {
+      /* logging never breaks a chat */
+    }
+    if (event.type === 'fallback') this.modelUsage(event.from, { errors: 1 })
+    if (event.type === 'turn_end' && sessionId !== this.activeId && event.reason !== 'aborted') {
+      const lobby = this.lobbies.get(sessionId)
+      const conf = lobby?.lobby
+      if (lobby && conf) {
+        this.unreadLobbies.add(conf.id)
+        // Quiet when every member is muted, or all bots are.
+        const members = lobbyBots(this.settings, conf)
+        const muted = this.settings.botOptions.muted || (members.length > 0 && members.every((b) => b.muted))
+        const body = event.reason === 'done' ? this.lobbyPreview(lobby.session) || 'New replies.' : 'Stopped with an error.'
+        if (!muted) this.notify({ sessionId, kind: event.reason === 'done' ? 'finished' : 'failed', title: conf.name, body: body.slice(0, 160) })
+      }
+    }
+    if (event.type === 'turn_start' || event.type === 'turn_end' || (event.type === 'message' && event.index === 0)) this.pushState()
+  }
+
+  /** Sends to a lobby. Speaking while the bots talk interrupts them: the reply streaming now stops first. */
+  private async sendToLobby(lobby: LobbyChat, text: string): Promise<void> {
+    if (!shownLobbies(this.settings).some((l) => l.id === lobby.session.meta.lobbyId)) throw new Error('That lobby no longer exists.')
+    if (lobby.running) {
+      lobby.stop()
+      await lobby.idle()
+    }
+    this.count('feature.chat_sent', { bot: true })
+    this.chatsSentIn.add(lobby.session.meta.id)
+    await lobby.send(text)
+  }
+
+  /** More rounds of the bots on screen talking among themselves. */
+  async keepTalking(): Promise<void> {
+    const lobby = this.lobby
+    if (!lobby) throw new Error('Open a lobby first.')
+    if (lobby.running) return
+    await lobby.keepTalking()
+  }
+
+  /** Lobby settings changed: open transcripts follow, and a deleted lobby's transcripts go with it. */
+  private lobbiesChanged(prev: Settings) {
+    for (const l of this.lobbies.values()) l.updateSettings(this.settings)
+    const gone = prev.lobbies.filter((l) => !this.settings.lobbies.some((n) => n.id === l.id)).map((l) => l.id)
+    if (!gone.length) return
+    for (const meta of this.sessionMetas()) if (meta.lobbyId && gone.includes(meta.lobbyId)) this.dropLobbySession(meta.id)
+    for (const [id, l] of [...this.lobbies]) if (gone.includes(l.session.meta.lobbyId!)) this.dropLobbySession(id)
+    for (const id of gone) this.unreadLobbies.delete(id)
+  }
+
+  private dropLobbySession(id: string) {
+    this.discard(id)
+    this.store.delete(id)
+    if (this.activeId === id) {
+      this.activeId = null
+      if (this.workspace) this.activate(newSession(this.workspace, this.settings.models.default))
+    }
+  }
+
+  private lobbyRows(): LobbyRow[] {
+    return shownLobbies(this.settings).map((l) => {
+      const latest = this.lobbyMetas(l.id)[0]
+      return {
+        id: l.id,
+        sessionId: latest?.id ?? null,
+        preview: latest?.preview ?? '',
+        updatedAt: latest?.updatedAt ?? 0,
+        unread: this.unreadLobbies.has(l.id),
+        running: !!latest && !!this.lobbies.get(latest.id)?.running,
+      }
+    })
   }
 
   // ---------- agent ----------
@@ -1466,6 +1638,7 @@ export class AppController {
   }
 
   async sendMessage(text: string, attachments: AttachmentInput[] = []): Promise<void> {
+    if (this.lobby) return this.sendToLobby(this.lobby, text)
     this.readyAgent()
     if (attachments.length > MAX_ATTACHMENTS) throw new Error(`Attach up to ${MAX_ATTACHMENTS} files at a time.`)
     // Read everything first so one bad file fails the send without posting a half message.
@@ -1490,6 +1663,7 @@ export class AppController {
     if (!this.activeId) return
     this.cancelPending(this.activeId)
     this.agent?.stop()
+    this.lobby?.stop()
   }
 
   respond(sessionId: string, callId: string, answer: PermissionAnswer) {
@@ -1720,8 +1894,8 @@ export class AppController {
   // ---------- state ----------
 
   private sessionView(): SessionView | null {
-    if (!this.agent) return null
-    const s = this.agent.session
+    const s = this.agent?.session ?? this.lobby?.session
+    if (!s) return null
     return { meta: s.meta, messages: s.messages, todos: s.todos, displays: s.displays ?? {}, denied: s.denied ?? [], checkpoints: s.checkpoints ?? [] }
   }
 
@@ -1772,7 +1946,7 @@ export class AppController {
   private sessionLists(): Pick<AppState, 'sessions' | 'folders'> {
     const byFolder = new Map<string, AppState['sessions']>()
     for (const meta of this.sessionMetas()) {
-      if (this.inBotsTab(meta)) continue
+      if (this.inBotsTab(meta) || meta.lobbyId) continue
       const cwd = meta.cwd.normalize('NFC')
       byFolder.set(cwd, [...(byFolder.get(cwd) ?? []), meta])
     }
@@ -1807,11 +1981,11 @@ export class AppController {
       workspace: this.workspace,
       session: this.sessionView(),
       ...this.sessionLists(),
-      usage: this.usage.summary(this.agent?.session.meta.id),
+      usage: this.usage.summary(this.agent?.session.meta.id ?? this.lobby?.session.meta.id),
       // The chat on screen may run in its bot's mode.
       mode: (this.activeId && this.agents.get(this.activeId)?.permissions.mode) || this.mode,
-      running: this.agent?.running ?? false,
-      runningSessions: [...this.agents.entries()].filter(([, r]) => r.agent.running).map(([id]) => id),
+      running: this.agent?.running ?? this.lobby?.running ?? false,
+      runningSessions: [...[...this.agents.entries()].filter(([, r]) => r.agent.running).map(([id]) => id), ...[...this.lobbies.entries()].filter(([, l]) => l.running).map(([id]) => id)],
       awaitingSessions: [...new Set([...this.pending.values(), ...this.questions.values()].map((p) => p.sessionId))],
       questions: [...this.questions.values()].map(({ sessionId, request }) => ({ sessionId, request })),
       extensions: this.extensionsInfo(),
@@ -1828,6 +2002,7 @@ export class AppController {
       },
       botAvatars: this.botAvatars(),
       bots: this.botRows(),
+      lobbies: this.lobbyRows(),
       imessage: this.imessage.status(),
       whatsapp: this.whatsapp.status(),
       paths: this.paths,

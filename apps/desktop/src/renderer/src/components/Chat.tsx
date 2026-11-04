@@ -7,6 +7,7 @@ import { Markdown } from '../lib/Markdown'
 import { Approval } from './Approval'
 import { BotAvatar, turnOnBot } from './Bots'
 import { BotHeader } from './BotHeader'
+import { LobbyView } from './LobbyView'
 import { Question } from './Question'
 import { ProviderLogo } from './ProviderLogo'
 import { basename, modelLabel } from '../lib/format'
@@ -31,6 +32,8 @@ interface Props {
   onError: (e: unknown) => void
   /** Opens the bot dialog for a bot. */
   onEditBot: (id?: string) => void
+  /** Opens the lobby dialog for a lobby. */
+  onEditLobby: (id?: string) => void
 }
 
 type UserMessage = Extract<ChatMessage, { role: 'user' }>
@@ -41,7 +44,14 @@ const FIX_LABEL = { providers: 'Open API keys', usage: 'Open Usage', agent: 'Ope
 /** The Settings section each fix opens. */
 const FIX_TARGET = { providers: 'providers.keys', usage: 'usage', agent: 'advanced.limits' } as const
 
-export function Chat({ app, live, onDismiss, onSettings, approval, question, onRetry, onContinue, onRevert, onEdit, onUndoMemory, onState, onError, onEditBot }: Props) {
+export function Chat(props: Props) {
+  // A lobby is a group chat with its own view.
+  if (props.app.session?.meta.lobbyId)
+    return <LobbyView app={props.app} live={props.live} onDismiss={props.onDismiss} onError={props.onError} onEditLobby={props.onEditLobby} onSettings={props.onSettings} />
+  return <OneChat {...props} />
+}
+
+function OneChat({ app, live, onDismiss, onSettings, approval, question, onRetry, onContinue, onRevert, onEdit, onUndoMemory, onState, onError, onEditBot }: Props) {
   const session = app.session
   const scroller = useRef<HTMLDivElement>(null)
   const stick = useRef(true)

@@ -58,6 +58,8 @@ export type AgentEvent =
   /** Mixture of Agents is writing the final reply: the proposers are answering, or the aggregator is combining. */
   | { type: 'mixing'; phase: 'proposing' | 'combining'; models: ModelRef[] }
   | { type: 'error'; message: string }
+  /** Lobbies: the bot replying now, or null between replies. */
+  | { type: 'speaker'; botId: string | null }
   | { type: 'turn_end'; reason: TurnEndReason }
 
 export interface PermissionRequest {

@@ -355,6 +355,8 @@ function registerIpc() {
   handle('bots.imageProvider', () => c.botImageProvider())
   handle('bots.generateAvatar', (input) => c.generateBotAvatar(input))
   handle('bots.saveAvatar', (png) => c.saveBotAvatar(png))
+  handle('lobbies.open', (lobbyId: string) => c.openLobby(String(lobbyId ?? '')))
+  handle('lobbies.keepTalking', () => c.keepTalking())
   handle('voice.prepare', () => microphoneAccess())
   handle('voice.transcribe', (audio: Uint8Array, mediaType: string) => c.transcribe(audio, mediaType))
   handle('voice.download', () => c.downloadWhisper())

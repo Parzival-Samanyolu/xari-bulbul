@@ -31,6 +31,8 @@ export type ChatMessage =
       extra?: Record<string, unknown>
       /** Set when Mixture of Agents wrote this reply: what was combined. Display only, never sent to a model. */
       moa?: MixtureInfo
+      /** Lobbies: the bot that said this (its name when it spoke, in case it's deleted later). */
+      speaker?: { id: string; name: string }
     }
   | {
       role: 'tool'

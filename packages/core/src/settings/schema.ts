@@ -335,6 +335,20 @@ export const BotSchema = z.preprocess(
 )
 export type Bot = z.infer<typeof BotSchema>
 
+/**
+ * A group chat where several bots talk with the user and with each other (the Bots tab's
+ * Lobbies). Its transcript is a session with `meta.lobbyId`; replies are chat only, no tools.
+ */
+export const LobbySchema = z.object({
+  id: z.string().min(1),
+  name: z.string().default('Lobby'),
+  /** Members in speaking order. Deleted or turned-off bots are skipped. */
+  botIds: z.array(z.string()).default([]),
+  /** After everyone answered you, how many more rounds the bots may talk among themselves. */
+  maxRounds: z.number().int().min(0).max(10).catch(3).default(3),
+})
+export type Lobby = z.infer<typeof LobbySchema>
+
 /** Bots new installs start with: none. (Older versions shipped Reviewer, Explainer and Shipper; saved copies stay.) */
 export const STARTER_BOTS: Bot[] = []
 
@@ -525,6 +539,9 @@ export const SettingsSchema = z.object({
 
   /** Characters to chat with (the sidebar's Bots tab). */
   bots: z.array(BotSchema).default(() => structuredClone(STARTER_BOTS)),
+
+  /** Group chats with several bots (the Bots tab's Lobbies). */
+  lobbies: z.array(LobbySchema).default([]),
 
   /** The Bots tab as a whole. */
   botOptions: z

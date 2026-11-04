@@ -14,11 +14,13 @@ interface Props {
   settingsOpen: boolean
   /** Opens the bot dialog: a bot's id to edit it, nothing for a new one. */
   onEditBot: (id?: string) => void
+  /** Opens the lobby dialog: a lobby's id to edit it, nothing for a new one. */
+  onEditLobby: (id?: string) => void
 }
 
 type Tab = 'sessions' | 'bots'
 
-export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpen, onEditBot }: Props) {
+export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpen, onEditBot, onEditLobby }: Props) {
   const [menu, setMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -27,12 +29,12 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
   const recents = app.settings.app.recentWorkspaces.filter((w) => !openPaths.has(w))
   const mod = app.platform === 'darwin' ? '⌘' : 'Ctrl+'
   const botsOn = app.settings.botOptions.enabled
-  const onBotChat = !!app.session && isBotChat(app.settings, app.session.meta)
+  const onBotChat = !!app.session && (isBotChat(app.settings, app.session.meta) || (!!app.session.meta.lobbyId && botsOn))
   const [tab, setTab] = useState<Tab>(onBotChat ? 'bots' : 'sessions')
   // Opening a chat shows the tab it belongs to (a notification click, ⌘1–9, a new chat).
   useEffect(() => setTab(onBotChat ? 'bots' : 'sessions'), [current, onBotChat])
   const shownTab: Tab = botsOn ? tab : 'sessions'
-  const unread = app.bots.filter((b) => b.unread).length
+  const unread = app.bots.filter((b) => b.unread).length + app.lobbies.filter((l) => l.unread).length
   const tabKeys = (e: React.KeyboardEvent) => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
     e.preventDefault()
@@ -167,7 +169,7 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
       )}
       {shownTab === 'bots' ? (
         <div className="side-panel" id="side-panel-bots" role="tabpanel" aria-labelledby="side-tab-bots">
-          <BotsPanel app={app} onState={onState} onError={onError} onEditBot={onEditBot} onChat={onChat} settingsOpen={settingsOpen} />
+          <BotsPanel app={app} onState={onState} onError={onError} onEditBot={onEditBot} onEditLobby={onEditLobby} onChat={onChat} settingsOpen={settingsOpen} />
         </div>
       ) : (
         <div className="side-panel" id="side-panel-sessions" role={botsOn ? 'tabpanel' : undefined} aria-labelledby={botsOn ? 'side-tab-sessions' : undefined}>
