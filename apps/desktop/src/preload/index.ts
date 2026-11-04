@@ -90,6 +90,8 @@ const api: HarnessApi = {
     checkForUpdates: call('app.checkForUpdates') as any,
     installUpdate: call('app.installUpdate') as any,
   },
+  logs: { read: call('logs.read') as any, openFolder: call('logs.openFolder') as any, export: call('logs.export') as any },
+  monitor: { sample: call('monitor.sample') as any },
   onEvent(cb) {
     const listener = (_: unknown, e: UiEvent) => cb(e)
     ipcRenderer.on(IPC_EVENT, listener)

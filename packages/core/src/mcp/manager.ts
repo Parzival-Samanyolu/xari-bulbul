@@ -95,6 +95,15 @@ export class McpManager {
     }))
   }
 
+  /** Process ids of the running local (command) servers, for the app's resource monitor. */
+  processes(): { id: string; name: string; pid: number }[] {
+    return [...this.entries.values()].flatMap((e) => {
+      const t = e.client?.transport
+      const pid = t instanceof StdioClientTransport ? t.pid : null
+      return pid ? [{ id: e.config.id, name: e.config.name, pid }] : []
+    })
+  }
+
   tools(): Tool[] {
     return [...this.entries.values()].flatMap((e) => (e.state === 'ready' ? e.tools : []))
   }

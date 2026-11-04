@@ -4,6 +4,7 @@ import path from 'node:path'
 import { app } from 'electron'
 import electronUpdater from 'electron-updater'
 import type { UiEvent, UpdateStatus } from '../shared/ipc'
+import { log } from './logger'
 
 const { autoUpdater } = electronUpdater
 
@@ -14,17 +15,26 @@ export function initUpdater(sender: (e: UiEvent) => void, enabled: boolean) {
   send = sender
   if (!updatesConfigured()) return
   const manual = !canInstallUpdates()
+  log.info('updater', manual ? 'Updates: this build can only point to the download (not signed for auto-update)' : 'Updates: automatic', { autoCheck: enabled })
   autoUpdater.autoDownload = !manual
   let latest = ''
   autoUpdater.on('checking-for-update', () => send({ type: 'update', status: { state: 'checking' } }))
-  autoUpdater.on('update-not-available', () => send({ type: 'update', status: { state: 'none' } }))
+  autoUpdater.on('update-not-available', () => {
+    log.info('updater', 'No update available', { current: app.getVersion() })
+    send({ type: 'update', status: { state: 'none' } })
+  })
   autoUpdater.on('update-available', (i) => {
     latest = i.version
+    log.info('updater', `Update available: ${i.version}`, { current: app.getVersion() })
     send({ type: 'update', status: manual ? manualStatus(i.version) : { state: 'available', version: i.version } })
   })
   autoUpdater.on('download-progress', (p) => send({ type: 'update', status: { state: 'downloading', percent: Math.round(p.percent) } }))
-  autoUpdater.on('update-downloaded', (i) => send({ type: 'update', status: { state: 'ready', version: i.version } }))
+  autoUpdater.on('update-downloaded', (i) => {
+    log.info('updater', `Update downloaded: ${i.version}`)
+    send({ type: 'update', status: { state: 'ready', version: i.version } })
+  })
   autoUpdater.on('error', (e) => {
+    log.error('updater', e.message)
     // macOS refuses an update signed by a different identity ("code failed to satisfy specified code requirement(s)").
     const signing = /code requirement|signature|codesign/i.test(e.message)
     send({ type: 'update', status: signing && latest ? manualStatus(latest) : { state: 'error', message: e.message } })
@@ -69,5 +79,7 @@ export async function checkForUpdates() {
 }
 
 export function installUpdate() {
-  if (updatesConfigured()) autoUpdater.quitAndInstall()
+  if (!updatesConfigured()) return
+  log.info('updater', 'Restarting to install the update')
+  autoUpdater.quitAndInstall()
 }

@@ -38,6 +38,8 @@ type AssistantMessageT = Extract<ChatMessage, { role: 'assistant' }>
 type ToolMessage = Extract<ChatMessage, { role: 'tool' }>
 
 const FIX_LABEL = { providers: 'Open API keys', usage: 'Open Usage', agent: 'Open Agent limits' } as const
+/** The Settings section each fix opens. */
+const FIX_TARGET = { providers: 'providers.keys', usage: 'usage', agent: 'advanced.limits' } as const
 
 export function Chat({ app, live, onDismiss, onSettings, approval, question, onRetry, onContinue, onRevert, onEdit, onUndoMemory, onState, onError, onEditBot }: Props) {
   const session = app.session
@@ -204,7 +206,7 @@ export function Chat({ app, live, onDismiss, onSettings, approval, question, onR
               </button>
             )}
             {n.fix && (
-              <button className="btn" onClick={() => onSettings(n.fix!)}>
+              <button className="btn" onClick={() => onSettings(FIX_TARGET[n.fix!])}>
                 {FIX_LABEL[n.fix]}
               </button>
             )}

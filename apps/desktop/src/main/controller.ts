@@ -112,6 +112,8 @@ import {
 } from '@harness/core'
 import type { AccountView, AppState, AttachmentInput, BotRow, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
 import { LocalModels } from './local-models'
+import { log } from './logger'
+import type { KnownChild } from './resources'
 import { Scheduler } from './scheduler'
 import { SecretStore } from './secrets'
 import { Terminals } from './terminals'
@@ -229,6 +231,7 @@ export class AppController {
       secret: (id) => this.secrets.get(mcpSecretId(id)),
       // Servers connect in the background; batch their updates into one tool refresh.
       onChange: () => {
+        this.logMcp()
         if (this.mcpTimer) return
         this.mcpTimer = setTimeout(() => {
           this.mcpTimer = null
@@ -616,7 +619,7 @@ export class AppController {
   async transcribe(audio: Uint8Array, mediaType: string): Promise<string> {
     if (!(audio instanceof Uint8Array)) throw new Error('No recording received.')
     const voice = this.voiceState()
-    if (!this.settings.voice.enabled) throw new Error('Voice input is turned off in Settings › Voice.')
+    if (!this.settings.voice.enabled) throw new Error('Voice input is turned off in Settings › Agent › Voice input.')
     this.count('feature.voice_input', { engine: voice.engine === 'local' ? 'local' : 'provider' })
     if (voice.engine === 'local') {
       if (!/^audio\/(x-)?wav\b/.test(mediaType)) throw new Error('Local transcription needs a WAV recording.')
@@ -624,7 +627,7 @@ export class AppController {
     }
     const ref = this.settings.models.transcription
     const config = ref && this.settings.providers.find((p) => p.id === ref.providerId)
-    if (!ref?.modelId.trim() || !config) throw new Error('Choose a transcription model in Settings › Voice › Speech to text, or download a local speech model.')
+    if (!ref?.modelId.trim() || !config) throw new Error('Choose a transcription model in Settings › Agent › Speech to text, or download a local speech model.')
     if (!canTranscribe(config)) throw new Error(`${config.name} has no transcription endpoint.`)
     if (!this.isReady(ref.providerId)) throw new Error(`Add a ${config.name} API key in Settings › Providers › API keys.`)
     const language = this.settings.voice.language.trim() || undefined
@@ -642,10 +645,10 @@ export class AppController {
     if (typeof text !== 'string' || !text.trim()) throw new Error('Nothing to say.')
     const tts = this.settings.voice.tts
     const input = text.slice(0, 2000)
-    if (tts.provider !== 'openai') throw new Error('Choose OpenAI under Settings › Voice › Text to speech.')
+    if (tts.provider !== 'openai') throw new Error('Choose OpenAI under Settings › Agent › Text to speech.')
     const providerId = tts.openai.providerId
     const config = this.settings.providers.find((p) => p.id === providerId)
-    if (!config || config.api !== 'openai') throw new Error('Choose a provider for speech in Settings › Voice › Text to speech.')
+    if (!config || config.api !== 'openai') throw new Error('Choose a provider for speech in Settings › Agent › Text to speech.')
     if (!this.isReady(providerId)) throw new Error(`Add a ${config.name} API key in Settings › Providers › API keys.`)
     const audio = await openaiSpeech(
       { provider: config, apiKey: this.activeKey(providerId), model: tts.openai.model, voice: tts.voice, text: input, rate: tts.rate },
@@ -1194,9 +1197,67 @@ export class AppController {
     return false
   }
 
+  /** Each MCP server's last logged state, so the log gets changes only. */
+  private mcpLogged = new Map<string, string>()
+
+  /** Logs MCP servers connecting, failing and going away. */
+  private logMcp() {
+    try {
+      const seen = new Set<string>()
+      for (const s of this.mcp.status()) {
+        seen.add(s.id)
+        const key = `${s.state}:${s.error ?? ''}`
+        if (this.mcpLogged.get(s.id) === key) continue
+        this.mcpLogged.set(s.id, key)
+        if (s.state === 'error') log.error('mcp', `${s.name} failed: ${s.error ?? 'unknown error'}`, { server: s.id })
+        else if (s.state === 'ready') log.info('mcp', `${s.name} connected`, { server: s.id, tools: s.toolCount })
+        else if (s.state === 'off') log.info('mcp', `${s.name} turned off`, { server: s.id })
+      }
+      for (const id of [...this.mcpLogged.keys()]) {
+        if (seen.has(id)) continue
+        this.mcpLogged.delete(id)
+        log.info('mcp', 'Server removed', { server: id })
+      }
+    } catch {
+      /* logging only */
+    }
+  }
+
+  /** The programs the app started on purpose, named for the resource monitor. */
+  knownProcesses(): KnownChild[] {
+    const out: KnownChild[] = this.mcp.processes().map((p) => ({ pid: p.pid, label: `MCP server: ${p.name}`, kind: 'mcp' }))
+    for (const pid of this.terminals.pids()) out.push({ pid, label: 'Terminal', kind: 'terminal' })
+    const llama = this.local.server.pid
+    if (llama) out.push({ pid: llama, label: 'Local model (llama.cpp)', kind: 'local' })
+    return out
+  }
+
+  /** Writes errors, retries, fallbacks and failed tools to the app log: ids and codes, never prompts or replies. */
+  private logAgentEvent(sessionId: string, event: AgentEvent) {
+    const model = () => {
+      const m = this.agents.get(sessionId)?.agent.model
+      return m ? { provider: m.providerId, model: m.modelId } : {}
+    }
+    const chat = sessionId.slice(0, 8)
+    if (event.type === 'error') log.error('provider', event.message, { ...model(), chat })
+    else if (event.type === 'fallback') log.warn('provider', `Switched models: ${event.reason}`, { from: `${event.from.providerId}/${event.from.modelId}`, to: `${event.to.providerId}/${event.to.modelId}`, chat })
+    // Retries are notices ("… Retrying (1/3)…"); other notices can quote the user's checklist, so they stay out.
+    else if (event.type === 'notice' && /Retrying \(\d+\/\d+\)/.test(event.text)) log.warn('provider', event.text, { ...model(), chat })
+    else if (event.type === 'tool_end' && event.result.isError && !event.denied) {
+      // The first line only: tool output can be long and quote file contents.
+      const first = String(event.result.content ?? '').split('\n', 1)[0].slice(0, 200)
+      log.warn('tool', `${event.name} failed: ${first}`, { kind: this.toolKind(event.name), ms: Math.round(event.durationMs), chat })
+    } else if (event.type === 'turn_end' && event.reason !== 'done' && event.reason !== 'aborted') log.info('agent', `Turn ended: ${event.reason}`, { ...model(), chat })
+  }
+
   private onAgentEvent(sessionId: string, event: AgentEvent) {
     if (this.removed.has(sessionId)) return
     this.send({ type: 'agent', sessionId, event })
+    try {
+      this.logAgentEvent(sessionId, event)
+    } catch {
+      /* logging never breaks a chat */
+    }
     // A saved skill shows up in Settings and in the folder's other chats.
     if (event.type === 'tool_end' && event.name === SAVE_SKILL_TOOL && !event.result.isError) void this.reloadExtensions().then(() => this.pushState())
     // Share info gets the tool's kind only: MCP and extension tool names can carry the user's own names.

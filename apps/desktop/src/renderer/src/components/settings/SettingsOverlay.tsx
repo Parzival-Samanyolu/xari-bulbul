@@ -5,11 +5,11 @@ import { api } from '../../lib/api'
 import { formatCombo, isMac, matchesShortcut, shortcutFor } from '../../lib/shortcuts'
 import type { PageProps, Save } from './common'
 import { Icon } from './icons'
-import { DEFAULT_PAGE, isGroup, pageEntry, pageShown, resolvePage, searchSettings, visibleTree, type SearchHit } from './tree'
+import { DEFAULT_PAGE, pageEntry, pageShown, resolvePage, searchSettings, visibleTabs, type SearchHit } from './tree'
 
 interface Props {
   app: AppState
-  /** The open page's id (see tree.tsx). */
+  /** The open tab's id, or a section's id to open its tab scrolled to it (see tree.tsx). */
   page: string
   onPage: (id: string) => void
   onState: (s: AppState) => void
@@ -19,35 +19,28 @@ interface Props {
   onEditBot: (id?: string) => void
 }
 
-interface TreeItem {
-  id: string
-  label: string
-  icon: Parameters<typeof Icon>[0]['name']
-  level: 1 | 2
-  group: boolean
-  parent?: string
-}
-
 const clean = (e: unknown) => String((e as Error)?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), summary'
 
-/** Settings as an overlay over the dimmed app: a two-level sidebar, search, and one page at a time. */
+/** Settings as an overlay over the dimmed app: a flat list of tabs, search, and one tab at a time. */
 export function SettingsOverlay({ app, page, onPage, onState, onClose, update, onEditBot }: Props) {
-  const { page: def, group } = pageEntry(page)
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set(group ? [group.id] : []))
-  const [focusId, setFocusId] = useState(page)
+  const { tab: shownTab } = pageEntry(page)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
-  const [flash, setFlash] = useState<string | null>(null)
+  /** Where to scroll after a tab renders: a section, and a row in it to highlight. */
+  const [target, setTarget] = useState<{ section: string | null; row: string | null; n: number } | null>(null)
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null)
   const dialog = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
   const search = useRef<HTMLInputElement>(null)
-  const items = useRef(new Map<string, HTMLLIElement>())
+  const items = useRef(new Map<string, HTMLButtonElement>())
+  /** Set while a page change comes from open(), which sets its own target. */
+  const opening = useRef(false)
   const mac = isMac(app.platform)
-  // Pages for features that are turned off (Bots) leave the sidebar and search.
-  const tree = useMemo(() => visibleTree(app.settings), [app.settings])
+  // Sections for features that are turned off leave their tab and search.
+  const tabs = useMemo(() => visibleTabs(app.settings), [app.settings])
+  const tab = tabs.find((t) => t.id === shownTab.id) ?? shownTab
 
   // Text and number fields save on blur, which an unmounting input never gets: blur first.
   const close = () => {
@@ -56,14 +49,16 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
   }
   const fail = (e: unknown) => setNotice({ ok: false, text: clean(e) })
   const save: Save = (fn) => void api.settings.set(fn(structuredClone(app.settings))).then(onState, fail)
-  /** Opens a page, or a group's first page. */
-  const open = (id: string) => {
-    const g = tree.find((n) => n.id === id)
-    const entry = pageEntry(g && isGroup(g) ? g.children[0].id : resolvePage(id, app.settings))
-    if (entry.group) setExpanded((x) => new Set(x).add(entry.group!.id))
-    setFocusId(entry.page.id)
+  /** Opens a tab, or a section's tab scrolled to it (and to `row` in it). */
+  const open = (id: string, row?: string) => {
+    const to = resolvePage(id, app.settings)
+    const { section } = pageEntry(to)
     setNotice(null)
-    onPage(entry.page.id)
+    setTarget({ section: section?.id ?? null, row: row || null, n: Date.now() })
+    if (to !== page) {
+      opening.current = true
+      onPage(to)
+    }
   }
 
   // The app behind is inert while this is open; focus goes back where it was on close.
@@ -71,108 +66,59 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
     const opener = document.activeElement as HTMLElement | null
     const root = document.getElementById('root')
     if (root) root.inert = true
-    items.current.get(page)?.focus()
+    items.current.get(tab.id)?.focus()
     return () => {
       if (root) root.inert = false
       if (opener?.isConnected) opener.focus()
     }
   }, [])
 
-  // Opened elsewhere (a deep link while open): show its group.
+  // Opened elsewhere (at launch, or a deep link while open): scroll to its section.
   useEffect(() => {
-    if (group) setExpanded((x) => (x.has(group.id) ? x : new Set(x).add(group.id)))
-    setFocusId(page)
+    if (opening.current) return void (opening.current = false)
+    setTarget({ section: pageEntry(page).section?.id ?? null, row: null, n: Date.now() })
   }, [page])
 
-  // The open page was turned off (an import or reset): show the default page.
+  // The open tab or section was turned off (an import or reset): show the default tab.
   useEffect(() => {
     if (!pageShown(page, app.settings)) onPage(DEFAULT_PAGE)
   }, [page, app.settings])
 
-  // A new page starts at the top.
-  useEffect(() => {
-    if (content.current) content.current.scrollTop = 0
-  }, [page])
-
-  // A search jump scrolls to its row, focuses its control and highlights it briefly.
+  // A new tab starts at the top, a section link at its section; a search jump scrolls to its row,
+  // focuses its control and highlights it briefly. Rows are looked up inside their section, since
+  // two sections of one tab can have rows with the same label.
   useEffect(() => {
     const box = content.current
-    if (!box || !flash) return
-    const row = box.querySelector<HTMLElement>(`[data-row="${CSS.escape(flash)}"]`)
-    if (!row) return setFlash(null)
+    if (!box || !target) return
+    const scope = target.section ? box.querySelector<HTMLElement>(`[data-section="${CSS.escape(target.section)}"]`) : null
+    if (!target.row) {
+      if (scope && tab.sections.length > 1) scope.scrollIntoView({ block: 'start' })
+      else box.scrollTop = 0
+      return
+    }
+    const row = (scope ?? box).querySelector<HTMLElement>(`[data-row="${CSS.escape(target.row)}"]`)
+    if (!row) return
     row.scrollIntoView({ block: 'center' })
     row.classList.add('flash')
     row.querySelector<HTMLElement>(FOCUSABLE)?.focus({ preventScroll: true })
-    const t = setTimeout(() => (row.classList.remove('flash'), setFlash(null)), 1600)
-    return () => clearTimeout(t)
-  }, [flash])
+    const t = setTimeout(() => row.classList.remove('flash'), 1600)
+    return () => (clearTimeout(t), row.classList.remove('flash'))
+  }, [target])
 
-  const visible: TreeItem[] = useMemo(
-    () =>
-      tree.flatMap((n): TreeItem[] => {
-        if (!isGroup(n)) return [{ id: n.id, label: n.label, icon: n.icon, level: 1, group: false }]
-        const head: TreeItem = { id: n.id, label: n.label, icon: n.icon, level: 1, group: true }
-        return expanded.has(n.id) ? [head, ...n.children.map((c): TreeItem => ({ id: c.id, label: c.label, icon: c.icon, level: 2, group: false, parent: n.id }))] : [head]
-      }),
-    [expanded, tree],
-  )
-
-  // The roving tab stop: a page inside a folded group hands it to the group.
-  const tabStop = visible.some((v) => v.id === focusId) ? focusId : (pageEntry(focusId).group?.id ?? visible[0]?.id)
-
-  const tabStopRef = useRef(tabStop)
-  tabStopRef.current = tabStop
-
-  const focusItem = (id: string) => {
-    setFocusId(id)
-    items.current.get(id)?.focus()
-  }
-
-  const toggleGroup = (id: string) => {
-    const opening = !expanded.has(id)
-    setExpanded((x) => {
-      const next = new Set(x)
-      if (opening) next.add(id)
-      else next.delete(id)
-      return next
-    })
-    // Opening a group shows its first page, unless one of its pages is already open; focus stays on the group.
-    if (opening && group?.id !== id) open(id)
-    setFocusId(id)
-  }
-
-  const onTreeKey = (e: ReactKeyboardEvent) => {
-    // The item that has focus, which can differ from the tab stop right after a group opened a page.
-    const focused = (e.target as Element).closest<HTMLElement>('[role=treeitem]')?.dataset.id ?? tabStop
-    const i = visible.findIndex((v) => v.id === focused)
-    const cur = visible[i]
-    if (!cur) return
-    const move = (to: number) => (e.preventDefault(), focusItem(visible[Math.max(0, Math.min(visible.length - 1, to))].id))
-    if (e.key === 'ArrowDown') move(i + 1)
-    else if (e.key === 'ArrowUp') move(i - 1)
-    else if (e.key === 'Home') move(0)
-    else if (e.key === 'End') move(visible.length - 1)
-    else if (e.key === 'ArrowRight' && cur.group) {
-      e.preventDefault()
-      if (!expanded.has(cur.id)) setExpanded((x) => new Set(x).add(cur.id))
-      else if (visible[i + 1]?.parent === cur.id) focusItem(visible[i + 1].id)
-    } else if (e.key === 'ArrowLeft') {
-      e.preventDefault()
-      if (cur.group && expanded.has(cur.id)) setExpanded((x) => (x.delete(cur.id), new Set(x)))
-      else if (cur.parent) focusItem(cur.parent)
-    } else if (e.key === 'Enter' || e.key === ' ') {
-      e.preventDefault()
-      if (cur.group) toggleGroup(cur.id)
-      else open(cur.id)
-    }
+  const onTabsKey = (e: ReactKeyboardEvent) => {
+    const i = tabs.findIndex((t) => t.id === (e.target as HTMLElement).dataset.id)
+    if (i < 0) return
+    const to = e.key === 'ArrowDown' ? i + 1 : e.key === 'ArrowUp' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : null
+    if (to == null) return
+    e.preventDefault()
+    items.current.get(tabs[Math.max(0, Math.min(tabs.length - 1, to))].id)?.focus()
   }
 
   const hits = useMemo(() => searchSettings(query, 12, app.settings), [query, app.settings])
   const jump = (hit: SearchHit) => {
     setQuery('')
     setActive(0)
-    open(hit.pageId)
-    setFlash(hit.row || null)
+    open(hit.sectionId || hit.tabId, hit.row)
   }
 
   const onSearchKey = (e: ReactKeyboardEvent) => {
@@ -205,7 +151,7 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
       if (t && t !== document.body && t !== document.documentElement) return
       if (commandRef.current(e)) return
       // Any other key brings focus back into the dialog.
-      if (e.key === 'Tab') (e.preventDefault(), items.current.get(tabStopRef.current)?.focus())
+      if (e.key === 'Tab') (e.preventDefault(), dialog.current?.querySelector<HTMLElement>('.so-row.current')?.focus())
     }
     document.addEventListener('keydown', onDocKey)
     return () => document.removeEventListener('keydown', onDocKey)
@@ -238,7 +184,6 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
     api.settings.reset().then((s) => (onState(s), setNotice({ ok: true, text: 'Settings reset to defaults.' })), fail)
   }
 
-  const Page = def.page
   const props: PageProps = { app, save, onState, onError: fail, go: open, update, close, editBot: onEditBot }
   const searchKeys = formatCombo(shortcutFor(app.settings, 'modelPicker'), mac)
   const listOpen = query.trim() !== ''
@@ -267,7 +212,7 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
             {listOpen && (
               <ul className="so-results" id="so-results" role="listbox" aria-label="Matching settings">
                 {hits.map((h, i) => (
-                  <li key={`${h.pageId}:${h.row}`} id={`so-hit-${i}`} role="option" aria-selected={i === active} className={i === active ? 'sel' : ''} onMouseEnter={() => setActive(i)} onMouseDown={(e) => (e.preventDefault(), jump(h))}>
+                  <li key={`${h.tabId}:${h.sectionId}:${h.row}`} id={`so-hit-${i}`} role="option" aria-selected={i === active} className={i === active ? 'sel' : ''} onMouseEnter={() => setActive(i)} onMouseDown={(e) => (e.preventDefault(), jump(h))}>
                     <span>{h.label}</span>
                     <span className="muted small">{h.where}</span>
                   </li>
@@ -281,57 +226,22 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
           </button>
         </header>
         <div className="so-body">
-          <nav className="so-side" aria-label="Settings sections">
-            <ul className="so-tree" role="tree" aria-label="Settings sections" onKeyDown={onTreeKey}>
-              {tree.map((n) => {
-                const groupOpen = isGroup(n) && expanded.has(n.id)
-                const current = !isGroup(n) && n.id === page
-                const holds = isGroup(n) && group?.id === n.id
-                return (
-                  <li
-                    key={n.id}
-                    ref={(el) => void (el ? items.current.set(n.id, el) : items.current.delete(n.id))}
-                    role="treeitem"
-                    data-id={n.id}
-                    aria-level={1}
-                    aria-expanded={isGroup(n) ? groupOpen : undefined}
-                    aria-selected={isGroup(n) ? undefined : current}
-                    tabIndex={tabStop === n.id ? 0 : -1}
-                    className="so-item"
-                    onFocus={(e) => e.target === e.currentTarget && setFocusId(n.id)}
-                    onClick={(e) => (e.stopPropagation(), isGroup(n) ? toggleGroup(n.id) : open(n.id))}
+          <nav className="so-side" aria-label="Settings">
+            <ul className="so-tree" onKeyDown={onTabsKey}>
+              {tabs.map((t) => (
+                <li key={t.id} className="so-item">
+                  <button
+                    ref={(el) => void (el ? items.current.set(t.id, el) : items.current.delete(t.id))}
+                    data-id={t.id}
+                    className={`so-row ${t.id === tab.id ? 'current' : ''}`}
+                    aria-current={t.id === tab.id ? 'page' : undefined}
+                    onClick={() => open(t.id)}
                   >
-                    <div className={`so-row ${current ? 'current' : ''} ${groupOpen ? 'open' : ''} ${holds ? 'holds' : ''}`}>
-                      <Icon name={n.icon} />
-                      <span className="so-label">{n.label}</span>
-                      {isGroup(n) && <Icon name={groupOpen ? 'chevronDown' : 'chevronRight'} size={14} className="so-chevron" />}
-                    </div>
-                    {isGroup(n) && groupOpen && (
-                      <ul role="group">
-                        {n.children.map((c) => (
-                          <li
-                            key={c.id}
-                            ref={(el) => void (el ? items.current.set(c.id, el) : items.current.delete(c.id))}
-                            role="treeitem"
-                            data-id={c.id}
-                            aria-level={2}
-                            aria-selected={c.id === page}
-                            tabIndex={tabStop === c.id ? 0 : -1}
-                            className="so-item"
-                            onFocus={(e) => (e.stopPropagation(), setFocusId(c.id))}
-                            onClick={(e) => (e.stopPropagation(), open(c.id))}
-                          >
-                            <div className={`so-row sub ${c.id === page ? 'current' : ''}`}>
-                              <Icon name={c.icon} size={14} />
-                              <span className="so-label">{c.label}</span>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </li>
-                )
-              })}
+                    <Icon name={t.icon} />
+                    <span className="so-label">{t.label}</span>
+                  </button>
+                </li>
+              ))}
             </ul>
             <div className="so-side-foot">
               <button className="icon-btn" aria-label="Import settings from a file" title="Import settings" onClick={importFile}>
@@ -350,19 +260,21 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
               <nav aria-label="Breadcrumb">
                 <ol className="so-crumbs">
                   <li>Settings</li>
-                  {group && (
-                    <li>
-                      <button className="link" onClick={() => open(group.id)}>
-                        {group.label}
-                      </button>
-                    </li>
-                  )}
                   <li aria-current="page">
-                    <h2 id="so-page-title">{def.label}</h2>
+                    <h2 id="so-page-title">{tab.label}</h2>
                   </li>
                 </ol>
               </nav>
-              <p className="muted so-desc">{def.description}</p>
+              <p className="muted so-desc">{tab.description}</p>
+              {tab.sections.length > 1 && (
+                <nav className="so-toc" aria-label={`Sections in ${tab.label}`}>
+                  {tab.sections.map((p) => (
+                    <button key={p.id} className="so-toc-link" onClick={() => open(p.id)}>
+                      {p.label}
+                    </button>
+                  ))}
+                </nav>
+              )}
               {notice && (
                 <div className={`so-notice ${notice.ok ? 'ok' : 'error'}`} role={notice.ok ? 'status' : 'alert'}>
                   <span>{notice.text}</span>
@@ -371,7 +283,24 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
                   </button>
                 </div>
               )}
-              <Page key={def.id} {...props} />
+              {tab.sections.map((p) => {
+                const Page = p.page
+                if (tab.sections.length === 1)
+                  return (
+                    <div key={p.id} data-section={p.id}>
+                      <Page {...props} />
+                    </div>
+                  )
+                return (
+                  <section key={p.id} className="so-part" data-section={p.id} aria-labelledby={`so-part-${p.id}`}>
+                    <header className="so-part-head">
+                      <h3 id={`so-part-${p.id}`}>{p.label}</h3>
+                      {p.description && <p className="muted small">{p.description}</p>}
+                    </header>
+                    <Page {...props} />
+                  </section>
+                )
+              })}
             </div>
           </div>
         </div>

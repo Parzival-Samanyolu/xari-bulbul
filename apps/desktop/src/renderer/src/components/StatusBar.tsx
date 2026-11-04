@@ -2,18 +2,22 @@ import type { AppState, UpdateStatus } from '../../../shared/ipc'
 import type { LiveState } from '../App'
 import { api } from '../lib/api'
 import { cost, modelLabel, tokens } from '../lib/format'
+import { bytes, cpuText, useResources } from '../lib/resources'
 
 interface Props {
   app: AppState
   live: LiveState
   onOpenPicker: () => void
   onUsage: () => void
+  /** Opens Settings › Logs & performance. */
+  onResources: () => void
   update: UpdateStatus
   /** Toggles for the bottom (terminal) and right (files, changes) panels; hidden without a folder. */
   panels?: { bottom: boolean; right: boolean; onBottom: () => void; onRight: () => void }
 }
 
-export function StatusBar({ app, live, onOpenPicker, onUsage, update, panels }: Props) {
+export function StatusBar({ app, live, onOpenPicker, onUsage, onResources, update, panels }: Props) {
+  const res = useResources(app.settings.app.showResources, 3000)
   const mac = app.platform === 'darwin'
   const s = app.usage.session
   const t = app.usage.today
@@ -48,6 +52,16 @@ export function StatusBar({ app, live, onOpenPicker, onUsage, update, panels }: 
         </span>
       )}
       <div className="spacer" />
+      {res && (
+        <button
+          className="sb-item sb-res"
+          onClick={onResources}
+          title={`Memory: ${bytes(res.app.memory)} for the app${res.children.measured && res.children.memory ? ` and ${bytes(res.children.memory)} for programs it started` : ''}, of ${bytes(res.system.total)} on this computer. CPU: ${cpuText(res.app.cpu + res.children.cpu)} of one core. Click for details.`}
+        >
+          <span className="muted">RAM</span> <b>{bytes(res.app.memory + res.children.memory)}</b>
+          <span className="muted"> · CPU</span> <b>{cpuText(res.app.cpu + res.children.cpu)}</b>
+        </button>
+      )}
       {pct != null && (
         <span className="sb-item" title={`Context: ${tokens(ctx!.tokens)} of ${tokens(ctx!.length)} tokens`}>
           <span className="meter">
