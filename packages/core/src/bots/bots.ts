@@ -3,6 +3,8 @@ import type { ChatMessage, ModelRef, PermissionMode } from '../types.js'
 import { faceForName, type BotPet, type BotShape } from './faces.js'
 
 export * from './faces.js'
+export * from './pixel.js'
+export * from './avatar-gen.js'
 
 // Bots are characters to chat with (the sidebar's Bots tab). Everything here is pure, so the
 // renderer can import it too (`@harness/core/bots`).
@@ -70,6 +72,9 @@ export function newBotId(name: string, taken: string[]): string {
   return id
 }
 
+/** Avatar kinds stored as a file in `<data>/bots/`. */
+export const hasAvatarFile = (avatar: BotAvatar): boolean => (avatar.kind === 'image' || avatar.kind === 'pixel') && !!avatar.image
+
 /** An avatar path that names an image file. */
 export function isImageAvatar(avatar: string): boolean {
   return /[\\/]/.test(avatar) && /\.(png|jpe?g|gif|webp)$/i.test(avatar)
@@ -80,6 +85,7 @@ export type BotFace =
   | { kind: 'shape'; shape: BotShape; color: string }
   | { kind: 'pet'; pet: BotPet; color: string }
   | { kind: 'image'; image: string; color: string }
+  | { kind: 'pixel'; image: string; color: string }
   | { kind: 'emoji'; emoji: string; color: string }
 
 /**
@@ -91,6 +97,7 @@ export function botFace(name: string, avatar: BotAvatar): BotFace {
   const color = avatar.locked ? avatar.color : auto.color
   if (avatar.kind === 'pet') return { kind: 'pet', pet: avatar.pet ?? 'cat', color }
   if (avatar.kind === 'image' && avatar.image) return { kind: 'image', image: avatar.image, color: avatar.color }
+  if (avatar.kind === 'pixel' && avatar.image) return { kind: 'pixel', image: avatar.image, color: avatar.color }
   if (avatar.kind === 'emoji' && avatar.emoji) return { kind: 'emoji', emoji: avatar.emoji, color: avatar.color }
   return { kind: 'shape', shape: avatar.locked ? (avatar.shape ?? auto.shape) : auto.shape, color }
 }

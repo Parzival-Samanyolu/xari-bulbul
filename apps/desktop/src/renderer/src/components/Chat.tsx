@@ -5,11 +5,11 @@ import type { LiveState, Notice, ToolLive } from '../App'
 import { api } from '../lib/api'
 import { Markdown } from '../lib/Markdown'
 import { Approval } from './Approval'
-import { turnOnBot } from './Bots'
+import { BotAvatar, turnOnBot } from './Bots'
 import { BotHeader } from './BotHeader'
 import { Question } from './Question'
 import { ProviderLogo } from './ProviderLogo'
-import { modelLabel } from '../lib/format'
+import { basename, modelLabel } from '../lib/format'
 import { SpeakButton } from './SpeakButton'
 
 type ToolCallT = NonNullable<Extract<ChatMessage, { role: 'assistant' }>['toolCalls']>[number]
@@ -93,12 +93,33 @@ export function Chat({ app, live, onDismiss, onSettings, approval, question, onR
   const owned = (i: number, calls: AssistantMessageT['toolCalls']) =>
     i === lastCalls && calls?.some((c) => (approval && owns(c.id, approval.request)) || question?.request.callId === c.id)
 
+  // In a bot chat, the bot's face and name start each of its replies (the first message after yours).
+  const talking = app.running && !!live.streamText
+  const speaker = () =>
+    botOn && (
+      <div className="bot-speaker" aria-hidden>
+        <BotAvatar app={app} bot={bot} size={22} />
+        <span>{bot.name}</span>
+      </div>
+    )
+  const startsReply = (i: number) => {
+    for (let j = i - 1; j >= 0; j--) {
+      const p = session.messages[j]
+      if (p.role === 'user' && p.synthetic === 'reminder') continue
+      return p.role === 'user'
+    }
+    return !bot?.greeting?.trim()
+  }
+  const lastVisible = session.messages.findLast((m) => !(m.role === 'user' && m.synthetic === 'reminder'))
+
   return (
-    <div className="chat" ref={scroller} onScroll={onScroll}>
+    <div className={`chat ${botOn ? 'bot-chat' : ''}`} ref={scroller} onScroll={onScroll}>
       <div className="sr-only" aria-live="polite">
         {status}
       </div>
-      {bot && <BotHeader app={app} bot={bot} onState={onState} onError={onError} onEditBot={onEditBot} />}
+      {bot && (
+        <BotHeader app={app} bot={bot} running={app.running} talking={talking} awaiting={!!approval || !!question} onState={onState} onError={onError} onEditBot={onEditBot} />
+      )}
       <div className="chat-inner">
         {bot && !botOn && (
           <div className="notice notice-warn" role="status">
@@ -109,11 +130,25 @@ export function Chat({ app, live, onDismiss, onSettings, approval, question, onR
           </div>
         )}
         {empty && !botOn && <EmptyChat app={app} />}
+        {empty && botOn && (
+          <div className="bot-intro">
+            <BotAvatar app={app} bot={bot} size={72} mood="idle" />
+            <h2>{bot.name}</h2>
+            {bot.tagline && <p className="bot-intro-tag">{bot.tagline}</p>}
+            <p className="muted small">
+              Works in <span title={session.meta.cwd}>{basename(session.meta.cwd)}</span> with {modelLabel(session.meta.model.modelId)}.{' '}
+              {bot.greeting?.trim() ? '' : `Say hi to ${bot.name}.`}
+            </p>
+          </div>
+        )}
         {botOn && bot.greeting?.trim() && (
           // Shown only; the model never sees the greeting.
-          <div className="assistant bot-greeting">
-            <Markdown text={bot.greeting} />
-          </div>
+          <>
+            {speaker()}
+            <div className="assistant bot-greeting">
+              <Markdown text={bot.greeting} />
+            </div>
+          </>
         )}
         {session.messages.map((m, i) => {
           const cp = turns.endsAt.get(i)
@@ -132,6 +167,7 @@ export function Chat({ app, live, onDismiss, onSettings, approval, question, onR
           if (m.role === 'assistant') {
             const cpOfTurn = turns.checkpointOf(i)
             return [
+              startsReply(i) && <div key={`s${i}`}>{speaker()}</div>,
               <AssistantMessage
                 key={i}
                 message={m}
@@ -165,7 +201,12 @@ export function Chat({ app, live, onDismiss, onSettings, approval, question, onR
             <Approval key={approval.request.callId} request={approval.request} onAnswer={approval.onAnswer} />
           </div>
         )}
-        {app.running && !approval && !question && <LiveReply live={live} showReasoning={appearance.showReasoning} />}
+        {app.running && !approval && !question && (
+          <>
+            {lastVisible?.role === 'user' && speaker()}
+            <LiveReply live={live} showReasoning={appearance.showReasoning} botName={botOn ? bot.name : undefined} />
+          </>
+        )}
         {session.todos.length > 0 && <Todos todos={session.todos} />}
         {live.notices.map((n) => (
           <div key={n.id} className={`notice notice-${n.level}`} role={n.level === 'error' ? 'alert' : 'status'}>
@@ -476,11 +517,11 @@ function MixedFrom({ info }: { info: MixtureInfo }) {
   )
 }
 
-function LiveReply({ live, showReasoning }: { live: LiveState; showReasoning: boolean }) {
+function LiveReply({ live, showReasoning, botName }: { live: LiveState; showReasoning: boolean; botName?: string }) {
   return (
     <div className="assistant live">
       {live.streamReasoning && showReasoning && <Reasoning text={live.streamReasoning} open />}
-      {live.streamText ? <Markdown text={live.streamText} /> : <Thinking tools={live.tools} status={live.status} />}
+      {live.streamText ? <Markdown text={live.streamText} /> : <Thinking tools={live.tools} status={live.status ?? (botName ? `${botName} is thinking…` : undefined)} />}
     </div>
   )
 }

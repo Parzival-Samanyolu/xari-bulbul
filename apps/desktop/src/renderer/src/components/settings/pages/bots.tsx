@@ -27,7 +27,7 @@ export function BotsPage({ app, save, editBot }: PageProps) {
       </Section>
       <Section
         title="Your bots"
-        description="Each bot works in full auto with every tool, unless you change that under Advanced. Deleting files, force pushes and writes outside the folder still ask."
+        description="Each bot works in full auto with every tool, unless you change that under Abilities in its editor. Deleting files, force pushes and writes outside the folder still ask."
       >
         {bots.length === 0 && (
           <div className="empty-box">

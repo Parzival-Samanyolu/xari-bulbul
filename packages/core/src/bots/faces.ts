@@ -7,7 +7,8 @@ export type BotShape = (typeof BOT_SHAPES)[number]
 export const BOT_PETS = ['cat', 'dog', 'bunny', 'bear', 'fox', 'frog', 'owl', 'panda'] as const
 export type BotPet = (typeof BOT_PETS)[number]
 
-export const BOT_AVATAR_KINDS = ['shape', 'pet', 'image', 'emoji'] as const
+/** `pixel`: a small pixel-art PNG in `<data>/bots/` (a generated sprite or a pixelated AI picture). */
+export const BOT_AVATAR_KINDS = ['shape', 'pet', 'image', 'emoji', 'pixel'] as const
 export type BotAvatarKind = (typeof BOT_AVATAR_KINDS)[number]
 
 /**
