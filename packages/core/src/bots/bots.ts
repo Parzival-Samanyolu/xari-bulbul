@@ -167,3 +167,8 @@ export function lobbySpeakers(settings: Pick<Settings, 'bots'>, lobby: Lobby): B
 export function newLobby(name: string, botIds: string[], taken: string[]): Lobby {
   return { id: newBotId(`lobby-${name}`, taken), name, botIds, maxRounds: 3 }
 }
+
+/** Lobbies bigger than this don't have everyone answer each line: a small cast takes each round. */
+export const LOBBY_ALL_ANSWER = 4
+/** How many bots take a round in a big lobby. */
+export const LOBBY_CAST = 3

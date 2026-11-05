@@ -6,7 +6,7 @@ import type { Session } from '../sessions/store.js'
 import { modelKey, type Bot, type Lobby, type Settings } from '../settings/schema.js'
 import type { ChatMessage, ModelRef, Usage } from '../types.js'
 import { computeCost, type UsageRecord, type UsageSummary } from '../usage/tracker.js'
-import { lobbySpeakers } from './bots.js'
+import { LOBBY_ALL_ANSWER, LOBBY_CAST, lobbySpeakers } from './bots.js'
 
 // Lobbies: group chats where several bots talk with the user and with each other. Replies are
 // chat only (no tools), one bot at a time. The pure helpers below decide who speaks and what
@@ -127,10 +127,31 @@ The transcript labels each line with its speaker, like "[${others[0]?.name.trim(
 - Speak only as yourself. Never write lines for anyone else, and don't start your reply with your name or a label.
 - Address the others by name when you talk to them, and react to what they said.
 - If you have nothing to add, reply with exactly ${LOBBY_PASS} and nothing else.
+- Group chats end on their own, like real ones. Once the user's message is answered and the banter has run its course, or you'd only repeat yourself or someone else, reply ${LOBBY_PASS}. Don't keep the chat going just to fill the silence, and don't ask new questions only to get another reply.
 - There are no tools here: just talk.`,
   )
   if (profile?.language?.trim()) lines.push(`Reply in ${profile.language.trim()}.`)
   return lines.join('\n\n')
+}
+
+/** Bot lines since the user last spoke after which the bots are asked to wrap up. */
+export const LOBBY_WRAP_UP = 6
+
+/**
+ * A note for the bot about to speak, by how long the bots have talked since the user's last line:
+ * nothing while it answers the user, then "only if it's new", then "wrap up".
+ */
+export function windDownNote(messages: ChatMessage[]): string {
+  let since = 0
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i]
+    if (m.role === 'user' && !m.synthetic) break
+    if (m.role === 'assistant' && m.content.trim()) since++
+  }
+  const replied = messages.some((m) => m.role === 'user' && !m.synthetic)
+  if (!replied || since === 0) return ''
+  if (since < LOBBY_WRAP_UP) return `(The group has said ${since} ${since === 1 ? 'line' : 'lines'} since the user's last message. Reply only if you add something new or someone spoke to you directly; otherwise reply ${LOBBY_PASS}.)`
+  return `(The group has talked for ${since} lines since the user's last message. Time to wind down: at most one short closing line with no new questions, or ${LOBBY_PASS}.)`
 }
 
 /** The bot who spoke last, if the transcript ends with a bot's line. */
@@ -141,6 +162,36 @@ export function lastSpeaker(messages: ChatMessage[]): string | undefined {
     if (m.role === 'assistant' && m.content.trim()) return m.speaker?.id
   }
   return undefined
+}
+
+/**
+ * Who takes the next round: everyone in a small lobby. In a big one, up to `LOBBY_CAST` bots: the
+ * ones the latest line names (not its own speaker), then whoever has been quiet longest, so the
+ * room rotates instead of all of them answering every line.
+ */
+export function pickCast(messages: ChatMessage[], members: Bot[], size = LOBBY_CAST): Bot[] {
+  if (members.length <= LOBBY_ALL_ANSWER) return members
+  const lines = messages.filter((m) => (m.role === 'user' && !m.synthetic) || (m.role === 'assistant' && m.content.trim()))
+  const last = lines.at(-1)
+  const lastBy = last?.role === 'assistant' ? last.speaker?.id : undefined
+  const named = last ? addressedBots(last.content, members).filter((b) => b.id !== lastBy) : []
+  const spokeAt = new Map<string, number>()
+  lines.forEach((m, i) => m.role === 'assistant' && m.speaker?.id && spokeAt.set(m.speaker.id, i))
+  const quiet = members
+    .map((b, order) => ({ b, at: spokeAt.get(b.id) ?? -1, order }))
+    .sort((x, y) => x.at - y.at || x.order - y.order)
+    .map((x) => x.b)
+    .filter((b) => b.id !== lastBy)
+  const cast: Bot[] = []
+  for (const b of [...named, ...quiet]) if (cast.length < size && !cast.includes(b)) cast.push(b)
+  return cast
+}
+
+/** The transcript with `note` added to its last (user) message. */
+function withNote(transcript: ChatMessage[], note: string): ChatMessage[] {
+  const last = transcript.at(-1)
+  if (!note || !last || last.role !== 'user') return transcript
+  return [...transcript.slice(0, -1), { ...last, content: `${last.content}\n\n${note}` }]
 }
 
 // ---------------------------------------------------------------- running a lobby
@@ -166,7 +217,8 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
 
 /**
  * One lobby's transcript and its running turns. `send` posts the user's line; the bots it names
- * (or all of them) answer in order, then they talk among themselves for up to `maxRounds` rounds.
+ * (or everyone, or in a big lobby a cast of `LOBBY_CAST`) answer in order, then they talk among
+ * themselves for up to `maxRounds` rounds, each taken by `pickCast`.
  * A round where everyone passes ends it. `stop` aborts the reply streaming now.
  */
 export class LobbyChat {
@@ -225,7 +277,7 @@ export class LobbyChat {
     const members = this.members
     if (!members.length) throw new Error('No one in this lobby can talk: add bots or turn them on.')
     const first = addressedBots(t, members)
-    return this.start(() => this.push({ role: 'user', content: t }), first.length ? first : members, this.lobby?.maxRounds ?? 3)
+    return this.start(() => this.push({ role: 'user', content: t }), first.length ? first : null, this.lobby?.maxRounds ?? 3, !first.length)
   }
 
   /** More rounds of the bots talking among themselves. */
@@ -233,16 +285,16 @@ export class LobbyChat {
     if (this.abort) throw new Error('The lobby is already talking.')
     if (!this.session.messages.length) throw new Error('Say something first.')
     if (!this.members.length) throw new Error('No one in this lobby can talk: add bots or turn them on.')
-    return this.start(() => {}, null, Math.max(1, this.lobby?.maxRounds ?? 3))
+    return this.start(() => {}, null, Math.max(1, this.lobby?.maxRounds ?? 3), false)
   }
 
-  private start(before: () => void, first: Bot[] | null, rounds: number): Promise<TurnEndReason> {
+  private start(before: () => void, first: Bot[] | null, rounds: number, answer: boolean): Promise<TurnEndReason> {
     const abort = (this.abort = new AbortController())
     this.skipped.clear()
     this.emit({ type: 'turn_start' })
     if (this.session.meta.title === 'New chat' && this.lobby) this.session.meta.title = this.lobby.name
     before()
-    const run = this.run(abort.signal, first, rounds).finally(() => {
+    const run = this.run(abort.signal, first, answer ? rounds + 1 : rounds, answer).finally(() => {
       this.abort = null
       this.current = null
     })
@@ -254,11 +306,11 @@ export class LobbyChat {
     })
   }
 
-  private async run(signal: AbortSignal, first: Bot[] | null, rounds: number): Promise<TurnEndReason> {
+  private async run(signal: AbortSignal, first: Bot[] | null, rounds: number, answer: boolean): Promise<TurnEndReason> {
     let spoke = 0
     let failed = 0
-    const take = async (bot: Bot): Promise<TurnResult> => {
-      const r = await this.turn(bot, signal)
+    const take = async (bot: Bot, answering = false): Promise<TurnResult> => {
+      const r = await this.turn(bot, signal, answering)
       if (r === 'spoke') spoke++
       else if (r === 'failed') failed++
       return r
@@ -267,16 +319,17 @@ export class LobbyChat {
     if (first) {
       for (const bot of first) {
         if (signal.aborted) return 'aborted'
-        await take(bot)
+        await take(bot, true)
       }
     }
+    // With no one named, the first round is the answer to the user (no one has a last line yet).
     for (let round = 0; round < rounds; round++) {
       let any = false
-      for (const bot of this.members) {
+      for (const bot of pickCast(this.session.messages, this.members)) {
         if (signal.aborted) return 'aborted'
         // Nothing new since its own last line: nothing to react to.
         if (lastSpeaker(this.session.messages) === bot.id) continue
-        if ((await take(bot)) === 'spoke') any = true
+        if ((await take(bot, answer && round === 0)) === 'spoke') any = true
       }
       if (signal.aborted) return 'aborted'
       if (!any) break
@@ -351,14 +404,14 @@ export class LobbyChat {
   }
 
   /** One bot's reply: its model, then the fallbacks. Streams text unless it's passing. */
-  private async turn(bot: Bot, signal: AbortSignal): Promise<TurnResult> {
+  private async turn(bot: Bot, signal: AbortSignal, answering = false): Promise<TurnResult> {
     const lobby = this.lobby
     if (!lobby) return 'failed'
     this.emit({ type: 'speaker', botId: bot.id })
     const members = this.members
     const messages: ChatMessage[] = [
       { role: 'system', content: lobbySystemPrompt(bot, lobby, members, this.settings.profile) },
-      ...lobbyTranscript(this.session.messages, bot, this.settings.bots),
+      ...withNote(lobbyTranscript(this.session.messages, bot, this.settings.bots), answering ? '' : windDownNote(this.session.messages)),
     ]
     const main = this.modelOf(bot)
     const chain = fallbackChain(main, this.settings.models.fallbacks, this.skipped)

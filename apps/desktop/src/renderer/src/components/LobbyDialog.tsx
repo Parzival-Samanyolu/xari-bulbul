@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import { newLobby } from '@harness/core/bots'
+import { LOBBY_ALL_ANSWER, LOBBY_CAST, newLobby } from '@harness/core/bots'
 import type { AppState, Settings } from '../../../shared/ipc'
 import { api } from '../lib/api'
 import { BotAvatar, StackedFaces } from './Bots'
@@ -192,8 +192,9 @@ export function LobbyDialog({ app, lobbyId, onClose, onState, onError }: Props) 
           </div>
           <span className="muted small" id={`${ids}-r-hint`}>
             {rounds === 0
-              ? 'Each bot answers you once, then they wait for you.'
+              ? 'The bots answer you once, then they wait for you.'
               : `After answering you, they react to each other for up to ${rounds} ${rounds === 1 ? 'round' : 'rounds'}. They stop early when nobody has anything to add.`}
+            {members.length > LOBBY_ALL_ANSWER && ` With more than ${LOBBY_ALL_ANSWER} bots, ${LOBBY_CAST} take each turn: the ones you name, then whoever has been quiet longest.`}
           </span>
         </div>
 

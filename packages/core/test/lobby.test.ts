@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { newBot, newLobby } from '../src/bots/bots.js'
-import { addressedBots, cleanReply, lastSpeaker, lobbySystemPrompt, lobbyTranscript, LobbyChat } from '../src/bots/lobby.js'
+import { addressedBots, cleanReply, lastSpeaker, lobbySystemPrompt, lobbyTranscript, LobbyChat, pickCast, windDownNote } from '../src/bots/lobby.js'
 import type { AgentEvent } from '../src/loop/agent.js'
 import { ProviderRegistry } from '../src/providers/registry.js'
 import type { StreamEvent } from '../src/providers/types.js'
@@ -234,3 +234,52 @@ describe('lobby settings', () => {
     expect(parseSettings({ lobbies: [{ id: 'l', maxRounds: 99 }] }).lobbies[0].maxRounds).toBe(3)
   })
 })
+
+describe('big lobbies', () => {
+  const crowd = ['Ana', 'Ben', 'Cy', 'Dee', 'Eli', 'Fay'].map((n) => bot(n))
+  const line = (b: Bot, content: string): ChatMessage => ({ role: 'assistant', content, speaker: { id: b.id, name: b.name } })
+
+  it('lets everyone take a round in a small lobby', () => {
+    expect(pickCast([], [ali, bea, cem])).toEqual([ali, bea, cem])
+  })
+
+  it('picks the named bots, then the quietest, never the last speaker', () => {
+    expect(pickCast([{ role: 'user', content: 'hi' }], crowd).map((b) => b.name)).toEqual(['Ana', 'Ben', 'Cy'])
+    const msgs: ChatMessage[] = [{ role: 'user', content: 'hi' }, line(crowd[0], 'A'), line(crowd[1], 'B'), line(crowd[2], 'C, what do you think, Fay?')]
+    expect(pickCast(msgs, crowd).map((b) => b.name)).toEqual(['Fay', 'Dee', 'Eli'])
+  })
+
+  it('answers with a cast of three and keeps the whole turn short', async () => {
+    const script = Array.from({ length: 30 }, (_, i) => say(`L${i}`))
+    const { chat, lines, provider, settings } = setup(script, { bots: crowd, maxRounds: 3 })
+    expect(settings.lobbies[0].maxRounds).toBe(3)
+    expect(await chat.send('hello everyone')).toBe('done')
+    // 3 answer the user, then 3 rounds of 3: 12 lines at most, not 6 + 3 x 6.
+    expect(provider.requests).toHaveLength(12)
+    const speakers = lines().slice(1).map((l) => l.split(':')[0])
+    expect(speakers.slice(0, 3)).toEqual(['Ana', 'Ben', 'Cy'])
+    expect(speakers.slice(3, 6)).toEqual(['Dee', 'Eli', 'Fay'])
+    expect(new Set(speakers).size).toBe(6)
+  })
+})
+
+describe('knowing when to stop', () => {
+  const line = (b: Bot, content: string): ChatMessage => ({ role: 'assistant', content, speaker: { id: b.id, name: b.name } })
+  it('says nothing while answering the user, then nudges, then asks to wrap up', () => {
+    expect(windDownNote([{ role: 'user', content: 'hi' }])).toBe('')
+    expect(windDownNote([{ role: 'user', content: 'hi' }, line(ali, 'a')])).toMatch(/1 line .*\[pass\]/)
+    const long: ChatMessage[] = [{ role: 'user', content: 'hi' }, ...Array.from({ length: 6 }, (_, i) => line(i % 2 ? ali : bea, `x${i}`))]
+    expect(windDownNote(long)).toMatch(/wind down/)
+    expect(windDownNote([...long, { role: 'user', content: 'new topic' }])).toBe('')
+  })
+
+  it('sends the note to the bot and asks it to let chats end', async () => {
+    const { chat, provider } = setup([say('A1'), say('B1'), say('A2')], { bots: [ali, bea], maxRounds: 1 })
+    await chat.send('hi')
+    expect(provider.requests[0].messages.at(-1)!.content).toBe('[You]: hi')
+    expect(provider.requests[1].messages.at(-1)!.content).not.toMatch(/since the user/)
+    expect(provider.requests[2].messages.at(-1)!.content).toMatch(/2 lines since/)
+    expect(provider.requests[0].messages[0].content).toMatch(/end on their own/)
+  })
+})
+
