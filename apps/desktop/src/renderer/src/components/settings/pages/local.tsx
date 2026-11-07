@@ -12,6 +12,8 @@ const ctxText = (n: number) => (n >= 1024 ? `${Math.round(n / 1024)}K` : String(
 const count = (n: number) => (n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${Math.round(n / 1e3)}K` : String(n))
 
 const FIT_TEXT: Record<Fit, string> = { fits: 'Fits this machine', tight: 'Tight fit: slow, crowds other apps', 'too-big': 'Too big for this machine' }
+/** Suffix for a context option: how it fits this machine. */
+const CHOICE_NOTE: Record<Fit, string> = { fits: '', tight: ' · tight, slower', 'too-big': ' · too big, may fail' }
 const FIT_CLASS: Record<Fit, string> = { fits: 'ok', tight: 'warn', 'too-big': 'bad' }
 
 function FitBadge({ fit }: { fit: Fit }) {
@@ -160,6 +162,20 @@ export function LocalModelsPage({ app, onState, onError }: PageProps) {
           <Row label="RAM">
             <span>{ram(machine.ram)}</span>
           </Row>
+          <Row label="Unload when idle" labelFor="local-unload" hint="Stops the local model after it sits unused, so its memory goes back to your other apps. It loads again on the next message.">
+            <select
+              id="local-unload"
+              value={status.unloadAfterMin == null ? 'never' : String(status.unloadAfterMin)}
+              onChange={(e) => act(api.local.setUnload(e.target.value === 'never' ? null : Number(e.target.value)))}
+            >
+              {[5, 15, 30, 60].map((n) => (
+                <option key={n} value={String(n)}>
+                  After {n} minutes
+                </option>
+              ))}
+              <option value="never">Never</option>
+            </select>
+          </Row>
         </div>
       </section>
 
@@ -202,7 +218,26 @@ export function LocalModelsPage({ app, onState, onError }: PageProps) {
               <p className="muted small local-desc">{m.description}</p>
               <div className="inline local-chips">
                 <FitBadge fit={m.fit} />
-                <span className="badge">Up to {ctxText(m.maxCtx)} context</span>
+                {m.installed ? (
+                  <label className="inline small local-ctx">
+                    <span className="muted">Context</span>
+                    <select
+                      aria-label={`Context size for ${m.name}`}
+                      value={m.auto ? 'auto' : String(m.ctx)}
+                      onChange={(e) => act(api.local.setContext(m.id, e.target.value === 'auto' ? null : Number(e.target.value)))}
+                    >
+                      <option value="auto">Auto · {ctxText(m.autoCtx)}</option>
+                      {m.choices.map((c) => (
+                        <option key={c.ctx} value={String(c.ctx)}>
+                          {ctxText(c.ctx)}
+                          {CHOICE_NOTE[c.fit]}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : (
+                  <span className="badge">Up to {ctxText(m.maxCtx)} context</span>
+                )}
                 {m.vision && <span className="badge">Sees images</span>}
                 {m.installed && <span className="badge">{gb(m.size)} on disk</span>}
               </div>
@@ -270,7 +305,7 @@ export function LocalModelsPage({ app, onState, onError }: PageProps) {
                 </p>
                 <div className="inline local-chips">
                   <FitBadge fit={p.fit} />
-                  {r.contextLength && <span className="badge">Up to {ctxText(Math.min(32_768, r.contextLength))} context</span>}
+                  {r.contextLength && <span className="badge">Up to {ctxText(Math.min(131_072, r.contextLength))} context</span>}
                   {p.mmproj && <span className="badge">Sees images</span>}
                 </div>
                 {download?.target === target && <Progress d={download} />}

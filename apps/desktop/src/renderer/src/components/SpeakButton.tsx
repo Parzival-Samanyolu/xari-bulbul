@@ -1,8 +1,8 @@
 import { useSyncExternalStore } from 'react'
-import { speaker } from '../lib/speech'
+import { speaker, type SpeakAs } from '../lib/speech'
 
 /** Play/stop for reading one assistant message aloud. */
-export function SpeakButton({ id, text }: { id: string; text: string }) {
+export function SpeakButton({ id, text, as }: { id: string; text: string; as?: SpeakAs }) {
   const playing = useSyncExternalStore(speaker.subscribe, () => speaker.playing === id)
   return (
     <button
@@ -10,7 +10,7 @@ export function SpeakButton({ id, text }: { id: string; text: string }) {
       className={`speak-btn${playing ? ' on' : ''}`}
       aria-label={playing ? 'Stop reading aloud' : 'Read aloud'}
       title={playing ? 'Stop reading aloud (Esc)' : 'Read aloud'}
-      onClick={() => speaker.toggle(id, text)}
+      onClick={() => speaker.toggle(id, text, as)}
     >
       {playing ? (
         <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>

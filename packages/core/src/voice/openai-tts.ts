@@ -11,6 +11,8 @@ export interface SpeechRequest {
   text: string
   /** 0.5–2. `tts-1` takes it as `speed`; `gpt-4o-mini-tts` ignores `speed`, so the caller plays it faster instead. */
   rate?: number
+  /** How to speak (tone, pace, accent); only gpt-4o-mini-tts takes it. */
+  instructions?: string
 }
 
 /** Whether the model honours the `speed` parameter (OpenAI documents it doesn't for gpt-4o-mini-tts). */
@@ -21,6 +23,7 @@ export function buildSpeechRequest(r: SpeechRequest): { url: string; init: Reque
   const body: Record<string, unknown> = { model: r.model, voice: r.voice?.trim() || OPENAI_DEFAULT_VOICE, input: r.text, response_format: 'mp3' }
   const rate = r.rate ?? 1
   if (rate !== 1 && speechModelTakesSpeed(r.model)) body.speed = rate
+  if (r.instructions?.trim() && !speechModelTakesSpeed(r.model)) body.instructions = r.instructions.trim().slice(0, 600)
   const headers: Record<string, string> = { ...r.provider.headers, 'Content-Type': 'application/json' }
   if (r.apiKey) headers.Authorization = `Bearer ${r.apiKey}`
   return { url: `${r.provider.baseUrl.replace(/\/+$/, '')}/audio/speech`, init: { method: 'POST', headers, body: JSON.stringify(body) } }

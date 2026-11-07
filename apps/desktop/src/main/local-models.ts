@@ -3,7 +3,8 @@
 
 import {
   CURATED_MODELS,
-  CONTEXT_STEPS,
+  CONTEXT_CHOICES,
+  contextChoices,
   LOCAL_PROVIDER_ID,
   LlamaServer,
   LocalLlamaProvider,
@@ -27,6 +28,7 @@ import {
   type ModelInfo,
   type ProviderConfig,
   type ProviderRegistry,
+  type Settings,
 } from '@harness/core'
 import os from 'node:os'
 import type { LocalDownload, LocalModelView, LocalStatus, UiEvent } from '../shared/ipc'
@@ -38,24 +40,64 @@ export interface LocalHost {
   /** Saves a new provider list; `rebuild` when the registry must see it (first registration). */
   setProviders: (list: ProviderConfig[], rebuild: boolean) => void
   retries: () => number
+  /** `settings.localModels`: chosen contexts and the idle unload time. */
+  options: () => Settings['localModels']
 }
 
-const MAX_CTX = CONTEXT_STEPS[0]
+const MAX_CTX = CONTEXT_CHOICES[0]
+const GiB = 1024 ** 3
 
 export class LocalModels {
   readonly server: LlamaServer
   private machine: MachineInfo | null = null
   private machineP: Promise<MachineInfo> | null = null
   private download: { ac: AbortController; progress: LocalDownload } | null = null
+  /** Requests in flight on the local server, and when the last one ended. */
+  private inUse = 0
+  private lastUse = Date.now()
+  private idleTimer: NodeJS.Timeout | null = null
 
   constructor(private readonly host: LocalHost) {
     this.server = new LlamaServer({
       onChange: (s) => {
         // Point the provider entry at the port in use (no registry rebuild: the provider reads the server directly).
         if (s.state === 'ready') this.host.setProviders(upsertLocalProvider(this.host.providers(), s.port), false)
+        if (s.state === 'ready' || s.state === 'starting') this.lastUse = Date.now()
         this.changed()
       },
     })
+    // A loaded model holds gigabytes; unload it when nothing has used it for a while.
+    this.idleTimer = setInterval(() => this.unloadIfIdle(), 30_000)
+    this.idleTimer.unref?.()
+  }
+
+  private unloadIfIdle() {
+    const after = this.host.options().unloadAfterMin
+    if (!after || this.inUse > 0 || this.server.state.state !== 'ready') return
+    if (Date.now() - this.lastUse >= after * 60_000) void this.server.stop()
+  }
+
+  /** Marks a request on the local server; the returned function ends it. */
+  private hold(): () => void {
+    this.inUse++
+    this.lastUse = Date.now()
+    let done = false
+    return () => {
+      if (done) return
+      done = true
+      this.inUse = Math.max(0, this.inUse - 1)
+      this.lastUse = Date.now()
+    }
+  }
+
+  /** The context the user chose for a model, if any. */
+  private chosen(id: string): number | null {
+    return this.host.options().context[id] ?? null
+  }
+
+  /** RAM llama-server may spend caching earlier prompts: none on small machines. */
+  private cacheRamMib(machine: MachineInfo): number {
+    return machine.ram >= 32 * GiB ? 2048 : machine.ram >= 16 * GiB ? 512 : 0
   }
 
   private machineInfo(): Promise<MachineInfo> {
@@ -80,13 +122,16 @@ export class LocalModels {
     const models: LocalModelView[] = CURATED_MODELS.map((m) => {
       const files = [m.weights, ...(m.mmproj ? [m.mmproj] : [])]
       const size = files.reduce((n, f) => n + f.size, 0)
-      const r = modelFit({ size, maxContext: m.contextLength, kvPerToken: m.kvPerToken }, machine)
+      const input = { size, maxContext: m.contextLength, kvPerToken: m.kvPerToken }
+      const r = modelFit(input, machine, this.chosen(m.id))
       const inst = installed.find((x) => x.id === m.id)
-      return { id: m.id, name: m.name, description: m.description, source: 'curated', size, ctx: r.ctx, maxCtx: Math.min(MAX_CTX, m.contextLength), vision: !!m.mmproj, fit: r.fit, installed: !!inst, partial: inst ? 0 : partialBytes(dataDir, files) }
+      return { id: m.id, name: m.name, description: m.description, source: 'curated', size, ctx: r.ctx, auto: !this.chosen(m.id), autoCtx: modelFit(input, machine).ctx, choices: contextChoices(input, machine), maxCtx: Math.min(MAX_CTX, m.contextLength), vision: !!m.mmproj, fit: r.fit, installed: !!inst, partial: inst ? 0 : partialBytes(dataDir, files) }
     })
     for (const a of readAdded(dataDir)) {
       const inst = installed.find((x) => x.id === a.id)
-      const r = modelFit({ size: a.size, maxContext: a.contextLength }, machine)
+      // Installed entries carry what the GGUF file says (context, KV size).
+      const input = { size: a.size, maxContext: inst?.contextLength ?? a.contextLength, kvPerToken: inst?.kvPerToken }
+      const r = modelFit(input, machine, this.chosen(a.id))
       const files = [a.weights, a.mmproj].filter((f) => !!f) as NonNullable<typeof a.weights>[]
       models.push({
         id: a.id,
@@ -95,14 +140,17 @@ export class LocalModels {
         source: a.source,
         size: a.size,
         ctx: r.ctx,
-        maxCtx: Math.min(MAX_CTX, a.contextLength || MAX_CTX),
+        auto: !this.chosen(a.id),
+        autoCtx: modelFit(input, machine).ctx,
+        choices: contextChoices(input, machine),
+        maxCtx: Math.min(MAX_CTX, input.maxContext || MAX_CTX),
         vision: a.vision,
         fit: r.fit,
         installed: !!inst,
         partial: inst ? 0 : partialBytes(dataDir, files),
       })
     }
-    return { runtime: llamaRuntimeStatus(dataDir), machine, models, server: this.server.state, download: this.download?.progress ?? null, dir: llamaDirs(dataDir).root }
+    return { runtime: llamaRuntimeStatus(dataDir), machine, models, server: this.server.state, download: this.download?.progress ?? null, dir: llamaDirs(dataDir).root, unloadAfterMin: this.host.options().unloadAfterMin }
   }
 
   /** Pushes a fresh status to the window. */
@@ -120,7 +168,7 @@ export class LocalModels {
       id: m.id,
       name: `${m.name} (local)`,
       providerId: LOCAL_PROVIDER_ID,
-      contextLength: modelFit({ size: m.size, maxContext: m.contextLength, kvPerToken: m.kvPerToken }, machine).ctx,
+      contextLength: modelFit({ size: m.size, maxContext: m.contextLength, kvPerToken: m.kvPerToken }, machine, this.chosen(m.id)).ctx,
       free: true,
       supportsTools: true,
       supportsImages: m.vision,
@@ -139,6 +187,7 @@ export class LocalModels {
         isReady: (id) => this.server.isReady(id),
         apiKey: this.server.apiKey,
         retries: this.host.retries(),
+        hold: () => this.hold(),
       }),
     )
   }
@@ -150,8 +199,16 @@ export class LocalModels {
     const runtime = llamaRuntimeStatus(this.host.dataDir)
     if (!runtime.binary) throw new Error('The local runtime is not installed. Install it in Settings › Models › Local models.')
     const machine = await this.machineInfo()
-    const ctx = modelFit({ size: model.size, maxContext: model.contextLength, kvPerToken: model.kvPerToken }, machine).ctx
-    return this.server.ensure({ bin: runtime.binary.path, modelId: model.id, model: model.file, mmproj: model.mmproj, ctx })
+    const ctx = modelFit({ size: model.size, maxContext: model.contextLength, kvPerToken: model.kvPerToken }, machine, this.chosen(model.id)).ctx
+    this.lastUse = Date.now()
+    return this.server.ensure({ bin: runtime.binary.path, modelId: model.id, model: model.file, mmproj: model.mmproj, ctx, cacheRamMib: this.cacheRamMib(machine) })
+  }
+
+  /** After the chosen context changed: reload the model if it's the one running, so it applies now. */
+  contextChanged(id: string) {
+    const st = this.server.state
+    if (st.state !== 'stopped' && st.state !== 'error' && st.modelId === id) this.ensure(id).catch(() => {})
+    this.changed()
   }
 
   /** Adds the provider entry once a model is on disk, so the picker shows it. */
@@ -249,6 +306,7 @@ export class LocalModels {
   }
 
   async dispose() {
+    if (this.idleTimer) clearInterval(this.idleTimer)
     this.download?.ac.abort()
     await this.server.stop()
   }

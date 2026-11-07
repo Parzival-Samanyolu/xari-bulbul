@@ -12,6 +12,7 @@ import { Question } from './Question'
 import { ProviderLogo } from './ProviderLogo'
 import { basename, modelLabel } from '../lib/format'
 import { SpeakButton } from './SpeakButton'
+import { speakerFor, type SpeakAs } from '../lib/speech'
 
 type ToolCallT = NonNullable<Extract<ChatMessage, { role: 'assistant' }>['toolCalls']>[number]
 
@@ -53,6 +54,9 @@ export function Chat(props: Props) {
 
 function OneChat({ app, live, onDismiss, onSettings, approval, question, onRetry, onContinue, onRevert, onEdit, onUndoMemory, onState, onError, onEditBot }: Props) {
   const session = app.session
+  // Memoized: a new object every render would re-render every message.
+  const chatVoice = useMemo(() => speakerFor(app), [app.session?.meta.botId, app.settings.bots])
+  const botVoices = useMemo(() => Object.fromEntries(app.settings.bots.map((b) => [b.id, b.voice ?? null])), [app.settings.bots])
   const scroller = useRef<HTMLDivElement>(null)
   const stick = useRef(true)
   const appearance = app.settings.appearance
@@ -182,6 +186,8 @@ function OneChat({ app, live, onDismiss, onSettings, approval, question, onRetry
               startsReply(i) && <div key={`s${i}`}>{speaker()}</div>,
               <AssistantMessage
                 key={i}
+                speakAs={chatVoice}
+                voices={botVoices}
                 message={m}
                 index={i}
                 tools={live.tools}
@@ -460,6 +466,10 @@ const AssistantMessage = memo(function AssistantMessage(props: {
   onRevert: (at: number, file?: string) => void
   /** Shows the read-aloud button (text to speech is on). */
   speakId?: string
+  /** The bot whose voice reads it: the lobby speaker, else the chat's bot. */
+  speakAs?: SpeakAs
+  /** Bots' voices by id, for lobby messages. */
+  voices?: Record<string, SpeakAs['voice']>
 }) {
   const { message: m, tools, results, displays, denied, approval, question, checkpoint, onRevert } = props
   return (
@@ -467,7 +477,7 @@ const AssistantMessage = memo(function AssistantMessage(props: {
       {m.reasoning && props.showReasoning && <Reasoning text={m.reasoning} />}
       {m.content && <Markdown text={m.content} />}
       {m.moa && <MixedFrom info={m.moa} />}
-      {m.content?.trim() && props.speakId && <SpeakButton id={props.speakId} text={m.content} />}
+      {m.content?.trim() && props.speakId && <SpeakButton id={props.speakId} text={m.content} as={m.speaker ? { botId: m.speaker.id, voice: props.voices?.[m.speaker.id] ?? null } : props.speakAs} />}
       {m.toolCalls?.map((c) => {
         const display = displays[c.id]
         const file = display?.kind === 'diff' && checkpoint && display.path in checkpoint.files ? display.path : undefined

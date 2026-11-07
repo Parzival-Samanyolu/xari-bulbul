@@ -107,7 +107,8 @@ describe('fit', () => {
 
   it('counts weights, KV cache and overhead', () => {
     const need = memoryNeeded({ size: 1e9, ctx: 1000, kvPerToken: 1000 })
-    expect(need).toBe(1e9 + 1e6 + 400 * 1024 ** 2 + 0.05e9)
+    // The KV cache is q8_0: 34/64 of the f16 size.
+    expect(need).toBe(Math.round(1e9 + 1e6 * (34 / 64) + 400 * 1024 ** 2 + 0.05e9))
   })
 
   it('shrinks the context until the model fits, but never above its own limit', () => {
@@ -351,7 +352,7 @@ describe('Hugging Face', () => {
 
   it('picks the biggest quant up to 5 bits that fits, with the smallest projector', () => {
     const r = parseRepo(repoJson)!
-    const small = pickQuant(r, { ram: 7 * GiB, unified: true, gpu: null })!
+    const small = pickQuant(r, { ram: 6.5 * GiB, unified: true, gpu: null })!
     expect(small.weights.file).toBe('Qwen3.5-4B-Q4_K_M.gguf')
     expect(small.mmproj?.file).toBe('mmproj-F16.gguf')
     expect(small.fit).toBe('fits')
@@ -387,8 +388,10 @@ describe('Hugging Face', () => {
 describe('serving', () => {
   it('builds llama-server arguments: localhost only, tool calling on', () => {
     expect(llamaServerArgs({ modelId: 'qwen3.5-4b', model: '/m/q.gguf', mmproj: '/m/p.gguf', port: 5123, ctx: 32768 })).toEqual([
-      '-m', '/m/q.gguf', '--host', '127.0.0.1', '--port', '5123', '--ctx-size', '32768', '--jinja', '--alias', 'qwen3.5-4b', '--no-webui', '--parallel', '1', '--mmproj', '/m/p.gguf',
+      '-m', '/m/q.gguf', '--host', '127.0.0.1', '--port', '5123', '--ctx-size', '32768', '--jinja', '--alias', 'qwen3.5-4b', '--no-webui', '--parallel', '1',
+      '--flash-attn', 'on', '--cache-type-k', 'q8_0', '--cache-type-v', 'q8_0', '--cache-ram', '0', '--ctx-checkpoints', '4', '--mmproj', '/m/p.gguf',
     ])
+    expect(llamaServerArgs({ modelId: 'x', model: '/x.gguf', port: 1, ctx: 4096, cacheRamMib: 512 })).toEqual(expect.arrayContaining(['--cache-ram', '512']))
     expect(llamaServerArgs({ modelId: 'x', model: '/x.gguf', port: 1, ctx: 4096 })).not.toContain('--mmproj')
   })
 

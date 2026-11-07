@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import { PATH_DRAG_TYPE } from './Panels'
 import { modelLabel } from '../lib/format'
 import { MicButton } from './MicButton'
+import { HandsFree } from './HandsFree'
 import { MakerLogo, ProviderLogo } from './ProviderLogo'
 import { ThinkingPicker } from './ThinkingPicker'
 import { moaOn, moaReady } from '@harness/core/moa'
@@ -315,6 +316,7 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
                 </svg>
               </button>
               <MicButton app={app} onText={(t) => onVoice.current(t)} onError={onError} />
+              <HandsFree app={app} send={(t) => void api.agent.send(t).catch(onError)} onError={onError} />
               <button className="chip model-chip" onClick={onOpenPicker} title={`Switch model (${app.platform === 'darwin' ? '⌘K' : 'Ctrl+K'})`}>
                 <span className={`dot ${ready ? 'ok' : 'bad'}`} aria-label={ready ? 'Provider ready' : 'Provider needs setup'} />
                 {model && <ProviderLogo id={model.providerId} size={13} />}

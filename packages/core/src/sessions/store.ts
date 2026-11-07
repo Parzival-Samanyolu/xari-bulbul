@@ -21,6 +21,8 @@ export interface SessionMeta {
   lobbyId?: string
   /** Set on chats a gateway runs, e.g. "imessage:+15551234567" (one chat per sender) or "whatsapp:self". */
   gateway?: string
+  /** When you started a new gateway chat (/new): this one stays in history and gets no more messages. */
+  gatewayEnded?: number
 }
 
 export interface Session {

@@ -298,7 +298,7 @@ describe('IMessageGateway', () => {
 
   it('defaults to off, Ask mode, nobody allowed', () => {
     const d = parseSettings({}).gateways.imessage
-    expect(d).toEqual({ enabled: false, senders: [], cwd: '', botId: null, mode: 'ask', pollSeconds: 5 })
+    expect(d).toEqual({ enabled: false, senders: [], cwd: '', botId: null, mode: 'ask', newChatAfterHours: null, pollSeconds: 5 })
   })
 
   it('starts at the newest message, then only takes new ones from allowed senders', async () => {

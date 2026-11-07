@@ -1227,6 +1227,32 @@ kbd {
 .icon-btn.mic:disabled {
   cursor: progress;
 }
+/* Hands-free: accent while on; a thin level bar on the right edge shows the mic hearing you. */
+.icon-btn.handsfree {
+  position: relative;
+  overflow: hidden;
+}
+.icon-btn.handsfree.on {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.handsfree-level {
+  position: absolute;
+  right: 2px;
+  bottom: 3px;
+  width: 2px;
+  height: calc(100% - 6px);
+  border-radius: 1px;
+  background: currentColor;
+  transform-origin: bottom;
+  transition: transform 80ms linear;
+}
+.icon-btn.handsfree.speaking .handsfree-level,
+.icon-btn.handsfree.thinking .handsfree-level,
+.icon-btn.handsfree.transcribing .handsfree-level {
+  opacity: 0;
+}
 .mic-status {
   display: inline-flex;
   align-items: center;
@@ -4068,6 +4094,30 @@ body.resizing * {
 .bot-head-list button.current {
   background: var(--accent-soft);
 }
+.bot-thread-row {
+  display: flex;
+  align-items: stretch;
+}
+.bot-head-list .bot-thread-open {
+  flex: 1;
+  min-width: 0;
+}
+.bot-head-list .bot-thread-delete {
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  padding: 0;
+  color: var(--muted);
+  opacity: 0;
+}
+.bot-thread-row:hover .bot-thread-delete,
+.bot-head-list .bot-thread-delete:focus-visible {
+  opacity: 1;
+}
+.bot-head-list .bot-thread-delete:hover {
+  color: var(--danger);
+}
 .bot-thread-title {
   flex: 1;
   min-width: 0;
@@ -4862,6 +4912,13 @@ body.resizing * {
 .local-chips {
   gap: 6px;
 }
+.local-ctx {
+  gap: 6px;
+}
+.local-ctx select {
+  padding-block: 2px;
+  font-size: inherit;
+}
 .local-server {
   margin-top: 8px;
   display: flex;
@@ -5221,4 +5278,30 @@ body.resizing * {
 .ld-rounds {
   grid-template-columns: repeat(5, 1fr);
   max-width: 320px;
+}
+
+/* Window not focused: freeze every animation where it is (see main.tsx), to save battery. */
+.app-resting *,
+.app-resting *::before,
+.app-resting *::after {
+  animation-play-state: paused !important;
+}
+
+/* Settings › Gateways › WhatsApp › Chats */
+.wa-chats {
+  list-style: none;
+  margin: 8px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.wa-chat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border);
+}
+.wa-chat:first-child {
+  border-top: none;
 }

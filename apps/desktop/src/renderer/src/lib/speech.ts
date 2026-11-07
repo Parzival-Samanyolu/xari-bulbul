@@ -8,6 +8,15 @@ import type { AppState, Settings, SpeechAudio } from '../../../shared/ipc'
 import { api } from './api'
 
 type TtsSettings = Settings['voice']['tts']
+export type BotVoice = NonNullable<Settings['bots'][number]['voice']>
+
+/** Who is speaking: a bot's voice (`botId` lets main look it up), or a voice being previewed. */
+export interface SpeakAs {
+  botId?: string | null
+  voice?: Partial<BotVoice> | null
+  /** The bot editor: send `voice` to main instead of the saved one. */
+  preview?: boolean
+}
 export type SpeechNotice = (level: 'info' | 'warn' | 'error', text: string) => void
 
 const errorText = (e: unknown) => String((e as Error)?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
@@ -39,6 +48,8 @@ class Speaker {
   /** `voice.tts` of the current settings; set by useSpeech on every render. */
   settings: TtsSettings | null = null
   onNotice: SpeechNotice | null = null
+  /** Hands-free mode reads replies itself; the automatic read-aloud stays quiet meanwhile. */
+  handsFree = false
 
   /** The id being read, or null. */
   get playing() {
@@ -76,13 +87,13 @@ class Speaker {
     end?.()
   }
 
-  toggle(id: string, markdown: string) {
+  toggle(id: string, markdown: string, as?: SpeakAs) {
     if (this.current === id) this.stop()
-    else void this.speak(id, markdown)
+    else void this.speak(id, markdown, { as })
   }
 
   /** Stops whatever is playing and reads `markdown` (code blocks and links shortened). */
-  async speak(id: string, markdown: string, opts: { notice?: SpeechNotice } = {}): Promise<void> {
+  async speak(id: string, markdown: string, opts: { notice?: SpeechNotice; as?: SpeakAs } = {}): Promise<void> {
     this.stop()
     const settings = this.settings
     if (!settings || settings.provider === 'off') return
@@ -92,8 +103,9 @@ class Speaker {
     const notice: SpeechNotice = (level, text) => (opts.notice ?? this.onNotice)?.(level, text)
     this.setCurrent(id)
     try {
-      if (settings.provider === 'system') await this.system(chunks, settings.voice, settings.rate, gen)
-      else await this.remote(chunks, gen)
+      const v = opts.as?.voice
+      if (settings.provider === 'system') await this.system(chunks, v?.system || settings.voice, v?.rate ?? settings.rate, gen, v?.pitch ?? 1)
+      else await this.remote(chunks, gen, opts.as)
     } catch (e) {
       if (gen === this.gen) notice('error', `Couldn't read this aloud: ${errorText(e)}`)
     } finally {
@@ -104,7 +116,7 @@ class Speaker {
     }
   }
 
-  private async system(chunks: string[], voiceId: string | null, rate: number, gen: number): Promise<void> {
+  private async system(chunks: string[], voiceId: string | null, rate: number, gen: number, pitch = 1): Promise<void> {
     const synth = window.speechSynthesis
     if (!synth) throw new Error('this system has no speech voice')
     const voices = voiceId ? await systemVoices() : []
@@ -120,6 +132,7 @@ class Speaker {
           u.lang = voice.lang
         }
         u.rate = rate
+        u.pitch = pitch
         u.onend = one
         // cancel() (stop) ends every queued utterance with an error, which also resolves.
         u.onerror = one
@@ -128,9 +141,10 @@ class Speaker {
     })
   }
 
-  private async remote(chunks: string[], gen: number): Promise<void> {
+  private async remote(chunks: string[], gen: number, as?: SpeakAs): Promise<void> {
+    const preview = as?.preview && as.voice ? { openai: as.voice.openai ?? null, rate: as.voice.rate ?? null, style: as.voice.style ?? '' } : undefined
     const fetchChunk = (text: string) => {
-      const p = api.tts.synthesize(text)
+      const p = api.tts.synthesize(text, as?.botId ?? null, preview)
       p.catch(() => {}) // awaited below; this only keeps an early failure from being "unhandled"
       return p
     }
@@ -177,6 +191,8 @@ export function useSpeech(app: AppState | null, notify: SpeechNotice) {
   speaker.onNotice = notify
   const shown = useRef<string | undefined>(undefined)
   shown.current = app?.session?.meta.id
+  const appRef = useRef(app)
+  appRef.current = app
   const readAloud = useRef(false)
   readAloud.current = !!tts && tts.readAloud && tts.provider !== 'off'
 
@@ -198,7 +214,7 @@ export function useSpeech(app: AppState | null, notify: SpeechNotice) {
       } else if (ev.type === 'turn_end') {
         const reply = replies.get(e.sessionId)
         replies.delete(e.sessionId)
-        if (reply && ev.reason === 'done' && readAloud.current && e.sessionId === shown.current) void speaker.speak(`${e.sessionId}:${reply.index}`, reply.text)
+        if (reply && ev.reason === 'done' && readAloud.current && !speaker.handsFree && e.sessionId === shown.current) void speaker.speak(`${e.sessionId}:${reply.index}`, reply.text, { as: speakerFor(appRef.current) })
       }
     })
     const onKey = (k: KeyboardEvent) => {
@@ -216,4 +232,11 @@ export function useSpeech(app: AppState | null, notify: SpeechNotice) {
       speaker.stop()
     }
   }, [])
+}
+
+/** The voice of the chat on screen: its bot's, when it has one. */
+export function speakerFor(app: AppState | null): SpeakAs | undefined {
+  const botId = app?.session?.meta.botId
+  const bot = botId ? app?.settings.bots.find((b) => b.id === botId) : undefined
+  return bot ? { botId: bot.id, voice: bot.voice ?? null } : undefined
 }

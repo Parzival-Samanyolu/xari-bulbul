@@ -5,6 +5,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
 import { checkDiskSpace, downloadResumable, type DownloadOptions } from './download.js'
+import { ggufInfo } from './gguf.js'
 import { llamaDirs } from './runtime.js'
 
 /** One file of a model, pinned. */
@@ -134,7 +135,9 @@ export function installedModels(dataDir: string): InstalledModel[] {
     if (!file || !exists(file)) continue
     const mmproj = m.mmproj ? modelFilePath(dataDir, m.mmproj) : null
     const hasProj = !!mmproj && exists(mmproj)
-    out.push({ id: m.id, name: m.name, source: m.source, file, mmproj: hasProj ? mmproj : null, size: m.size, contextLength: m.contextLength, vision: hasProj })
+    // The file's own metadata: exact KV size and trained context (cached, read once per file).
+    const g = ggufInfo(file)
+    out.push({ id: m.id, name: m.name, source: m.source, file, mmproj: hasProj ? mmproj : null, size: m.size, contextLength: m.contextLength ?? g?.contextLength ?? null, vision: hasProj, ...(g?.kvPerToken ? { kvPerToken: g.kvPerToken } : {}) })
   }
   return out
 }

@@ -21,8 +21,20 @@ export type Fit = 'fits' | 'tight' | 'too-big'
 const GiB = 1024 ** 3
 const KiB = 1024
 
-/** The context sizes offered, largest first. */
+/** The context sizes picked automatically, largest first. */
 export const CONTEXT_STEPS = [32_768, 16_384, 8_192, 4_096] as const
+
+/** The context sizes offered in the picker, largest first (capped at the model's own limit). */
+export const CONTEXT_CHOICES = [131_072, 65_536, 32_768, 16_384, 8_192, 4_096] as const
+
+/** Below this an agent can't work: the system prompt and tools alone take a few thousand tokens. */
+export const MIN_USEFUL_CONTEXT = 8_192
+
+/**
+ * llama-server runs with a q8_0 KV cache (with flash attention): 34 bytes per 32 values instead
+ * of 64 at f16, with no quality loss worth measuring. `kvPerToken` values are f16 bytes.
+ */
+export const KV_CACHE_FACTOR = 34 / 64
 
 /**
  * KV cache bytes per token when the model doesn't say. Bigger models have more layers and
@@ -34,7 +46,7 @@ export function defaultKvPerToken(fileBytes: number): number {
 
 /** Bytes needed to run: weights (and the image projector) + KV cache + compute buffers and runtime. */
 export function memoryNeeded(m: { size: number; ctx: number; kvPerToken?: number }): number {
-  const kv = (m.kvPerToken ?? defaultKvPerToken(m.size)) * m.ctx
+  const kv = (m.kvPerToken ?? defaultKvPerToken(m.size)) * KV_CACHE_FACTOR * m.ctx
   const overhead = 400 * 1024 ** 2 + m.size * 0.05
   return Math.round(m.size + kv + overhead)
 }
@@ -64,20 +76,38 @@ export interface FitInput {
   kvPerToken?: number
 }
 
-/** The largest offered context (up to the model's own limit) that fits; the smallest step when none does. */
+/**
+ * The largest automatic context (up to the model's own limit) that fits. When none of the useful
+ * ones (8K+) fits, 8K anyway if it runs at all: a 4K agent can't hold its own instructions. 4K only
+ * when the model is too big even for 8K.
+ */
 export function pickContext(model: FitInput, machine: Pick<MachineInfo, 'ram' | 'unified' | 'gpu'>): number {
   const max = model.maxContext || CONTEXT_STEPS[0]
   const steps = CONTEXT_STEPS.filter((c) => c <= max)
   if (!steps.length) return max
-  for (const ctx of steps) if (fitFor(memoryNeeded({ size: model.size, ctx, kvPerToken: model.kvPerToken }), machine) === 'fits') return ctx
+  const fit = (ctx: number) => fitFor(memoryNeeded({ size: model.size, ctx, kvPerToken: model.kvPerToken }), machine)
+  const useful = steps.filter((c) => c >= Math.min(MIN_USEFUL_CONTEXT, max))
+  for (const ctx of useful) if (fit(ctx) === 'fits') return ctx
+  const least = useful[useful.length - 1]
+  if (least && fit(least) === 'tight') return least
+  for (const ctx of steps) if (fit(ctx) === 'fits') return ctx
   return steps[steps.length - 1]
 }
 
-/** Fit at the context we'd run the model with. */
-export function modelFit(model: FitInput, machine: Pick<MachineInfo, 'ram' | 'unified' | 'gpu'>): { fit: Fit; ctx: number; needed: number } {
-  const ctx = pickContext(model, machine)
+/** Fit at the context we'd run the model with: `ctx` when the user chose one, else the automatic pick. */
+export function modelFit(model: FitInput, machine: Pick<MachineInfo, 'ram' | 'unified' | 'gpu'>, chosen?: number | null): { fit: Fit; ctx: number; needed: number } {
+  const limit = model.maxContext || CONTEXT_CHOICES[0]
+  const ctx = chosen && chosen > 0 ? Math.min(chosen, limit) : pickContext(model, machine)
   const needed = memoryNeeded({ size: model.size, ctx, kvPerToken: model.kvPerToken })
   return { fit: fitFor(needed, machine), ctx, needed }
+}
+
+/** Every context the picker offers for a model, with how each fits. */
+export function contextChoices(model: FitInput, machine: Pick<MachineInfo, 'ram' | 'unified' | 'gpu'>): { ctx: number; fit: Fit }[] {
+  const limit = model.maxContext || CONTEXT_STEPS[0]
+  const list = CONTEXT_CHOICES.filter((c) => c <= limit)
+  const all = list.length ? list : [limit]
+  return all.map((ctx) => ({ ctx, fit: fitFor(memoryNeeded({ size: model.size, ctx, kvPerToken: model.kvPerToken }), machine) }))
 }
 
 // ---------------------------------------------------------------------------------------------

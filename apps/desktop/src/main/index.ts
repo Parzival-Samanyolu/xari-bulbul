@@ -338,6 +338,7 @@ function registerIpc() {
   handle('whatsapp.pair', (phone: string) => c.whatsappPair(String(phone ?? '')))
   handle('whatsapp.unlink', () => c.whatsappUnlink())
   handle('whatsapp.test', () => c.whatsappTest())
+  handle('whatsapp.newChat', () => c.whatsappNewChat())
   handle('whatsapp.pickFolder', async () => {
     const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: 'Folder for the WhatsApp chat', defaultPath: c.state().workspace ?? undefined })
     return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]
@@ -362,7 +363,7 @@ function registerIpc() {
   handle('voice.download', () => c.downloadWhisper())
   handle('voice.cancelDownload', () => c.cancelWhisperDownload())
   handle('voice.remove', (what: string) => c.removeWhisper(what))
-  handle('tts.synthesize', (text: string) => c.synthesizeSpeech(text))
+  handle('tts.synthesize', (text: string, botId?: string | null, preview?: { openai?: string | null; rate?: number | null; style?: string }) => c.synthesizeSpeech(text, botId, preview))
   handle('local.status', () => c.local.status())
   handle('local.installRuntime', () => c.local.installRuntime())
   handle('local.removeRuntime', () => c.local.removeRuntime())
@@ -377,6 +378,8 @@ function registerIpc() {
   })
   handle('local.use', (id: string) => c.useLocalModel(id))
   handle('local.stop', () => c.local.stop())
+  handle('local.setContext', (id: string, ctx: number | null) => c.setLocalContext(String(id), ctx))
+  handle('local.setUnload', (minutes: number | null) => c.setLocalUnload(minutes))
   handle('app.track', (e: TrackEvent) => track(e))
   handle('app.reportError', (e: RendererError) => reportRendererError(e))
   handle('app.openExternal', (url: string) => {

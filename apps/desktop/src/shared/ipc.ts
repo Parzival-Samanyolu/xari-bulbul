@@ -179,9 +179,15 @@ export interface LocalModelView {
   source: 'curated' | 'hf' | 'file'
   /** Bytes: weights plus image projector. */
   size: number
-  /** Context the model would run with on this machine. */
+  /** Context the model runs with: the chosen one, else the automatic pick. */
   ctx: number
-  /** Most context offered (the model's limit, capped at 32K). */
+  /** No context chosen: `ctx` is picked for this machine. */
+  auto: boolean
+  /** What the automatic pick would be. */
+  autoCtx: number
+  /** The contexts the picker offers (up to the model's limit), with how each fits. */
+  choices: { ctx: number; fit: Fit }[]
+  /** Most context offered (the model's limit, capped at 128K). */
   maxCtx: number
   vision: boolean
   fit: Fit
@@ -207,6 +213,8 @@ export interface LocalStatus {
   download: LocalDownload | null
   /** `<data>/llama`. */
   dir: string
+  /** `settings.localModels.unloadAfterMin`. */
+  unloadAfterMin: number | null
 }
 
 /** Feature use the renderer reports for share info (main turns these into counters). */
@@ -365,6 +373,8 @@ export interface AppState {
   imessage: IMessageStatus
   /** The WhatsApp gateway: installing, linking (QR), connected… */
   whatsapp: WhatsAppStatus
+  /** WhatsApp chats, newest first; `current` gets your next message (one at most). `messages` is -1 when not loaded. */
+  whatsappChats: { id: string; title: string; createdAt: number; updatedAt: number; current: boolean; messages: number }[]
   paths: { data: string; sessions: string; usage: string }
 }
 
@@ -568,6 +578,8 @@ export interface HarnessApi {
     unlink(): Promise<AppState>
     /** Sends "Xarı Bülbül is connected." to your "Message yourself" chat. */
     test(): Promise<AppState>
+    /** Ends the current WhatsApp chat (kept in history); your next message starts a new one. */
+    newChat(): Promise<AppState>
     /** Folder picker that only returns the path. */
     pickFolder(): Promise<string | null>
   }
@@ -606,7 +618,7 @@ export interface HarnessApi {
   }
   tts: {
     /** One chunk of text → MP3 through the `voice.tts.openai` provider (the system voice plays in the page). */
-    synthesize(text: string): Promise<SpeechAudio>
+    synthesize(text: string, botId?: string | null, preview?: { openai?: string | null; rate?: number | null; style?: string }): Promise<SpeechAudio>
   }
   local: {
     status(): Promise<LocalStatus>
@@ -628,6 +640,10 @@ export interface HarnessApi {
     use(id: string): Promise<AppState>
     /** Stops the running llama-server. */
     stop(): Promise<LocalStatus>
+    /** Chooses a model's context size (null = automatic); reloads it if it's running. */
+    setContext(id: string, ctx: number | null): Promise<LocalStatus>
+    /** Minutes of idle time before llama-server is stopped (null = never). */
+    setUnload(minutes: number | null): Promise<LocalStatus>
   }
   app: {
     /** Counts a feature use for share info; nothing is sent while it's off. */

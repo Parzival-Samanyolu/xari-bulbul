@@ -58,7 +58,7 @@ const api: HarnessApi = {
   extensions: { reload: call('extensions.reload') as any, openDir: call('extensions.openDir') as any },
   skills: { remove: call('skills.remove') as any },
   schedules: { runNow: call('schedules.runNow') as any, pickFolder: call('schedules.pickFolder') as any },
-  whatsapp: { retry: call('whatsapp.retry') as any, pair: call('whatsapp.pair') as any, unlink: call('whatsapp.unlink') as any, test: call('whatsapp.test') as any, pickFolder: call('whatsapp.pickFolder') as any },
+  whatsapp: { retry: call('whatsapp.retry') as any, pair: call('whatsapp.pair') as any, unlink: call('whatsapp.unlink') as any, test: call('whatsapp.test') as any, newChat: call('whatsapp.newChat') as any, pickFolder: call('whatsapp.pickFolder') as any },
   imessage: { test: call('imessage.test') as any, check: call('imessage.check') as any, openPrivacy: call('imessage.openPrivacy') as any, pickFolder: call('imessage.pickFolder') as any },
   bots: { pickAvatar: call('bots.pickAvatar') as any, pickFolder: call('bots.pickFolder') as any, open: call('bots.open') as any, newThread: call('bots.newThread') as any, imageProvider: call('bots.imageProvider') as any, generateAvatar: call('bots.generateAvatar') as any, saveAvatar: call('bots.saveAvatar') as any },
   lobbies: { open: call('lobbies.open') as any, keepTalking: call('lobbies.keepTalking') as any },
@@ -82,6 +82,8 @@ const api: HarnessApi = {
     addFile: call('local.addFile') as any,
     use: call('local.use') as any,
     stop: call('local.stop') as any,
+    setContext: call('local.setContext') as any,
+    setUnload: call('local.setUnload') as any,
   },
   app: {
     track: call('app.track') as any,

@@ -115,3 +115,13 @@ describe('openai speech', () => {
     await expect(openaiSpeech({ provider, model: 'tts-1', text: '  ' })).rejects.toThrow(/Nothing/)
   })
 })
+
+describe('speaking style', () => {
+  it('sends instructions only to gpt-4o-mini-tts', () => {
+    const provider = { baseUrl: 'https://api.openai.com/v1', headers: {} }
+    const styled = JSON.parse(buildSpeechRequest({ provider, model: 'gpt-4o-mini-tts', voice: 'coral', text: 'hi', instructions: ' soft and shy ' }).init.body as string)
+    expect(styled.instructions).toBe('soft and shy')
+    const old = JSON.parse(buildSpeechRequest({ provider, model: 'tts-1', voice: 'coral', text: 'hi', instructions: 'soft' }).init.body as string)
+    expect(old.instructions).toBeUndefined()
+  })
+})

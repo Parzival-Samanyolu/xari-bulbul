@@ -21,11 +21,21 @@ export interface ServerSpec {
   model: string
   mmproj?: string | null
   ctx: number
+  /**
+   * MiB llama-server may keep of earlier prompts in RAM to switch between chats quickly. Its
+   * default is 8 GiB, a whole small Mac; 0 turns it off.
+   */
+  cacheRamMib?: number
 }
 
-/** Arguments for llama-server. `--jinja` uses the model's chat template, which is what makes tool calls work. */
+/**
+ * Arguments for llama-server. `--jinja` uses the model's chat template, which is what makes tool
+ * calls work. Memory: flash attention with a q8_0 KV cache halves the cache (see KV_CACHE_FACTOR),
+ * the prompt RAM cache is capped, and a hybrid model keeps a few context checkpoints, not 32.
+ */
 export function llamaServerArgs(spec: Omit<ServerSpec, 'bin'> & { port: number }): string[] {
   const args = ['-m', spec.model, '--host', '127.0.0.1', '--port', String(spec.port), '--ctx-size', String(spec.ctx), '--jinja', '--alias', spec.modelId, '--no-webui', '--parallel', '1']
+  args.push('--flash-attn', 'on', '--cache-type-k', 'q8_0', '--cache-type-v', 'q8_0', '--cache-ram', String(spec.cacheRamMib ?? 0), '--ctx-checkpoints', '4')
   if (spec.mmproj) args.push('--mmproj', spec.mmproj)
   return args
 }
@@ -107,7 +117,7 @@ export class LlamaServer {
 
   /** The base URL of a server running `spec`, starting or switching it first when needed. */
   ensure(spec: ServerSpec): Promise<string> {
-    const same = this.spec && this.spec.modelId === spec.modelId && this.spec.model === spec.model && this.spec.ctx === spec.ctx && this.spec.bin === spec.bin
+    const same = this.spec && this.spec.modelId === spec.modelId && this.spec.model === spec.model && this.spec.ctx === spec.ctx && this.spec.bin === spec.bin && this.spec.cacheRamMib === spec.cacheRamMib
     if (same && this.starting) return this.starting
     if (same && this.baseUrl()) return Promise.resolve(this.baseUrl()!)
     this.spec = spec
@@ -234,6 +244,8 @@ export interface LocalProviderOptions {
   apiKey: string
   retries?: number
   fetch?: typeof fetch
+  /** Called when a request starts; the returned function when it ends (for unloading an idle model). */
+  hold?: () => () => void
 }
 
 /** The agent's view of the local server: lists installed models, loads the requested one before each request. */
@@ -251,6 +263,15 @@ export class LocalLlamaProvider implements Provider {
   async *chat(req: ChatRequest): AsyncIterable<StreamEvent> {
     const known = this.opts.models().find((m) => m.id === req.model)
     if (!known) throw new Error(`${req.model} isn't downloaded. Download it in Settings › Models › Local models.`)
+    const release = this.opts.hold?.()
+    try {
+      yield* this.run(req, known)
+    } finally {
+      release?.()
+    }
+  }
+
+  private async *run(req: ChatRequest, known: ModelInfo): AsyncIterable<StreamEvent> {
     if (!this.opts.isReady(req.model)) yield { type: 'status', text: `Loading ${known.name} on this computer. This can take a few minutes.` }
     const url = await this.opts.ensure(req.model)
     if (this.inner?.url !== url) this.inner = { url, provider: new OpenAICompatProvider({ config: { ...this.opts.config, baseUrl: url }, apiKey: this.opts.apiKey, retries: this.opts.retries, fetch: this.opts.fetch }) }

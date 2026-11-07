@@ -300,6 +300,24 @@ function migrateBot(raw: unknown): unknown {
  * latest), never listed with the coding sessions. The persona sets its tone and style; safety,
  * permission and tool rules stay as they are.
  */
+/**
+ * A bot's voice. Voices are per engine because a system voice id means nothing to OpenAI and
+ * back. These are stock voices with a speaking style, not copies of anyone's real voice.
+ */
+export const BotVoiceSchema = z.object({
+  /** A system voice (its voice URI); null = the Settings › Voice one. */
+  system: z.string().max(200).nullable().default(null),
+  /** An OpenAI voice such as `coral`; null = the Settings › Voice one. */
+  openai: z.string().max(40).nullable().default(null),
+  /** Speed; null = the Settings › Voice rate. */
+  rate: z.number().min(0.5).max(2).nullable().default(null),
+  /** System voices only. */
+  pitch: z.number().min(0).max(2).default(1),
+  /** How to deliver lines (gpt-4o-mini-tts `instructions`), e.g. "soft, shy, a little giggly". */
+  style: z.string().max(600).default(''),
+})
+export type BotVoice = z.infer<typeof BotVoiceSchema>
+
 export const BotSchema = z.preprocess(
   migrateBot,
   z.object({
@@ -331,6 +349,8 @@ export const BotSchema = z.preprocess(
     muted: z.boolean().default(false),
     /** Folder its new chats run in. null = the folder on screen when the chat starts. */
     cwd: z.string().nullable().default(null),
+    /** How it sounds when replies are read aloud and in hands-free mode. Unset = Settings › Voice. */
+    voice: BotVoiceSchema.optional().catch(undefined),
   }),
 )
 export type Bot = z.infer<typeof BotSchema>
@@ -568,6 +588,8 @@ export const SettingsSchema = z.object({
           botId: z.string().nullable().default(null),
           /** Ask by default, so approvals come back to the app. */
           mode: z.enum(PERMISSION_MODES).default('ask'),
+          /** Start a fresh chat when a message arrives after this many quiet hours (a daily reset). null = keep one chat. */
+          newChatAfterHours: z.number().min(1).max(24 * 30).nullable().catch(null).default(null),
           pollSeconds: z.number().int().min(2).max(300).default(5),
         })
         .prefault({}),
@@ -584,6 +606,8 @@ export const SettingsSchema = z.object({
           /** A bot for the chat (only while bots are on). */
           botId: z.string().nullable().default(null),
           mode: z.enum(PERMISSION_MODES).default('ask'),
+          /** Start a fresh chat when a message arrives after this many quiet hours (a daily reset). null = keep one chat. */
+          newChatAfterHours: z.number().min(1).max(24 * 30).nullable().catch(null).default(null),
           /** Starts every reply, so replies read as the bot's in your own chat. Messages starting with it are never prompts. */
           prefix: z.string().max(40).default('🌸 '),
         })
@@ -596,6 +620,16 @@ export const SettingsSchema = z.object({
     .object({
       /** Delete chats not touched for this many days. null = keep them forever. */
       retentionDays: z.number().int().min(1).max(3650).nullable().default(null),
+    })
+    .prefault({}),
+
+  /** Settings › Models › Local models (llama.cpp). */
+  localModels: z
+    .object({
+      /** Context size per local model id; missing = picked automatically for this machine. */
+      context: z.record(z.string(), z.number().int().min(2048).max(1_048_576)).catch({}).default({}),
+      /** Stop llama-server after this many idle minutes, freeing its memory. null = keep it loaded. */
+      unloadAfterMin: z.number().int().min(1).max(1440).nullable().catch(15).default(15),
     })
     .prefault({}),
 

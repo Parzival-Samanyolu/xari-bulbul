@@ -7,6 +7,7 @@ import { api } from '../lib/api'
 import { basename } from '../lib/format'
 import { Markdown } from '../lib/Markdown'
 import { pixelatePicture, spritePng, type PixelPng } from '../lib/pixel-art'
+import { BotVoiceFields } from './BotVoiceFields'
 import { BotFaceView, type BotMood } from './BotFace'
 import { MODES } from './Composer'
 import { ModelChoice } from './settings/common'
@@ -559,6 +560,8 @@ export function BotDialog({ app, botId, onClose, onState }: Props) {
                 </div>
               </>,
             )}
+
+            {section('voice', 'Voice', 'How replies sound when read aloud and in hands-free mode.', <BotVoiceFields app={app} bot={draft} onChange={(voice) => set({ voice })} />)}
 
             {section(
               'abilities',

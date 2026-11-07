@@ -68,6 +68,9 @@ export function IMessagePage({ app, save, onState, onError }: PageProps) {
           <Select<PermissionMode> label="Permission mode" value={g.mode} options={MODES.map((m) => ({ value: m.id, label: m.label }))} onChange={(v) => save((s) => ((s.gateways.imessage.mode = v), s))} />
         </Row>
         {g.mode !== 'ask' && <div className="notice notice-warn small">With {MODES.find((m) => m.id === g.mode)?.label}, a text can make the agent {g.mode === 'plan' ? 'read your files' : 'change files or run commands'} without you seeing it first.</div>}
+        <Row label="Start fresh" hint="After this many quiet hours, a sender's next text starts a new chat, like a daily reset. Texting /new does it any time.">
+          <QuietHours value={g.newChatAfterHours} onChange={(v) => save((s) => ((s.gateways.imessage.newChatAfterHours = v), s))} />
+        </Row>
         <Row label="Check for new texts every" hint="Seconds between reads of the Messages database.">
           <NumberField label="Seconds" value={g.pollSeconds} min={2} max={300} onChange={(v) => v && save((s) => ((s.gateways.imessage.pollSeconds = Math.round(v)), s))} />
         </Row>
@@ -268,7 +271,70 @@ export function WhatsAppPage({ app, save, onState, onError }: PageProps) {
           <TextField label="Reply prefix" value={g.prefix} onChange={(v) => save((s) => ((s.gateways.whatsapp.prefix = v.slice(0, 40)), s))} />
         </Row>
       </Section>
+
+      <WhatsAppChats app={app} save={save} onState={onState} onError={onError} />
     </>
+  )
+}
+
+const QUIET_HOURS = [2, 4, 8, 12, 24, 48]
+
+/** "Never" or a number of quiet hours after which a gateway chat starts over. */
+function QuietHours({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
+  const options = [{ value: '', label: 'Never: keep one chat' }, ...QUIET_HOURS.map((h) => ({ value: String(h), label: h % 24 === 0 ? `After ${h / 24} day${h === 24 ? '' : 's'} quiet` : `After ${h} hours quiet` }))]
+  if (value && !QUIET_HOURS.includes(value)) options.push({ value: String(value), label: `After ${value} hours quiet` })
+  return <Select label="Start fresh" value={value ? String(value) : ''} options={options} onChange={(v) => onChange(v ? Number(v) : null)} />
+}
+
+const day = (ts: number) => new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: new Date(ts).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' })
+
+/** The current WhatsApp chat and earlier ones: start a new one, delete old ones. */
+function WhatsAppChats({ app, save, onState, onError }: Pick<PageProps, 'app' | 'save' | 'onState' | 'onError'>) {
+  const chats = app.whatsappChats
+  const earlier = chats.filter((c) => !c.current)
+  const current = chats.find((c) => c.current)
+  const remove = (id: string, title: string) => confirm(`Delete “${title}”? This can't be undone.`) && api.sessions.remove(id).then(onState, onError)
+  const removeEarlier = () => {
+    if (!confirm(`Delete ${earlier.length} earlier WhatsApp chat${earlier.length === 1 ? '' : 's'}? This can't be undone.`)) return
+    earlier.reduce<Promise<unknown>>((p, c) => p.then(() => api.sessions.remove(c.id).then(onState)), Promise.resolve()).catch(onError)
+  }
+  return (
+    <Section title="Chats" description="Your messages go to the current chat. Start a new one here, or text /new on WhatsApp. Earlier chats stay until you delete them.">
+      <Row label="Current chat" hint={current ? `Since ${day(current.createdAt)}` : 'None yet. Your next message starts one.'}>
+        <div className="inline">
+          {current && <span className="small">{current.title}</span>}
+          <button className="btn" disabled={!current} onClick={() => api.whatsapp.newChat().then(onState, onError)}>
+            New chat
+          </button>
+        </div>
+      </Row>
+      <Row label="Start fresh" hint="After this many quiet hours, your next message starts a new chat, like a daily reset. The bot still remembers you through its memory.">
+        <QuietHours value={app.settings.gateways.whatsapp.newChatAfterHours} onChange={(v) => save((s) => ((s.gateways.whatsapp.newChatAfterHours = v), s))} />
+      </Row>
+      {earlier.length > 0 && (
+        <>
+          <ul className="wa-chats" aria-label="Earlier WhatsApp chats">
+            {earlier.map((c) => (
+              <li key={c.id} className="wa-chat">
+                <span className="grow">{c.title}</span>
+                <span className="muted small">
+                  {day(c.createdAt)}
+                  {c.updatedAt - c.createdAt > 86_400_000 ? ` – ${day(c.updatedAt)}` : ''}
+                </span>
+                <button className="link danger small" aria-label={`Delete ${c.title}, ${day(c.updatedAt)}`} onClick={() => remove(c.id, c.title)}>
+                  Delete
+                </button>
+              </li>
+            ))}
+          </ul>
+          {earlier.length > 1 && (
+            <button className="link danger small" onClick={removeEarlier}>
+              Delete all {earlier.length} earlier chats
+            </button>
+          )}
+        </>
+      )}
+    </Section>
   )
 }
 

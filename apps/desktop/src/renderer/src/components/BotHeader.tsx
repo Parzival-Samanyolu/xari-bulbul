@@ -74,6 +74,21 @@ export function BotHeader({ app, bot, running, talking, awaiting, onState, onErr
     else if (e.key === 'Tab') close(false)
   }
   const newThread = () => api.bots.newThread(bot.id).then(onState, onError)
+  /** Deletes one conversation; deleting the one on screen moves to the next one (or a fresh one). */
+  const removeThread = async (t: (typeof threads)[number]) => {
+    if (!confirm(`Delete the conversation “${t.title}” with ${bot.name}? This can't be undone.`)) return
+    const wasCurrent = t.id === current
+    const next = threads.find((x) => x.id !== t.id)
+    try {
+      onState(await api.sessions.remove(t.id))
+      if (wasCurrent) {
+        close()
+        onState(await (next ? api.sessions.open(next.id) : api.bots.newThread(bot.id)))
+      }
+    } catch (e) {
+      onError(e)
+    }
+  }
 
   return (
     <header className={`bot-head ${bot.enabled ? '' : 'off'}`} style={{ '--bot': botColor(bot) } as CSSProperties}>
@@ -131,21 +146,27 @@ export function BotHeader({ app, bot, running, talking, awaiting, onState, onErr
                 Conversations
               </div>
             )}
-            {threads.slice(0, 12).map((t) => (
-              <button
-                key={t.id}
-                role="menuitemradio"
-                aria-checked={t.id === current}
-                className={t.id === current ? 'current' : ''}
-                title={t.preview || t.title}
-                onClick={() => {
-                  close()
-                  if (t.id !== current) api.sessions.open(t.id).then(onState, onError)
-                }}
-              >
-                <span className="bot-thread-title">{t.title}</span>
-                <span className="muted small">{ago(t.updatedAt)}</span>
-              </button>
+            {threads.slice(0, 30).map((t) => (
+              <div key={t.id} className="bot-thread-row" role="none">
+                <button
+                  role="menuitemradio"
+                  aria-checked={t.id === current}
+                  className={`bot-thread-open ${t.id === current ? 'current' : ''}`}
+                  title={t.preview || t.title}
+                  onClick={() => {
+                    close()
+                    if (t.id !== current) api.sessions.open(t.id).then(onState, onError)
+                  }}
+                >
+                  <span className="bot-thread-title">{t.title}</span>
+                  <span className="muted small">{ago(t.updatedAt)}</span>
+                </button>
+                <button role="menuitem" className="bot-thread-delete" aria-label={`Delete conversation “${t.title}”`} title="Delete conversation" onClick={() => removeThread(t)}>
+                  <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden>
+                    <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
+                </button>
+              </div>
             ))}
           </div>
         )}

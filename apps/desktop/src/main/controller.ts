@@ -284,6 +284,7 @@ export class AppController {
         this.pushState()
       },
       retries: () => this.settings.agent.requestRetries,
+      options: () => this.settings.localModels,
     })
     // A llama-server must not outlive the app, even when quitting skips dispose().
     process.once('exit', () => this.local.server.killNow())
@@ -661,9 +662,12 @@ export class AppController {
    * renderer). `playbackRate` is what the renderer should play it at: 1 when the service
    * already applied `voice.tts.rate`.
    */
-  async synthesizeSpeech(text: string): Promise<SpeechAudio> {
+  async synthesizeSpeech(text: string, botId?: string | null, preview?: { openai?: string | null; rate?: number | null; style?: string }): Promise<SpeechAudio> {
     if (typeof text !== 'string' || !text.trim()) throw new Error('Nothing to say.')
-    const tts = this.settings.voice.tts
+    // A bot's own voice, or (from the bot editor) the voice being tried before it's saved.
+    const own = preview ?? (botId ? this.settings.bots.find((b) => b.id === botId)?.voice : undefined)
+    const base = this.settings.voice.tts
+    const tts = { ...base, voice: own?.openai || base.voice, rate: own?.rate ?? base.rate }
     const input = text.slice(0, 2000)
     if (tts.provider !== 'openai') throw new Error('Choose OpenAI under Settings › Agent › Text to speech.')
     const providerId = tts.openai.providerId
@@ -671,7 +675,7 @@ export class AppController {
     if (!config || config.api !== 'openai') throw new Error('Choose a provider for speech in Settings › Agent › Text to speech.')
     if (!this.isReady(providerId)) throw new Error(`Add a ${config.name} API key in Settings › Providers › API keys.`)
     const audio = await openaiSpeech(
-      { provider: config, apiKey: this.activeKey(providerId), model: tts.openai.model, voice: tts.voice, text: input, rate: tts.rate },
+      { provider: config, apiKey: this.activeKey(providerId), model: tts.openai.model, voice: tts.voice, text: input, rate: tts.rate, instructions: own?.style },
       { signal: AbortSignal.timeout(60_000) },
     )
     return { audio, mediaType: 'audio/mpeg', playbackRate: speechModelTakesSpeed(tts.openai.model) ? 1 : tts.rate }
@@ -989,9 +993,22 @@ export class AppController {
     const cfg = this.settings.gateways[kind]
     const label = kind === 'imessage' ? 'iMessage' : 'WhatsApp'
     const tag = `${kind}:${sender}`
-    let running = [...this.agents.values()].find((r) => r.agent.session.meta.gateway === tag)
+    // "/new" from the phone: the next message starts a fresh chat; this one stays in history.
+    if (/^\/(new|reset)\s*$/i.test(text.trim())) {
+      this.endGatewayChat(tag)
+      this.pushState()
+      return 'Started a new chat. Your next message begins it.'
+    }
+    // A daily reset: after enough quiet hours, this message starts a fresh chat.
+    const quietMs = cfg.newChatAfterHours ? cfg.newChatAfterHours * 3_600_000 : 0
+    if (quietMs) {
+      const live = [...this.agents.values()].find((r) => r.agent.session.meta.gateway === tag && !r.agent.session.meta.gatewayEnded)
+      const last = live ? (live.agent.running ? Date.now() : live.agent.session.meta.updatedAt) : this.sessionMetas().find((m) => m.gateway === tag && !m.gatewayEnded && !this.removed.has(m.id))?.updatedAt
+      if (last && Date.now() - last >= quietMs) this.endGatewayChat(tag)
+    }
+    let running = [...this.agents.values()].find((r) => r.agent.session.meta.gateway === tag && !r.agent.session.meta.gatewayEnded)
     if (!running) {
-      const meta = this.sessionMetas().find((m) => m.gateway === tag && !this.removed.has(m.id))
+      const meta = this.sessionMetas().find((m) => m.gateway === tag && !m.gatewayEnded && !this.removed.has(m.id))
       const saved = meta ? this.store.load(meta.id) : null
       if (saved) {
         running = this.createAgent(saved, await this.toolsFor(saved.meta.cwd.normalize('NFC')))
@@ -1032,6 +1049,50 @@ export class AppController {
     if (reason === 'done') return reply ?? null
     const why = ({ error: 'stopped with an error', aborted: 'was stopped', max_steps: 'hit the step limit', budget: 'hit the budget limit', repeating: 'kept repeating itself' } as const)[reason]
     return `${reply ? `${reply}\n\n` : ''}(The turn ${why}. Open Xarı Bülbül to see it.)`
+  }
+
+  /** Ends the gateway chat for `tag`, if there is one: it stays in history, and the next message starts a new one. */
+  private endGatewayChat(tag: string): boolean {
+    const now = Date.now()
+    let ended = false
+    for (const r of this.agents.values()) {
+      const meta = r.agent.session.meta
+      if (meta.gateway !== tag || meta.gatewayEnded) continue
+      meta.gatewayEnded = now
+      if (r.agent.session.messages.length) this.store.save(r.agent.session)
+      this.index?.set(meta.id, { ...meta })
+      ended = true
+    }
+    for (const m of this.sessionMetas()) {
+      if (m.gateway !== tag || m.gatewayEnded || this.agents.has(m.id)) continue
+      const saved = this.store.load(m.id)
+      if (!saved) continue
+      saved.meta.gatewayEnded = now
+      this.store.save(saved)
+      this.index?.set(m.id, { ...saved.meta })
+      ended = true
+    }
+    return ended
+  }
+
+  /** Settings › Gateways › WhatsApp › New chat. */
+  whatsappNewChat(): AppState {
+    this.endGatewayChat('whatsapp:self')
+    return this.state()
+  }
+
+  /** WhatsApp chats, newest first: the current one, then earlier ones. */
+  private whatsappChats(): AppState['whatsappChats'] {
+    const seen = new Set<string>()
+    const out: AppState['whatsappChats'] = []
+    const add = (m: SessionMeta, count: number) => {
+      if (seen.has(m.id) || this.removed.has(m.id) || m.gateway !== 'whatsapp:self') return
+      seen.add(m.id)
+      out.push({ id: m.id, title: m.title, createdAt: m.createdAt, updatedAt: m.updatedAt, current: !m.gatewayEnded, messages: count })
+    }
+    for (const r of this.agents.values()) add(r.agent.session.meta, r.agent.session.messages.filter((x) => x.role === 'user' && !x.synthetic).length)
+    for (const m of this.sessionMetas()) add(m, -1)
+    return out.sort((a, b) => b.updatedAt - a.updatedAt)
   }
 
   /** The tools and skills a chat in `cwd` gets: that folder's extensions plus MCP tools. */
@@ -1691,6 +1752,28 @@ export class AppController {
   }
 
   /** Makes a downloaded local model the default for new chats and the chat on screen, and starts loading it. */
+  /** Chooses a local model's context (null = automatic) and reloads it if it's running. */
+  async setLocalContext(id: string, ctx: number | null) {
+    const context = { ...this.settings.localModels.context }
+    if (ctx == null) delete context[id]
+    else if (Number.isInteger(ctx) && ctx >= 2048 && ctx <= 1_048_576) context[id] = ctx
+    else throw new Error('Choose a context size from the list.')
+    this.settings = { ...this.settings, localModels: { ...this.settings.localModels, context } }
+    this.saveSettings()
+    this.local.contextChanged(id)
+    // The picker shows each model's context, and compaction follows it.
+    await this.registry.models(LOCAL_PROVIDER_ID, { refresh: true }).catch(() => [])
+    this.pushState()
+    return this.local.status()
+  }
+
+  async setLocalUnload(minutes: number | null) {
+    const unloadAfterMin = minutes == null ? null : Math.min(1440, Math.max(1, Math.round(Number(minutes)) || 15))
+    this.settings = { ...this.settings, localModels: { ...this.settings.localModels, unloadAfterMin } }
+    this.saveSettings()
+    return this.local.status()
+  }
+
   useLocalModel(id: string): AppState {
     if (!this.local.hasModel(id)) throw new Error(`${id} isn't downloaded.`)
     const ref = { providerId: LOCAL_PROVIDER_ID, modelId: id }
@@ -2005,6 +2088,7 @@ export class AppController {
       lobbies: this.lobbyRows(),
       imessage: this.imessage.status(),
       whatsapp: this.whatsapp.status(),
+      whatsappChats: this.whatsappChats(),
       paths: this.paths,
     }
   }
