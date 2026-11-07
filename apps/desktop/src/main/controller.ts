@@ -133,6 +133,7 @@ const MAX_ATTACHMENTS = 10
 /** MCP bearer tokens live next to API keys, under their own prefix. */
 const mcpSecretId = (serverId: string) => `mcp:${serverId}`
 
+/** Built-in slash commands; the composer shows their descriptions from `chat.slash.*` in the interface language. */
 const BUILTIN_COMMANDS = [
   { name: 'compact', description: 'Summarize older messages to free up context', source: 'builtin' as const },
   { name: 'clear', description: 'Start a new chat', source: 'builtin' as const },

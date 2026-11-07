@@ -32,6 +32,9 @@ interface Pending extends AttachmentInput {
 let attachId = 0
 const IMAGE = /^image\/(png|jpeg|gif|webp)$/
 
+/** Descriptions of the built-in slash commands (main sends them in English). */
+const BUILTIN_DESCRIPTIONS = { compact: 'chat.slash.compact', clear: 'chat.slash.clear', model: 'chat.slash.model', mode: 'chat.slash.mode' } as const
+
 function readAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader()
@@ -267,7 +270,7 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
           {matches.map((c, i) => (
             <button key={c.name} className={i === sel ? 'sel' : ''} onMouseEnter={() => setSel(i)} onClick={() => (c.source === 'builtin' ? submit(`/${c.name}`) : setText(`/${c.name} `))}>
               <span className="slash-name">/{c.name}</span>
-              <span className="muted">{c.description}</span>
+              <span className="muted">{c.source === 'builtin' && c.name in BUILTIN_DESCRIPTIONS ? t(BUILTIN_DESCRIPTIONS[c.name as keyof typeof BUILTIN_DESCRIPTIONS]) : c.description}</span>
               {c.source !== 'builtin' && <span className="badge">{c.source}</span>}
             </button>
           ))}
