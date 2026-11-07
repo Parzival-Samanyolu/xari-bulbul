@@ -347,9 +347,10 @@ function WhatsAppChats({ app, save, onState, onError }: Pick<PageProps, 'app' | 
               </li>
             ))}
           </ul>
+          {/* A single earlier chat has only its own Delete button. */}
           {earlier.length > 1 && (
             <button className="link danger small" onClick={removeEarlier}>
-              {earlier.length === 1 ? t('settings.gateways.deleteEarlierOne') : t('settings.gateways.deleteEarlier', { count: earlier.length })}
+              {t('settings.gateways.deleteEarlier', { count: earlier.length })}
             </button>
           )}
         </>

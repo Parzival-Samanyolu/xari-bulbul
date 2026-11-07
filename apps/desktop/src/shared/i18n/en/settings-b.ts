@@ -331,9 +331,8 @@ export default {
   'settings.gateways.waStartFreshHint': 'After this many quiet hours, your next message starts a new chat, like a daily reset. The bot still remembers you through its memory.',
   'settings.gateways.earlierChats': 'Earlier WhatsApp chats',
   'settings.gateways.deleteChatLabel': 'Delete {title}, {date}',
-  'settings.gateways.deleteEarlierOne': 'Delete the earlier chat',
-  // Two or more chats (one chat uses deleteEarlierOne); `one` is still needed for counts like 21 in Russian.
-  'settings.gateways.deleteEarlier': { one: 'Delete all {count} earlier chats', other: 'Delete all {count} earlier chats' },
+  // Shown for two or more earlier chats; the count stays in every form.
+  'settings.gateways.deleteEarlier': { one: 'Delete earlier chats ({count})', other: 'Delete earlier chats ({count})' },
   'settings.gateways.linkAccount': 'Link your account',
   'settings.gateways.needsNode': 'Install Node.js 20+ to use WhatsApp.',
   'settings.gateways.downloadNode': 'Download Node.js',
