@@ -104,6 +104,7 @@ To add a provider, go to **Settings › Providers › Custom endpoints**, choose
 - local Ollama: `http://localhost:11434/v1`
 - LM Studio
 - DeepSeek
+- Demon Route: `https://api.demonroute.com/v1`
 - vLLM
 
 ## Project layout

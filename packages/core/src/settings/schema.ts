@@ -162,6 +162,7 @@ export const PROVIDER_PRESETS: Omit<ProviderConfig, 'enabled' | 'headers' | 'req
   { id: 'ollama-local', name: 'Ollama (local)', baseUrl: 'http://localhost:11434/v1', requiresKey: false },
   { id: 'lmstudio', name: 'LM Studio', baseUrl: 'http://localhost:1234/v1', requiresKey: false },
   { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', requiresKey: true },
+  { id: 'demonroute', name: 'Demon Route', baseUrl: 'https://api.demonroute.com/v1', requiresKey: true },
 ]
 
 /** Google's native API root 404s for OpenAI-style requests; only its `/v1beta/openai` path speaks that protocol. */
