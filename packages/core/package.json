@@ -15,7 +15,8 @@
     "./mcp-presets": "./src/mcp/presets.ts",
     "./voice": "./src/voice/transcribe.ts",
     "./wav": "./src/voice/wav.ts",
-    "./speech": "./src/voice/speech-text.ts"
+    "./speech": "./src/voice/speech-text.ts",
+    "./i18n": "./src/i18n/index.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

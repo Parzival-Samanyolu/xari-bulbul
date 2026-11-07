@@ -721,6 +721,8 @@ export const SettingsSchema = z.object({
       sendWithEnter: z.boolean().default(true),
       /** basic: sidebar and chat. elite: also a right panel (files, changes) and a bottom terminal, open at launch. */
       layout: z.enum(['basic', 'elite']).default('basic'),
+      /** Interface language; `system` follows the OS locale (English if it isn't supported). */
+      language: z.enum(['system', 'en', 'az', 'tr', 'ru']).catch('system').default('system'),
     })
     .prefault({}),
 
