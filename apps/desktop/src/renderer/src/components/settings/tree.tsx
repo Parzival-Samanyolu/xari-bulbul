@@ -264,7 +264,7 @@ export const TABS: TabDef[] = [
     icon: 'appearance',
     description: 'How the app looks and behaves on this computer.',
     sections: [
-      { id: 'appearance', label: 'Look', description: 'Layout, theme and type.', page: AppearancePage, rows: [['Layout', 'basic elite panels terminal'], ['Theme', 'dark light oled sepia contrast'], ['Font size'], ['Interface font', 'typeface'], ['Code font', 'monospace'], ['Density', 'compact']] },
+      { id: 'appearance', label: 'Look', description: 'Layout, theme and type.', page: AppearancePage, rows: [['Layout', 'basic elite panels terminal'], ['Language', 'locale interface translation dil язык'], ['Theme', 'dark light oled sepia contrast'], ['Font size'], ['Interface font', 'typeface'], ['Code font', 'monospace'], ['Density', 'compact']] },
       { id: 'chat', label: 'Chat', description: 'How messages are sent and shown.', page: ChatPage, rows: [['Enter sends message', 'send key newline'], ['Show model reasoning', 'thinking'], ['Expand tool calls']] },
       { id: 'workspace', label: 'Workspace', description: 'The folders you work in and what the agent reads from them.', page: WorkspacePage, rows: [['Open folders', 'projects sidebar'], ['Project instruction files', 'AGENTS.md CLAUDE.md'], ['Load project tool code', 'extensions trust']] },
       {

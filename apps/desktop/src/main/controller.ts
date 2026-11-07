@@ -121,6 +121,7 @@ import {
 } from '@harness/core'
 import type { AccountView, AppState, AttachmentInput, BotAvatarRequest, BotRow, LobbyRow, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
 import { LocalModels } from './local-models'
+import { tm } from './i18n'
 import { log } from './logger'
 import type { KnownChild } from './resources'
 import { Scheduler } from './scheduler'
@@ -217,7 +218,14 @@ export class AppController {
     private readonly version: string,
     private readonly send: (e: UiEvent) => void,
     private readonly notify: (n: BackgroundNotice) => void = () => {},
-    private readonly opts: { telemetry?: TelemetrySink; shareInfoOff?: boolean; /** The app's copy of the WhatsApp bridge source. */ whatsappBridge?: string } = {},
+    private readonly opts: {
+      telemetry?: TelemetrySink
+      shareInfoOff?: boolean
+      /** The app's copy of the WhatsApp bridge source. */
+      whatsappBridge?: string
+      /** Called with `appearance.language` when it changes, so main's menus and dialogs follow. */
+      onLanguage?: (setting: string) => void
+    } = {},
   ) {
     this.paths = {
       data: dataDir,
@@ -409,6 +417,7 @@ export class AppController {
     if (opts.prune !== false && prev.sessions.retentionDays !== this.settings.sessions.retentionDays) this.pruneSessions()
     if (JSON.stringify(prev.bots) !== JSON.stringify(this.settings.bots)) this.cleanBotImages()
     this.lobbiesChanged(prev)
+    if (prev.appearance.language !== this.settings.appearance.language) this.opts.onLanguage?.(this.settings.appearance.language)
     for (const r of this.agents.values()) {
       r.agent.updateSettings(this.settings)
       // A bot chat follows its bot's mode when that changes (the bot turned off or on, its mode edited).
@@ -1248,14 +1257,14 @@ export class AppController {
           this.pending.set(`${id}:${request.callId}`, { sessionId: id, resolve })
           this.count('feature.approval', { outcome: 'asked' })
           this.send({ type: 'permission', sessionId: id, request })
-          if (id !== this.activeId) this.notify({ sessionId: id, kind: 'approval', title: agent.session.meta.title, body: `Needs approval: ${request.tool} ${request.subject}`.trim() })
+          if (id !== this.activeId) this.notify({ sessionId: id, kind: 'approval', title: agent.session.meta.title, body: tm('main.notify.approval', { tool: request.tool, subject: request.subject ?? '' }).trim() })
           this.gatewayAttention(agent, `${request.tool} ${request.subject}`)
           this.pushState()
         }),
       askUser: (request) =>
         new Promise<string>((resolve) => {
           this.questions.set(`${id}:${request.callId}`, { sessionId: id, request, resolve })
-          if (id !== this.activeId) this.notify({ sessionId: id, kind: 'question', title: agent.session.meta.title, body: `Has a question: ${request.question}` })
+          if (id !== this.activeId) this.notify({ sessionId: id, kind: 'question', title: agent.session.meta.title, body: tm('main.notify.question', { question: request.question }) })
           this.gatewayAttention(agent, `a question: ${request.question}`)
           this.pushState()
         }),
@@ -1362,14 +1371,14 @@ export class AppController {
       this.cancelPending(sessionId)
       if (sessionId !== this.activeId) {
         const session = this.agents.get(sessionId)?.agent.session
-        const body = ({ done: 'Finished.', error: 'Stopped with an error.', aborted: 'Stopped.', max_steps: 'Hit the step limit.', budget: 'Hit the budget limit.', repeating: 'Stopped: it kept repeating itself.' })[event.reason]
+        const body = tm(({ done: 'main.notify.done', error: 'main.notify.error', aborted: 'main.notify.aborted', max_steps: 'main.notify.maxSteps', budget: 'main.notify.budget', repeating: 'main.notify.repeating' } as const)[event.reason])
         const kind = event.reason === 'done' ? 'finished' : 'failed'
         const bot = session && !session.meta.gateway ? activeBot(this.settings, session.meta.botId) : undefined
         if (bot) {
           // A bot's reply: an unread dot on its row, and a notification with the reply unless muted.
           if (event.reason !== 'aborted') this.unreadBots.add(bot.id)
           if (!bot.muted && !this.settings.botOptions.muted) this.notify({ sessionId, kind, title: bot.name, body: (event.reason === 'done' && chatPreview(session!.messages, 160)) || body })
-        } else this.notify({ sessionId, kind, title: session?.meta.title ?? 'Chat', body })
+        } else this.notify({ sessionId, kind, title: session?.meta.title ?? tm('main.notify.untitled'), body })
       }
     }
     // Titles, session lists and running indicators change at these points.
@@ -1599,7 +1608,7 @@ export class AppController {
         // Quiet when every member is muted, or all bots are.
         const members = lobbyBots(this.settings, conf)
         const muted = this.settings.botOptions.muted || (members.length > 0 && members.every((b) => b.muted))
-        const body = event.reason === 'done' ? this.lobbyPreview(lobby.session) || 'New replies.' : 'Stopped with an error.'
+        const body = event.reason === 'done' ? this.lobbyPreview(lobby.session) || tm('main.notify.newReplies') : tm('main.notify.error')
         if (!muted) this.notify({ sessionId, kind: event.reason === 'done' ? 'finished' : 'failed', title: conf.name, body: body.slice(0, 160) })
       }
     }

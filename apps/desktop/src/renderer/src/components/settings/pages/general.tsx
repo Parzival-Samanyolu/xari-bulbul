@@ -1,5 +1,7 @@
 import { useState } from 'react'
+import { LANGS, LANGUAGE_NAMES, resolveLang } from '@harness/core/i18n'
 import { api } from '../../../lib/api'
+import { useT } from '../../../lib/i18n'
 import { FIXED_SHORTCUTS, SHORTCUTS, comboFromEvent, comboProblem, formatCombo, isMac, shortcutFor, type ShortcutId } from '../../../lib/shortcuts'
 import { ListField, Row, Section, Select, Slider, TextField, Toggle } from '../../fields'
 import { LayoutPicker, withLayout } from '../../LayoutPicker'
@@ -53,6 +55,13 @@ export const THEMES = [
 
 export function AppearancePage({ app, save }: PageProps) {
   const a = app.settings.appearance
+  const { t } = useT()
+  // Each language is named in itself; "System" names the one it resolves to now.
+  const systemLang = resolveLang('system', navigator.languages)
+  const languages = [
+    { value: 'system' as const, label: t('settings.general.languageSystem', { lang: LANGUAGE_NAMES[systemLang] }) },
+    ...LANGS.map((l) => ({ value: l, label: LANGUAGE_NAMES[l] })),
+  ]
   return (
     <>
       <Section title="Layout">
@@ -61,6 +70,9 @@ export function AppearancePage({ app, save }: PageProps) {
         </Row>
       </Section>
       <Section title="Look">
+        <Row label={t('settings.general.language')} search="Language" hint={t('settings.general.languageHint')}>
+          <Select label={t('settings.general.language')} value={a.language} options={languages} onChange={(v) => save((s) => ((s.appearance.language = v), s))} />
+        </Row>
         <Row label="Theme">
           <Select label="Theme" value={a.theme} options={[...THEMES]} onChange={(v) => save((s) => ((s.appearance.theme = v), s))} />
         </Row>

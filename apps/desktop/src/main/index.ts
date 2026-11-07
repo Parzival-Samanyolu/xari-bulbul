@@ -6,6 +6,7 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, Notification, p
 import { Telemetry, defaultScrubContext, telemetryUrl } from '@harness/core'
 import { IPC_EVENT, type RendererError, type TrackEvent, type UiEvent } from '../shared/ipc'
 import { AppController, type BackgroundNotice } from './controller'
+import { buildAppMenu, setMainLanguage, tm } from './i18n'
 import { errText, log } from './logger'
 import { sampleResources } from './resources'
 import { loadShellPath } from './shell-path'
@@ -101,6 +102,12 @@ async function settingsChanged<T>(p: Promise<T> | T): Promise<T> {
   // Turning share info off forgets whatever was waiting to be sent.
   if (!controller.getSettings().privacy.shareUsage) telemetry?.drop()
   return r
+}
+
+/** Menus, dialogs and notifications follow `appearance.language`: at startup and on every change. */
+function languageChanged(setting: string) {
+  setMainLanguage(setting)
+  buildAppMenu()
 }
 
 /** Tell the user about a chat they aren't looking at; clicking opens it. */
@@ -249,7 +256,7 @@ function registerIpc() {
     try {
       raw = JSON.parse(fs.readFileSync(r.filePaths[0], 'utf8'))
     } catch (e) {
-      throw new Error(`That file isn't valid JSON, so nothing was changed. ${(e as Error).message}`)
+      throw new Error(tm('main.error.invalidJson', { detail: (e as Error).message }))
     }
     return settingsChanged(c.importSettings(raw))
   })
@@ -262,7 +269,7 @@ function registerIpc() {
   handle('browser.clearLogins', () => c.clearBrowserLogins())
   handle('models.list', (id, refresh) => c.listModels(id, refresh))
   handle('workspace.pick', async () => {
-    const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: 'Open project folder' })
+    const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: tm('main.dialog.openProject') })
     if (r.canceled || !r.filePaths[0]) return c.state()
     return c.setWorkspace(r.filePaths[0])
   })
@@ -276,7 +283,7 @@ function registerIpc() {
   // Fire and forget: progress arrives as events; the promise resolves when the turn ends.
   handle('agent.send', (text, attachments) => c.sendMessage(text, attachments))
   handle('files.pick', async () => {
-    const r = await dialog.showOpenDialog(win!, { properties: ['openFile', 'multiSelections'], title: 'Attach files', defaultPath: c.state().workspace ?? undefined })
+    const r = await dialog.showOpenDialog(win!, { properties: ['openFile', 'multiSelections'], title: tm('main.dialog.attachFiles'), defaultPath: c.state().workspace ?? undefined })
     if (r.canceled) return []
     return r.filePaths.map((p) => ({ name: path.basename(p), path: p, size: fs.statSync(p).size }))
   })
@@ -321,7 +328,7 @@ function registerIpc() {
   handle('skills.remove', (dir: string) => c.removeSkill(dir))
   handle('schedules.runNow', (id: string) => c.runScheduleNow(id))
   handle('schedules.pickFolder', async () => {
-    const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: 'Folder for this schedule', defaultPath: c.state().workspace ?? undefined })
+    const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: tm('main.dialog.scheduleFolder'), defaultPath: c.state().workspace ?? undefined })
     return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]
   })
   handle('imessage.test', () => c.imessageTest())
@@ -331,7 +338,7 @@ function registerIpc() {
     return shell.openExternal(`x-apple.systempreferences:com.apple.preference.security?${pane === 'automation' ? 'Privacy_Automation' : 'Privacy_AllFiles'}`)
   })
   handle('imessage.pickFolder', async () => {
-    const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: 'Folder for iMessage chats', defaultPath: c.state().workspace ?? undefined })
+    const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: tm('main.dialog.imessageFolder'), defaultPath: c.state().workspace ?? undefined })
     return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]
   })
   handle('whatsapp.retry', () => c.whatsappRetry())
@@ -340,15 +347,15 @@ function registerIpc() {
   handle('whatsapp.test', () => c.whatsappTest())
   handle('whatsapp.newChat', () => c.whatsappNewChat())
   handle('whatsapp.pickFolder', async () => {
-    const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: 'Folder for the WhatsApp chat', defaultPath: c.state().workspace ?? undefined })
+    const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: tm('main.dialog.whatsappFolder'), defaultPath: c.state().workspace ?? undefined })
     return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]
   })
   handle('bots.pickAvatar', async () => {
-    const r = await dialog.showOpenDialog(win!, { properties: ['openFile'], title: 'Bot picture', filters: [{ name: 'Images', extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }] })
+    const r = await dialog.showOpenDialog(win!, { properties: ['openFile'], title: tm('main.dialog.botPicture'), filters: [{ name: tm('main.filter.images'), extensions: ['png', 'jpg', 'jpeg', 'gif', 'webp'] }] })
     return r.canceled || !r.filePaths[0] ? null : c.importBotAvatar(r.filePaths[0])
   })
   handle('bots.pickFolder', async () => {
-    const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: 'Folder for this bot', defaultPath: c.state().workspace ?? undefined })
+    const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: tm('main.dialog.botFolder'), defaultPath: c.state().workspace ?? undefined })
     return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]
   })
   handle('bots.open', (botId: string) => c.openBot(botId))
@@ -373,7 +380,7 @@ function registerIpc() {
   handle('local.remove', (id: string) => c.local.remove(id))
   handle('local.search', (query: string) => c.local.search(query))
   handle('local.addFile', async () => {
-    const r = await dialog.showOpenDialog(win!, { properties: ['openFile'], title: 'Add a model file', filters: [{ name: 'GGUF models', extensions: ['gguf'] }] })
+    const r = await dialog.showOpenDialog(win!, { properties: ['openFile'], title: tm('main.dialog.addModelFile'), filters: [{ name: tm('main.filter.gguf'), extensions: ['gguf'] }] })
     return r.canceled || !r.filePaths[0] ? null : c.local.addFile(r.filePaths[0])
   })
   handle('local.use', (id: string) => c.useLocalModel(id))
@@ -396,7 +403,7 @@ function registerIpc() {
   })
   handle('logs.export', async () => {
     const day = new Date().toISOString().slice(0, 10)
-    const r = await dialog.showSaveDialog(win!, { defaultPath: `xari-bulbul-log-${day}.txt`, filters: [{ name: 'Text', extensions: ['txt', 'log'] }] })
+    const r = await dialog.showSaveDialog(win!, { defaultPath: `xari-bulbul-log-${day}.txt`, filters: [{ name: tm('main.filter.text'), extensions: ['txt', 'log'] }] })
     if (r.canceled || !r.filePath) return false
     fs.writeFileSync(r.filePath, log.exportText())
     return true
@@ -439,8 +446,9 @@ app.whenReady().then(async () => {
   log.info('app', `Started Xarı Bülbül ${app.getVersion()}`, { platform: process.platform, arch: process.arch, os: process.getSystemVersion?.() ?? os.release(), electron: process.versions.electron, packaged: app.isPackaged })
   loadShellPath()
   // Windows/Linux: Electron's default menu binds Ctrl+R, Ctrl+W, Ctrl+Shift+I and others, which the
-  // terminal and composer need. Text fields keep their editing keys without a menu. macOS keeps it
-  // (Cmd+Q, Cmd+H and the Edit menu live there).
+  // terminal and composer need, so packaged builds drop it; text fields keep their editing keys
+  // without a menu. macOS gets the same menu as Electron's default (Cmd+Q, Cmd+H and the Edit menu
+  // live there), translated; it's built once the settings are loaded, below.
   if (process.platform !== 'darwin' && app.isPackaged) Menu.setApplicationMenu(null)
   const url = telemetryUrl()
   telemetry = new Telemetry({
@@ -452,7 +460,8 @@ app.whenReady().then(async () => {
     ready: () => !!controller?.getSettings().app.onboarded,
     scrub: defaultScrubContext(app.getAppPath()),
   })
-  controller = new AppController(app.getPath('userData'), app.getVersion(), send, notify, { telemetry, shareInfoOff: !url, whatsappBridge: whatsappBridgeSource() })
+  controller = new AppController(app.getPath('userData'), app.getVersion(), send, notify, { telemetry, shareInfoOff: !url, whatsappBridge: whatsappBridgeSource(), onLanguage: languageChanged })
+  languageChanged(controller.getSettings().appearance.language)
   telemetry.event('app.start', { packaged: app.isPackaged })
   telemetry.start()
   registerIpc()

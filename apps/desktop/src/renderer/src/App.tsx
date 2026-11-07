@@ -17,6 +17,7 @@ import { Welcome } from './components/Welcome'
 import { BotDialog } from './components/BotDialog'
 import { LobbyDialog } from './components/LobbyDialog'
 import { Loading } from './components/Loading'
+import { I18nProvider } from './lib/i18n'
 
 export interface ToolLive {
   name: string
@@ -357,9 +358,11 @@ export function App() {
     if (settingsTab) void api.app.track({ type: 'settings_page', page: settingsTab }).catch(() => {})
   }, [settingsTab])
 
-  if (!app) return <Loading error={bootError} onRetry={boot} />
+  // Every screen, the loading one included, renders in the interface language.
+  const language = app?.settings.appearance.language ?? 'system'
+  if (!app) return <I18nProvider setting={language}><Loading error={bootError} onRetry={boot} /></I18nProvider>
   // First run: full-window setup until it's finished or skipped.
-  if (!app.settings.app.onboarded) return <Onboarding app={app} onState={setState} onError={fail} />
+  if (!app.settings.app.onboarded) return <I18nProvider setting={language}><Onboarding app={app} onState={setState} onError={fail} /></I18nProvider>
 
   /** Opens Settings at a tab id ('providers', 'usage', …) or a section id ('model.aux'). */
   const openSettings = (tab?: string) => setSettingsPage(resolvePage(tab, app.settings))
@@ -370,60 +373,62 @@ export function App() {
   const showBottom = !!app.workspace && !!panels?.bottomOpen
 
   return (
-    <div className="app">
-      <Sidebar app={app} onState={setState} onError={fail} onSettings={() => openSettings()} settingsOpen={!!settingsPage} onChat={() => setSettingsPage(null)} onEditBot={editBot} onEditLobby={editLobby} />
-      <main className="main">
-        {welcome ? (
-          <Welcome app={app} onState={setState} onError={fail} onSettings={openSettings} />
-        ) : (
-          <>
-            <Chat
-              app={app}
-              live={live}
-              onDismiss={(id) => dispatch({ type: 'dismiss', id })}
-              onSettings={openSettings}
-              approval={approval ? { request: approval, onAnswer: answer } : undefined}
-              question={question ? { request: question, onAnswer: answerQuestion } : undefined}
-              onRetry={onRetry}
-              onContinue={onContinue}
-              onRevert={onRevert}
-              onEdit={onEdit}
-              onUndoMemory={onUndoMemory}
-              onState={setState}
-              onError={fail}
-              onEditBot={editBot}
-              onEditLobby={editLobby}
-            />
-            <Composer app={app} onState={setState} onError={fail} onOpenPicker={() => setPickerOpen(true)} />
-          </>
+    <I18nProvider setting={language}>
+      <div className="app">
+        <Sidebar app={app} onState={setState} onError={fail} onSettings={() => openSettings()} settingsOpen={!!settingsPage} onChat={() => setSettingsPage(null)} onEditBot={editBot} onEditLobby={editLobby} />
+        <main className="main">
+          {welcome ? (
+            <Welcome app={app} onState={setState} onError={fail} onSettings={openSettings} />
+          ) : (
+            <>
+              <Chat
+                app={app}
+                live={live}
+                onDismiss={(id) => dispatch({ type: 'dismiss', id })}
+                onSettings={openSettings}
+                approval={approval ? { request: approval, onAnswer: answer } : undefined}
+                question={question ? { request: question, onAnswer: answerQuestion } : undefined}
+                onRetry={onRetry}
+                onContinue={onContinue}
+                onRevert={onRevert}
+                onEdit={onEdit}
+                onUndoMemory={onUndoMemory}
+                onState={setState}
+                onError={fail}
+                onEditBot={editBot}
+                onEditLobby={editLobby}
+              />
+              <Composer app={app} onState={setState} onError={fail} onOpenPicker={() => setPickerOpen(true)} />
+            </>
+          )}
+        </main>
+        {showRight && panels && (
+          <aside className="side-right" style={{ width: panels.right }} aria-label="Files and changes">
+            <Resizer axis="x" label="Resize files and changes panel" value={panels.right} min={220} max={Math.max(220, Math.min(1200, window.innerWidth - 570))} onChange={(right) => setPanels({ ...panels, right })} onCommit={(right) => savePanels({ right })} />
+            <RightPanel app={app} onState={setState} onError={fail} />
+          </aside>
         )}
-      </main>
-      {showRight && panels && (
-        <aside className="side-right" style={{ width: panels.right }} aria-label="Files and changes">
-          <Resizer axis="x" label="Resize files and changes panel" value={panels.right} min={220} max={Math.max(220, Math.min(1200, window.innerWidth - 570))} onChange={(right) => setPanels({ ...panels, right })} onCommit={(right) => savePanels({ right })} />
-          <RightPanel app={app} onState={setState} onError={fail} />
-        </aside>
-      )}
-      {/* Stays mounted once used, so terminals keep running while the panel is closed. */}
-      {bottomUsed && panels && (
-        <section className="side-bottom" hidden={!showBottom} style={{ height: panels.bottom }} aria-label="Terminal">
-          <Resizer axis="y" label="Resize terminal panel" value={panels.bottom} min={120} max={Math.max(120, Math.min(1000, window.innerHeight - 220))} onChange={(bottom) => setPanels({ ...panels, bottom })} onCommit={(bottom) => savePanels({ bottom })} />
-          <TerminalPanel app={app} visible={showBottom} onError={fail} />
-        </section>
-      )}
-      <StatusBar
-        app={app}
-        live={live}
-        onOpenPicker={() => setPickerOpen(true)}
-        onUsage={() => openSettings('usage')}
-        onResources={() => openSettings('logs.performance')}
-        update={update}
-        panels={app.workspace && panels ? { bottom: showBottom, right: showRight, onBottom: toggleBottom, onRight: toggleRight } : undefined}
-      />
-      {pickerOpen && <ModelPicker app={app} onClose={() => setPickerOpen(false)} onState={setState} onError={fail} />}
-      {settingsPage && <SettingsOverlay app={app} page={settingsPage} onPage={setSettingsPage} onState={setState} onClose={() => setSettingsPage(null)} update={update} onEditBot={editBot} />}
-      {lobbyDialog && <LobbyDialog key={lobbyDialog.lobbyId ?? 'new'} app={app} lobbyId={lobbyDialog.lobbyId} onClose={() => setLobbyDialog(null)} onState={setState} onError={fail} />}
-      {botDialog && <BotDialog key={botDialog.botId ?? 'new'} app={app} botId={botDialog.botId} onClose={() => setBotDialog(null)} onState={setState} />}
-    </div>
+        {/* Stays mounted once used, so terminals keep running while the panel is closed. */}
+        {bottomUsed && panels && (
+          <section className="side-bottom" hidden={!showBottom} style={{ height: panels.bottom }} aria-label="Terminal">
+            <Resizer axis="y" label="Resize terminal panel" value={panels.bottom} min={120} max={Math.max(120, Math.min(1000, window.innerHeight - 220))} onChange={(bottom) => setPanels({ ...panels, bottom })} onCommit={(bottom) => savePanels({ bottom })} />
+            <TerminalPanel app={app} visible={showBottom} onError={fail} />
+          </section>
+        )}
+        <StatusBar
+          app={app}
+          live={live}
+          onOpenPicker={() => setPickerOpen(true)}
+          onUsage={() => openSettings('usage')}
+          onResources={() => openSettings('logs.performance')}
+          update={update}
+          panels={app.workspace && panels ? { bottom: showBottom, right: showRight, onBottom: toggleBottom, onRight: toggleRight } : undefined}
+        />
+        {pickerOpen && <ModelPicker app={app} onClose={() => setPickerOpen(false)} onState={setState} onError={fail} />}
+        {settingsPage && <SettingsOverlay app={app} page={settingsPage} onPage={setSettingsPage} onState={setState} onClose={() => setSettingsPage(null)} update={update} onEditBot={editBot} />}
+        {lobbyDialog && <LobbyDialog key={lobbyDialog.lobbyId ?? 'new'} app={app} lobbyId={lobbyDialog.lobbyId} onClose={() => setLobbyDialog(null)} onState={setState} onError={fail} />}
+        {botDialog && <BotDialog key={botDialog.botId ?? 'new'} app={app} botId={botDialog.botId} onClose={() => setBotDialog(null)} onState={setState} />}
+      </div>
+    </I18nProvider>
   )
 }
