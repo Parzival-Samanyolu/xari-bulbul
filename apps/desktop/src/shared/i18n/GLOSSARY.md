@@ -70,7 +70,7 @@ The chosen translation of each recurring term in the app. Use these every time, 
 | task / to-do | tapşırıq | görev | задача | Items in the agent's to-do list. |
 | session | sessiya | oturum | сеанс | Prefer "chat" in UI copy. Use this only where the code concept leaks, as in usage per session. |
 | context | kontekst | bağlam | контекст | The model's context window. "Context is full": *Kontekst doludur* / *Bağlam dolu* / *Контекст заполнен*. |
-| compact (context) | sıxlaşdır | sıkıştır | сжать | Summarising earlier messages to free context. |
+| compact (context) | sıxlaşdır | sıkıştır | сжать | Summarising earlier messages to free context. az uses *sıxlaşdır* / *sıxlaşdırma* only, never *sıxışdır*. Nouns: *sıxlaşdırma* / *sıkıştırma* / *сжатие* ("Auto-compact": *Avtomatik sıxlaşdırma* / *Otomatik sıkıştırma* / *Автосжатие*). |
 | thinking / reasoning | düşünmə | düşünme | рассуждение | The model's reasoning. "Thinking…": *Düşünür…* / *Düşünüyor…* / *Думает…*. |
 | usage | istifadə | kullanım | расход | Tokens and cost. |
 | cost | xərc | maliyet | стоимость | |
@@ -87,4 +87,20 @@ The chosen translation of each recurring term in the app. Use these every time, 
 | save | saxla | kaydet | сохранить | |
 | delete | sil | sil | удалить | |
 | retry | yenidən cəhd et | yeniden dene | повторить | |
+| summary | xülasə | özet | сводка | What compaction leaves in place of older messages. ru: *заменены сводкой*; not *пересказ*. |
+| permission mode | icazə rejimi | izin modu | режим разрешений | The Ask / Auto-edit / Plan / Full auto switch. Onboarding uses the same four names. |
+| thinking level | düşünmə səviyyəsi | düşünme düzeyi | уровень рассуждения | The reasoning-effort setting. The chip reads *Düşünmə: {level}* / *Düşünme: {level}* / *Рассуждение: {level}*. |
+| effort: None / Low / Medium / High / Extra high / Max | Yoxdur / Aşağı / Orta / Yüksək / Çox yüksək / Maksimum | Yok / Düşük / Orta / Yüksek / Çok yüksek / Maksimum | Нет / Низкое / Среднее / Высокое / Очень высокое / Максимальное | ru agrees with the noun: neuter after *Рассуждение* (chat chip, bot editor), masculine (*Низкий* …) under *Уровень рассуждения* (Settings › Main model). |
+| default (choice) | standart | varsayılan | по умолчанию | "Default model": *Standart model* / *Varsayılan model* / *Модель по умолчанию*. Not az *susmaya görə*. |
+| speed: Standard / Fast / Batch | Standart / Sürətli / Paket | Standart / Hızlı / Toplu | Обычная / Быстрая / Пакетная | |
+| theme | tema | tema | тема | Not az *mövzu*. |
+| Mix (Mixture of Agents) | Qarışıq | Karışım | Смесь | The composer toggle; the Settings section is *Agentlər qarışığı* / *Ajan karışımı* / *Смесь агентов*. Cite the toggle by this exact name. |
+| Abilities (bot editor) | Qabiliyyətlər | Yetenekler | Возможности | The bot editor section. az avoids *bacarıq*, which is "skill". |
+| slash command | slash əmri | eğik çizgi komutu | слэш-команда | `/name` commands from `.harness/commands`. |
+| review (end of turn) | yoxlama | kontrol | проверка | The agent's check for unfinished steps before it stops. |
+| request (status bar) | sorğu | istek | запрос | One model call. |
+| cached (tokens) | keşdən | önbellekten | из кэша | |
+| speech to text / text to speech (Settings sections) | Nitqdən mətnə / Mətndən nitqə | Konuşmadan metne / Metinden konuşmaya | Распознавание речи / Озвучивание текста | Cite them as Settings › Agent › … . |
+| tab (sidebar) | bölmə | sekme | вкладка | The Sessions and Bots tabs: *Söhbətlər*, *Botlar* / *Sohbetler*, *Botlar* / *«Чаты»*, *«Боты»*. |
+| Settings path | Ayarlar › … | Ayarlar › … | Настройки › … | Use the real tab and section titles, joined by ›. az adds *bölməsində*, tr *bölümünde*, ru *в разделе*. |
 | copy / copied | kopyala / kopyalandı | kopyala / kopyalandı | копировать / скопировано | |
