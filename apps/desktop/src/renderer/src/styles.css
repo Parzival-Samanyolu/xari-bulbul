@@ -2939,8 +2939,8 @@ body.resizing * {
   display: grid;
   place-items: center;
   padding: 3vh 3vw;
+  /* No backdrop blur: blurring the whole window keeps extra full-size GPU surfaces alive (16 MB each on a Retina screen). */
   background: var(--scrim);
-  backdrop-filter: blur(6px) saturate(0.9);
   animation: so-fade 0.14s ease-out;
 }
 @keyframes so-fade {

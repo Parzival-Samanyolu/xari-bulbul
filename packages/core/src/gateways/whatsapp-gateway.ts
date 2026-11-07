@@ -87,7 +87,8 @@ export function bridgeEnv(env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessE
 }
 
 function defaultSpawn(node: string, script: string, args: string[], cwd: string): BridgeProcess {
-  return spawn(node, [script, ...args], { cwd, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: bridgeEnv() })
+  // The bridge holds little; a smaller V8 young generation and old-space cap keep it near its working set.
+  return spawn(node, ['--max-semi-space-size=2', '--max-old-space-size=128', script, ...args], { cwd, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: true, env: bridgeEnv() })
 }
 
 const OFF: WhatsAppStatus = {

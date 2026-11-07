@@ -429,6 +429,11 @@ process.on('unhandledRejection', (reason) => {
   telemetry?.error('error.main_rejection', reason)
 })
 
+// Cap the GPU process's tile and image caches; Chromium sizes them for desktops with lots of
+// graphics memory, and on an 8 GB Mac they grew to a few hundred MB over a long session.
+app.commandLine.appendSwitch('force-gpu-mem-available-mb', '192')
+app.commandLine.appendSwitch('force-gpu-mem-discardable-limit-mb', '32')
+
 app.whenReady().then(async () => {
   log.init(app.getPath('userData'))
   log.info('app', `Started Xarı Bülbül ${app.getVersion()}`, { platform: process.platform, arch: process.arch, os: process.getSystemVersion?.() ?? os.release(), electron: process.versions.electron, packaged: app.isPackaged })
