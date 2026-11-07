@@ -45,17 +45,17 @@ export function StatusBar({ app, live, onOpenPicker, onUsage, onResources, updat
       <button className="sb-item" onClick={onUsage} title={tr('chat.statusbar.requestsTitle')}>
         {/* The plural form needs the number; the number itself is then shown bold. */}
         {rich(tr('chat.statusbar.requests', { count: s.requests }).replace(String(s.requests), '{n}'), { n: <b>{s.requests}</b> })}
-        <span className="muted"> · {tr('chat.statusbar.today', { value: t.requests })}</span>
+        <span className="muted sb-today"> · {tr('chat.statusbar.today', { value: t.requests })}</span>
       </button>
       {showCost && (
         <button className={`sb-item ${budget != null && s.cost >= budget ? 'warn' : ''}`} onClick={onUsage} title={tr('chat.statusbar.costTitle')}>
           <b>{cost(s.cost, s.costPartial)}</b>
           {budget != null && <span className="muted"> / {cost(budget)}</span>}
-          <span className="muted"> · {tr('chat.statusbar.today', { value: cost(t.cost, t.costPartial) })}</span>
+          <span className="muted sb-today"> · {tr('chat.statusbar.today', { value: cost(t.cost, t.costPartial) })}</span>
         </button>
       )}
       {live.lastUsage && app.settings.usage.showPerMessageUsage && (
-        <span className="sb-item muted" title={tr('chat.statusbar.lastTitle')}>
+        <span className="sb-item sb-last muted" title={tr('chat.statusbar.lastTitle')}>
           {tr('chat.statusbar.last', {
             usage: `${tokens(live.lastUsage.prompt)}↑ ${tokens(live.lastUsage.completion)}↓${showCost && live.lastUsage.cost != null ? ` ${cost(live.lastUsage.cost)}` : ''}`,
           })}
