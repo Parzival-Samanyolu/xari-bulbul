@@ -42,8 +42,8 @@ export default {
 
   // Bots tab
   'bots.panel.title': 'Botlar',
-  'bots.panel.mute': 'Bot bildirimlerini sessize al',
-  'bots.panel.muted': 'Bot bildirimleri sessizde',
+  'bots.panel.mute': 'Bot bildirimlerini kapat',
+  'bots.panel.muted': 'Bot bildirimleri kapalı',
   'bots.panel.newBot': 'Yeni bot',
   'bots.panel.empty': 'Sohbet etmek için bir karakter oluşturun. Sizi hatırlar ve her aracı kullanabilir.',
   'bots.panel.make': 'Bot oluştur',
@@ -61,7 +61,7 @@ export default {
   'bots.panel.confirmDelete': '{name} silinsin mi? Sohbetleri kalır ve normal sohbetler olarak Sohbetler sekmesine taşınır.',
   'bots.panel.edit': 'Düzenle…',
   'bots.panel.duplicate': 'Çoğalt',
-  'bots.panel.muteOne': 'Sessize al',
+  'bots.panel.muteOne': 'Bildirimleri kapat',
   'bots.panel.unmute': 'Bildirimleri aç',
   'bots.panel.turnOff': 'Kapat',
   'bots.panel.turnOn': 'Aç',

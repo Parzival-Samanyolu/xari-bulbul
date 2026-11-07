@@ -111,7 +111,7 @@ export default {
   'settings.section.advanced.tools': 'Yoxlamalar',
   'settings.section.advanced.tools.desc': 'Agentin işini dəyişən yoxlamalar və alətlər.',
   'settings.section.tools.search': 'Veb axtarış',
-  'settings.section.tools.search.desc': 'web_search alətinin necə axtardığı və onun istəyə bağlı açarları.',
+  'settings.section.tools.search.desc': 'web_search alətinin necə axtardığı və istəsəniz əlavə edə biləcəyiniz açarlar.',
   'settings.section.tools.skills': 'Bacarıqlar və əmrlər',
   'settings.section.tools.skills.desc': 'Agentin yüklədiyi saxlanılmış təlimatlar və slash əmrləri.',
   'settings.section.tools.extensions': 'Genişləndirmələr',

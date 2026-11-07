@@ -113,7 +113,7 @@ export default {
   'settings.section.tools.search': 'Веб-поиск',
   'settings.section.tools.search.desc': 'Как ищет инструмент web_search, и его необязательные ключи.',
   'settings.section.tools.skills': 'Навыки и команды',
-  'settings.section.tools.skills.desc': 'Сохранённые инструкции, которые загружает агент, и слеш-команды.',
+  'settings.section.tools.skills.desc': 'Сохранённые инструкции, которые загружает агент, и слэш-команды.',
   'settings.section.tools.extensions': 'Расширения',
   'settings.section.tools.extensions.desc': 'Ваши собственные инструменты и команды в виде файлов.',
   'settings.section.tools.mcp': 'MCP-серверы',

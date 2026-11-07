@@ -89,7 +89,7 @@ The chosen translation of each recurring term in the app. Use these every time, 
 | retry | yenidən cəhd et | yeniden dene | повторить | |
 | summary | xülasə | özet | сводка | What compaction leaves in place of older messages. ru: *заменены сводкой*; not *пересказ*. |
 | permission mode | icazə rejimi | izin modu | режим разрешений | The Ask / Auto-edit / Plan / Full auto switch. Onboarding uses the same four names. |
-| thinking level | düşünmə səviyyəsi | düşünme düzeyi | уровень рассуждения | The reasoning-effort setting. The chip reads *Düşünmə: {level}* / *Düşünme: {level}* / *Рассуждение: {level}*. |
+| thinking level | düşünmə səviyyəsi | düşünme düzeyi | уровень рассуждения | The reasoning-effort setting. The chip reads *Düşünmə: {level}* / *Düşünme: {level}* / *Рассуждение: {level}*. ru labels the chat's level picker *Рассуждение*, not *Уровень рассуждения*, so the neuter options (*Низкое* …) agree with it. |
 | effort: None / Low / Medium / High / Extra high / Max | Yoxdur / Aşağı / Orta / Yüksək / Çox yüksək / Maksimum | Yok / Düşük / Orta / Yüksek / Çok yüksek / Maksimum | Нет / Низкое / Среднее / Высокое / Очень высокое / Максимальное | ru agrees with the noun: neuter after *Рассуждение* (chat chip, bot editor), masculine (*Низкий* …) under *Уровень рассуждения* (Settings › Main model). |
 | default (choice) | standart | varsayılan | по умолчанию | "Default model": *Standart model* / *Varsayılan model* / *Модель по умолчанию*. Not az *susmaya görə*. |
 | speed: Standard / Fast / Batch | Standart / Sürətli / Paket | Standart / Hızlı / Toplu | Обычная / Быстрая / Пакетная | |

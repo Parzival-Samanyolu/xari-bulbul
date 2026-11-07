@@ -243,7 +243,7 @@ export default {
   'chat.thinking.chipTitle': 'Уровень рассуждения и скорость для этой модели',
   'chat.thinking.dialog': 'Рассуждение и скорость',
   'chat.thinking.heading': 'Рассуждение',
-  'chat.thinking.level': 'Уровень рассуждения',
+  'chat.thinking.level': 'Рассуждение',
   'chat.thinking.speed': 'Скорость',
   'chat.thinking.standard': 'Обычная',
   'chat.thinking.standardHint': 'Обычная скорость и цена',
