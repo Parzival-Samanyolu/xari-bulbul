@@ -3,7 +3,7 @@ import { normalizeSender } from '@harness/core/gateway-senders'
 import type { PermissionMode } from '../../../../../shared/ipc'
 import { api } from '../../../lib/api'
 import { useFormat, useT } from '../../../lib/i18n'
-import { MODES } from '../../Composer'
+import { modes } from '../../Composer'
 import { NumberField, Row, Section, Select, TextField, Toggle } from '../../fields'
 import type { PageProps } from '../common'
 
@@ -66,12 +66,12 @@ export function IMessagePage({ app, save, onState, onError }: PageProps) {
             />
           </Row>
         )}
-        <Row label={t('settings.gateways.permissionMode')} search="Permission mode" hint={t('settings.gateways.imModeHint', { hint: MODES.find((m) => m.id === g.mode)?.hint ?? '' })}>
-          <Select<PermissionMode> label={t('settings.gateways.permissionMode')} value={g.mode} options={MODES.map((m) => ({ value: m.id, label: m.label }))} onChange={(v) => save((s) => ((s.gateways.imessage.mode = v), s))} />
+        <Row label={t('settings.gateways.permissionMode')} search="Permission mode" hint={t('settings.gateways.imModeHint', { hint: modes(t).find((m) => m.id === g.mode)?.hint ?? '' })}>
+          <Select<PermissionMode> label={t('settings.gateways.permissionMode')} value={g.mode} options={modes(t).map((m) => ({ value: m.id, label: m.label }))} onChange={(v) => save((s) => ((s.gateways.imessage.mode = v), s))} />
         </Row>
         {g.mode !== 'ask' && (
           <div className="notice notice-warn small">
-            {t(g.mode === 'plan' ? 'settings.gateways.imModeWarnPlan' : 'settings.gateways.imModeWarn', { mode: MODES.find((m) => m.id === g.mode)?.label ?? g.mode })}
+            {t(g.mode === 'plan' ? 'settings.gateways.imModeWarnPlan' : 'settings.gateways.imModeWarn', { mode: modes(t).find((m) => m.id === g.mode)?.label ?? g.mode })}
           </div>
         )}
         <Row label={t('settings.gateways.startFresh')} search="Start fresh" hint={t('settings.gateways.imStartFreshHint')}>
@@ -277,12 +277,12 @@ export function WhatsAppPage({ app, save, onState, onError }: PageProps) {
             />
           </Row>
         )}
-        <Row label={t('settings.gateways.permissionMode')} search="Permission mode" hint={t('settings.gateways.waModeHint', { hint: MODES.find((m) => m.id === g.mode)?.hint ?? '' })}>
-          <Select<PermissionMode> label={t('settings.gateways.permissionMode')} value={g.mode} options={MODES.map((m) => ({ value: m.id, label: m.label }))} onChange={(v) => save((s) => ((s.gateways.whatsapp.mode = v), s))} />
+        <Row label={t('settings.gateways.permissionMode')} search="Permission mode" hint={t('settings.gateways.waModeHint', { hint: modes(t).find((m) => m.id === g.mode)?.hint ?? '' })}>
+          <Select<PermissionMode> label={t('settings.gateways.permissionMode')} value={g.mode} options={modes(t).map((m) => ({ value: m.id, label: m.label }))} onChange={(v) => save((s) => ((s.gateways.whatsapp.mode = v), s))} />
         </Row>
         {g.mode !== 'ask' && (
           <div className="notice notice-warn small">
-            {t(g.mode === 'plan' ? 'settings.gateways.waModeWarnPlan' : 'settings.gateways.waModeWarn', { mode: MODES.find((m) => m.id === g.mode)?.label ?? g.mode })}
+            {t(g.mode === 'plan' ? 'settings.gateways.waModeWarnPlan' : 'settings.gateways.waModeWarn', { mode: modes(t).find((m) => m.id === g.mode)?.label ?? g.mode })}
           </div>
         )}
         <Row label={t('settings.gateways.replyPrefix')} search="Reply prefix" hint={t('settings.gateways.replyPrefixHint')}>

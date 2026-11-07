@@ -201,9 +201,6 @@ export function NotificationsPage({ app, save }: PageProps) {
 export const shortcutLabel = (id: ShortcutId): MessageKey => `settings.shortcuts.${id}`
 const shortcutHelp = (id: ShortcutId): MessageKey => `settings.shortcuts.${id}Help`
 
-/** FIXED_SHORTCUTS names, in its order. */
-const FIXED_LABELS: MessageKey[] = ['settings.shortcuts.fixedNthChat', 'settings.shortcuts.fixedMode', 'settings.shortcuts.fixedSend', 'settings.shortcuts.fixedFavorite', 'settings.shortcuts.fixedStop']
-
 export function ShortcutsPage({ app, save }: PageProps) {
   const { t } = useT()
   const mac = isMac(app.platform)
@@ -217,7 +214,14 @@ export function ShortcutsPage({ app, save }: PageProps) {
     const combo = comboFromEvent(e.nativeEvent, mac)
     if (!combo) return
     const why = comboProblem(combo, id, app.settings)
-    if (why) return setProblem({ id, text: `${formatCombo(combo, mac)}: ${why}` })
+    if (why) {
+      const keys = formatCombo(combo, mac)
+      const text =
+        why.kind === 'taken'
+          ? t('settings.shortcuts.problemTaken', { keys, name: t(shortcutLabel(why.by)) })
+          : t(why.kind === 'reserved' ? 'settings.shortcuts.problemReserved' : 'settings.shortcuts.problemNoModifier', { keys })
+      return setProblem({ id, text })
+    }
     setProblem(null)
     setRecording(null)
     const def = SHORTCUTS.find((s) => s.id === id)!.combo
@@ -258,8 +262,8 @@ export function ShortcutsPage({ app, save }: PageProps) {
         })}
       </Section>
       <Section title={t('settings.shortcuts.fixed')}>
-        {FIXED_SHORTCUTS.map((f, i) => (
-          <Row key={f.combo} label={FIXED_LABELS[i] ? t(FIXED_LABELS[i]) : f.label}>
+        {FIXED_SHORTCUTS.map((f) => (
+          <Row key={f.combo} label={t(f.label)}>
             <kbd>{formatCombo(f.combo, mac)}</kbd>
           </Row>
         ))}

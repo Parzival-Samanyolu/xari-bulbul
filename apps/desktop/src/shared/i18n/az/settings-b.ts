@@ -220,11 +220,6 @@ export default {
   'settings.data.deleteAllChats': 'Bütün söhbətləri sil',
 
   // data.tsx: plugins
-  'settings.data.nTools': { one: '{count} alət', other: '{count} alət' },
-  'settings.data.nSkills': { one: '{count} bacarıq', other: '{count} bacarıq' },
-  'settings.data.nCommands': { one: '{count} əmr', other: '{count} əmr' },
-  'settings.data.nMcpServers': { one: '{count} MCP serveri', other: '{count} MCP serveri' },
-  'settings.data.includesNothing': 'heç nə',
   'settings.data.removePluginConfirm': '{name} plagini silinsin? Onun alətləri, bacarıqları və faylları silinəcək.',
   'settings.data.turnOnPlugin': '{name} plaginini yandır',
   'settings.data.reviewed': 'Yoxlanılıb',

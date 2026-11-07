@@ -4,7 +4,8 @@ import type { Fit, HfResult, LocalDownload, LocalModelView, LocalStatus } from '
 import { api } from '../../../lib/api'
 import { useFormat, useT } from '../../../lib/i18n'
 import { Row } from '../../fields'
-import { rich, type PageProps } from '../common'
+import { type PageProps } from '../common'
+import { rich } from '../../../lib/rich'
 
 const LOCAL = 'llama-local'
 const ctxText = (n: number) => (n >= 1024 ? `${Math.round(n / 1024)}K` : String(n))

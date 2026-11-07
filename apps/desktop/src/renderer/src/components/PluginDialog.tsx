@@ -4,7 +4,7 @@ import { makeT } from '@harness/core/i18n'
 import { CATALOGS, type MessageKey } from '../../../shared/i18n/catalog'
 import { api } from '../lib/api'
 import { useT } from '../lib/i18n'
-import { withSlots } from './BotDialog'
+import { rich } from '../lib/rich'
 
 type Scope = 'user' | 'project'
 
@@ -100,12 +100,12 @@ export function PluginDialog({ plugin, workspace, onClose, onState }: Props) {
         <p className="plugin-summary">{plugin.description}</p>
         <p className="muted small">
           {t('bots.plugin.adds', { items: includesText(plugin.includes, t, lang) })}
-          {plugin.detected && <> {withSlots(t('bots.plugin.found'), { path: <code>{plugin.detected}</code> })}</>}
+          {plugin.detected && <> {rich(t('bots.plugin.found'), { path: <code>{plugin.detected}</code> })}</>}
         </p>
         {update && installed && (
           <div className="plugin-kv">
             <span className="muted">{t('bots.plugin.version')}</span>
-            <span>{withSlots(t('bots.plugin.versions'), { installed: <code>{short(installed.pin)}</code>, available: <code>{short(plugin.pin)}</code> })}</span>
+            <span>{rich(t('bots.plugin.versions'), { installed: <code>{short(installed.pin)}</code>, available: <code>{short(plugin.pin)}</code> })}</span>
           </div>
         )}
         <div className="plugin-kv">

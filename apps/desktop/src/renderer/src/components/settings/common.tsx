@@ -1,4 +1,4 @@
-import { Fragment, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import type { AppState, ModelRef, Settings, UpdateStatus } from '../../../../shared/ipc'
 import { modelLabel } from '../../lib/format'
 import { useT } from '../../lib/i18n'
@@ -36,17 +36,6 @@ export const KEY_LINKS: Record<string, string> = {
 }
 
 export const refText = (r: ModelRef) => `${modelLabel(r.modelId)} · ${r.providerId}`
-
-/**
- * A message with `{name}` placeholders filled by elements, such as a code span or a link button:
- * `rich(t('key'), { cmd: <code>…</code> })`. Pass the message without those vars, so its braces stay.
- */
-export function rich(text: string, parts: Record<string, ReactNode>): ReactNode {
-  return text.split(/(\{\w+\})/).map((piece, i) => {
-    const name = /^\{(\w+)\}$/.exec(piece)?.[1]
-    return <Fragment key={i}>{name && name in parts ? parts[name] : piece}</Fragment>
-  })
-}
 
 /** A model setting: a button that opens the model switcher, plus a reset link while one is chosen. */
 export function ModelChoice({

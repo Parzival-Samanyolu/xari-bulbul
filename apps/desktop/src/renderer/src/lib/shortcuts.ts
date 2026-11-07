@@ -1,3 +1,4 @@
+import type { MessageKey } from '../../../shared/i18n/catalog'
 import type { Settings } from '../../../shared/ipc'
 
 // Keyboard shortcuts the user can rebind (Settings › Keyboard shortcuts). Combos are stored as
@@ -6,21 +7,22 @@ import type { Settings } from '../../../shared/ipc'
 
 export type ShortcutId = 'modelPicker' | 'settings' | 'newChat' | 'terminal' | 'filesPanel'
 
-export const SHORTCUTS: { id: ShortcutId; label: string; help: string; combo: string }[] = [
-  { id: 'modelPicker', label: 'Switch model', help: 'Opens the model switcher. In Settings the same keys search settings.', combo: 'Mod+K' },
-  { id: 'settings', label: 'Open Settings', help: 'Opens and closes this window.', combo: 'Mod+,' },
-  { id: 'newChat', label: 'New chat', help: 'Starts a chat in the current folder.', combo: 'Mod+N' },
-  { id: 'terminal', label: 'Terminal panel', help: 'Shows or hides the terminal at the bottom.', combo: 'Mod+J' },
-  { id: 'filesPanel', label: 'Files and changes panel', help: 'Shows or hides the panel on the right.', combo: 'Mod+Alt+B' },
+/** Names and help texts are `settings.shortcuts.<id>` and `settings.shortcuts.<id>Help`. */
+export const SHORTCUTS: { id: ShortcutId; combo: string }[] = [
+  { id: 'modelPicker', combo: 'Mod+K' },
+  { id: 'settings', combo: 'Mod+,' },
+  { id: 'newChat', combo: 'Mod+N' },
+  { id: 'terminal', combo: 'Mod+J' },
+  { id: 'filesPanel', combo: 'Mod+Alt+B' },
 ]
 
 /** Shortcuts that can't be changed, listed for reference. */
-export const FIXED_SHORTCUTS: { label: string; combo: string }[] = [
-  { label: 'Open the nth chat in the folder', combo: 'Mod+1…9' },
-  { label: 'Change permission mode (in the message box)', combo: 'Shift+Tab' },
-  { label: 'Send when Enter adds a newline', combo: 'Mod+Enter' },
-  { label: 'Add or remove a favorite (in the model switcher)', combo: 'Mod+D' },
-  { label: 'Stop the agent, or deny an approval', combo: 'Escape' },
+export const FIXED_SHORTCUTS: { label: MessageKey; combo: string }[] = [
+  { label: 'settings.shortcuts.fixedNthChat', combo: 'Mod+1…9' },
+  { label: 'settings.shortcuts.fixedMode', combo: 'Shift+Tab' },
+  { label: 'settings.shortcuts.fixedSend', combo: 'Mod+Enter' },
+  { label: 'settings.shortcuts.fixedFavorite', combo: 'Mod+D' },
+  { label: 'settings.shortcuts.fixedStop', combo: 'Escape' },
 ]
 
 /** Combos the system or the app already uses, which can't be assigned. */
@@ -68,12 +70,14 @@ export function formatCombo(combo: string, mac: boolean): string {
   return [...mods, ...rest].map((p) => sym[p] ?? p).join('')
 }
 
-/** Why a combo can't be used for `id`, or null when it can. */
-export function comboProblem(combo: string, id: ShortcutId, settings: Settings): string | null {
+/** Why a combo can't be used for `id`, or null when it can. `taken` names the shortcut that already has it. */
+export type ComboProblem = { kind: 'noModifier' } | { kind: 'reserved' } | { kind: 'taken'; by: ShortcutId }
+
+export function comboProblem(combo: string, id: ShortcutId, settings: Settings): ComboProblem | null {
   const parts = combo.split('+')
   const key = parts.at(-1) ?? ''
-  if (!parts.some((p) => p === 'Mod' || p === 'Ctrl' || p === 'Alt') && !/^F\d{1,2}$/.test(key)) return 'Include ⌘/Ctrl or Alt, so typing isn’t taken over.'
-  if (RESERVED.has(combo)) return 'That one is already used by the system or the app.'
+  if (!parts.some((p) => p === 'Mod' || p === 'Ctrl' || p === 'Alt') && !/^F\d{1,2}$/.test(key)) return { kind: 'noModifier' }
+  if (RESERVED.has(combo)) return { kind: 'reserved' }
   const other = SHORTCUTS.find((s) => s.id !== id && shortcutFor(settings, s.id) === combo)
-  return other ? `Already used by “${other.label}”.` : null
+  return other ? { kind: 'taken', by: other.id } : null
 }

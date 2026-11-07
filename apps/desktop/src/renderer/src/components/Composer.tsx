@@ -23,14 +23,6 @@ export function modes(t: T): { id: PermissionMode; label: string; hint: string }
   ]
 }
 
-/** English labels, for the settings pages until they switch to `modes(t)`. */
-export const MODES: { id: PermissionMode; label: string; hint: string }[] = [
-  { id: 'ask', label: 'Ask', hint: 'Ask before edits and commands' },
-  { id: 'acceptEdits', label: 'Auto-edit', hint: 'Edit files freely, ask before commands' },
-  { id: 'plan', label: 'Plan', hint: 'Read-only: investigate and propose a plan' },
-  { id: 'auto', label: 'Full auto', hint: 'Never ask (deny rules still apply)' },
-]
-
 interface Pending extends AttachmentInput {
   id: number
   /** Data URL thumbnail for images we have bytes for. */

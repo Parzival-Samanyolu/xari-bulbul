@@ -220,11 +220,6 @@ export default {
   'settings.data.deleteAllChats': 'Tüm sohbetleri sil',
 
   // data.tsx: plugins
-  'settings.data.nTools': { one: '{count} araç', other: '{count} araç' },
-  'settings.data.nSkills': { one: '{count} beceri', other: '{count} beceri' },
-  'settings.data.nCommands': { one: '{count} komut', other: '{count} komut' },
-  'settings.data.nMcpServers': { one: '{count} MCP sunucusu', other: '{count} MCP sunucusu' },
-  'settings.data.includesNothing': 'hiçbir şey',
   'settings.data.removePluginConfirm': '{name} eklentisi kaldırılsın mı? Araçları, becerileri ve dosyaları silinir.',
   'settings.data.turnOnPlugin': '{name} eklentisini aç',
   'settings.data.reviewed': 'İncelendi',
@@ -234,7 +229,7 @@ export default {
   'settings.data.installing': 'Kuruluyor',
   'settings.data.install': 'Kur…',
   'settings.data.updatePlugin': 'Güncelle…',
-  'settings.data.pluginAdds': 'Ekledikleri: {what}.',
+  'settings.data.pluginAdds': 'Şunları ekler: {what}.',
   'settings.data.pluginUpdateAvailable': 'Bir güncelleme var: kurulu {installed}, incelenen {reviewed}.',
   'settings.data.pluginCommit': 'Commit {sha}',
   'settings.data.details': 'Ayrıntılar…',

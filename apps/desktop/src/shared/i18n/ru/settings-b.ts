@@ -224,11 +224,6 @@ export default {
   'settings.data.deleteAllChats': 'Удалить все чаты',
 
   // data.tsx: plugins
-  'settings.data.nTools': { one: '{count} инструмент', few: '{count} инструмента', many: '{count} инструментов', other: '{count} инструмента' },
-  'settings.data.nSkills': { one: '{count} навык', few: '{count} навыка', many: '{count} навыков', other: '{count} навыка' },
-  'settings.data.nCommands': { one: '{count} команду', few: '{count} команды', many: '{count} команд', other: '{count} команды' },
-  'settings.data.nMcpServers': { one: '{count} MCP-сервер', few: '{count} MCP-сервера', many: '{count} MCP-серверов', other: '{count} MCP-сервера' },
-  'settings.data.includesNothing': 'ничего',
   'settings.data.removePluginConfirm': 'Удалить плагин {name}? Его инструменты, навыки и файлы будут удалены.',
   'settings.data.turnOnPlugin': 'Включить {name}',
   'settings.data.reviewed': 'Проверен',
@@ -238,7 +233,7 @@ export default {
   'settings.data.installing': 'Установка',
   'settings.data.install': 'Установить…',
   'settings.data.updatePlugin': 'Обновить…',
-  'settings.data.pluginAdds': 'Добавляет {what}.',
+  'settings.data.pluginAdds': 'Добавляет: {what}.',
   'settings.data.pluginUpdateAvailable': 'Доступно обновление: установлена {installed}, проверена {reviewed}.',
   'settings.data.pluginCommit': 'Коммит {sha}',
   'settings.data.details': 'Подробнее…',

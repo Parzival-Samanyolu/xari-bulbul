@@ -45,7 +45,7 @@ export function BotVoiceFields({ app, bot, onChange }: { app: AppState; bot: Bot
     setProblem('')
     if (playing) return speaker.stop()
     const line = bot.greeting?.trim() || TTS_SAMPLE
-    void speaker.speak(PREVIEW_ID, line, { as: { voice: v, preview: true }, notice: (_l, text) => setProblem(text) })
+    void speaker.speak(PREVIEW_ID, line, { as: { voice: v, preview: true }, notice: (_l, text, msg) => setProblem(msg ? t(msg.key, msg.vars) : text) })
   }
 
   return (

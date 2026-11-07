@@ -6,7 +6,7 @@ import { useFormat, useT } from '../../../lib/i18n'
 import { NumberField, Row, Section, Select, Slider, TextField, Toggle } from '../../fields'
 import { ProviderLogo } from '../../ProviderLogo'
 import type { PageProps } from '../common'
-import { rich } from './parts'
+import { rich } from '../../../lib/rich'
 
 type T = ReturnType<typeof useT>['t']
 

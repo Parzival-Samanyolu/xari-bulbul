@@ -220,11 +220,6 @@ export default {
   'settings.data.deleteAllChats': 'Delete all chats',
 
   // data.tsx: plugins
-  'settings.data.nTools': { one: '{count} tool', other: '{count} tools' },
-  'settings.data.nSkills': { one: '{count} skill', other: '{count} skills' },
-  'settings.data.nCommands': { one: '{count} command', other: '{count} commands' },
-  'settings.data.nMcpServers': { one: '{count} MCP server', other: '{count} MCP servers' },
-  'settings.data.includesNothing': 'nothing',
   'settings.data.removePluginConfirm': 'Remove the {name} plugin? Its tools, skills and files are deleted.',
   'settings.data.turnOnPlugin': 'Turn on {name}',
   'settings.data.reviewed': 'Reviewed',

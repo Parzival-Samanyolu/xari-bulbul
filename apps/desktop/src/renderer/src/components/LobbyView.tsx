@@ -153,7 +153,7 @@ export function LobbyView({ app, live, onDismiss, onError, onEditLobby, onSettin
         )}
         {live.notices.map((n) => (
           <div key={n.id} className={`notice notice-${n.level}`} role={n.level === 'error' ? 'alert' : 'status'}>
-            <span>{n.text}</span>
+            <span>{n.msg ? t(n.msg.key, n.msg.vars) : n.text}</span>
             {n.fix === 'providers' && (
               <button className="btn" onClick={() => onSettings('providers.keys')}>
                 {t('bots.lobby.openKeys')}

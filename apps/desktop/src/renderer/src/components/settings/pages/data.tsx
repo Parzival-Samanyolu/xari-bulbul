@@ -5,10 +5,10 @@ import { cost, modelLabel, tokens } from '../../../lib/format'
 import { useFormat, useT } from '../../../lib/i18n'
 import { NumberField, Row, Section, Select, TextField, Toggle } from '../../fields'
 import { ModelPicker } from '../../ModelPicker'
-import { PluginDialog } from '../../PluginDialog'
+import { PluginDialog, includesText } from '../../PluginDialog'
 import type { PageProps } from '../common'
 import { toolToggle } from './advanced'
-import { rich } from './parts'
+import { rich } from '../../../lib/rich'
 
 type T = ReturnType<typeof useT>['t']
 
@@ -316,7 +316,7 @@ export function SessionsPage({ app, save, onState, onError }: PageProps) {
           {toolToggle(app, save, 'session_search', t('settings.data.searchPastChats'))}
         </Row>
       </Section>
-      <Section title={t('settings.data.storedChats')}>
+      <Section title={t('settings.data.storedChats')} search="Stored chats">
         <Row label={t('settings.data.chats')} search="Chats" hint={t('settings.data.chatsHint', { count: total, path: app.paths.sessions })}>
           <div className="inline">
             <button className="btn" onClick={() => api.app.openPath(app.paths.sessions)}>
@@ -336,17 +336,6 @@ export function SessionsPage({ app, save, onState, onError }: PageProps) {
 
 const shortSha = (sha: string) => sha.slice(0, 7)
 const folderName = (p: string) => p.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || p
-
-/** "2 tools, 1 skill and 3 commands" in the UI language. */
-function includesList(t: T, lang: string, inc: PluginInfo['includes']): string {
-  const parts = [
-    inc.tools.length && t('settings.data.nTools', { count: inc.tools.length }),
-    inc.skills.length && t('settings.data.nSkills', { count: inc.skills.length }),
-    inc.commands.length && t('settings.data.nCommands', { count: inc.commands.length }),
-    inc.mcpServers.length && t('settings.data.nMcpServers', { count: inc.mcpServers.length }),
-  ].filter((p): p is string => !!p)
-  return parts.length ? new Intl.ListFormat(lang, { type: 'conjunction' }).format(parts) : t('settings.data.includesNothing')
-}
 
 export function PluginsPage({ app, onState, onError }: PageProps) {
   const { t, lang } = useT()
@@ -395,7 +384,7 @@ export function PluginsPage({ app, onState, onError }: PageProps) {
                 )}
               </div>
               <p className="muted small plugin-desc">
-                {p.description} {t('settings.data.pluginAdds', { what: includesList(t, lang, p.includes) })}
+                {p.description} {t('settings.data.pluginAdds', { what: includesText(p.includes, t, lang) })}
               </p>
               {update && inst && (
                 <p className="small plugin-desc">

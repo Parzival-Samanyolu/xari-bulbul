@@ -5,7 +5,7 @@ import { api } from '../../../lib/api'
 import { useT } from '../../../lib/i18n'
 import { ListField, Row, Section, Select, TextField, Toggle } from '../../fields'
 import { SecretInput, type PageProps } from '../common'
-import { rich } from './parts'
+import { rich } from '../../../lib/rich'
 
 type T = ReturnType<typeof useT>['t']
 
@@ -249,7 +249,7 @@ export function McpPage({ app, save, onState, onError }: PageProps) {
           )
         })}
       </Section>
-      <Section title={t('settings.tools.addServer')} description={t('settings.tools.addServerHint')}>
+      <Section title={t('settings.tools.addServer')} search="Add a server" description={t('settings.tools.addServerHint')}>
         {presets.map((p) => (
           <div key={p.id} className="mcp-preset">
             <div>
@@ -332,6 +332,7 @@ export function SkillsPage({ app, onState, onError }: PageProps) {
     <>
       <Section
         title={t('settings.tools.skills')}
+        search="Skills"
         description={rich(t('settings.tools.skillsIntro'), {
           file: <code>SKILL.md</code>,
           skillsDir: <code>skills/</code>,
@@ -363,7 +364,7 @@ export function SkillsPage({ app, onState, onError }: PageProps) {
           </div>
         )}
       </Section>
-      <Section title={t('settings.tools.slashCommands')} description={t('settings.tools.slashCommandsHint')}>
+      <Section title={t('settings.tools.slashCommands')} search="Slash commands" description={t('settings.tools.slashCommandsHint')}>
         <div className="tool-list">
           {ext.commands.map((c) => (
             <div key={c.name} className="tool-item">

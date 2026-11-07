@@ -1,9 +1,10 @@
 import { useEffect, useId, useState, type ReactNode } from 'react'
 import { useT } from '../lib/i18n'
 
-export function Section({ title, description, children }: { title?: string; description?: ReactNode; children?: ReactNode }) {
+/** A group of settings rows. `data-row` (`search`, else the title) is what Settings search scrolls to; pass the English title as `search`. */
+export function Section({ title, description, children, search }: { title?: string; description?: ReactNode; children?: ReactNode; search?: string }) {
   return (
-    <section className="s-section" data-row={title}>
+    <section className="s-section" data-row={search ?? title}>
       {title && <h3>{title}</h3>}
       {description && <p className="muted small">{description}</p>}
       {children && <div className="s-rows">{children}</div>}

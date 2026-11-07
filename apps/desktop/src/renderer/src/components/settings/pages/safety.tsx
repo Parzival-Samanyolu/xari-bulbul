@@ -1,8 +1,8 @@
 import { useT } from '../../../lib/i18n'
-import { MODES } from '../../Composer'
+import { modes } from '../../Composer'
 import { ListField, NumberField, Row, Section, TextField, Toggle } from '../../fields'
 import type { PageProps } from '../common'
-import { rich } from './parts'
+import { rich } from '../../../lib/rich'
 
 type HookKind = 'preTool' | 'postTool'
 
@@ -12,9 +12,9 @@ export function SafetyPage({ app, save }: PageProps) {
   return (
     <>
       <Section title={t('settings.safety.permissionMode')}>
-        <Row label={t('settings.safety.defaultMode')} search="Default mode" hint={t('settings.safety.defaultModeHint', { hint: MODES.find((m) => m.id === p.mode)?.hint ?? '' })}>
+        <Row label={t('settings.safety.defaultMode')} search="Default mode" hint={t('settings.safety.defaultModeHint', { hint: modes(t).find((m) => m.id === p.mode)?.hint ?? '' })}>
           <div className="modes large" role="radiogroup" aria-label={t('settings.safety.defaultModeLabel')}>
-            {MODES.map((m) => (
+            {modes(t).map((m) => (
               <button key={m.id} role="radio" aria-checked={p.mode === m.id} className={`mode mode-${m.id} ${p.mode === m.id ? 'on' : ''}`} onClick={() => save((s) => ((s.permissions.mode = m.id), s))}>
                 {m.label}
               </button>

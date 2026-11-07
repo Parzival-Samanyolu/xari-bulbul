@@ -7,6 +7,7 @@ import { api } from '../lib/api'
 import { basename } from '../lib/format'
 import { useT } from '../lib/i18n'
 import { Markdown } from '../lib/Markdown'
+import { rich } from '../lib/rich'
 import { pixelatePicture, spritePng, type PixelPng } from '../lib/pixel-art'
 import { BotVoiceFields } from './BotVoiceFields'
 import { BotFaceView, type BotMood } from './BotFace'
@@ -78,11 +79,6 @@ const effortNames = (t: T): Record<ReasoningEffort, string> => ({
   xhigh: t('bots.dialog.effort.xhigh'),
   max: t('bots.dialog.effort.max'),
 })
-
-/** A translated sentence with `{name}` slots filled by elements, e.g. key hints with <kbd>. */
-export function withSlots(text: string, slots: Record<string, React.ReactNode>): React.ReactNode[] {
-  return text.split(/\{(\w+)\}/).map((part, i) => (i % 2 ? <span key={i}>{slots[part] ?? `{${part}}`}</span> : part))
-}
 
 const NAME_MAX = 40
 
@@ -745,7 +741,7 @@ export function BotDialog({ app, botId, onClose, onState }: Props) {
         )}
         <div className="dialog-actions bd-actions">
           <span className="muted small bd-keys">
-            {withSlots(t('bots.dialog.keys'), {
+            {rich(t('bots.dialog.keys'), {
               save: (
                 <>
                   <kbd>{app.platform === 'darwin' ? '⌘' : 'Ctrl'}</kbd>

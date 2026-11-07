@@ -27,13 +27,6 @@ export const purposeLabels = (t: T): Record<(typeof PROFILE_USES)[number], strin
   learning: t('bots.profile.use.learning'),
 })
 
-/** @deprecated English only; use `roleLabels(t)`. Kept until Settings › Profile moves over. */
-export const ROLE_LABELS: Record<(typeof PROFILE_ROLES)[number], string> = { developer: 'Developer', designer: 'Designer', student: 'Student', researcher: 'Researcher', other: 'Other' }
-/** @deprecated English only; use `experienceLabels(t)`. */
-export const EXPERIENCE_LABELS: Record<(typeof PROFILE_EXPERIENCE)[number], string> = { new: 'New to coding', some: 'Some experience', experienced: 'Experienced' }
-/** @deprecated English only; use `purposeLabels(t)`. */
-export const USE_LABELS: Record<(typeof PROFILE_USES)[number], string> = { coding: 'Coding', writing: 'Writing', research: 'Research', automation: 'Automation', learning: 'Learning' }
-
 /** Reply languages offered in a list; the value is what the prompt says ("Reply in Turkish"), the code names it in the UI language. */
 const LANGUAGE_CODES: [name: string, code: string][] = [
   ['English', 'en'], ['Azerbaijani', 'az'], ['Turkish', 'tr'], ['Russian', 'ru'], ['German', 'de'], ['French', 'fr'], ['Spanish', 'es'], ['Portuguese', 'pt'],
@@ -53,9 +46,9 @@ function languageName(name: string, code: string, lang: string): string {
   }
 }
 
-/** Options for the reply-language select. `t` and `lang` translate the labels (English without them); values stay English. */
-export const languageOptions = (current: string, t?: T, lang = 'en') => [
-  { value: '', label: t ? t('bots.profile.sameLanguage') : 'Same as my messages' },
+/** Options for the reply-language select, labelled in the UI language; values stay English, since the prompt uses them. */
+export const languageOptions = (current: string, t: T, lang: string) => [
+  { value: '', label: t('bots.profile.sameLanguage') },
   ...LANGUAGE_CODES.map(([name, code]) => ({ value: name, label: languageName(name, code, lang) })),
   ...(current && !LANGUAGES.includes(current) ? [{ value: current, label: current }] : []),
 ]

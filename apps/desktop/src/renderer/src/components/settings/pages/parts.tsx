@@ -1,15 +1,6 @@
-import { Fragment, type ReactNode } from 'react'
 import type { ModelRef } from '../../../../../shared/ipc'
 import { useT } from '../../../lib/i18n'
 import { ProviderLogo } from '../../ProviderLogo'
-
-/**
- * A translated sentence with React nodes (code, links, bold text) in its `{name}` slots.
- * Call `t(key)` without those names in `vars`, so their placeholders reach this function intact.
- */
-export function rich(text: string, nodes: Record<string, ReactNode>): ReactNode {
-  return text.split(/\{(\w+)\}/g).map((part, i) => (i % 2 === 0 ? part : <Fragment key={i}>{part in nodes ? nodes[part] : `{${part}}`}</Fragment>))
-}
 
 /** A list of models with a Remove link each. */
 export function ListOfModels({ refs, onRemove }: { refs: ModelRef[]; onRemove: (r: ModelRef) => void }) {

@@ -4,7 +4,7 @@ import { LOBBY_ALL_ANSWER, LOBBY_CAST, newLobby } from '@harness/core/bots'
 import type { AppState, Settings } from '../../../shared/ipc'
 import { api } from '../lib/api'
 import { useFormat, useT } from '../lib/i18n'
-import { withSlots } from './BotDialog'
+import { rich } from '../lib/rich'
 import { BotAvatar, StackedFaces } from './Bots'
 
 type Lobby = Settings['lobbies'][number]
@@ -196,7 +196,7 @@ export function LobbyDialog({ app, lobbyId, onClose, onState, onError }: Props) 
 
         <div className="dialog-actions bd-actions">
           <span className="muted small bd-keys">
-            {withSlots(t('bots.dialog.keys'), { save: <kbd>Enter</kbd>, cancel: <kbd>Esc</kbd> })}
+            {rich(t('bots.dialog.keys'), { save: <kbd>Enter</kbd>, cancel: <kbd>Esc</kbd> })}
           </span>
           <button type="button" className="btn ghost" onClick={onClose} disabled={busy}>
             {t('common.cancel')}

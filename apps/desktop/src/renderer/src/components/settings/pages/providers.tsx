@@ -5,7 +5,8 @@ import { useFormat, useT } from '../../../lib/i18n'
 import { NumberField, Row, Section, TextField, Toggle } from '../../fields'
 import { ProviderLogo } from '../../ProviderLogo'
 import { Icon } from '../icons'
-import { KEY_LINKS, SecretInput, rich, type PageProps } from '../common'
+import { KEY_LINKS, SecretInput, type PageProps } from '../common'
+import { rich } from '../../../lib/rich'
 import { StatusDot } from './parts'
 
 type Provider = Settings['providers'][number]
