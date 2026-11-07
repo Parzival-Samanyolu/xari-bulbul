@@ -8,6 +8,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { app } from 'electron'
 import type { ProcessUsage, ResourceSample } from '../shared/ipc'
+import type { MessageKey } from '../shared/i18n/catalog'
+import { tm } from './i18n'
 
 /** Processes the app started on purpose, by pid, with a readable name. */
 export interface KnownChild {
@@ -16,24 +18,24 @@ export interface KnownChild {
   kind: ProcessUsage['kind']
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  Browser: 'Main process',
-  Tab: 'Window',
-  GPU: 'Graphics (GPU process)',
-  Utility: 'Utility',
-  Zygote: 'Zygote',
-  'Sandbox helper': 'Sandbox helper',
-  'Pepper Plugin': 'Plugin',
-  'Pepper Plugin Broker': 'Plugin broker',
-  Unknown: 'Other',
+const TYPE_LABELS: Record<string, MessageKey> = {
+  Browser: 'main.process.mainProcess',
+  Tab: 'main.process.window',
+  GPU: 'main.process.gpu',
+  Utility: 'main.process.utility',
+  Zygote: 'main.process.zygote',
+  'Sandbox helper': 'main.process.sandbox',
+  'Pepper Plugin': 'main.process.plugin',
+  'Pepper Plugin Broker': 'main.process.pluginBroker',
+  Unknown: 'main.process.other',
 }
 
-const UTILITY_NAMES: Record<string, string> = {
-  'network.mojom.NetworkService': 'Network service',
-  'storage.mojom.StorageService': 'Storage service',
-  'audio.mojom.AudioService': 'Audio service',
-  'video_capture.mojom.VideoCaptureService': 'Video capture service',
-  'data_decoder.mojom.DataDecoderService': 'Data decoder',
+const UTILITY_NAMES: Record<string, MessageKey> = {
+  'network.mojom.NetworkService': 'main.process.network',
+  'storage.mojom.StorageService': 'main.process.storage',
+  'audio.mojom.AudioService': 'main.process.audio',
+  'video_capture.mojom.VideoCaptureService': 'main.process.video',
+  'data_decoder.mojom.DataDecoderService': 'main.process.dataDecoder',
 }
 
 interface PsRow {
@@ -78,9 +80,9 @@ async function gpu(): Promise<string | null> {
 
 const childLabel = (comm: string) => {
   const name = path.basename(comm)
-  if (/llama-server/i.test(name)) return 'Local model (llama.cpp)'
-  if (/whisper/i.test(name)) return 'Speech to text (whisper.cpp)'
-  return name || 'Process'
+  if (/llama-server/i.test(name)) return tm('main.process.llama')
+  if (/whisper/i.test(name)) return tm('main.process.whisper')
+  return name || tm('main.process.process')
 }
 
 /** One sample. `known` names the processes the app started on purpose. */
@@ -89,12 +91,14 @@ export async function sampleResources(known: KnownChild[]): Promise<ResourceSamp
   const rows = await ps()
   const own = new Set(metrics.map((m) => m.pid))
   const processes: ProcessUsage[] = metrics.map((m) => {
-    const service = m.serviceName ? UTILITY_NAMES[m.serviceName] : undefined
+    const serviceKey = m.serviceName ? UTILITY_NAMES[m.serviceName] : undefined
+    const service = serviceKey && tm(serviceKey)
+    const typeKey = TYPE_LABELS[m.type]
     return {
       pid: m.pid,
       kind: 'app',
       type: m.type,
-      label: service ?? (m.type === 'Utility' && m.name ? m.name : (TYPE_LABELS[m.type] ?? m.type)),
+      label: service ?? (m.type === 'Utility' && m.name ? m.name : (typeKey ? tm(typeKey) : m.type)),
       cpu: m.cpu.percentCPUUsage,
       // workingSetSize is in kilobytes.
       memory: m.memory.workingSetSize * 1024,

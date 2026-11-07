@@ -1316,10 +1316,10 @@ export class AppController {
 
   /** The programs the app started on purpose, named for the resource monitor. */
   knownProcesses(): KnownChild[] {
-    const out: KnownChild[] = this.mcp.processes().map((p) => ({ pid: p.pid, label: `MCP server: ${p.name}`, kind: 'mcp' }))
-    for (const pid of this.terminals.pids()) out.push({ pid, label: 'Terminal', kind: 'terminal' })
+    const out: KnownChild[] = this.mcp.processes().map((p) => ({ pid: p.pid, label: tm('main.process.mcp', { name: p.name }), kind: 'mcp' }))
+    for (const pid of this.terminals.pids()) out.push({ pid, label: tm('main.process.terminal'), kind: 'terminal' })
     const llama = this.local.server.pid
-    if (llama) out.push({ pid: llama, label: 'Local model (llama.cpp)', kind: 'local' })
+    if (llama) out.push({ pid: llama, label: tm('main.process.llama'), kind: 'local' })
     return out
   }
 
