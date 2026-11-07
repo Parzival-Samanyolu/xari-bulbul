@@ -348,20 +348,6 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
                   {mixing ? t('chat.composer.mixCount', { count: moa.proposers.length }) : t('chat.composer.mix')}
                 </button>
             )}
-              {/* Narrow windows: the same choice as one compact picker, so the bar never wraps. */}
-              <select
-                className="chip mode-compact"
-                aria-label={t('chat.composer.mode')}
-                title={t('chat.composer.modeTitle')}
-                value={app.mode}
-                onChange={(e) => api.agent.setMode(e.target.value as PermissionMode).then(onState, onError)}
-              >
-                {MODE_LIST.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
               <div className="modes" title={t('chat.composer.modeTitle')}>
                 {MODE_LIST.map((m) => (
                   <button key={m.id} aria-pressed={app.mode === m.id} className={`mode mode-${m.id} ${app.mode === m.id ? 'on' : ''}`} title={m.hint} onClick={() => api.agent.setMode(m.id).then(onState, onError)}>

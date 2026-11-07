@@ -1291,12 +1291,12 @@ kbd {
 .composer-box {
   container-type: inline-size;
 }
-/* One row at every width: the model name shortens, and narrow windows get a compact mode picker. */
+/* The model name shortens first; when the row is still too narrow, the tools wrap to a second line. */
 .composer-tools {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   flex: 1;
   min-width: 0;
 }
@@ -1311,45 +1311,6 @@ kbd {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-.mode-compact {
-  display: none;
-  appearance: none;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 0.85em;
-  padding: 3px 22px 3px 10px;
-  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
-  background-position: calc(100% - 12px) 55%, calc(100% - 8px) 55%;
-  background-size: 4px 4px;
-  background-repeat: no-repeat;
-  cursor: pointer;
-}
-@container (max-width: 900px) {
-  .composer-tools .modes {
-    display: none;
-  }
-  .composer-tools .mode-compact {
-    display: inline-flex;
-  }
-}
-/* Longer mode labels need the compact picker sooner. */
-@container (max-width: 1000px) {
-  :root:is(:lang(az), :lang(tr)) .composer-tools .modes {
-    display: none;
-  }
-  :root:is(:lang(az), :lang(tr)) .composer-tools .mode-compact {
-    display: inline-flex;
-  }
-}
-@container (max-width: 1120px) {
-  :root:lang(ru) .composer-tools .modes {
-    display: none;
-  }
-  :root:lang(ru) .composer-tools .mode-compact {
-    display: inline-flex;
-  }
 }
 .composer-tools > .thinking {
   flex: 0 1 auto;
