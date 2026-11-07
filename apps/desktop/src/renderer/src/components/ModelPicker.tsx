@@ -261,7 +261,7 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
                 >
                   ★
                 </button>
-                <span className="picker-name" title={m.id}>
+                <span className="picker-name" title={m.id} data-current={isCur ? t('chat.picker.currentMark') : undefined}>
                   <MakerLogo modelId={m.id} providerId={m.providerId} size={13} />
                   {displayName(m)}
                   <span className="muted picker-id"> {m.id}</span>
@@ -312,7 +312,6 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
             {t('chat.picker.keyClose')}
           </span>
           {picker.freeOnly && <span>{t('chat.picker.rateLimited')}</span>}
-
         </div>
       </div>
     </div>

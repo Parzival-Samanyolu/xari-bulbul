@@ -70,7 +70,6 @@ export function LayoutPicker({ value, onChange }: { value: Layout; onChange: (l:
             <Wireframe layout={l.id} />
             <span className="layout-name">{t(l.name)}</span>
             <span className="layout-blurb">{t(l.blurb)}</span>
-
           </button>
         )
       })}

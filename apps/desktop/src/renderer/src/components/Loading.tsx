@@ -31,7 +31,6 @@ export function Loading({ error, onRetry }: { error: string | null; onRetry: () 
         <>
           <img className="loading-mark" src={mark} alt="" width={40} height={40} />
           <span className="loading-label">{t('chat.loading.waking')}</span>
-
         </>
       )}
     </div>

@@ -725,7 +725,6 @@ function Todos({ todos }: { todos: { content: string; status: string }[] }) {
         <div key={i} className={`todo todo-${x.status}`}>
           <span className="todo-box">{x.status === 'completed' ? '✓' : x.status === 'in_progress' ? '▸' : ''}</span>
           {x.content}
-
         </div>
       ))}
     </div>

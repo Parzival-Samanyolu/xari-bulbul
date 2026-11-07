@@ -140,7 +140,6 @@ export function MicButton({ app, onText, onError }: Props) {
       <span className="mic-status small" role="status">
         {recording && <span className="rec-dot" aria-hidden />}
         {recording ? t('chat.mic.recording') : phase === 'transcribing' ? t('chat.voice.transcribing') : ''}
-
         {recording && <span aria-hidden> {clock(seconds)}</span>}
       </span>
     </>

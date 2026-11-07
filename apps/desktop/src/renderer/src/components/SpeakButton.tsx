@@ -12,7 +12,6 @@ export function SpeakButton({ id, text, as }: { id: string; text: string; as?: S
       className={`speak-btn${playing ? ' on' : ''}`}
       aria-label={t(playing ? 'chat.speak.stop' : 'chat.speak.read')}
       title={t(playing ? 'chat.speak.stopTitle' : 'chat.speak.read')}
-
       onClick={() => speaker.toggle(id, text, as)}
     >
       {playing ? (

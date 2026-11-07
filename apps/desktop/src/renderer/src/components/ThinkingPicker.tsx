@@ -160,7 +160,6 @@ export function ThinkingPicker({ app, model, onState, onError }: Props) {
               <span className="speed-text">
                 {t('chat.thinking.batchPlanning')}
                 <span className="muted small">{t('chat.thinking.batchPlanningHint')}</span>
-
               </span>
             </button>
           )}

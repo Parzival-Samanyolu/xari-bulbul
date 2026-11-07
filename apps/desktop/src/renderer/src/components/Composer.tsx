@@ -389,7 +389,6 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
             <button className="btn primary" disabled={!text.trim() && !attachments.length} onClick={() => submit()}>
               {t('chat.composer.send')} ↵
             </button>
-
           )}
         </div>
       </div>

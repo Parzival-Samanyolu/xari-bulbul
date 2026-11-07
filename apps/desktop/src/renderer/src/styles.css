@@ -1365,7 +1365,6 @@ kbd {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 @container (max-width: 640px) {
   .composer-tools .model-chip .muted.small {
     display: none;
@@ -1764,7 +1763,7 @@ button.sb-item:hover {
   font-weight: 600;
 }
 .picker-row.cur .picker-name::after {
-  content: ' · current';
+  content: ' · ' attr(data-current);
   font-weight: 400;
   font-size: 0.85em;
 }
@@ -2076,6 +2075,7 @@ button.sb-item:hover {
 .picker-filters {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);

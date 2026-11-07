@@ -152,7 +152,6 @@ export function HandsFree({ app, send, onError }: Props) {
       </button>
       <span className="mic-status small" role="status">
         {phase !== 'off' && t(PHASE_TEXT[phase])}
-
       </span>
     </>
   )

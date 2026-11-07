@@ -43,7 +43,8 @@ export function StatusBar({ app, live, onOpenPicker, onUsage, onResources, updat
         <b>{tokens(s.promptTokens)}</b>↑ <b>{tokens(s.completionTokens)}</b>↓{s.cachedTokens > 0 && <span className="muted"> {tr('chat.statusbar.cached', { tokens: tokens(s.cachedTokens) })}</span>}
       </button>
       <button className="sb-item" onClick={onUsage} title={tr('chat.statusbar.requestsTitle')}>
-        {rich(tr('chat.statusbar.requests'), { count: <b>{s.requests}</b> })}
+        {/* The plural form needs the number; the number itself is then shown bold. */}
+        {rich(tr('chat.statusbar.requests', { count: s.requests }).replace(String(s.requests), '{n}'), { n: <b>{s.requests}</b> })}
         <span className="muted"> · {tr('chat.statusbar.today', { value: t.requests })}</span>
       </button>
       {showCost && (
@@ -102,7 +103,6 @@ export function StatusBar({ app, live, onOpenPicker, onUsage, onResources, updat
           </button>
           <button className={`sb-item sb-toggle ${panels.right ? 'on' : ''}`} aria-pressed={panels.right} onClick={panels.onRight} title={tr('chat.statusbar.filesTitle', { key: mac ? '⌥⌘B' : 'Ctrl+Alt+B' })}>
             {tr('chat.statusbar.files')}
-
           </button>
         </>
       )}

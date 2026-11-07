@@ -58,7 +58,6 @@ export function Question({ request, onAnswer }: Props) {
         )}
         <button type="button" className="btn ghost" onClick={() => onAnswer('')}>
           {t('chat.question.skip')}
-
         </button>
       </form>
     </div>

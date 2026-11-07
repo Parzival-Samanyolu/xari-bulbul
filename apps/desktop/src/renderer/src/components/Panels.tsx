@@ -363,7 +363,6 @@ function ChangesPanel({ app, onState, onError }: RightProps) {
                 )}
                 <button className="link small" disabled={busy || app.running} onClick={() => revert(c)} title={t(app.running ? 'chat.changes.wait' : 'chat.changes.restoreTitle')}>
                   {t('chat.changes.revert')}
-
                 </button>
               </div>
               {isOpen && (c.note ? <p className="muted small pad">{c.note}</p> : <DiffView patch={c.patch} />)}

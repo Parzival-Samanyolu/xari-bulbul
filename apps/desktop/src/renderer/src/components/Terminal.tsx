@@ -374,7 +374,6 @@ export function TerminalPanel({ app, visible, onError }: PanelProps) {
       </div>
       <div className="term-body">
         {!cwd && <p className="muted small pad">{tr('chat.terminal.noFolder')}</p>}
-
         {tabs.map((t) => (
           <TerminalView
             key={t.key}
