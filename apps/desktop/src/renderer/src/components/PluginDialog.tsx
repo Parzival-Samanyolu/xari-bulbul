@@ -5,6 +5,7 @@ import { CATALOGS, type MessageKey } from '../../../shared/i18n/catalog'
 import { api } from '../lib/api'
 import { useT } from '../lib/i18n'
 import { rich } from '../lib/rich'
+import { errorText } from '../lib/errors'
 
 type Scope = 'user' | 'project'
 
@@ -56,7 +57,7 @@ export function PluginDialog({ plugin, workspace, onClose, onState }: Props) {
       onState(await api.plugins.install(plugin.id, scope))
       onClose()
     } catch (e) {
-      setError((e as Error).message.replace(/^Error invoking remote method '[^']+': (Error: )?/, ''))
+      setError(errorText(e))
       setBusy(false)
     }
   }

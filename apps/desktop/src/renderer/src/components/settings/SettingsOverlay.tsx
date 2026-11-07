@@ -7,6 +7,7 @@ import { formatCombo, isMac, matchesShortcut, shortcutFor } from '../../lib/shor
 import type { PageProps, Save } from './common'
 import { Icon } from './icons'
 import { DEFAULT_PAGE, pageEntry, pageShown, resolvePage, searchSettings, visibleTabs, type SearchHit } from './tree'
+import { errorText as clean } from '../../lib/errors'
 
 interface Props {
   app: AppState
@@ -20,7 +21,6 @@ interface Props {
   onEditBot: (id?: string) => void
 }
 
-const clean = (e: unknown) => String((e as Error)?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), summary'
 

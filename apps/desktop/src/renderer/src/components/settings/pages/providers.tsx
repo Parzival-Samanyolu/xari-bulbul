@@ -8,10 +8,10 @@ import { Icon } from '../icons'
 import { KEY_LINKS, SecretInput, type PageProps } from '../common'
 import { rich } from '../../../lib/rich'
 import { StatusDot } from './parts'
+import { errorText as clean } from '../../../lib/errors'
 
 type Provider = Settings['providers'][number]
 
-const clean = (e: unknown) => String((e as Error)?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
 /** Model counts for providers, loaded from the (cached) model lists. */
 function useModelCounts(ids: string[]): Record<string, number | string> {

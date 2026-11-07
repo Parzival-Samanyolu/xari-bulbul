@@ -4,6 +4,7 @@ import path from 'node:path'
 import { app } from 'electron'
 import electronUpdater from 'electron-updater'
 import type { UiEvent, UpdateStatus } from '../shared/ipc'
+import { tm } from './i18n'
 import { log } from './logger'
 
 const { autoUpdater } = electronUpdater
@@ -72,7 +73,7 @@ function updatesConfigured(): boolean {
 
 export async function checkForUpdates() {
   if (!updatesConfigured()) {
-    send({ type: 'update', status: { state: 'error', message: app.isPackaged ? 'This build has no update source (built without a GitHub repo).' : 'Updates only work in the installed app.' } })
+    send({ type: 'update', status: { state: 'error', message: tm(app.isPackaged ? 'main.update.noSource' : 'main.update.installedOnly') } })
     return
   }
   await autoUpdater.checkForUpdates().catch((e) => send({ type: 'update', status: { state: 'error', message: e.message } }))

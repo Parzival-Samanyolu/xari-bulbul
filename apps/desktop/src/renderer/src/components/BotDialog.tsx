@@ -12,6 +12,7 @@ import { pixelatePicture, spritePng, type PixelPng } from '../lib/pixel-art'
 import { BotVoiceFields } from './BotVoiceFields'
 import { BotFaceView, type BotMood } from './BotFace'
 import { ModelChoice } from './settings/common'
+import { errorText as clean } from '../lib/errors'
 
 type Bot = Settings['bots'][number]
 type Tab = 'bot' | 'pet' | 'pixel' | 'upload'
@@ -82,7 +83,6 @@ const effortNames = (t: T): Record<ReasoningEffort, string> => ({
 
 const NAME_MAX = 40
 
-const clean = (e: unknown) => String((e as Error)?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
 interface Props {
   app: AppState

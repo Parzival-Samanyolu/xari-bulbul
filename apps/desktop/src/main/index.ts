@@ -5,8 +5,9 @@ import { pathToFileURL } from 'node:url'
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, Notification, powerSaveBlocker, screen, session, shell, systemPreferences, type WebContents } from 'electron'
 import { Telemetry, defaultScrubContext, telemetryUrl } from '@harness/core'
 import { IPC_EVENT, type RendererError, type TrackEvent, type UiEvent } from '../shared/ipc'
+import { encodeAppError } from '../shared/app-error'
 import { AppController, type BackgroundNotice } from './controller'
-import { buildAppMenu, setMainLanguage, tm } from './i18n'
+import { AppError, buildAppMenu, setMainLanguage, tm } from './i18n'
 import { errText, log } from './logger'
 import { sampleResources } from './resources'
 import { loadShellPath } from './shell-path'
@@ -176,7 +177,7 @@ async function microphoneAccess(): Promise<boolean> {
   const status = systemPreferences.getMediaAccessStatus('microphone')
   if (status === 'granted') return true
   if (status === 'denied' || status === 'restricted') {
-    throw new Error('Microphone access is off. Turn it on for Xarı Bülbül in System Settings → Privacy & Security → Microphone.')
+    throw new AppError('main.error.micOff')
   }
   return systemPreferences.askForMediaAccess('microphone')
 }
@@ -235,7 +236,15 @@ function whatsappBridgeSource(): string {
 }
 
 function handle(channel: string, fn: (...args: any[]) => unknown) {
-  ipcMain.handle(channel, async (_e, ...args) => fn(...args))
+  ipcMain.handle(channel, async (_e, ...args) => {
+    try {
+      return await fn(...args)
+    } catch (e) {
+      // Only the message crosses IPC, so an app error carries its key inside it.
+      if (e instanceof AppError) throw new Error(encodeAppError(e.key, e.message))
+      throw e
+    }
+  })
 }
 
 function registerIpc() {

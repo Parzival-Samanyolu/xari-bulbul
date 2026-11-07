@@ -8,6 +8,7 @@ import { LayoutPicker, withLayout } from './LayoutPicker'
 import { PROFILE_EXPERIENCE, PROFILE_ROLES, PROFILE_USES, ShareInfoText, experienceLabels, languageOptions, purposeLabels, roleLabels } from './profile'
 import { ProviderLogo } from './ProviderLogo'
 import { KEY_LINKS, ModelChoice, SecretInput, refText } from './settings/common'
+import { errorText as clean } from '../lib/errors'
 
 // First run: a welcome screen, then four short steps. Every answer is saved as it's given, so
 // quitting halfway keeps what was chosen. Setup ends with `app.onboarded`, set on Done.
@@ -57,7 +58,6 @@ const themes = (t: T): { value: Theme; label: string }[] => [
 ]
 const FREE_TIER = new Set(['google', 'groq', 'cerebras'])
 
-const clean = (e: unknown) => String((e as Error)?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
 export function Onboarding({ app, onState, onError }: Props) {
   const { t } = useT()

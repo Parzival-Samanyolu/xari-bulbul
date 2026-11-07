@@ -20,6 +20,7 @@ import { Loading } from './components/Loading'
 import { I18nProvider, useT } from './lib/i18n'
 import { makeT, type Vars } from '@harness/core/i18n'
 import { CATALOGS, type MessageKey } from '../../shared/i18n/catalog'
+import { errorInfo, errorText } from './lib/errors'
 
 /** A message built outside React, translated where it is shown. */
 export interface Msg {
@@ -62,8 +63,15 @@ export interface Notice {
   memory?: { sessionId: string; added: MemoryFact[]; removed: MemoryFact[] }
 }
 
-/** Point notices at the settings tab that resolves them. */
-function fixFor(text: string): Notice['fix'] {
+/** App errors from main (translated) whose fix is in Settings › Providers, by catalogue key. */
+const PROVIDER_FIXES: ReadonlySet<MessageKey> = new Set<MessageKey>(['main.error.providerOff', 'main.error.needsKey', 'main.error.addKey', 'main.error.noPainter'])
+
+/**
+ * Point notices at the settings tab that resolves them. Errors main throws are translated, so they
+ * are matched by `code` (their catalogue key); the English patterns cover messages from core.
+ */
+function fixFor(text: string, code?: MessageKey): Notice['fix'] {
+  if (code) return PROVIDER_FIXES.has(code) ? 'providers' : undefined
   if (/api key|providers ›|unauthori[sz]ed|\b401\b|turned off/i.test(text)) return 'providers'
   if (/budget/i.test(text)) return 'usage'
   if (/max steps/i.test(text)) return 'agent'
@@ -89,7 +97,7 @@ type Action =
   | { type: 'state'; state: AppState }
   | { type: 'agent'; sessionId: string; event: AgentEvent }
   | { type: 'dismiss'; id: number }
-  | { type: 'notice'; level: Notice['level']; text: string; msg?: Msg; sessionId?: string }
+  | { type: 'notice'; level: Notice['level']; text: string; msg?: Msg; code?: MessageKey; sessionId?: string }
 
 interface Model {
   app: AppState | null
@@ -106,8 +114,8 @@ function withLive(m: Model, id: string, fn: (l: LiveState) => LiveState): Model 
   return { ...m, lives: { ...m.lives, [id]: fn(m.lives[id] ?? emptyLive) } }
 }
 
-function addNotice(l: LiveState, level: Notice['level'], text: string, retry?: boolean, msg?: Msg): LiveState {
-  const notice: Notice = { id: ++noticeId, level, text, fix: fixFor(text), ...(retry && { retry }), ...(msg && { msg }) }
+function addNotice(l: LiveState, level: Notice['level'], text: string, retry?: boolean, msg?: Msg, code?: MessageKey): LiveState {
+  const notice: Notice = { id: ++noticeId, level, text, fix: fixFor(text, code), ...(retry && { retry }), ...(msg && { msg }) }
   return { ...l, notices: [...l.notices, notice].slice(-5) }
 }
 
@@ -128,7 +136,7 @@ function reducer(m: Model, a: Action): Model {
     for (const [k, l] of Object.entries(m.lives)) lives[k] = { ...l, notices: l.notices.filter((n) => n.id !== a.id) }
     return { ...m, lives }
   }
-  if (a.type === 'notice') return withLive(m, a.sessionId ?? activeId(m.app), (l) => addNotice(l, a.level, a.text, false, a.msg))
+  if (a.type === 'notice') return withLive(m, a.sessionId ?? activeId(m.app), (l) => addNotice(l, a.level, a.text, false, a.msg, a.code))
   const app = m.app
   if (!app) return m
   const e = a.event
@@ -258,14 +266,17 @@ export function App() {
   }, [panels?.bottomOpen])
 
   const setState = useCallback((state: AppState | null | undefined) => state && dispatch({ type: 'state', state }), [])
-  const fail = useCallback((e: unknown) => dispatch({ type: 'notice', level: 'error', text: String((e as Error)?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '') }), [])
+  const fail = useCallback((e: unknown) => {
+    const { text, key } = errorInfo(e)
+    dispatch({ type: 'notice', level: 'error', text, code: key })
+  }, [])
 
   // Read aloud: the speaker button on replies, automatic reading, and stopping on input.
-  useSpeech(app, (level, text, msg) => dispatch({ type: 'notice', level, text, msg }))
+  useSpeech(app, (level, text, msg, code) => dispatch({ type: 'notice', level, text, msg, code }))
 
   const boot = useCallback(() => {
     setBootError(null)
-    api.getState().then(setState, (e: unknown) => setBootError(String((e as Error)?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')))
+    api.getState().then(setState, (e: unknown) => setBootError(errorText(e)))
   }, [setState])
 
   useEffect(() => {

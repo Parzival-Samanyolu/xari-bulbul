@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import { perMillion, tokens } from '../lib/format'
 import { MakerLogo, ProviderLogo } from './ProviderLogo'
 import { useT } from '../lib/i18n'
+import { errorText } from '../lib/errors'
 
 interface Props {
   app: AppState
@@ -65,7 +66,7 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
         setModels((all) => ({ ...all, [id]: m }))
         setErrors((e) => ({ ...e, [id]: '' }))
       })
-      .catch((e) => setErrors((all) => ({ ...all, [id]: String(e.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '') })))
+      .catch((e) => setErrors((all) => ({ ...all, [id]: errorText(e) })))
       .finally(() => setLoading((l) => ({ ...l, [id]: false })))
   }
 

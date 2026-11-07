@@ -33,6 +33,20 @@ export function tm(key: MessageKey, vars?: Vars): string {
   return t(key, vars)
 }
 
+/**
+ * An error whose message is app copy: translated now, and keeping its catalogue key so IPC can
+ * pass the key on (`encodeAppError`) for the renderer to act on instead of the wording.
+ */
+export class AppError extends Error {
+  constructor(
+    readonly key: MessageKey,
+    vars?: Vars,
+  ) {
+    super(tm(key, vars))
+    this.name = 'AppError'
+  }
+}
+
 const REPO_URL = 'https://github.com/Parzival-Samanyolu/xari-bulbul'
 
 /**

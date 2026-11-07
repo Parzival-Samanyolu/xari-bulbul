@@ -6,6 +6,7 @@ import type { AppState, UiEvent } from '../../../shared/ipc'
 import { api } from '../lib/api'
 import { basename } from '../lib/format'
 import { useT } from '../lib/i18n'
+import { errorText } from '../lib/errors'
 
 /** Any CSS color (the theme uses oklch) as #rrggbb, which xterm understands. */
 function toHex(css: string, fallback: string): string {
@@ -131,7 +132,7 @@ function TerminalView({ cwd, active, platform, font, onExit, onRestart, onClose,
         early.length = 0
       },
       (e) => {
-        term.write(`\r\n${String((e as Error)?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')}\r\n`)
+        term.write(`\r\n${errorText(e)}\r\n`)
         onError(e)
       },
     )

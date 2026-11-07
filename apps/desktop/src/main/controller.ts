@@ -121,7 +121,7 @@ import {
 } from '@harness/core'
 import type { AccountView, AppState, AttachmentInput, BotAvatarRequest, BotRow, LobbyRow, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
 import { LocalModels } from './local-models'
-import { systemLanguages, tm } from './i18n'
+import { AppError, systemLanguages, tm } from './i18n'
 import { log } from './logger'
 import type { KnownChild } from './resources'
 import { Scheduler } from './scheduler'
@@ -447,7 +447,7 @@ export class AppController {
   /** Applies an imported file only if every field is valid; otherwise throws with the problems listed. */
   async importSettings(raw: unknown): Promise<AppState> {
     const r = importSettings(raw, this.settings)
-    if (!r.ok) throw new Error(`That file isn't valid settings, so nothing was changed. ${r.errors.join(' · ')}`)
+    if (!r.ok) throw new AppError('main.error.invalidSettings', { detail: r.errors.join(' · ') })
     return this.setSettings(r.settings, { prune: false })
   }
 
@@ -520,10 +520,10 @@ export class AppController {
   /** Adds a named account with its own key. The first extra account turns the single key into the "Default" account. */
   async addAccount(providerId: string, label: string, key: string): Promise<AppState> {
     const config = this.settings.providers.find((p) => p.id === providerId)
-    if (!config) throw new Error(`Unknown provider "${providerId}".`)
+    if (!config) throw new AppError('main.error.unknownProvider', { id: providerId })
     const name = String(label ?? '').trim()
-    if (!name) throw new Error('Give the account a name.')
-    if (!String(key ?? '').trim()) throw new Error('Paste the account’s API key.')
+    if (!name) throw new AppError('main.error.accountName')
+    if (!String(key ?? '').trim()) throw new AppError('main.error.accountKey')
     const accounts = providerAccounts(config)
     const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'account'
     let id = base === DEFAULT_ACCOUNT_ID ? `${base}-2` : base
@@ -546,8 +546,8 @@ export class AppController {
   async removeAccount(providerId: string, accountId: string): Promise<AppState> {
     const config = this.settings.providers.find((p) => p.id === providerId)
     const accounts = config ? providerAccounts(config) : []
-    if (!config || !accounts.some((a) => a.id === accountId)) throw new Error('That account no longer exists.')
-    if (accounts.length < 2) throw new Error('A provider keeps at least one account. Remove its key instead.')
+    if (!config || !accounts.some((a) => a.id === accountId)) throw new AppError('main.error.accountGone')
+    if (accounts.length < 2) throw new AppError('main.error.lastAccount')
     this.secrets.set(accountKeyId(providerId, accountId), null)
     this.cooldowns.clear(providerId, accountId)
     const rest = accounts.filter((a) => a.id !== accountId)
@@ -568,21 +568,21 @@ export class AppController {
 
   async testProvider(providerId: string): Promise<ProviderTestResult> {
     const config = this.settings.providers.find((p) => p.id === providerId)
-    if (!config?.enabled) return { ok: false, message: 'This provider is turned off.' }
-    if (config.requiresKey && !this.hasKey(config)) return { ok: false, message: 'No API key set.' }
+    if (!config?.enabled) return { ok: false, message: tm('main.test.off') }
+    if (config.requiresKey && !this.hasKey(config)) return { ok: false, message: tm('main.test.noKey') }
     try {
       const models = await this.registry.models(providerId, { refresh: true })
       // Anthropic and OpenAI refuse to list models without a valid key, so the list proves it
       // and the test costs nothing.
       if (config.api === 'anthropic' || /^https:\/\/api\.openai\.com\//.test(config.baseUrl)) {
-        return { ok: true, message: `Connected. Key accepted; ${models.length} models available. No paid request was sent.`, models: models.length }
+        return { ok: true, message: tm('main.test.keyAccepted', { count: models.length }), models: models.length }
       }
       // Elsewhere the model list is often public; a tiny completion proves the key works, on a free model when there is one.
       const model = this.settings.models.favorites.find((f) => f.providerId === providerId)?.modelId ??
         (this.settings.models.default.providerId === providerId
           ? this.settings.models.default.modelId
           : (models.find((m) => m.free) ?? models[0])?.id)
-      if (!model) return { ok: true, message: `Connected, but no models listed.`, models: 0 }
+      if (!model) return { ok: true, message: tm('main.test.noModels'), models: 0 }
       const provider = this.registry.get(providerId)
       try {
         for await (const _ of provider.chat({ model, maxTokens: 5, messages: [{ role: 'user', content: 'Say OK' }] })) {
@@ -591,9 +591,9 @@ export class AppController {
       } catch (e) {
         // A 404 for the model comes after the key was checked, so the key works; the model just isn't served.
         if (!(e instanceof ProviderError && e.status === 404)) throw e
-        return { ok: true, message: `Connected. Key accepted; ${models.length} models listed. ${model} isn't served, so it's hidden now.`, models: models.length }
+        return { ok: true, message: tm('main.test.notServed', { count: models.length, model }), models: models.length }
       }
-      return { ok: true, message: `Connected. ${models.length} models available; test request to ${model} succeeded.`, models: models.length }
+      return { ok: true, message: tm('main.test.ok', { count: models.length, model }), models: models.length }
     } catch (e) {
       return { ok: false, message: (e as Error).message }
     }
@@ -604,7 +604,7 @@ export class AppController {
    * 5-token request. With api 'auto' the protocol the URL suggests is tried first, then the other.
    */
   async probeEndpoint(input: EndpointProbeInput): Promise<EndpointProbe> {
-    if (!/^https?:\/\/\S+$/.test(input?.baseUrl?.trim() ?? '')) return { ok: false, message: 'Enter an http:// or https:// URL.', models: [] }
+    if (!/^https?:\/\/\S+$/.test(input?.baseUrl?.trim() ?? '')) return { ok: false, message: tm('main.probe.badUrl'), models: [] }
     const id = input.id?.trim() || 'probe'
     // A blank key falls back to the one already saved for this id (editing an endpoint).
     const key = input.key?.trim() || this.secrets.get(id)
@@ -619,14 +619,14 @@ export class AppController {
           for await (const _ of registry.get(id).chat({ model: input.model.trim(), maxTokens: 5, messages: [{ role: 'user', content: 'Say OK' }] })) {
             /* drain */
           }
-          return { ok: true, api, models, message: `Connected. ${models.length} models listed; a test request to ${input.model.trim()} worked.` }
+          return { ok: true, api, models, message: tm('main.probe.okModel', { count: models.length, model: input.model.trim() }) }
         }
-        return { ok: true, api, models, message: models.length ? `Connected. ${models.length} models listed.` : 'Connected, but the endpoint lists no models. Type the model id.' }
+        return { ok: true, api, models, message: models.length ? tm('main.probe.ok', { count: models.length }) : tm('main.probe.noModels') }
       } catch (e) {
         last = (e as Error).message
       }
     }
-    return { ok: false, message: last || 'No answer from that URL.', models: [] }
+    return { ok: false, message: last || tm('main.probe.noAnswer'), models: [] }
   }
 
   // ---------- voice ----------
@@ -647,19 +647,19 @@ export class AppController {
 
   /** Recording bytes from the composer's mic button → text. Local transcription takes a 16 kHz WAV the renderer made. */
   async transcribe(audio: Uint8Array, mediaType: string): Promise<string> {
-    if (!(audio instanceof Uint8Array)) throw new Error('No recording received.')
+    if (!(audio instanceof Uint8Array)) throw new AppError('main.error.noRecording')
     const voice = this.voiceState()
-    if (!this.settings.voice.enabled) throw new Error('Voice input is turned off in Settings › Agent › Voice input.')
+    if (!this.settings.voice.enabled) throw new AppError('main.error.voiceOff')
     this.count('feature.voice_input', { engine: voice.engine === 'local' ? 'local' : 'provider' })
     if (voice.engine === 'local') {
-      if (!/^audio\/(x-)?wav\b/.test(mediaType)) throw new Error('Local transcription needs a WAV recording.')
+      if (!/^audio\/(x-)?wav\b/.test(mediaType)) throw new AppError('main.error.needsWav')
       return runWhisperCli({ bin: voice.local.binary!.path, model: whisperModelPath(this.dataDir, voice.local.model as WhisperModelId), wav: audio, language: this.settings.voice.language.trim(), signal: AbortSignal.timeout(300_000) })
     }
     const ref = this.settings.models.transcription
     const config = ref && this.settings.providers.find((p) => p.id === ref.providerId)
-    if (!ref?.modelId.trim() || !config) throw new Error('Choose a transcription model in Settings › Agent › Speech to text, or download a local speech model.')
-    if (!canTranscribe(config)) throw new Error(`${config.name} has no transcription endpoint.`)
-    if (!this.isReady(ref.providerId)) throw new Error(`Add a ${config.name} API key in Settings › Providers › API keys.`)
+    if (!ref?.modelId.trim() || !config) throw new AppError('main.error.noSttModel')
+    if (!canTranscribe(config)) throw new AppError('main.error.noSttEndpoint', { name: config.name })
+    if (!this.isReady(ref.providerId)) throw new AppError('main.error.addKey', { name: config.name })
     const language = this.settings.voice.language.trim() || undefined
     return transcribe({ provider: config, apiKey: this.activeKey(ref.providerId), model: ref.modelId.trim(), audio, mediaType, language }, { signal: AbortSignal.timeout(120_000) })
   }
@@ -672,17 +672,17 @@ export class AppController {
    * already applied `voice.tts.rate`.
    */
   async synthesizeSpeech(text: string, botId?: string | null, preview?: { openai?: string | null; rate?: number | null; style?: string }): Promise<SpeechAudio> {
-    if (typeof text !== 'string' || !text.trim()) throw new Error('Nothing to say.')
+    if (typeof text !== 'string' || !text.trim()) throw new AppError('main.error.nothingToSay')
     // A bot's own voice, or (from the bot editor) the voice being tried before it's saved.
     const own = preview ?? (botId ? this.settings.bots.find((b) => b.id === botId)?.voice : undefined)
     const base = this.settings.voice.tts
     const tts = { ...base, voice: own?.openai || base.voice, rate: own?.rate ?? base.rate }
     const input = text.slice(0, 2000)
-    if (tts.provider !== 'openai') throw new Error('Choose OpenAI under Settings › Agent › Text to speech.')
+    if (tts.provider !== 'openai') throw new AppError('main.error.ttsOpenAI')
     const providerId = tts.openai.providerId
     const config = this.settings.providers.find((p) => p.id === providerId)
-    if (!config || config.api !== 'openai') throw new Error('Choose a provider for speech in Settings › Agent › Text to speech.')
-    if (!this.isReady(providerId)) throw new Error(`Add a ${config.name} API key in Settings › Providers › API keys.`)
+    if (!config || config.api !== 'openai') throw new AppError('main.error.ttsProvider')
+    if (!this.isReady(providerId)) throw new AppError('main.error.addKey', { name: config.name })
     const audio = await openaiSpeech(
       { provider: config, apiKey: this.activeKey(providerId), model: tts.openai.model, voice: tts.voice, text: input, rate: tts.rate, instructions: own?.style },
       { signal: AbortSignal.timeout(60_000) },
@@ -692,7 +692,7 @@ export class AppController {
 
   /** Fetches whisper.cpp (if this platform has a published build and none is installed) and the chosen model. */
   async downloadWhisper(): Promise<AppState> {
-    if (this.voiceDownload) throw new Error('A speech model download is already running.')
+    if (this.voiceDownload) throw new AppError('main.error.speechDownloadRunning')
     const model = this.settings.voice.localModel
     const ac = new AbortController()
     const status = localWhisperStatus(this.dataDir)
@@ -734,8 +734,8 @@ export class AppController {
   }
 
   removeWhisper(what: string): AppState {
-    if (this.voiceDownload) throw new Error('Wait for the download to finish or cancel it first.')
-    if (what !== 'binary' && !WHISPER_MODELS.some((m) => m.id === what)) throw new Error(`Unknown speech model: ${what}`)
+    if (this.voiceDownload) throw new AppError('main.error.downloadBusy')
+    if (what !== 'binary' && !WHISPER_MODELS.some((m) => m.id === what)) throw new AppError('main.error.unknownSpeechModel', { id: what })
     removeWhisper(this.dataDir, what as 'binary' | WhisperModelId)
     return this.state()
   }
@@ -810,9 +810,9 @@ export class AppController {
   /** Installs (or updates to the catalog's pin) a plugin, turns it on and loads it. */
   async installPlugin(id: string, scope: PluginScope): Promise<AppState> {
     const entry = PLUGIN_CATALOG.find((p) => p.id === id)
-    if (!entry) throw new Error(`Unknown plugin: ${id}`)
-    if (scope !== 'user' && scope !== 'project') throw new Error(`Unknown scope: ${scope}`)
-    if (this.pluginBusy) throw new Error('Another plugin is being installed. Try again in a moment.')
+    if (!entry) throw new AppError('main.error.unknownPlugin', { id })
+    if (scope !== 'user' && scope !== 'project') throw new AppError('main.error.unknownScope', { scope })
+    if (this.pluginBusy) throw new AppError('main.error.pluginBusy')
     const cwd = scope === 'project' ? this.workspace : null
     const root = pluginRoot(scope, { userDir: USER_EXT_DIR, cwd })
     const previous = this.plugins.find((p) => p.id === id)
@@ -845,7 +845,7 @@ export class AppController {
 
   async setPluginEnabled(id: string, on: boolean): Promise<AppState> {
     const rec = this.plugins.find((p) => p.id === id)
-    if (!rec) throw new Error('That plugin is not installed.')
+    if (!rec) throw new AppError('main.error.pluginNotInstalled')
     this.plugins = this.plugins.map((p) => (p.id === id ? { ...p, enabled: !!on } : p))
     writeInstalled(this.dataDir, this.plugins)
     return this.pluginsChanged(id)
@@ -930,7 +930,7 @@ export class AppController {
   /** Runs a schedule's prompt in a new chat in its folder, in the background (the chat on screen stays). */
   private async runScheduled(s: Schedule): Promise<void> {
     const cwd = path.resolve(s.cwd).normalize('NFC')
-    if (!fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) throw new Error(`Folder not found: ${cwd}`)
+    if (!fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) throw new AppError('main.error.folderNotFound', { path: cwd })
     // Another folder's chat gets that folder's extensions, like it would when opened.
     const ext =
       cwd === this.workspace
@@ -1146,7 +1146,7 @@ export class AppController {
 
   /** Opens a folder (adding it to the sidebar) and shows its most recent chat. */
   async setWorkspace(dir: string, opts: { resume?: boolean } = {}): Promise<AppState> {
-    if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) throw new Error(`Not a folder: ${dir}`)
+    if (!fs.existsSync(dir) || !fs.statSync(dir).isDirectory()) throw new AppError('main.error.notAFolder', { path: dir })
     const cwd = await this.enterFolder(dir)
     // Bot chats live in the Bots tab; a folder resumes its latest plain chat.
     const latest = opts.resume === false ? undefined : this.store.list({ cwd }).find((m) => !this.inBotsTab(m) && !m.lobbyId)
@@ -1405,7 +1405,7 @@ export class AppController {
     if (this.lobbies.has(id) || this.index?.get(id)?.lobbyId) return this.showLobby(id)
     if (!this.agents.has(id)) {
       const s = this.store.load(id)
-      if (!s) throw new Error('Session not found')
+      if (!s) throw new AppError('main.error.chatNotFound')
       if (s.meta.lobbyId) return this.showLobby(id, s)
       this.activate(s)
     } else this.activate(this.agents.get(id)!.agent.session)
@@ -1433,7 +1433,7 @@ export class AppController {
 
   /** Opens a bot's ongoing chat (its most recent), or starts its first. */
   async openBot(botId: string): Promise<AppState> {
-    if (!chatBot(this.settings, botId)) throw new Error('That bot no longer exists.')
+    if (!chatBot(this.settings, botId)) throw new AppError('main.error.botGone')
     const latest = latestBotThread(this.botMetas(), botId)
     if (latest) return this.openSession(latest.id)
     return this.newBotThread(botId)
@@ -1442,9 +1442,9 @@ export class AppController {
   /** A fresh chat with a bot, in its own folder when it has one, else the folder on screen. */
   async newBotThread(botId: string): Promise<AppState> {
     const bot = activeBot(this.settings, botId)
-    if (!bot) throw new Error(chatBot(this.settings, botId) ? 'That bot is turned off. Turn it on to start a chat.' : 'That bot no longer exists.')
+    if (!bot) throw new AppError(chatBot(this.settings, botId) ? 'main.error.botOff' : 'main.error.botGone')
     const dir = bot.cwd && fs.existsSync(bot.cwd) ? bot.cwd : this.workspace
-    if (!dir) throw new Error('Open a folder first: bots work in a folder.')
+    if (!dir) throw new AppError('main.error.botNeedsFolder')
     this.unreadBots.delete(botId)
     return this.createSession(dir, botId)
   }
@@ -1470,9 +1470,9 @@ export class AppController {
   /** A new chat in `cwd` (or the current folder), with `botId`'s persona, model and mode when given. */
   async createSession(cwd?: string, botId?: string): Promise<AppState> {
     const dir = cwd ?? this.workspace
-    if (!dir) throw new Error('Open a folder first.')
+    if (!dir) throw new AppError('main.error.openFolder')
     const bot = botId ? activeBot(this.settings, botId) : undefined
-    if (botId && !bot) throw new Error('That bot is turned off. Turn it on in Settings › Bots.')
+    if (botId && !bot) throw new AppError('main.error.botOffSettings')
     const { model } = chatDefaults(this.settings, botId, { model: this.plainModel(), mode: this.mode })
     this.activate(newSession(await this.enterFolder(dir), model, { botId: bot?.id }))
     return this.state()
@@ -1530,7 +1530,7 @@ export class AppController {
   /** Opens a lobby's ongoing group chat (its latest transcript), or starts one. */
   async openLobby(lobbyId: string): Promise<AppState> {
     const lobby = shownLobbies(this.settings).find((l) => l.id === lobbyId)
-    if (!lobby) throw new Error('That lobby no longer exists.')
+    if (!lobby) throw new AppError('main.error.lobbyGone')
     const latest = this.lobbyMetas(lobbyId)[0]
     if (latest) return this.showLobby(latest.id)
     const first = lobbySpeakers(this.settings, lobby)[0]
@@ -1545,7 +1545,7 @@ export class AppController {
   private showLobby(id: string, loaded?: Session): AppState {
     if (!this.lobbies.has(id)) {
       const s = loaded ?? this.store.load(id)
-      if (!s?.meta.lobbyId) throw new Error('Session not found')
+      if (!s?.meta.lobbyId) throw new AppError('main.error.chatNotFound')
       this.lobbies.set(id, this.createLobby(s))
     }
     this.activeId = id
@@ -1617,7 +1617,7 @@ export class AppController {
 
   /** Sends to a lobby. Speaking while the bots talk interrupts them: the reply streaming now stops first. */
   private async sendToLobby(lobby: LobbyChat, text: string): Promise<void> {
-    if (!shownLobbies(this.settings).some((l) => l.id === lobby.session.meta.lobbyId)) throw new Error('That lobby no longer exists.')
+    if (!shownLobbies(this.settings).some((l) => l.id === lobby.session.meta.lobbyId)) throw new AppError('main.error.lobbyGone')
     if (lobby.running) {
       lobby.stop()
       await lobby.idle()
@@ -1630,7 +1630,7 @@ export class AppController {
   /** More rounds of the bots on screen talking among themselves. */
   async keepTalking(): Promise<void> {
     const lobby = this.lobby
-    if (!lobby) throw new Error('Open a lobby first.')
+    if (!lobby) throw new AppError('main.error.openLobby')
     if (lobby.running) return
     await lobby.keepTalking()
   }
@@ -1672,13 +1672,13 @@ export class AppController {
 
   /** The chat on screen, after checking its provider can take a request. */
   private readyAgent(): Agent {
-    if (!this.agent) throw new Error('Open a folder first.')
+    if (!this.agent) throw new AppError('main.error.openFolder')
     // Check before the prompt is posted, so a missing key never leaves an orphaned message.
     const { providerId } = this.agent.model
     const config = this.settings.providers.find((p) => p.id === providerId)
-    if (!config) throw new Error(`The provider "${providerId}" no longer exists. Pick another model (⌘/Ctrl+K).`)
-    if (!config.enabled) throw new Error(`${config.name} is turned off. Turn it on in Settings › Providers › API keys, or pick another model.`)
-    if (!this.isReady(providerId)) throw new Error(`${config.name} needs an API key. Add one in Settings › Providers › API keys.`)
+    if (!config) throw new AppError('main.error.providerGone', { id: providerId })
+    if (!config.enabled) throw new AppError('main.error.providerOff', { name: config.name })
+    if (!this.isReady(providerId)) throw new AppError('main.error.needsKey', { name: config.name })
     return this.agent
   }
 
@@ -1710,7 +1710,7 @@ export class AppController {
   async sendMessage(text: string, attachments: AttachmentInput[] = []): Promise<void> {
     if (this.lobby) return this.sendToLobby(this.lobby, text)
     this.readyAgent()
-    if (attachments.length > MAX_ATTACHMENTS) throw new Error(`Attach up to ${MAX_ATTACHMENTS} files at a time.`)
+    if (attachments.length > MAX_ATTACHMENTS) throw new AppError('main.error.tooManyAttachments', { count: MAX_ATTACHMENTS })
     // Read everything first so one bad file fails the send without posting a half message.
     const files: FileAttachment[] = []
     const images: ImageAttachment[] = []
@@ -1766,7 +1766,7 @@ export class AppController {
     const context = { ...this.settings.localModels.context }
     if (ctx == null) delete context[id]
     else if (Number.isInteger(ctx) && ctx >= 2048 && ctx <= 1_048_576) context[id] = ctx
-    else throw new Error('Choose a context size from the list.')
+    else throw new AppError('main.error.contextSize')
     this.settings = { ...this.settings, localModels: { ...this.settings.localModels, context } }
     this.saveSettings()
     this.local.contextChanged(id)
@@ -1784,7 +1784,7 @@ export class AppController {
   }
 
   useLocalModel(id: string): AppState {
-    if (!this.local.hasModel(id)) throw new Error(`${id} isn't downloaded.`)
+    if (!this.local.hasModel(id)) throw new AppError('main.error.notDownloaded', { id })
     const ref = { providerId: LOCAL_PROVIDER_ID, modelId: id }
     if (!this.settings.providers.some((p) => p.id === LOCAL_PROVIDER_ID)) {
       this.settings = { ...this.settings, providers: upsertLocalProvider(this.settings.providers) }
@@ -1825,8 +1825,8 @@ export class AppController {
   /** Copies a picture into `<data>/bots/` for a bot's avatar; the bot dialog saves the path. */
   importBotAvatar(file: string): { path: string; url: string } {
     const ext = path.extname(file).toLowerCase()
-    if (!BOT_IMAGE_TYPES[ext]) throw new Error('Choose a PNG, JPEG, GIF or WebP image.')
-    if (fs.statSync(file).size > MAX_AVATAR_BYTES) throw new Error('Choose an image under 1 MB.')
+    if (!BOT_IMAGE_TYPES[ext]) throw new AppError('main.error.imageType')
+    if (fs.statSync(file).size > MAX_AVATAR_BYTES) throw new AppError('main.error.imageSize')
     const dir = this.botImageDir
     fs.mkdirSync(dir, { recursive: true })
     // A new name each time, so the renderer never shows a cached old picture.
@@ -1849,7 +1849,7 @@ export class AppController {
   /** A picture for a bot's avatar from its name and personality. Keys stay here; the renderer pixelates the result. */
   async generateBotAvatar(input: BotAvatarRequest): Promise<{ dataUrl: string; provider: string; model: string }> {
     const p = this.imageProviderConfig()
-    if (!p) throw new Error('No provider here can make pictures. Add an OpenAI or OpenRouter API key in Settings › Providers, or use a sprite.')
+    if (!p) throw new AppError('main.error.noPainter')
     const str = (v: unknown, n: number) => (typeof v === 'string' ? v.slice(0, n) : '')
     const prompt = avatarPrompt({ name: str(input?.name, 40), tagline: str(input?.tagline, 120), persona: str(input?.persona, 2000) }, str(input?.prompt, 600))
     const img = await generateImage({
@@ -1860,7 +1860,7 @@ export class AppController {
       prompt,
       signal: AbortSignal.timeout(120_000),
     }).catch((e: Error) => {
-      throw new Error(e.name === 'TimeoutError' ? `${p.name} took too long to make the picture.` : `${p.name}: ${e.message}`)
+      throw e.name === 'TimeoutError' ? new AppError('main.error.paintTimeout', { name: p.name }) : new Error(`${p.name}: ${e.message}`)
     })
     return { dataUrl: `data:${img.mediaType};base64,${img.base64}`, provider: p.name, model: img.model }
   }
@@ -1869,8 +1869,8 @@ export class AppController {
   saveBotAvatar(png: Uint8Array): { path: string; url: string } {
     const bytes = png instanceof Uint8Array ? Buffer.from(png) : null
     const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
-    if (!bytes || bytes.length < PNG.length || !bytes.subarray(0, 8).equals(PNG)) throw new Error('That avatar is not a PNG image.')
-    if (bytes.length > MAX_AVATAR_BYTES) throw new Error('That avatar is too large.')
+    if (!bytes || bytes.length < PNG.length || !bytes.subarray(0, 8).equals(PNG)) throw new AppError('main.error.avatarNotPng')
+    if (bytes.length > MAX_AVATAR_BYTES) throw new AppError('main.error.avatarTooLarge')
     const dir = this.botImageDir
     fs.mkdirSync(dir, { recursive: true })
     const target = path.join(dir, `pixel-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}.png`)
@@ -1933,9 +1933,9 @@ export class AppController {
 
   /** The open folder that contains `p`; anything outside the open folders is refused. */
   private openRoot(p: unknown): string {
-    if (typeof p !== 'string' || !path.isAbsolute(p)) throw new Error('Expected an absolute path.')
+    if (typeof p !== 'string' || !path.isAbsolute(p)) throw new AppError('main.error.absolutePath')
     const root = rootFor(this.settings.app.openWorkspaces, p.normalize('NFC'))
-    if (!root) throw new Error('That path is outside the open folders.')
+    if (!root) throw new AppError('main.error.outsideFolders')
     return root
   }
 
@@ -1950,13 +1950,13 @@ export class AppController {
 
   sessionDiff(id: string): FileChange[] {
     const session = this.agents.get(id)?.agent.session ?? this.store.load(id)
-    if (!session) throw new Error('Session not found')
+    if (!session) throw new AppError('main.error.chatNotFound')
     return checkpointChanges(session.checkpoints ?? [], session.meta.cwd)
   }
 
   termOpen(cwd: string, cols: number, rows: number): string {
     this.openRoot(cwd)
-    if (!fs.statSync(cwd).isDirectory()) throw new Error(`Not a folder: ${cwd}`)
+    if (!fs.statSync(cwd).isDirectory()) throw new AppError('main.error.notAFolder', { path: cwd })
     return this.terminals.open(cwd.normalize('NFC'), cols, rows)
   }
 

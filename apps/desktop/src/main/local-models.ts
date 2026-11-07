@@ -32,6 +32,7 @@ import {
 } from '@harness/core'
 import os from 'node:os'
 import type { LocalDownload, LocalModelView, LocalStatus, UiEvent } from '../shared/ipc'
+import { AppError } from './i18n'
 
 export interface LocalHost {
   dataDir: string
@@ -195,9 +196,9 @@ export class LocalModels {
   /** Starts (or switches) llama-server to the model; resolves to its base URL. */
   async ensure(id: string): Promise<string> {
     const model = installedModels(this.host.dataDir).find((m) => m.id === id)
-    if (!model) throw new Error(`${id} isn't downloaded. Download it in Settings › Models › Local models.`)
+    if (!model) throw new AppError('main.error.localNotDownloaded', { id })
     const runtime = llamaRuntimeStatus(this.host.dataDir)
-    if (!runtime.binary) throw new Error('The local runtime is not installed. Install it in Settings › Models › Local models.')
+    if (!runtime.binary) throw new AppError('main.error.runtimeMissing')
     const machine = await this.machineInfo()
     const ctx = modelFit({ size: model.size, maxContext: model.contextLength, kvPerToken: model.kvPerToken }, machine, this.chosen(model.id)).ctx
     this.lastUse = Date.now()
@@ -217,7 +218,7 @@ export class LocalModels {
   }
 
   private async run(target: string, label: string, total: number, job: (o: { signal: AbortSignal; onProgress: (r: number, t: number) => void }) => Promise<unknown>): Promise<LocalStatus> {
-    if (this.download) throw new Error('A download is already running.')
+    if (this.download) throw new AppError('main.error.downloadRunning')
     const ac = new AbortController()
     const progress: LocalDownload = { target, label, received: 0, total }
     this.download = { ac, progress }
@@ -248,7 +249,7 @@ export class LocalModels {
   }
 
   async removeRuntime(): Promise<LocalStatus> {
-    if (this.download) throw new Error('Wait for the download to finish or cancel it first.')
+    if (this.download) throw new AppError('main.error.downloadBusy')
     await this.server.stop()
     removeLlamaRuntime(this.host.dataDir)
     return this.status()
@@ -256,7 +257,7 @@ export class LocalModels {
 
   async downloadModel(id: string): Promise<LocalStatus> {
     const m = CURATED_MODELS.find((x) => x.id === id)
-    if (!m) throw new Error(`Unknown local model: ${id}`)
+    if (!m) throw new AppError('main.error.unknownLocalModel', { id })
     const status = await this.run(id, m.name, m.weights.size + (m.mmproj?.size ?? 0), (o) => downloadCurated(this.host.dataDir, id, o))
     if (status.models.find((x) => x.id === id)?.installed) this.registerProvider()
     return this.status()
@@ -264,7 +265,7 @@ export class LocalModels {
 
   async downloadHf(result: HfResult): Promise<LocalStatus> {
     const pick = result?.pick
-    if (!pick || !/^[0-9a-f]{40}$/.test(result.revision)) throw new Error('Nothing to download for that result.')
+    if (!pick || !/^[0-9a-f]{40}$/.test(result.revision)) throw new AppError('main.error.nothingToDownload')
     let id = ''
     await this.run(`hf:${result.repo}/${pick.weights.file}`, pick.weights.file, pick.size, async (o) => {
       id = (await downloadHfModel(this.host.dataDir, { repo: result.repo, revision: result.revision, weights: pick.weights, mmproj: pick.mmproj, contextLength: result.contextLength }, o)).id
@@ -279,7 +280,7 @@ export class LocalModels {
   }
 
   async remove(id: string): Promise<LocalStatus> {
-    if (this.download) throw new Error('Wait for the download to finish or cancel it first.')
+    if (this.download) throw new AppError('main.error.downloadBusy')
     const st = this.server.state
     if (st.state !== 'stopped' && st.modelId === id) await this.server.stop()
     removeLocalModel(this.host.dataDir, id)
