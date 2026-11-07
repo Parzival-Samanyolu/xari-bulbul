@@ -1,3 +1,4 @@
+import { useT } from '../../../lib/i18n'
 import { Row, Section, Toggle } from '../../fields'
 import { BotAvatar } from '../../Bots'
 import type { PageProps } from '../common'
@@ -5,51 +6,48 @@ import type { PageProps } from '../common'
 // ---------------------------------------------------------------- Bots
 
 export function BotsPage({ app, save, editBot }: PageProps) {
+  const { t } = useT()
   const bots = app.settings.bots
   const on = app.settings.botOptions.enabled
   const remove = (id: string, name: string) => {
-    if (!confirm(`Delete ${name}? Its chats are kept and move to Sessions as plain chats.`)) return
+    if (!confirm(t('settings.bots.deleteConfirm', { name }))) return
     save((s) => ((s.bots = s.bots.filter((b) => b.id !== id)), s))
   }
 
   return (
     <>
       <Section>
-        <Row
-          label="Show the Bots tab"
-          hint="Bots are characters to chat with, next to your sessions. Off hides the tab; bot chats then open as plain chats in their folders, and your bots and their memories are kept."
-        >
-          <Toggle label="Show the Bots tab" value={on} onChange={(v) => save((s) => ((s.botOptions.enabled = v), s))} />
+        <Row label={t('settings.bots.showTab')} hint={t('settings.bots.showTabHint')}>
+          <Toggle label={t('settings.bots.showTab')} value={on} onChange={(v) => save((s) => ((s.botOptions.enabled = v), s))} />
         </Row>
-        <Row label="Mute all bots" hint="No notification when a bot finishes replying while you're in another chat. Approvals and questions still notify.">
-          <Toggle label="Mute all bots" value={app.settings.botOptions.muted} onChange={(v) => save((s) => ((s.botOptions.muted = v), s))} />
+        <Row label={t('settings.bots.mute')} hint={t('settings.bots.muteHint')}>
+          <Toggle label={t('settings.bots.mute')} value={app.settings.botOptions.muted} onChange={(v) => save((s) => ((s.botOptions.muted = v), s))} />
         </Row>
       </Section>
-      <Section
-        title="Your bots"
-        description="Each bot works in full auto with every tool, unless you change that under Abilities in its editor. Deleting files, force pushes and writes outside the folder still ask."
-      >
+      <Section title={t('settings.bots.yourBots')} description={t('settings.bots.yourBotsDesc')}>
         {bots.length === 0 && (
           <div className="empty-box">
-            <b>No bots yet</b>
-            <span className="muted small">Make one to give it a face, a personality and its own memory.</span>
+            <b>{t('settings.bots.none')}</b>
+            <span className="muted small">{t('settings.bots.noneHint')}</span>
           </div>
         )}
         {bots.length > 0 && (
-          <ul className="bot-list" aria-label="Bots">
+          <ul className="bot-list" aria-label={t('settings.bots.list')}>
             {bots.map((b) => (
               <li key={b.id} className={`bot-item ${b.enabled ? '' : 'off'}`}>
-                <Toggle label={`${b.name} on`} value={b.enabled} onChange={(v) => save((s) => ((s.bots = s.bots.map((x) => (x.id === b.id ? { ...x, enabled: v } : x))), s))} />
+                <Toggle label={t('settings.bots.toggle', { name: b.name || t('settings.bots.unnamed') })} value={b.enabled} onChange={(v) => save((s) => ((s.bots = s.bots.map((x) => (x.id === b.id ? { ...x, enabled: v } : x))), s))} />
                 <BotAvatar app={app} bot={b} size={30} />
                 <span className="bot-item-text">
-                  <span>{b.name || 'Bot'}</span>
-                  <span className="muted small">{b.enabled ? b.tagline || 'No title' : 'Turned off'}</span>
+                  <span>{b.name || t('settings.bots.unnamed')}</span>
+                  <span className="muted small" title={b.enabled ? b.tagline || undefined : undefined}>
+                    {b.enabled ? b.tagline || t('settings.bots.noTitle') : t('settings.bots.turnedOff')}
+                  </span>
                 </span>
                 <button className="btn ghost" onClick={() => editBot(b.id)}>
-                  Edit…
+                  {t('settings.bots.edit')}
                 </button>
-                <button className="link danger small" aria-label={`Delete ${b.name}`} onClick={() => remove(b.id, b.name)}>
-                  Delete
+                <button className="link danger small" aria-label={t('settings.bots.deleteLabel', { name: b.name || t('settings.bots.unnamed') })} onClick={() => remove(b.id, b.name || t('settings.bots.unnamed'))}>
+                  {t('common.delete')}
                 </button>
               </li>
             ))}
@@ -57,7 +55,7 @@ export function BotsPage({ app, save, editBot }: PageProps) {
         )}
         <div>
           <button className="btn" onClick={() => editBot()}>
-            New bot
+            {t('settings.bots.new')}
           </button>
         </div>
       </Section>

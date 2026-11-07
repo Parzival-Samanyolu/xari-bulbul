@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { AccountView, AppState, EndpointProbe, ProviderTestResult, Settings } from '../../../../../shared/ipc'
 import { api } from '../../../lib/api'
+import { useFormat, useT } from '../../../lib/i18n'
 import { NumberField, Row, Section, TextField, Toggle } from '../../fields'
 import { ProviderLogo } from '../../ProviderLogo'
 import { Icon } from '../icons'
-import { KEY_LINKS, SecretInput, type PageProps } from '../common'
+import { KEY_LINKS, SecretInput, rich, type PageProps } from '../common'
 import { StatusDot } from './parts'
 
 type Provider = Settings['providers'][number]
@@ -29,19 +30,22 @@ function useModelCounts(ids: string[]): Record<string, number | string> {
   return counts
 }
 
-const accountsText = (views: AccountView[] | undefined) => (views && views.length > 1 ? `${views.length} accounts` : 'API key')
+type T = ReturnType<typeof useT>['t']
 
-const countText = (n: number | string | undefined) => (n === undefined ? 'Loading models…' : typeof n === 'string' ? n : `${n} ${n === 1 ? 'model' : 'models'}`)
+const accountsText = (t: T, views: AccountView[] | undefined) => (views && views.length > 1 ? t('settings.providers.accountCount', { count: views.length }) : t('settings.providers.apiKey'))
+
+const countText = (t: T, n: number | string | undefined) => (n === undefined ? t('settings.providers.loadingModels') : typeof n === 'string' ? n : t('settings.providers.modelCount', { count: n }))
 
 // ---------------------------------------------------------------- Accounts
 
 export function AccountsPage({ app, save, onState, onError, go }: PageProps) {
+  const { t } = useT()
   const connected = app.settings.providers.filter((p) => app.ready[p.id])
   const counts = useModelCounts(connected.map((p) => p.id))
   const disconnect = (p: Provider) => {
     if (p.requiresKey) {
       const keyed = (app.accounts[p.id] ?? []).filter((a) => a.hasKey)
-      if (!confirm(`Disconnect ${p.name}? ${keyed.length > 1 ? `The saved keys of all ${keyed.length} accounts are removed.` : 'Its saved API key is removed.'}`)) return
+      if (!confirm(keyed.length > 1 ? t('settings.providers.disconnectMany', { name: p.name, count: keyed.length }) : t('settings.providers.disconnectOne', { name: p.name }))) return
       keyed.reduce<Promise<AppState | null>>((prev, a) => prev.then(() => api.accounts.setKey(p.id, a.id, null)), Promise.resolve(null)).then((s) => s && onState(s), onError)
     } else save((s) => ((s.providers = s.providers.map((x) => (x.id === p.id ? { ...x, enabled: false } : x))), s))
   }
@@ -49,14 +53,14 @@ export function AccountsPage({ app, save, onState, onError, go }: PageProps) {
     return (
       <Section>
         <div className="empty-box">
-          <b>No provider connected</b>
-          <span className="muted small">Paste a key for OpenRouter or Ollama Cloud (both have free models), or add a local endpoint such as Ollama.</span>
+          <b>{t('settings.providers.noProvider')}</b>
+          <span className="muted small">{t('settings.providers.noProviderHint')}</span>
           <div className="inline">
             <button className="btn primary" onClick={() => go('providers.keys')}>
-              Add an API key
+              {t('settings.providers.addApiKey')}
             </button>
             <button className="btn" onClick={() => go('providers.custom')}>
-              Add an endpoint
+              {t('settings.providers.addEndpoint')}
             </button>
           </div>
         </div>
@@ -71,11 +75,11 @@ export function AccountsPage({ app, save, onState, onError, go }: PageProps) {
             <div className="account-text">
               <b>{p.name}</b>
               <span className="muted small">
-                {countText(counts[p.id])} · {p.requiresKey ? accountsText(app.accounts[p.id]) : 'No key needed'}
+                {countText(t, counts[p.id])} · {p.requiresKey ? accountsText(t, app.accounts[p.id]) : t('settings.providers.noKeyNeeded')}
               </span>
             </div>
             <button className="btn ghost" onClick={() => disconnect(p)}>
-              Disconnect
+              {t('settings.providers.disconnect')}
             </button>
           </li>
         ))}
@@ -87,6 +91,7 @@ export function AccountsPage({ app, save, onState, onError, go }: PageProps) {
 // ---------------------------------------------------------------- API keys
 
 function ProviderKeyRow({ p, index, app, save, onState, onError }: { p: Provider; index: number } & Pick<PageProps, 'app' | 'save' | 'onState' | 'onError'>) {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   const [test, setTest] = useState<ProviderTestResult | 'running' | null>(null)
   const [models, setModels] = useState<number | string | null>(null)
@@ -101,10 +106,11 @@ function ProviderKeyRow({ p, index, app, save, onState, onError }: { p: Provider
     if (!open || !ready) return setModels(null)
     api.models.list(p.id).then((m) => setModels(m.length), (e) => setModels(clean(e)))
   }, [open, ready])
-  const status = !p.enabled ? 'Turned off' : ready ? 'Connected' : 'Not connected'
+  const status = !p.enabled ? t('settings.providers.turnedOff') : ready ? t('settings.providers.connected') : t('settings.providers.notConnected')
   const detailsId = `key-details-${p.id}`
   const accounts = app.accounts[p.id] ?? []
   const multi = accounts.length > 1
+  const first = accounts.find((a) => a.active)?.label
   return (
     <li className={`key-item ${open ? 'open' : ''}`}>
       <div className="key-line">
@@ -112,19 +118,19 @@ function ProviderKeyRow({ p, index, app, save, onState, onError }: { p: Provider
           <StatusDot on={ready} label={status} />
           <ProviderLogo id={p.id} name={p.name} size={16} />
           <span className="key-title">{p.name}</span>
-          {!builtin && <span className="badge">custom</span>}
+          {!builtin && <span className="badge">{t('settings.providers.custom')}</span>}
           <Icon name={open ? 'chevronDown' : 'chevronRight'} size={14} className="muted" />
         </button>
         {p.requiresKey && multi ? (
           <span className="muted small">
-            {accounts.length} accounts · {accounts.find((a) => a.active)?.label ?? 'none turned on'} first
+            {first ? t('settings.providers.accountsFirst', { count: accounts.length, name: first }) : t('settings.providers.accountsNoneOn', { count: accounts.length })}
           </span>
         ) : p.requiresKey ? (
           <SecretInput
             id={`key-${p.id}`}
-            label={`${p.name} API key`}
+            label={t('settings.providers.keyLabel', { name: p.name })}
             saved={hasKey}
-            placeholder={`Paste ${p.name} key`}
+            placeholder={t('settings.providers.pasteKey', { name: p.name })}
             onSave={(v) =>
               api.keys.set(p.id, v).then((s) => {
                 onState(s)
@@ -133,7 +139,7 @@ function ProviderKeyRow({ p, index, app, save, onState, onError }: { p: Provider
             }
           />
         ) : (
-          <span className="muted small">No key needed</span>
+          <span className="muted small">{t('settings.providers.noKeyNeeded')}</span>
         )}
       </div>
       {test && test !== 'running' && (
@@ -143,35 +149,35 @@ function ProviderKeyRow({ p, index, app, save, onState, onError }: { p: Provider
       )}
       {open && (
         <div className="key-details" id={detailsId}>
-          <Row label="Turned on" hint="Off hides it everywhere, even with a key saved." search="">
-            <Toggle label={`${p.name} turned on`} value={p.enabled} onChange={(v) => save((s) => ((s.providers[index].enabled = v), s))} />
+          <Row label={t('settings.providers.turnedOn')} hint={t('settings.providers.turnedOnHint')} search="">
+            <Toggle label={t('settings.providers.turnedOnToggle', { name: p.name })} value={p.enabled} onChange={(v) => save((s) => ((s.providers[index].enabled = v), s))} />
           </Row>
-          <Row label="Models" hint={ready ? countText(models ?? undefined) : 'Connect it to list its models.'} search="">
+          <Row label={t('settings.providers.models')} hint={ready ? countText(t, models ?? undefined) : t('settings.providers.connectToList')} search="">
             <div className="inline">
               <button className="btn" disabled={!ready || test === 'running'} onClick={runTest}>
-                {test === 'running' ? 'Testing…' : 'Test connection'}
+                {test === 'running' ? t('settings.providers.testing') : t('settings.providers.testConnection')}
               </button>
               {KEY_LINKS[p.id] && (
                 <button className="link small" onClick={() => api.app.openExternal(KEY_LINKS[p.id])}>
-                  Get a key ↗
+                  {t('settings.providers.getKey')}
                 </button>
               )}
               {hasKey && !multi && (
                 <button className="link danger small" onClick={() => api.keys.set(p.id, null).then(onState, onError)}>
-                  Remove key
+                  {t('settings.providers.removeKey')}
                 </button>
               )}
             </div>
           </Row>
           {p.requiresKey && <ProviderAccounts p={p} index={index} accounts={accounts} save={save} onState={onState} onError={onError} />}
-          <Row label="Base URL" labelFor={`url-${p.id}`} search="">
+          <Row label={t('settings.providers.baseUrl')} labelFor={`url-${p.id}`} search="">
             <TextField id={`url-${p.id}`} mono value={p.baseUrl} onChange={(v) => /^https?:\/\/\S+$/.test(v.trim()) && save((s) => ((s.providers[index].baseUrl = v.trim()), s))} />
           </Row>
-          <Row label="Needs an API key" hint="Off for local servers such as Ollama or LM Studio." search="">
-            <Toggle label={`${p.name} needs an API key`} value={p.requiresKey} onChange={(v) => save((s) => ((s.providers[index].requiresKey = v), s))} />
+          <Row label={t('settings.providers.needsKey')} hint={t('settings.providers.needsKeyHint')} search="">
+            <Toggle label={t('settings.providers.needsKeyToggle', { name: p.name })} value={p.requiresKey} onChange={(v) => save((s) => ((s.providers[index].requiresKey = v), s))} />
           </Row>
-          <Row label="Report exact cost" hint="Asks the provider to include each request's cost (OpenRouter supports this)." search="">
-            <Toggle label={`${p.name}: report exact cost`} value={p.requestUsageCost} onChange={(v) => save((s) => ((s.providers[index].requestUsageCost = v), s))} />
+          <Row label={t('settings.providers.exactCost')} hint={t('settings.providers.exactCostHint')} search="">
+            <Toggle label={t('settings.providers.exactCostToggle', { name: p.name })} value={p.requestUsageCost} onChange={(v) => save((s) => ((s.providers[index].requestUsageCost = v), s))} />
           </Row>
         </div>
       )}
@@ -179,8 +185,9 @@ function ProviderKeyRow({ p, index, app, save, onState, onError }: { p: Provider
   )
 }
 
-const restingText = (c: AccountView['cooling']) =>
-  c && c.until > Date.now() ? `Resting until ${new Date(c.until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}: ${c.reason}` : null
+/** While an account rests after a rate limit: until when, and why. */
+const restingText = (t: T, date: (ts: number, o?: Intl.DateTimeFormatOptions) => string, c: AccountView['cooling']) =>
+  c && c.until > Date.now() ? t('settings.providers.resting', { time: date(c.until, { hour: '2-digit', minute: '2-digit' }), reason: c.reason }) : null
 
 type AccountMeta = { id: string; label: string; enabled: boolean }
 
@@ -189,6 +196,9 @@ type AccountMeta = { id: string; label: string; enabled: boolean }
  * turning off, reordering and the active pick are settings; adding, keys and removing go through main.
  */
 function ProviderAccounts({ p, index, accounts, save, onState, onError }: { p: Provider; index: number; accounts: AccountView[] } & Pick<PageProps, 'save' | 'onState' | 'onError'>) {
+  const { t } = useT()
+  const { date } = useFormat()
+  const resting = (c: AccountView['cooling']) => restingText(t, date, c)
   const [adding, setAdding] = useState(false)
   const [label, setLabel] = useState('')
   const [key, setKey] = useState('')
@@ -225,29 +235,25 @@ function ProviderAccounts({ p, index, accounts, save, onState, onError }: { p: P
     if (renaming?.label.trim()) edit((list) => list.map((a) => (a.id === renaming.id ? { ...a, label: renaming.label.trim() } : a)))
     setRenaming(null)
   }
-  const status = (a: AccountView) => (!a.enabled ? 'Turned off' : !a.hasKey ? 'No key' : (restingText(a.cooling) ?? 'Key saved'))
+  const status = (a: AccountView) => (!a.enabled ? t('settings.providers.turnedOff') : !a.hasKey ? t('settings.providers.noKey') : (resting(a.cooling) ?? t('settings.providers.keySaved')))
   const target = accounts.find((a) => a.id === replacing)
   return (
     <Row
       wide
-      label="Accounts"
-      hint={
-        multi
-          ? 'Requests use the active account. When it hits a rate limit, runs out of credits or has its key rejected, they move to the next one in this order.'
-          : 'Add another account to switch to it automatically when this one hits a rate limit or runs out of credits.'
-      }
+      label={t('settings.providers.accounts')}
+      hint={multi ? t('settings.providers.accountsHintMulti') : t('settings.providers.accountsHintSingle')}
       search=""
     >
       {multi && (
-        <ol className="list-field ordered" aria-label={`${p.name} accounts`}>
+        <ol className="list-field ordered" aria-label={t('settings.providers.accountsList', { name: p.name })}>
           {accounts.map((a, i) => (
             <li key={a.id} className="list-item provider-acct">
               <span className="muted small order-num">{i + 1}</span>
-              <StatusDot on={a.enabled && a.hasKey && !restingText(a.cooling)} label={status(a)} />
+              <StatusDot on={a.enabled && a.hasKey && !resting(a.cooling)} label={status(a)} />
               {renaming?.id === a.id ? (
                 <input
                   className="acct-rename"
-                  aria-label={`New name for ${a.label}`}
+                  aria-label={t('settings.providers.renameLabel', { name: a.label })}
                   autoFocus
                   value={renaming.label}
                   onChange={(e) => setRenaming({ id: a.id, label: e.target.value })}
@@ -257,39 +263,39 @@ function ProviderAccounts({ p, index, accounts, save, onState, onError }: { p: P
               ) : (
                 <span className="acct-name">
                   <b>{a.label}</b>
-                  <span className={`small ${restingText(a.cooling) ? 'warn' : 'muted'}`}>{status(a)}</span>
+                  <span className={`small ${resting(a.cooling) ? 'warn' : 'muted'}`}>{status(a)}</span>
                 </span>
               )}
               {a.active ? (
-                <span className="badge ok">Active</span>
+                <span className="badge ok">{t('settings.providers.active')}</span>
               ) : (
                 a.enabled &&
                 a.hasKey && (
                   <button className="link small" onClick={() => edit((list) => list, a.id)}>
-                    Make active
+                    {t('settings.providers.makeActive')}
                   </button>
                 )
               )}
               <span className="spacer" />
-              <button className="link small" disabled={i === 0} aria-label={`Move ${a.label} up`} onClick={() => move(i, -1)}>
-                Up
+              <button className="link small" disabled={i === 0} aria-label={t('settings.providers.moveUp', { name: a.label })} onClick={() => move(i, -1)}>
+                {t('settings.providers.up')}
               </button>
-              <button className="link small" disabled={i === accounts.length - 1} aria-label={`Move ${a.label} down`} onClick={() => move(i, 1)}>
-                Down
+              <button className="link small" disabled={i === accounts.length - 1} aria-label={t('settings.providers.moveDown', { name: a.label })} onClick={() => move(i, 1)}>
+                {t('settings.providers.down')}
               </button>
-              <button className="link small" aria-label={`Rename ${a.label}`} onClick={() => setRenaming({ id: a.id, label: a.label })}>
-                Rename
+              <button className="link small" aria-label={t('settings.providers.rename.label', { name: a.label })} onClick={() => setRenaming({ id: a.id, label: a.label })}>
+                {t('settings.providers.rename')}
               </button>
-              <button className="link small" aria-label={`${a.hasKey ? 'Replace' : 'Add'} the ${a.label} key`} onClick={() => setReplacing(replacing === a.id ? null : a.id)}>
-                {a.hasKey ? 'Replace key' : 'Add key'}
+              <button className="link small" aria-label={a.hasKey ? t('settings.providers.replaceKeyLabel', { name: a.label }) : t('settings.providers.addKeyLabel', { name: a.label })} onClick={() => setReplacing(replacing === a.id ? null : a.id)}>
+                {a.hasKey ? t('settings.providers.replaceKey') : t('settings.providers.addKey')}
               </button>
-              <Toggle label={`${a.label} turned on`} value={a.enabled} onChange={(v) => edit((list) => list.map((x) => (x.id === a.id ? { ...x, enabled: v } : x)))} />
+              <Toggle label={t('settings.providers.turnedOnToggle', { name: a.label })} value={a.enabled} onChange={(v) => edit((list) => list.map((x) => (x.id === a.id ? { ...x, enabled: v } : x)))} />
               <button
                 className="link danger small"
-                aria-label={`Remove ${a.label}`}
-                onClick={() => confirm(`Remove the ${a.label} account? Its saved key is removed.`) && api.accounts.remove(p.id, a.id).then(onState, onError)}
+                aria-label={t('settings.providers.removeLabel', { name: a.label })}
+                onClick={() => confirm(t('settings.providers.removeAccountConfirm', { name: a.label })) && api.accounts.remove(p.id, a.id).then(onState, onError)}
               >
-                Remove
+                {t('common.remove')}
               </button>
             </li>
           ))}
@@ -298,9 +304,9 @@ function ProviderAccounts({ p, index, accounts, save, onState, onError }: { p: P
       {target && (
         <SecretInput
           id={`acct-key-${p.id}-${target.id}`}
-          label={`${target.label} API key`}
+          label={t('settings.providers.keyLabel', { name: target.label })}
           saved={target.hasKey}
-          placeholder={`Paste the ${target.label} key`}
+          placeholder={t('settings.providers.pasteAccountKey', { name: target.label })}
           onSave={(v) =>
             api.accounts.setKey(p.id, target.id, v).then((s) => {
               onState(s)
@@ -317,21 +323,21 @@ function ProviderAccounts({ p, index, accounts, save, onState, onError }: { p: P
             add()
           }}
         >
-          <input aria-label="Account name" placeholder="Name, e.g. Work" value={label} onChange={(e) => setLabel(e.target.value)} autoFocus />
-          <input type="password" className="mono" autoComplete="off" spellCheck={false} aria-label="Account API key" placeholder={`Paste ${p.name} key`} value={key} onChange={(e) => setKey(e.target.value)} />
+          <input aria-label={t('settings.providers.accountName')} placeholder={t('settings.providers.accountNamePlaceholder')} value={label} onChange={(e) => setLabel(e.target.value)} autoFocus />
+          <input type="password" className="mono" autoComplete="off" spellCheck={false} aria-label={t('settings.providers.accountKey')} placeholder={t('settings.providers.pasteKey', { name: p.name })} value={key} onChange={(e) => setKey(e.target.value)} />
           <button type="submit" className="btn primary" disabled={!label.trim() || !key.trim() || busy}>
-            Add
+            {t('common.add')}
           </button>
           <button type="button" className="btn ghost" onClick={() => setAdding(false)}>
-            Cancel
+            {t('common.cancel')}
           </button>
         </form>
       ) : (
         <div className="inline">
           <button className="btn" onClick={() => setAdding(true)}>
-            + Add account
+            {t('settings.providers.addAccount')}
           </button>
-          {!multi && accounts[0]?.hasKey && <span className="muted small">The saved key becomes the “{accounts[0].label}” account.</span>}
+          {!multi && accounts[0]?.hasKey && <span className="muted small">{t('settings.providers.becomesAccount', { name: accounts[0].label })}</span>}
         </div>
       )}
     </Row>
@@ -340,6 +346,7 @@ function ProviderAccounts({ p, index, accounts, save, onState, onError }: { p: P
 
 export function ApiKeysPage(props: PageProps) {
   const { app, go } = props
+  const { t } = useT()
   const [q, setQ] = useState('')
   const terms = q.toLowerCase().split(/\s+/).filter(Boolean)
   const list = app.settings.providers.map((p, index) => ({ p, index })).filter(({ p }) => terms.every((t) => `${p.name} ${p.id}`.toLowerCase().includes(t)))
@@ -347,20 +354,20 @@ export function ApiKeysPage(props: PageProps) {
     <Section>
       <button className="nav-row" onClick={() => go('providers.custom')}>
         <span>
-          <b>Local / custom endpoint</b>
-          <span className="muted small">Ollama, LM Studio, vLLM, or any server that speaks the OpenAI or Anthropic API.</span>
+          <b>{t('settings.providers.localCustom')}</b>
+          <span className="muted small">{t('settings.providers.localCustomHint')}</span>
         </span>
         <Icon name="chevronRight" />
       </button>
-      <input type="search" className="key-search" aria-label="Search providers" placeholder="Search providers…" value={q} onChange={(e) => setQ(e.target.value)} />
+      <input type="search" className="key-search" aria-label={t('settings.providers.search')} placeholder={t('settings.providers.searchPlaceholder')} value={q} onChange={(e) => setQ(e.target.value)} />
       <p className="muted small">
-        {app.keyStorage === 'os' ? 'Keys are stored in your system keychain and never shown again.' : <span className="warn">No system keychain was found, so keys are only obfuscated.</span>} Environment variables such as <code>OPENROUTER_API_KEY</code> also work.
+        {app.keyStorage === 'os' ? t('settings.providers.keychainOs') : <span className="warn">{t('settings.providers.keychainNone')}</span>} {rich(t('settings.providers.envVars'), { example: <code>OPENROUTER_API_KEY</code> })}
       </p>
-      <ul className="key-list" aria-label="Providers">
+      <ul className="key-list" aria-label={t('settings.providers.list')}>
         {list.map(({ p, index }) => (
           <ProviderKeyRow key={p.id} p={p} index={index} {...props} />
         ))}
-        {!list.length && <li className="muted small">No provider matches “{q.trim()}”.</li>}
+        {!list.length && <li className="muted small">{t('settings.providers.noMatch', { query: q.trim() })}</li>}
       </ul>
     </Section>
   )
@@ -370,8 +377,9 @@ export function ApiKeysPage(props: PageProps) {
 
 type ApiMode = 'auto' | 'openai' | 'anthropic'
 
-const API_MODES: { value: ApiMode; label: string }[] = [
-  { value: 'auto', label: 'Auto-detect' },
+/** The API modes; the two protocols keep their own names. */
+const apiModes = (t: T): { value: ApiMode; label: string }[] => [
+  { value: 'auto', label: t('settings.providers.autoDetect') },
   { value: 'openai', label: 'Chat Completions' },
   { value: 'anthropic', label: 'Anthropic Messages' },
 ]
@@ -413,6 +421,7 @@ function draftFor(p: Provider, app: AppState): Draft {
 }
 
 export function CustomEndpointsPage({ app, save, onState, onError }: PageProps) {
+  const { t } = useT()
   const builtin = new Set(app.builtinProviders)
   const custom = app.settings.providers.filter((p) => !builtin.has(p.id))
   const existing = new Set(app.settings.providers.map((p) => p.id))
@@ -422,7 +431,15 @@ export function CustomEndpointsPage({ app, save, onState, onError }: PageProps) 
   const set = (patch: Partial<Draft>) => setDraft((d) => (d ? { ...d, ...patch } : d))
   const open = (d: Draft) => (setDraft(d), setProbe(null))
 
-  const idProblem = !draft ? null : !draft.id ? 'Needs an id.' : !/^[a-z0-9-]+$/.test(draft.id) ? 'Use lowercase letters, digits and dashes.' : !draft.editing && existing.has(draft.id) ? 'Another provider already has this id.' : null
+  const idProblem = !draft
+    ? null
+    : !draft.id
+      ? t('settings.providers.idNeeded')
+      : !/^[a-z0-9-]+$/.test(draft.id)
+        ? t('settings.providers.idChars')
+        : !draft.editing && existing.has(draft.id)
+          ? t('settings.providers.idTaken')
+          : null
   const urlOk = !!draft && /^https?:\/\/\S+$/.test(draft.baseUrl.trim())
   const models = probe && probe !== 'running' ? probe.models : []
 
@@ -484,7 +501,7 @@ export function CustomEndpointsPage({ app, save, onState, onError }: PageProps) 
   }
 
   const remove = (p: Provider) => {
-    if (!confirm(`Remove ${p.name}? Its saved key is removed too.`)) return
+    if (!confirm(t('settings.providers.removeConfirm', { name: p.name }))) return
     save((s) => ((s.providers = s.providers.filter((x) => x.id !== p.id)), s))
     for (const a of app.accounts[p.id] ?? []) if (a.hasKey) api.accounts.setKey(p.id, a.id, null).then(onState, onError)
   }
@@ -498,15 +515,15 @@ export function CustomEndpointsPage({ app, save, onState, onError }: PageProps) 
       <Section>
         {custom.length === 0 && !draft && (
           <div className="empty-box">
-            <b>No custom endpoints</b>
-            <span className="muted small">Add an OpenAI-compatible endpoint below.</span>
+            <b>{t('settings.providers.noCustom')}</b>
+            <span className="muted small">{t('settings.providers.noCustomHint')}</span>
           </div>
         )}
         {custom.length > 0 && (
           <ul className="account-list">
             {custom.map((p) => (
               <li key={p.id} className="account">
-                <StatusDot on={!!app.ready[p.id]} label={app.ready[p.id] ? 'Connected' : p.enabled ? 'Not connected' : 'Turned off'} />
+                <StatusDot on={!!app.ready[p.id]} label={app.ready[p.id] ? t('settings.providers.connected') : p.enabled ? t('settings.providers.notConnected') : t('settings.providers.turnedOff')} />
                 <ProviderLogo id={p.id} name={p.name} size={20} />
                 <div className="account-text">
                   <b>{p.name}</b>
@@ -514,10 +531,10 @@ export function CustomEndpointsPage({ app, save, onState, onError }: PageProps) 
                 </div>
                 <span className="badge">{p.api === 'anthropic' ? 'Anthropic Messages' : 'Chat Completions'}</span>
                 <button className="btn ghost" onClick={() => open(draftFor(p, app))}>
-                  Edit
+                  {t('common.edit')}
                 </button>
                 <button className="link danger small" onClick={() => remove(p)}>
-                  Remove
+                  {t('common.remove')}
                 </button>
               </li>
             ))}
@@ -525,22 +542,22 @@ export function CustomEndpointsPage({ app, save, onState, onError }: PageProps) 
         )}
       </Section>
       {quick.length > 0 && (
-        <Section title="Quick add">
+        <Section title={t('settings.providers.quickAdd')}>
           <div className="presets">
             {quick.map((p) => (
               <button key={p.id} className="btn" onClick={() => addPreset(p)} title={p.baseUrl}>
                 <ProviderLogo id={p.id} name={p.name} /> {p.name}
-                <span className="muted small">{p.requiresKey ? 'needs a key' : 'no key'}</span>
+                <span className="muted small">{p.requiresKey ? t('settings.providers.needsAKey') : t('settings.providers.noKeyShort')}</span>
               </button>
             ))}
           </div>
         </Section>
       )}
-      <Section title={draft?.editing ? `Edit ${draft.name || draft.editing}` : 'New endpoint'}>
+      <Section title={draft?.editing ? t('settings.providers.editEndpoint', { name: draft.name || draft.editing }) : t('settings.providers.newEndpoint')}>
         {!draft ? (
           <div>
             <button className="btn" onClick={() => open({ ...blank })}>
-              + Add endpoint
+              {t('settings.providers.addEndpointButton')}
             </button>
           </div>
         ) : (
@@ -551,28 +568,33 @@ export function CustomEndpointsPage({ app, save, onState, onError }: PageProps) 
               void submit()
             }}
           >
-            <Row label="Name" labelFor="ep-name" search="">
-              <input id="ep-name" value={draft.name} placeholder="My server" onChange={(e) => set({ name: e.target.value, ...(draft.idTouched ? {} : { id: slug(e.target.value) }) })} />
+            <Row label={t('settings.providers.name')} labelFor="ep-name" search="">
+              <input id="ep-name" value={draft.name} placeholder={t('settings.providers.namePlaceholder')} onChange={(e) => set({ name: e.target.value, ...(draft.idTouched ? {} : { id: slug(e.target.value) }) })} />
             </Row>
-            <Row label="Provider ID" hint={idProblem ?? 'Used in model references and rules. Can’t change after saving.'} labelFor="ep-id" search="">
+            <Row label={t('settings.providers.providerId')} hint={idProblem ?? t('settings.providers.providerIdHint')} labelFor="ep-id" search="">
               <input id="ep-id" className="mono" value={draft.id} disabled={!!draft.editing} aria-invalid={!!idProblem} placeholder="my-server" onChange={(e) => set({ id: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''), idTouched: true })} />
             </Row>
-            <Row label="Endpoint URL" hint="The base URL, usually ending in /v1." labelFor="ep-url" search="">
+            <Row label={t('settings.providers.endpointUrl')} hint={t('settings.providers.endpointUrlHint')} labelFor="ep-url" search="">
               <input id="ep-url" className="mono" value={draft.baseUrl} placeholder="http://localhost:8000/v1" aria-invalid={!!draft.baseUrl && !urlOk} onChange={(e) => set({ baseUrl: e.target.value })} />
             </Row>
-            <Row label="API mode" hint="Auto-detect tries the protocol the URL suggests, then the other. OpenAI's Responses API isn't supported; servers that offer it usually offer Chat Completions too." search="">
-              <div className="segmented" role="radiogroup" aria-label="API mode">
-                {API_MODES.map((m) => (
+            <Row label={t('settings.providers.apiMode')} hint={t('settings.providers.apiModeHint')} search="">
+              <div className="segmented" role="radiogroup" aria-label={t('settings.providers.apiMode')}>
+                {apiModes(t).map((m) => (
                   <button key={m.value} type="button" role="radio" aria-checked={draft.api === m.value} className={draft.api === m.value ? 'on' : ''} onClick={() => set({ api: m.value })}>
                     {m.label}
                   </button>
                 ))}
               </div>
             </Row>
-            <Row label="Default model" hint={draft.discover ? (models.length ? `${models.length} models found.` : 'Test to list the endpoint’s models, or type an id.') : 'Type the model id.'} labelFor="ep-model" search="">
+            <Row
+              label={t('settings.providers.defaultModel')}
+              hint={draft.discover ? (models.length ? t('settings.providers.modelsFound', { count: models.length }) : t('settings.providers.testToList')) : t('settings.providers.typeModelId')}
+              labelFor="ep-model"
+              search=""
+            >
               {draft.discover && models.length > 0 ? (
                 <select id="ep-model" value={draft.model} onChange={(e) => set({ model: e.target.value })}>
-                  <option value="">None</option>
+                  <option value="">{t('common.none')}</option>
                   {models.map((m) => (
                     <option key={m} value={m}>
                       {m}
@@ -583,36 +605,36 @@ export function CustomEndpointsPage({ app, save, onState, onError }: PageProps) 
                 <input id="ep-model" className="mono" value={draft.model} placeholder="llama3.3" onChange={(e) => set({ model: e.target.value })} />
               )}
             </Row>
-            <Row label="Context" hint="The default model's context window. Empty: what the endpoint reports, else the fallback size." search="">
-              <NumberField label="Context window" nullable value={draft.context} min={1000} step={1000} placeholder="Auto" suffix="tokens" onChange={(v) => set({ context: v })} />
+            <Row label={t('settings.providers.context')} hint={t('settings.providers.contextHint')} search="">
+              <NumberField label={t('settings.model.contextWindow')} nullable value={draft.context} min={1000} step={1000} placeholder={t('settings.model.auto')} suffix={t('settings.model.tokens')} onChange={(v) => set({ context: v })} />
             </Row>
-            <Row label="API key" hint={draft.editing && app.keys[draft.editing] ? 'A key is saved. Paste a new one to replace it.' : 'Optional. Local servers usually need none.'} labelFor="ep-key" search="">
-              <input id="ep-key" type="password" className="mono" autoComplete="off" spellCheck={false} value={draft.key} placeholder={draft.editing && app.keys[draft.editing] ? '•••••••• saved' : 'Optional'} onChange={(e) => set({ key: e.target.value })} />
+            <Row label={t('settings.providers.apiKey')} hint={draft.editing && app.keys[draft.editing] ? t('settings.providers.keySavedHint') : t('settings.providers.keyOptionalHint')} labelFor="ep-key" search="">
+              <input id="ep-key" type="password" className="mono" autoComplete="off" spellCheck={false} value={draft.key} placeholder={draft.editing && app.keys[draft.editing] ? t('settings.common.savedMask') : t('settings.providers.optional')} onChange={(e) => set({ key: e.target.value })} />
             </Row>
             <div className="checks">
               <label className="check">
-                <input type="checkbox" checked={draft.useForNew} onChange={(e) => set({ useForNew: e.target.checked })} /> Use for new chats
+                <input type="checkbox" checked={draft.useForNew} onChange={(e) => set({ useForNew: e.target.checked })} /> {t('settings.providers.useForNew')}
               </label>
               <label className="check">
-                <input type="checkbox" checked={draft.discover} onChange={(e) => set({ discover: e.target.checked })} /> Discover models
+                <input type="checkbox" checked={draft.discover} onChange={(e) => set({ discover: e.target.checked })} /> {t('settings.providers.discover')}
               </label>
             </div>
-            {draft.useForNew && !draft.model.trim() && <p className="small warn">Choose a default model to use it for new chats.</p>}
+            {draft.useForNew && !draft.model.trim() && <p className="small warn">{t('settings.providers.chooseDefault')}</p>}
             {probe && (
               <p className={`small ${probe === 'running' ? 'muted' : probe.ok ? 'okc' : 'warn'}`} role="status">
-                {probe === 'running' ? 'Testing…' : probe.message}
-                {probe !== 'running' && probe.ok && draft.api === 'auto' && probe.api ? ` Detected ${probe.api === 'anthropic' ? 'Anthropic Messages' : 'Chat Completions'}.` : ''}
+                {probe === 'running' ? t('settings.providers.testing') : probe.message}
+                {probe !== 'running' && probe.ok && draft.api === 'auto' && probe.api ? ` ${t('settings.providers.detected', { api: probe.api === 'anthropic' ? 'Anthropic Messages' : 'Chat Completions' })}` : ''}
               </p>
             )}
             <div className="inline form-actions">
               <button type="button" className="btn" disabled={!urlOk || probe === 'running'} onClick={test}>
-                Test
+                {t('settings.providers.test')}
               </button>
               <button type="submit" className="btn primary" disabled={!!idProblem || !urlOk || !draft.name.trim() || saving}>
-                {saving ? 'Saving…' : 'Save'}
+                {saving ? t('settings.providers.saving') : t('common.save')}
               </button>
               <button type="button" className="btn ghost" onClick={() => setDraft(null)}>
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </form>

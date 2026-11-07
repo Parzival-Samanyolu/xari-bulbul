@@ -1,4 +1,5 @@
 import { api } from '../../../lib/api'
+import { useT } from '../../../lib/i18n'
 import { Row, Section, Select, TextField, Toggle } from '../../fields'
 import { EXPERIENCE_LABELS, PROFILE_EXPERIENCE, PROFILE_ROLES, PROFILE_USES, ROLE_LABELS, ShareInfoText, USE_LABELS, languageOptions } from '../../profile'
 import type { PageProps } from '../common'
@@ -7,30 +8,31 @@ type Role = (typeof PROFILE_ROLES)[number]
 type Experience = (typeof PROFILE_EXPERIENCE)[number]
 
 export function ProfilePage({ app, save }: PageProps) {
+  const { t } = useT()
   const p = app.settings.profile
   return (
     <>
-      <Section description="The agent uses these to address you and to pitch its explanations. They go to your model as part of its instructions, nowhere else.">
-        <Row label="Name" hint="What the agent calls you, now and then." labelFor="profile-name">
-          <TextField id="profile-name" value={p.name} placeholder="Your name" onChange={(v) => save((s) => ((s.profile.name = v.trim().slice(0, 80)), s))} />
+      <Section description={t('settings.profile.intro')}>
+        <Row label={t('settings.profile.name')} hint={t('settings.profile.nameHint')} labelFor="profile-name">
+          <TextField id="profile-name" value={p.name} placeholder={t('settings.profile.namePlaceholder')} onChange={(v) => save((s) => ((s.profile.name = v.trim().slice(0, 80)), s))} />
         </Row>
-        <Row label="Role">
+        <Row label={t('settings.profile.role')}>
           <Select<Role | ''>
-            label="Role"
+            label={t('settings.profile.role')}
             value={p.role ?? ''}
-            options={[{ value: '', label: 'Not set' }, ...PROFILE_ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }))]}
+            options={[{ value: '', label: t('settings.profile.notSet') }, ...PROFILE_ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }))]}
             onChange={(v) => save((s) => ((s.profile.role = v || null), s))}
           />
         </Row>
-        <Row label="Experience" hint="New to coding gets plainer explanations; Experienced gets terse, technical ones.">
+        <Row label={t('settings.profile.experience')} hint={t('settings.profile.experienceHint')}>
           <Select<Experience | ''>
-            label="Experience"
+            label={t('settings.profile.experience')}
             value={p.experience ?? ''}
-            options={[{ value: '', label: 'Not set' }, ...PROFILE_EXPERIENCE.map((r) => ({ value: r, label: EXPERIENCE_LABELS[r] }))]}
+            options={[{ value: '', label: t('settings.profile.notSet') }, ...PROFILE_EXPERIENCE.map((r) => ({ value: r, label: EXPERIENCE_LABELS[r] }))]}
             onChange={(v) => save((s) => ((s.profile.experience = v || null), s))}
           />
         </Row>
-        <Row label="Main uses" wide>
+        <Row label={t('settings.profile.uses')} wide>
           <div className="choice-chips">
             {PROFILE_USES.map((u) => {
               const on = p.uses.includes(u)
@@ -43,8 +45,8 @@ export function ProfilePage({ app, save }: PageProps) {
             })}
           </div>
         </Row>
-        <Row label="Reply language" hint="The language the agent answers in, whatever the code is written in. The app itself stays in English.">
-          <Select label="Reply language" value={p.language} options={languageOptions(p.language)} onChange={(v) => save((s) => ((s.profile.language = v), s))} />
+        <Row label={t('settings.profile.replyLanguage')} hint={t('settings.profile.replyLanguageHint')}>
+          <Select label={t('settings.profile.replyLanguage')} value={p.language} options={languageOptions(p.language)} onChange={(v) => save((s) => ((s.profile.language = v), s))} />
         </Row>
       </Section>
     </>
@@ -54,16 +56,17 @@ export function ProfilePage({ app, save }: PageProps) {
 const SERVER_CODE = 'https://github.com/Parzival-Samanyolu/xari-bulbul/tree/main/server/telemetry'
 
 export function PrivacyPage({ app, save }: PageProps) {
+  const { t } = useT()
   return (
     <Section>
-      <Row label="Share anonymous usage info" hint="Helps fix crashes and decide what to build next. Sent every few minutes to this project's own server, and to no one else." wide>
-        <Toggle label="Share anonymous usage info" value={app.settings.privacy.shareUsage} onChange={(v) => save((s) => ((s.privacy.shareUsage = v), s))} />
+      <Row label={t('settings.privacy.share')} hint={t('settings.privacy.shareHint')} wide>
+        <Toggle label={t('settings.privacy.share')} value={app.settings.privacy.shareUsage} onChange={(v) => save((s) => ((s.privacy.shareUsage = v), s))} />
         <ShareInfoText />
-        {app.shareInfoOff && <p className="muted small">Sending is turned off for this session by the XB_TELEMETRY or XB_TELEMETRY_URL environment variable.</p>}
+        {app.shareInfoOff && <p className="muted small">{t('settings.privacy.envOff')}</p>}
         <p className="muted small">
-          Turning it off also deletes anything waiting to be sent.{' '}
+          {t('settings.privacy.offDeletes')}{' '}
           <button className="link small" onClick={() => api.app.openExternal(SERVER_CODE)}>
-            See the server code ↗
+            {t('settings.privacy.serverCode')}
           </button>
         </p>
       </Row>

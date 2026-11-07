@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { Fragment, useState, type ReactNode } from 'react'
 import type { AppState, ModelRef, Settings, UpdateStatus } from '../../../../shared/ipc'
 import { modelLabel } from '../../lib/format'
+import { useT } from '../../lib/i18n'
 import { ModelPicker } from '../ModelPicker'
 
 export type Save = (fn: (s: Settings) => Settings) => void
@@ -36,12 +37,23 @@ export const KEY_LINKS: Record<string, string> = {
 
 export const refText = (r: ModelRef) => `${modelLabel(r.modelId)} · ${r.providerId}`
 
+/**
+ * A message with `{name}` placeholders filled by elements, such as a code span or a link button:
+ * `rich(t('key'), { cmd: <code>…</code> })`. Pass the message without those vars, so its braces stay.
+ */
+export function rich(text: string, parts: Record<string, ReactNode>): ReactNode {
+  return text.split(/(\{\w+\})/).map((piece, i) => {
+    const name = /^\{(\w+)\}$/.exec(piece)?.[1]
+    return <Fragment key={i}>{name && name in parts ? parts[name] : piece}</Fragment>
+  })
+}
+
 /** A model setting: a button that opens the model switcher, plus a reset link while one is chosen. */
 export function ModelChoice({
   app,
   value,
   empty,
-  resetLabel = 'reset',
+  resetLabel,
   required,
   title,
   onChange,
@@ -60,6 +72,7 @@ export function ModelChoice({
   onState: (s: AppState) => void
   onError: (e: unknown) => void
 }) {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   return (
     <div className="inline">
@@ -68,10 +81,10 @@ export function ModelChoice({
       </button>
       {value && !required && (
         <button className="link small" onClick={() => onChange(null)}>
-          {resetLabel}
+          {resetLabel ?? t('settings.common.reset')}
         </button>
       )}
-      {open && <ModelPicker app={app} onClose={() => setOpen(false)} onState={onState} onError={onError} onPick={(r) => onChange(r)} title={title ?? 'Choose a model…'} />}
+      {open && <ModelPicker app={app} onClose={() => setOpen(false)} onState={onState} onError={onError} onPick={(r) => onChange(r)} title={title ?? t('settings.common.chooseModel')} />}
     </div>
   )
 }
@@ -90,6 +103,7 @@ export function SecretInput({
   label: string
   onSave: (value: string) => Promise<unknown>
 }) {
+  const { t } = useT()
   const [text, setText] = useState('')
   const [busy, setBusy] = useState(false)
   const commit = () => {
@@ -108,13 +122,13 @@ export function SecretInput({
         autoComplete="off"
         spellCheck={false}
         aria-label={label}
-        placeholder={saved ? '•••••••• saved' : placeholder}
+        placeholder={saved ? t('settings.common.savedMask') : placeholder}
         value={text}
         onChange={(e) => setText(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), commit())}
       />
       <button className="btn primary" disabled={!text.trim() || busy} onClick={commit}>
-        Save
+        {t('common.save')}
       </button>
     </div>
   )
