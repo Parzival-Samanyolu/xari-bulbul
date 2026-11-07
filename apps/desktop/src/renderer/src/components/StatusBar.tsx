@@ -19,7 +19,7 @@ interface Props {
 }
 
 export function StatusBar({ app, live, onOpenPicker, onUsage, onResources, update, panels }: Props) {
-  const { t: tr } = useT()
+  const { t: tr, lang } = useT()
   const fmt = useFormat()
   const bytes = (n: number | null | undefined) => (n == null ? '—' : fmt.bytes(n))
   const percent = (n: number) => fmt.num(n / 100, { style: 'percent' })
@@ -40,7 +40,7 @@ export function StatusBar({ app, live, onOpenPicker, onUsage, onResources, updat
       </button>
       <span className="sb-sep" />
       <button className="sb-item" onClick={onUsage} title={tr('chat.statusbar.tokensTitle')}>
-        <b>{tokens(s.promptTokens)}</b>↑ <b>{tokens(s.completionTokens)}</b>↓{s.cachedTokens > 0 && <span className="muted"> {tr('chat.statusbar.cached', { tokens: tokens(s.cachedTokens) })}</span>}
+        <b>{tokens(lang, s.promptTokens)}</b>↑ <b>{tokens(lang, s.completionTokens)}</b>↓{s.cachedTokens > 0 && <span className="muted"> {tr('chat.statusbar.cached', { tokens: tokens(lang, s.cachedTokens) })}</span>}
       </button>
       <button className="sb-item" onClick={onUsage} title={tr('chat.statusbar.requestsTitle')}>
         {/* The plural form needs the number; the number itself is then shown bold. */}
@@ -49,15 +49,15 @@ export function StatusBar({ app, live, onOpenPicker, onUsage, onResources, updat
       </button>
       {showCost && (
         <button className={`sb-item ${budget != null && s.cost >= budget ? 'warn' : ''}`} onClick={onUsage} title={tr('chat.statusbar.costTitle')}>
-          <b>{cost(s.cost, s.costPartial)}</b>
-          {budget != null && <span className="muted"> / {cost(budget)}</span>}
-          <span className="muted sb-today"> · {tr('chat.statusbar.today', { value: cost(t.cost, t.costPartial) })}</span>
+          <b>{cost(lang, s.cost, s.costPartial)}</b>
+          {budget != null && <span className="muted"> / {cost(lang, budget)}</span>}
+          <span className="muted sb-today"> · {tr('chat.statusbar.today', { value: cost(lang, t.cost, t.costPartial) })}</span>
         </button>
       )}
       {live.lastUsage && app.settings.usage.showPerMessageUsage && (
         <span className="sb-item sb-last muted" title={tr('chat.statusbar.lastTitle')}>
           {tr('chat.statusbar.last', {
-            usage: `${tokens(live.lastUsage.prompt)}↑ ${tokens(live.lastUsage.completion)}↓${showCost && live.lastUsage.cost != null ? ` ${cost(live.lastUsage.cost)}` : ''}`,
+            usage: `${tokens(lang, live.lastUsage.prompt)}↑ ${tokens(lang, live.lastUsage.completion)}↓${showCost && live.lastUsage.cost != null ? ` ${cost(lang, live.lastUsage.cost)}` : ''}`,
           })}
         </span>
       )}
@@ -68,16 +68,16 @@ export function StatusBar({ app, live, onOpenPicker, onUsage, onResources, updat
           onClick={onResources}
           title={
             res.children.measured && res.children.memory
-              ? tr('chat.statusbar.resourcesChildren', { app: bytes(res.app.memory), children: bytes(res.children.memory), total: bytes(res.system.total), cpu: cpuText(res.app.cpu + res.children.cpu) })
-              : tr('chat.statusbar.resources', { app: bytes(res.app.memory), total: bytes(res.system.total), cpu: cpuText(res.app.cpu + res.children.cpu) })
+              ? tr('chat.statusbar.resourcesChildren', { app: bytes(res.app.memory), children: bytes(res.children.memory), total: bytes(res.system.total), cpu: cpuText(lang, res.app.cpu + res.children.cpu) })
+              : tr('chat.statusbar.resources', { app: bytes(res.app.memory), total: bytes(res.system.total), cpu: cpuText(lang, res.app.cpu + res.children.cpu) })
           }
         >
           <span className="muted">{tr('chat.statusbar.ram')}</span> <b>{bytes(res.app.memory + res.children.memory)}</b>
-          <span className="muted"> · {tr('chat.statusbar.cpu')}</span> <b>{cpuText(res.app.cpu + res.children.cpu)}</b>
+          <span className="muted"> · {tr('chat.statusbar.cpu')}</span> <b>{cpuText(lang, res.app.cpu + res.children.cpu)}</b>
         </button>
       )}
       {pct != null && (
-        <span className="sb-item" title={tr('chat.statusbar.contextTitle', { used: tokens(ctx!.tokens), total: tokens(ctx!.length) })}>
+        <span className="sb-item" title={tr('chat.statusbar.contextTitle', { used: tokens(lang, ctx!.tokens), total: tokens(lang, ctx!.length) })}>
           <span className="meter">
             <span className={`meter-fill ${pct > 80 ? 'hot' : ''}`} style={{ width: `${pct}%` }} />
           </span>

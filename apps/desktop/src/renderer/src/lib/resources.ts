@@ -1,19 +1,13 @@
 import { useEffect, useState } from 'react'
+import { formatNumber, type Lang } from '@harness/core/i18n'
 import type { ResourceSample } from '../../../shared/ipc'
 import { api } from './api'
 
-/** Bytes as "512 MB" / "1.4 GB". */
-export function bytes(n: number | null | undefined): string {
+/** CPU as a percent of one core, in the language's number format. */
+export function cpuText(lang: Lang, n: number | null | undefined): string {
   if (n == null) return '—'
-  if (n < 1024 * 1024) return `${Math.max(1, Math.round(n / 1024))} KB`
-  if (n < 1024 * 1024 * 1024) return `${Math.round(n / 1024 / 1024)} MB`
-  return `${(n / 1024 / 1024 / 1024).toFixed(1)} GB`
-}
-
-/** CPU as a percent of one core. */
-export function cpuText(n: number | null | undefined): string {
-  if (n == null) return '—'
-  return `${n < 10 ? n.toFixed(1) : Math.round(n)}%`
+  const digits = n < 10 ? 1 : 0
+  return formatNumber(lang, n / 100, { style: 'percent', minimumFractionDigits: digits, maximumFractionDigits: digits })
 }
 
 function usePageVisible(): boolean {

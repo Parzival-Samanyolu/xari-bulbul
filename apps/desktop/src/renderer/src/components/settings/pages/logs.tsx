@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { LogEntry, LogLevel, ProcessUsage } from '../../../../../shared/ipc'
 import { api } from '../../../lib/api'
 import { useFormat, useT } from '../../../lib/i18n'
-import { useResources } from '../../../lib/resources'
+import { cpuText, useResources } from '../../../lib/resources'
 import { Row, Section, Select, Toggle } from '../../fields'
 import type { PageProps } from '../common'
 
@@ -11,10 +11,9 @@ import type { PageProps } from '../common'
 const KIND_ORDER: ProcessUsage['kind'][] = ['app', 'local', 'mcp', 'terminal', 'child']
 
 export function ResourcesPage({ app, save, onError }: PageProps) {
-  const { t } = useT()
+  const { t, lang } = useT()
   const fmt = useFormat()
   const bytes = (n: number | null | undefined) => (n == null ? '—' : fmt.bytes(n))
-  const cpuText = (n: number | null | undefined) => (n == null ? '—' : fmt.num(n / 100, { style: 'percent', maximumFractionDigits: n < 10 ? 1 : 0 }))
   const s = useResources(true, 2000)
   const procs = useMemo(
     () => (s ? [...s.processes].sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || (b.memory ?? 0) - (a.memory ?? 0)) : []),
@@ -64,7 +63,7 @@ export function ResourcesPage({ app, save, onError }: PageProps) {
             {gpuProc && (
               <span className="muted">
                 {' '}
-                · {t('settings.logs.gpuUsage', { memory: bytes(gpuProc.memory), cpu: cpuText(gpuProc.cpu) })}
+                · {t('settings.logs.gpuUsage', { memory: bytes(gpuProc.memory), cpu: cpuText(lang, gpuProc.cpu) })}
               </span>
             )}
           </span>
@@ -103,7 +102,7 @@ export function ResourcesPage({ app, save, onError }: PageProps) {
                         </button>
                       )}
                     </td>
-                    <td className="num">{cpuText(p.cpu)}</td>
+                    <td className="num">{cpuText(lang, p.cpu)}</td>
                     <td className="num">{bytes(p.memory)}</td>
                     <td className="num muted">{p.pid}</td>
                   </tr>
@@ -112,7 +111,7 @@ export function ResourcesPage({ app, save, onError }: PageProps) {
               <tfoot>
                 <tr>
                   <th scope="row">{t('settings.logs.total')}</th>
-                  <td className="num">{cpuText(s.app.cpu + s.children.cpu)}</td>
+                  <td className="num">{cpuText(lang, s.app.cpu + s.children.cpu)}</td>
                   <td className="num">{bytes(used)}</td>
                   <td />
                 </tr>

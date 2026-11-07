@@ -15,7 +15,7 @@ type T = ReturnType<typeof useT>['t']
 // ---------------------------------------------------------------- Usage
 
 export function UsagePage({ app, save, onState, onError }: PageProps) {
-  const { t } = useT()
+  const { t, lang } = useT()
   const u = app.settings.usage
   const sum = app.usage
   const byModel = Object.entries(sum.byModel).sort((a, b) => b[1].cost - a[1].cost || b[1].requests - a[1].requests)
@@ -44,10 +44,10 @@ export function UsagePage({ app, save, onState, onError }: PageProps) {
               <tr key={id}>
                 <th scope="row">{label}</th>
                 <td>{row.requests}</td>
-                <td>{tokens(row.promptTokens)}</td>
-                <td>{tokens(row.completionTokens)}</td>
-                <td>{tokens(row.cachedTokens)}</td>
-                <td>{cost(row.cost, row.costPartial)}</td>
+                <td>{tokens(lang, row.promptTokens)}</td>
+                <td>{tokens(lang, row.completionTokens)}</td>
+                <td>{tokens(lang, row.cachedTokens)}</td>
+                <td>{cost(lang, row.cost, row.costPartial)}</td>
               </tr>
             ))}
           </tbody>
@@ -70,9 +70,9 @@ export function UsagePage({ app, save, onState, onError }: PageProps) {
                     <code>{k}</code>
                   </td>
                   <td>{row.requests}</td>
-                  <td>{tokens(row.promptTokens)}</td>
-                  <td>{tokens(row.completionTokens)}</td>
-                  <td>{cost(row.cost, row.costPartial)}</td>
+                  <td>{tokens(lang, row.promptTokens)}</td>
+                  <td>{tokens(lang, row.completionTokens)}</td>
+                  <td>{cost(lang, row.cost, row.costPartial)}</td>
                 </tr>
               ))}
             </tbody>

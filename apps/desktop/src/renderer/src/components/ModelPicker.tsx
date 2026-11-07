@@ -38,7 +38,7 @@ function price(m: ModelInfo, free: string): string {
 }
 
 export function ModelPicker({ app, onClose, onState, onError, onPick, title }: Props) {
-  const { t } = useT()
+  const { t, lang } = useT()
   const [q, setQ] = useState('')
   const [models, setModels] = useState<Record<string, ModelInfo[]>>({})
   const [loading, setLoading] = useState<Record<string, boolean>>({})
@@ -273,7 +273,7 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
                     </span>
                   )}
                 </span>
-                <span className="muted">{m.contextLength ? tokens(m.contextLength) : '—'}</span>
+                <span className="muted">{m.contextLength ? tokens(lang, m.contextLength) : '—'}</span>
                 <span className={m.free ? 'okc' : 'muted'}>{price(m, t('chat.picker.free'))}</span>
               </div>
             )

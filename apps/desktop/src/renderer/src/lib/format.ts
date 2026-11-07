@@ -1,11 +1,17 @@
-export function tokens(n: number): string {
-  if (n < 1000) return String(n)
-  if (n < 1_000_000) return `${(n / 1000).toFixed(n < 10_000 ? 1 : 0)}k`
-  return `${(n / 1_000_000).toFixed(2)}M`
+import { formatNumber, type Lang } from '@harness/core/i18n'
+
+/** Token counts as "950", "1.2k", "34k", "1.05M", with the language's decimal separator. */
+export function tokens(lang: Lang, n: number): string {
+  const fixed = (v: number, digits: number) => formatNumber(lang, v, { minimumFractionDigits: digits, maximumFractionDigits: digits, useGrouping: false })
+  if (n < 1000) return fixed(n, 0)
+  if (n < 1_000_000) return `${fixed(n / 1000, n < 10_000 ? 1 : 0)}k`
+  return `${fixed(n / 1_000_000, 2)}M`
 }
 
-export function cost(usd: number, partial = false): string {
-  const s = usd === 0 ? '$0' : usd < 0.01 ? `$${usd.toFixed(4)}` : `$${usd.toFixed(2)}`
+/** USD as "$0.0042" or "$1.25" (two decimals from a cent up); `partial` adds "+" when some costs are unknown. */
+export function cost(lang: Lang, usd: number, partial = false): string {
+  const digits = usd === 0 ? 0 : usd < 0.01 ? 4 : 2
+  const s = `$${formatNumber(lang, usd, { minimumFractionDigits: digits, maximumFractionDigits: digits })}`
   return partial ? `${s}+` : s
 }
 
