@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AppState, PermissionMode, ProviderTestResult, Settings } from '../../../shared/ipc'
 import { api } from '../lib/api'
+import { useT } from '../lib/i18n'
 import mark from '../assets/mark.png'
 import { Toggle } from './fields'
 import { LayoutPicker, withLayout } from './LayoutPicker'
-import { EXPERIENCE_LABELS, PROFILE_EXPERIENCE, PROFILE_ROLES, PROFILE_USES, ROLE_LABELS, ShareInfoText, USE_LABELS, languageOptions } from './profile'
+import { PROFILE_EXPERIENCE, PROFILE_ROLES, PROFILE_USES, ShareInfoText, experienceLabels, languageOptions, purposeLabels, roleLabels } from './profile'
 import { ProviderLogo } from './ProviderLogo'
 import { KEY_LINKS, ModelChoice, SecretInput, refText } from './settings/common'
-import { THEMES } from './settings/pages/general'
 
 // First run: a welcome screen, then four short steps. Every answer is saved as it's given, so
 // quitting halfway keeps what was chosen. Setup ends with `app.onboarded`, set on Done.
@@ -18,36 +18,49 @@ interface Props {
   onError: (e: unknown) => void
 }
 
-const STEPS = [
-  { id: 'about', label: 'About you' },
-  { id: 'provider', label: 'Model' },
-  { id: 'how', label: 'How it works' },
-  { id: 'done', label: 'Done' },
-] as const
+type T = ReturnType<typeof useT>['t']
 
-type StepId = (typeof STEPS)[number]['id']
+const STEP_IDS = ['about', 'provider', 'how', 'done'] as const
+type StepId = (typeof STEP_IDS)[number]
 
-
+const stepLabels = (t: T): Record<StepId, string> => ({
+  about: t('bots.onboard.step.about'),
+  provider: t('bots.onboard.step.provider'),
+  how: t('bots.onboard.step.how'),
+  done: t('common.done'),
+})
 
 /** The modes first-run setup offers, explained plainly. Auto-edit stays in the message box and Settings. */
-const MODE_CHOICES: { id: PermissionMode; label: string; text: string }[] = [
-  { id: 'ask', label: 'Ask', text: 'Asks you before it edits a file or runs a command. Best to start with.' },
-  { id: 'auto', label: 'Auto', text: 'Works without asking. It still asks before deleting files, force pushes and other destructive commands.' },
-  { id: 'plan', label: 'Plan', text: 'Only reads your project and writes a plan. Nothing is changed until you switch modes.' },
+const modeChoices = (t: T): { id: PermissionMode; label: string; text: string }[] => [
+  { id: 'ask', label: t('bots.onboard.mode.ask'), text: t('bots.onboard.mode.askText') },
+  { id: 'auto', label: t('bots.onboard.mode.auto'), text: t('bots.onboard.mode.autoText') },
+  { id: 'plan', label: t('bots.onboard.mode.plan'), text: t('bots.onboard.mode.planText') },
 ]
 
 /** Where models come from: free and local options first. Other providers are in the list below them. */
-const PROVIDER_CHOICES: { id: string; badge: string; text: string }[] = [
-  { id: 'openrouter', badge: 'Free models', text: 'Hundreds of models, many of them free. Needs a free key.' },
-  { id: 'ollama-cloud', badge: 'Free tier', text: 'Open models in the cloud. Needs a free key.' },
-  { id: 'ollama-local', badge: 'Local', text: 'Runs models on this computer with Ollama. No key.' },
-  { id: 'lmstudio', badge: 'Local', text: 'Runs models on this computer with LM Studio. No key.' },
+const PROVIDER_IDS = ['openrouter', 'ollama-cloud', 'ollama-local', 'lmstudio']
+const providerChoices = (t: T): { id: string; badge: string; local: boolean; text: string }[] => [
+  { id: 'openrouter', badge: t('bots.onboard.badge.freeModels'), local: false, text: t('bots.onboard.provider.openrouter') },
+  { id: 'ollama-cloud', badge: t('bots.onboard.badge.freeTier'), local: false, text: t('bots.onboard.provider.ollamaCloud') },
+  { id: 'ollama-local', badge: t('bots.onboard.badge.local'), local: true, text: t('bots.onboard.provider.ollamaLocal') },
+  { id: 'lmstudio', badge: t('bots.onboard.badge.local'), local: true, text: t('bots.onboard.provider.lmstudio') },
+]
+
+type Theme = Settings['appearance']['theme']
+const themes = (t: T): { value: Theme; label: string }[] => [
+  { value: 'system', label: t('bots.onboard.theme.system') },
+  { value: 'dark', label: t('bots.onboard.theme.dark') },
+  { value: 'light', label: t('bots.onboard.theme.light') },
+  { value: 'oled', label: t('bots.onboard.theme.oled') },
+  { value: 'sepia', label: t('bots.onboard.theme.sepia') },
+  { value: 'contrast', label: t('bots.onboard.theme.contrast') },
 ]
 const FREE_TIER = new Set(['google', 'groq', 'cerebras'])
 
 const clean = (e: unknown) => String((e as Error)?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
 export function Onboarding({ app, onState, onError }: Props) {
+  const { t } = useT()
   const [started, setStarted] = useState(false)
   const [step, setStep] = useState(0)
   /** The step "Skip setup" was pressed on, if it was. */
@@ -68,11 +81,12 @@ export function Onboarding({ app, onState, onError }: Props) {
     if (started) heading.current?.focus()
   }, [step, started])
 
-  const id = STEPS[step].id
-  const go = (i: number) => setStep(Math.max(0, Math.min(STEPS.length - 1, i)))
+  const id = STEP_IDS[step]
+  const labels = stepLabels(t)
+  const go = (i: number) => setStep(Math.max(0, Math.min(STEP_IDS.length - 1, i)))
   const skipAll = () => {
     setSkippedAt(id)
-    go(STEPS.length - 1)
+    go(STEP_IDS.length - 1)
   }
   const finish = () => {
     void api.app.track(skippedAt ? { type: 'onboarding', outcome: 'skipped', step: skippedAt } : { type: 'onboarding', outcome: 'finished', step: 'done' }).catch(() => {})
@@ -86,9 +100,9 @@ export function Onboarding({ app, onState, onError }: Props) {
         <div className="onboard-hello">
           <img className="welcome-mark" src={mark} alt="" width={96} height={76} />
           <h1>Xarı Bülbül</h1>
-          <p className="muted">An AI coding agent that works in your project, with any model you like.</p>
+          <p className="muted">{t('bots.welcome.tagline')}</p>
           <button className="btn primary onboard-start" autoFocus onClick={() => setStarted(true)}>
-            Start
+            {t('bots.onboard.start')}
           </button>
         </div>
       </div>
@@ -99,20 +113,20 @@ export function Onboarding({ app, onState, onError }: Props) {
       <div className="onboard-drag" />
       <div className="onboard-frame">
         <header className="onboard-head">
-          <ol className="onboard-progress" aria-label="Setup steps">
-            {STEPS.map((s, i) => (
-              <li key={s.id} className={i < step ? 'done' : i === step ? 'on' : ''} aria-current={i === step ? 'step' : undefined}>
+          <ol className="onboard-progress" aria-label={t('bots.onboard.steps')}>
+            {STEP_IDS.map((s, i) => (
+              <li key={s} className={i < step ? 'done' : i === step ? 'on' : ''} aria-current={i === step ? 'step' : undefined}>
                 <span className="onboard-bar" aria-hidden />
-                <span className="onboard-step-label">
-                  <span className="sr-only">{`Step ${i + 1} of ${STEPS.length}: `}</span>
-                  {s.label}
+                <span className="onboard-step-label" title={labels[s]}>
+                  <span className="sr-only">{`${t('bots.onboard.stepOf', { n: i + 1, total: STEP_IDS.length })} `}</span>
+                  {labels[s]}
                 </span>
               </li>
             ))}
           </ol>
           {id !== 'done' && (
             <button className="link small" onClick={skipAll}>
-              Skip setup
+              {t('bots.onboard.skip')}
             </button>
           )}
         </header>
@@ -127,18 +141,18 @@ export function Onboarding({ app, onState, onError }: Props) {
         <footer className="onboard-foot">
           {step > 0 ? (
             <button className="btn ghost" onClick={() => go(step - 1)}>
-              Back
+              {t('common.back')}
             </button>
           ) : (
             <span />
           )}
           {id === 'done' ? (
             <button className="btn primary" onClick={finish}>
-              Start using Xarı Bülbül
+              {t('bots.onboard.finish')}
             </button>
           ) : (
             <button className="btn primary" onClick={() => go(step + 1)}>
-              Next
+              {t('bots.onboard.next')}
             </button>
           )}
         </footer>
@@ -184,27 +198,31 @@ function ChoiceChips<T extends string>({ legend, name, options, value, onChange 
 // ---------------------------------------------------------------- About you
 
 function AboutStep({ app, save, heading }: StepProps) {
+  const { t } = useT()
+  const roles = roleLabels(t)
+  const levels = experienceLabels(t)
+  const purposes = purposeLabels(t)
   const p = app.settings.profile
   const [name, setName] = useState(p.name)
   const commitName = () => name.trim() !== p.name && save((s) => (s.profile.name = name.trim()))
   return (
     <>
-      <StepTitle heading={heading} title="About you" text="So the agent can pitch its answers to you. Every question is optional." />
+      <StepTitle heading={heading} title={t('bots.onboard.step.about')} text={t('bots.onboard.aboutText')} />
       <div className="onboard-field">
-        <label htmlFor="ob-name">What should the agent call you?</label>
-        <input id="ob-name" value={name} maxLength={80} autoComplete="given-name" placeholder="Your name" onChange={(e) => setName(e.target.value)} onBlur={commitName} onKeyDown={(e) => e.key === 'Enter' && commitName()} />
+        <label htmlFor="ob-name">{t('bots.onboard.nameLabel')}</label>
+        <input id="ob-name" value={name} maxLength={80} autoComplete="given-name" placeholder={t('bots.onboard.namePlaceholder')} onChange={(e) => setName(e.target.value)} onBlur={commitName} onKeyDown={(e) => e.key === 'Enter' && commitName()} />
       </div>
-      <ChoiceChips legend="What do you do?" name="ob-role" value={p.role} options={PROFILE_ROLES.map((r) => ({ value: r, label: ROLE_LABELS[r] }))} onChange={(v) => save((s) => (s.profile.role = v))} />
-      <ChoiceChips legend="How much coding experience do you have?" name="ob-exp" value={p.experience} options={PROFILE_EXPERIENCE.map((r) => ({ value: r, label: EXPERIENCE_LABELS[r] }))} onChange={(v) => save((s) => (s.profile.experience = v))} />
+      <ChoiceChips legend={t('bots.onboard.role')} name="ob-role" value={p.role} options={PROFILE_ROLES.map((r) => ({ value: r, label: roles[r] }))} onChange={(v) => save((s) => (s.profile.role = v))} />
+      <ChoiceChips legend={t('bots.onboard.experience')} name="ob-exp" value={p.experience} options={PROFILE_EXPERIENCE.map((r) => ({ value: r, label: levels[r] }))} onChange={(v) => save((s) => (s.profile.experience = v))} />
       <fieldset className="onboard-field">
-        <legend>What will you mostly use it for?</legend>
+        <legend>{t('bots.onboard.uses')}</legend>
         <div className="choice-chips">
           {PROFILE_USES.map((u) => {
             const on = p.uses.includes(u)
             return (
               <label key={u} className={`choice-chip ${on ? 'on' : ''}`}>
                 <input type="checkbox" checked={on} onChange={() => save((s) => (s.profile.uses = on ? s.profile.uses.filter((x) => x !== u) : PROFILE_USES.filter((x) => x === u || s.profile.uses.includes(x))))} />
-                {USE_LABELS[u]}
+                {purposes[u]}
               </label>
             )
           })}
@@ -217,9 +235,10 @@ function AboutStep({ app, save, heading }: StepProps) {
 // ---------------------------------------------------------------- Provider + model
 
 function ProviderStep({ app, save, heading, onState, onError }: StepProps & Pick<Props, 'onState' | 'onError'>) {
+  const { t } = useT()
   const presets = app.providerPresets
-  const others = app.settings.providers.filter((p) => !PROVIDER_CHOICES.some((c) => c.id === p.id))
-  const firstReady = [...PROVIDER_CHOICES.map((c) => c.id), ...others.map((p) => p.id)].find((id) => app.ready[id])
+  const others = app.settings.providers.filter((p) => !PROVIDER_IDS.includes(p.id))
+  const firstReady = [...PROVIDER_IDS, ...others.map((p) => p.id)].find((id) => app.ready[id])
   const [chosen, setChosen] = useState(firstReady ?? 'openrouter')
   const [test, setTest] = useState<ProviderTestResult | 'running' | null>(null)
   const config = app.settings.providers.find((p) => p.id === chosen)
@@ -260,14 +279,18 @@ function ProviderStep({ app, save, heading, onState, onError }: StepProps & Pick
       void save((s) => (s.providers = [...s.providers, { ...p, enabled: true, headers: {}, requestUsageCost: false, api: 'openai' as const }]))
   }
 
-  const otherValue = PROVIDER_CHOICES.some((c) => c.id === chosen) ? '' : chosen
+  const otherValue = PROVIDER_IDS.includes(chosen) ? '' : chosen
+  const otherLabel = (p: { id: string; name: string }) => {
+    const named = FREE_TIER.has(p.id) ? t('bots.onboard.withFreeTier', { name: p.name }) : p.name
+    return app.ready[p.id] ? t('bots.onboard.withConnected', { name: named }) : named
+  }
   return (
     <>
-      <StepTitle heading={heading} title="Connect a model" text="Pick where your models come from. Free and local options are first. You can add more later in Settings › Providers." />
+      <StepTitle heading={heading} title={t('bots.welcome.connect')} text={t('bots.onboard.providerText')} />
       <fieldset className="onboard-field">
-        <legend className="sr-only">Provider</legend>
+        <legend className="sr-only">{t('bots.onboard.provider')}</legend>
         <div className="provider-choices">
-          {PROVIDER_CHOICES.map((c) => {
+          {providerChoices(t).map((c) => {
             const label = app.settings.providers.find((p) => p.id === c.id)?.name ?? presets.find((p) => p.id === c.id)?.name ?? c.id
             const on = chosen === c.id
             return (
@@ -276,8 +299,8 @@ function ProviderStep({ app, save, heading, onState, onError }: StepProps & Pick
                 <ProviderLogo id={c.id} name={label} size={20} />
                 <span className="provider-choice-text">
                   <b>
-                    {label} <span className={`badge ${c.badge === 'Local' ? '' : 'ok'}`}>{c.badge}</span>
-                    {app.ready[c.id] && <span className="badge">connected</span>}
+                    {label} <span className={`badge ${c.local ? '' : 'ok'}`}>{c.badge}</span>
+                    {app.ready[c.id] && <span className="badge">{t('bots.onboard.connected')}</span>}
                   </b>
                   <span className="muted small">{c.text}</span>
                 </span>
@@ -286,29 +309,27 @@ function ProviderStep({ app, save, heading, onState, onError }: StepProps & Pick
           })}
         </div>
         <div className="onboard-other">
-          <label htmlFor="ob-other">Another provider</label>
+          <label htmlFor="ob-other">{t('bots.onboard.other')}</label>
           <select id="ob-other" value={otherValue} onChange={(e) => e.target.value && choose(e.target.value)}>
-            <option value="">Choose…</option>
+            <option value="">{t('bots.dialog.choose')}</option>
             {others.map((p) => (
               <option key={p.id} value={p.id}>
-                {p.name}
-                {FREE_TIER.has(p.id) ? ' (free tier)' : ''}
-                {app.ready[p.id] ? ' · connected' : ''}
+                {otherLabel(p)}
               </option>
             ))}
           </select>
         </div>
       </fieldset>
 
-      <section className="onboard-connect" aria-label={`Connect ${name}`}>
+      <section className="onboard-connect" aria-label={t('bots.onboard.connectNamed', { name })}>
         {config?.requiresKey ? (
           <>
-            <label htmlFor={`ob-key-${chosen}`}>{name} API key</label>
+            <label htmlFor={`ob-key-${chosen}`}>{t('bots.onboard.keyLabel', { name })}</label>
             <SecretInput
               id={`ob-key-${chosen}`}
-              label={`${name} API key`}
+              label={t('bots.onboard.keyLabel', { name })}
               saved={!!app.keys[chosen]}
-              placeholder={`Paste ${name} key`}
+              placeholder={t('bots.onboard.keyPlaceholder', { name })}
               onSave={(v) =>
                 api.keys.set(chosen, v).then((s) => {
                   onState(s)
@@ -317,22 +338,22 @@ function ProviderStep({ app, save, heading, onState, onError }: StepProps & Pick
               }
             />
             <p className="muted small">
-              Stored in your system keychain.{' '}
+              {t('bots.onboard.keychain')}{' '}
               {KEY_LINKS[chosen] && (
                 <button className="link small" onClick={() => api.app.openExternal(KEY_LINKS[chosen])}>
-                  Get a {name} key ↗
+                  {t('bots.onboard.getKey', { name })} ↗
                 </button>
               )}
             </p>
           </>
         ) : (
-          <p className="muted small">No key needed. Start {name} on this computer, then test the connection.</p>
+          <p className="muted small">{t('bots.onboard.noKey', { name })}</p>
         )}
         <div className="inline">
           <button className="btn" disabled={test === 'running' || (config?.requiresKey && !app.keys[chosen]) || !config} onClick={() => runTest(chosen)}>
-            {test === 'running' ? 'Testing…' : 'Test connection'}
+            {test === 'running' ? t('bots.onboard.testing') : t('bots.onboard.test')}
           </button>
-          {app.ready[chosen] && !test && <span className="small okc">Ready to use.</span>}
+          {app.ready[chosen] && !test && <span className="small okc">{t('bots.onboard.ready')}</span>}
         </div>
         <p className={`small ${test && test !== 'running' ? (test.ok ? 'okc' : 'warn') : ''}`} role="status">
           {test && test !== 'running' ? test.message : ''}
@@ -341,15 +362,15 @@ function ProviderStep({ app, save, heading, onState, onError }: StepProps & Pick
 
       <div className="onboard-field">
         <div className="onboard-label" id="ob-model-l">
-          Default model
+          {t('bots.dialog.defaultModel')}
         </div>
         {anyReady ? (
           <div role="group" aria-labelledby="ob-model-l">
-            <ModelChoice app={app} value={app.ready[def.providerId] ? def : null} empty="Choose a model…" required title="Default model for new chats…" onChange={(r) => r && save((s) => (s.models.default = r))} onState={onState} onError={onError} />
-            {app.ready[def.providerId] && <p className="muted small">New chats start with {refText(def)}. You can switch models in any chat.</p>}
+            <ModelChoice app={app} value={app.ready[def.providerId] ? def : null} empty={t('bots.onboard.chooseModel')} required title={t('bots.onboard.modelTitle')} onChange={(r) => r && save((s) => (s.models.default = r))} onState={onState} onError={onError} />
+            {app.ready[def.providerId] && <p className="muted small">{t('bots.onboard.newChats', { model: refText(def) })}</p>}
           </div>
         ) : (
-          <p className="muted small">Connect a provider first. You can also skip this and do it later.</p>
+          <p className="muted small">{t('bots.onboard.connectFirst')}</p>
         )}
       </div>
     </>
@@ -359,6 +380,7 @@ function ProviderStep({ app, save, heading, onState, onError }: StepProps & Pick
 // ---------------------------------------------------------------- How it works
 
 function HowStep({ app, save, heading }: StepProps) {
+  const { t, lang } = useT()
   const s = app.settings
   const setMode = (mode: PermissionMode) => {
     void save((x) => (x.permissions.mode = mode))
@@ -366,17 +388,17 @@ function HowStep({ app, save, heading }: StepProps) {
   }
   return (
     <>
-      <StepTitle heading={heading} title="How it works" text="A few choices about how the app looks and how the agent works. All of them are in Settings later." />
+      <StepTitle heading={heading} title={t('bots.onboard.step.how')} text={t('bots.onboard.howText')} />
       <div className="onboard-field">
         <div className="onboard-label" id="ob-layout-l">
-          Layout
+          {t('bots.onboard.layout')}
         </div>
         <LayoutPicker value={s.appearance.layout} onChange={(v) => save((x) => Object.assign(x, withLayout(x, v)))} />
       </div>
       <fieldset className="onboard-field">
-        <legend>When the agent wants to change something</legend>
+        <legend>{t('bots.onboard.modeLegend')}</legend>
         <div className="mode-choices">
-          {MODE_CHOICES.map((m) => (
+          {modeChoices(t).map((m) => (
             <label key={m.id} className={`mode-choice ${s.permissions.mode === m.id ? 'on' : ''}`}>
               <input type="radio" name="ob-mode" checked={s.permissions.mode === m.id} onChange={() => setMode(m.id)} />
               <span>
@@ -386,31 +408,31 @@ function HowStep({ app, save, heading }: StepProps) {
             </label>
           ))}
         </div>
-        <p className="muted small">You can switch modes in any chat with Shift+Tab.</p>
+        <p className="muted small">{t('bots.onboard.shiftTab')}</p>
       </fieldset>
       <div className="onboard-row">
-        <label htmlFor="ob-theme">Theme</label>
+        <label htmlFor="ob-theme">{t('bots.onboard.theme')}</label>
         <select id="ob-theme" value={s.appearance.theme} onChange={(e) => save((x) => (x.appearance.theme = e.target.value as Settings['appearance']['theme']))}>
-          {THEMES.map((t) => (
-            <option key={t.value} value={t.value}>
-              {t.label}
+          {themes(t).map((th) => (
+            <option key={th.value} value={th.value}>
+              {th.label}
             </option>
           ))}
         </select>
       </div>
       <div className="onboard-row">
         <span>
-          <label htmlFor="ob-lang">Reply language</label>
-          <span className="muted small">The language the agent answers in. The app itself stays in English.</span>
+          <label htmlFor="ob-lang">{t('bots.onboard.replyLanguage')}</label>
+          <span className="muted small">{t('bots.onboard.replyLanguageHint')}</span>
         </span>
-        <SelectById id="ob-lang" value={s.profile.language} options={languageOptions(s.profile.language)} onChange={(v) => save((x) => (x.profile.language = v))} />
+        <SelectById id="ob-lang" value={s.profile.language} options={languageOptions(s.profile.language, t, lang)} onChange={(v) => save((x) => (x.profile.language = v))} />
       </div>
       <div className="onboard-row">
         <span>
-          <span id="ob-voice-l">Voice input</span>
-          <span className="muted small">A mic button in the message box for dictating. Choose how speech becomes text in Settings › Agent › Speech to text.</span>
+          <span id="ob-voice-l">{t('bots.onboard.voiceInput')}</span>
+          <span className="muted small">{t('bots.onboard.voiceInputHint')}</span>
         </span>
-        <Toggle label="Voice input" value={s.voice.enabled} onChange={(v) => save((x) => (x.voice.enabled = v))} />
+        <Toggle label={t('bots.onboard.voiceInput')} value={s.voice.enabled} onChange={(v) => save((x) => (x.voice.enabled = v))} />
       </div>
     </>
   )
@@ -432,21 +454,22 @@ function SelectById({ id, value, options, onChange }: { id: string; value: strin
 // ---------------------------------------------------------------- Done
 
 function DoneStep({ app, save, heading }: StepProps) {
+  const { t, lang } = useT()
   const s = app.settings
   const p = s.profile
   const def = s.models.default
   const rows: [string, string][] = [
-    ['Name', p.name || 'Not set'],
-    ['Model', app.ready[def.providerId] ? refText(def) : 'Not connected yet'],
-    ['Layout', s.appearance.layout === 'elite' ? 'Elite' : 'Basic'],
-    ['Mode', MODE_CHOICES.find((m) => m.id === s.permissions.mode)?.label ?? s.permissions.mode],
-    ['Theme', THEMES.find((t) => t.value === s.appearance.theme)?.label ?? s.appearance.theme],
-    ['Reply language', p.language || 'Same as my messages'],
-    ['Voice input', s.voice.enabled ? 'On' : 'Off'],
+    [t('bots.dialog.name'), p.name || t('bots.onboard.notSet')],
+    [t('bots.dialog.model'), app.ready[def.providerId] ? refText(def) : t('bots.onboard.notConnected')],
+    [t('bots.onboard.layout'), s.appearance.layout === 'elite' ? t('bots.onboard.layoutElite') : t('bots.onboard.layoutBasic')],
+    [t('bots.onboard.mode'), modeChoices(t).find((m) => m.id === s.permissions.mode)?.label ?? s.permissions.mode],
+    [t('bots.onboard.theme'), themes(t).find((th) => th.value === s.appearance.theme)?.label ?? s.appearance.theme],
+    [t('bots.onboard.replyLanguage'), languageOptions(p.language, t, lang).find((o) => o.value === p.language)?.label ?? p.language],
+    [t('bots.onboard.voiceInput'), s.voice.enabled ? t('common.on') : t('common.off')],
   ]
   return (
     <>
-      <StepTitle heading={heading} title="You're set" text="Here's what you chose. Change any of it in Settings." />
+      <StepTitle heading={heading} title={t('bots.onboard.doneTitle')} text={t('bots.onboard.doneText')} />
       <dl className="onboard-summary">
         {rows.map(([k, v]) => (
           <div key={k}>
@@ -458,15 +481,15 @@ function DoneStep({ app, save, heading }: StepProps) {
       <section className="share-info" aria-labelledby="ob-share-l">
         <div className="share-info-head">
           <span id="ob-share-l">
-            <b>Share anonymous usage info</b>
-            <span className="muted small">Helps fix crashes and decide what to build next.</span>
+            <b>{t('bots.onboard.share')}</b>
+            <span className="muted small">{t('bots.onboard.shareHint')}</span>
           </span>
-          <Toggle label="Share anonymous usage info" value={s.privacy.shareUsage} onChange={(v) => save((x) => (x.privacy.shareUsage = v))} />
+          <Toggle label={t('bots.onboard.share')} value={s.privacy.shareUsage} onChange={(v) => save((x) => (x.privacy.shareUsage = v))} />
         </div>
         <ShareInfoText />
-        <p className="muted small">Change this any time in Settings › Data & updates › Privacy.</p>
+        <p className="muted small">{t('bots.onboard.shareWhere')}</p>
       </section>
-      {!app.ready[def.providerId] && <p className="small warn">No model is connected yet. Add one later in Settings › Providers, or go Back.</p>}
+      {!app.ready[def.providerId] && <p className="small warn">{t('bots.onboard.noModel')}</p>}
     </>
   )
 }

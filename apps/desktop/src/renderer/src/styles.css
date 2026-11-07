@@ -3977,8 +3977,14 @@ body.resizing * {
   position: fixed;
   right: auto;
   top: auto;
-  width: 190px;
+  /* Longer translations widen the menu up to a point, then wrap. */
+  width: max-content;
+  min-width: 190px;
+  max-width: 280px;
   z-index: 45;
+}
+.bot-menu button {
+  white-space: normal;
 }
 .menu button.danger {
   color: var(--danger);
@@ -4327,7 +4333,12 @@ body.resizing * {
   border: 1px solid var(--border);
 }
 .bd-seg button {
-  padding: 5px 0;
+  min-width: 0;
+  padding: 5px 2px;
+  /* Longer translations wrap inside their column instead of overflowing it. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
   border-radius: 6px;
   color: var(--muted);
   font-weight: 500;
@@ -4428,7 +4439,7 @@ body.resizing * {
 }
 .bd-row {
   display: grid;
-  grid-template-columns: 104px 1fr;
+  grid-template-columns: 120px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
 }
@@ -4438,9 +4449,10 @@ body.resizing * {
 }
 .bd-row select {
   justify-self: start;
+  max-width: 100%;
 }
 .bd-hint {
-  margin: -4px 0 2px 114px;
+  margin: -4px 0 2px 130px;
 }
 .bd-folder {
   display: flex;

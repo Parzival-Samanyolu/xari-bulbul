@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import type { AppState, Settings } from '../../../shared/ipc'
 import { api } from '../lib/api'
-import { ago, modelLabel } from '../lib/format'
+import { modelLabel } from '../lib/format'
+import { useFormat, useT } from '../lib/i18n'
 import type { BotMood } from './BotFace'
 import { BotAvatar, botColor } from './Bots'
 
@@ -41,6 +42,8 @@ interface Props {
 
 /** A bot chat's header: face, name, title and model, what it's doing, New conversation, and a menu with its earlier chats. */
 export function BotHeader({ app, bot, running, talking, awaiting, onState, onError, onEditBot }: Props) {
+  const { t } = useT()
+  const fmt = useFormat()
   const [menu, setMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -50,7 +53,13 @@ export function BotHeader({ app, bot, running, talking, awaiting, onState, onErr
   const fresh = (app.session?.messages.length ?? 0) === 0
   const mood = useBotMood(current, running, talking)
   const model = app.session?.meta.model
-  const state = !bot.enabled ? { kind: 'off', text: 'Turned off' } : awaiting ? { kind: 'awaiting', text: 'Needs you' } : running ? { kind: 'working', text: talking ? 'Typing…' : 'Thinking…' } : null
+  const state = !bot.enabled
+    ? { kind: 'off', text: t('bots.panel.off') }
+    : awaiting
+      ? { kind: 'awaiting', text: t('bots.panel.needsYou') }
+      : running
+        ? { kind: 'working', text: talking ? t('bots.panel.typing') : t('bots.header.thinking') }
+        : null
 
   const close = (refocus = true) => {
     setMenu(false)
@@ -75,12 +84,12 @@ export function BotHeader({ app, bot, running, talking, awaiting, onState, onErr
   }
   const newThread = () => api.bots.newThread(bot.id).then(onState, onError)
   /** Deletes one conversation; deleting the one on screen moves to the next one (or a fresh one). */
-  const removeThread = async (t: (typeof threads)[number]) => {
-    if (!confirm(`Delete the conversation “${t.title}” with ${bot.name}? This can't be undone.`)) return
-    const wasCurrent = t.id === current
-    const next = threads.find((x) => x.id !== t.id)
+  const removeThread = async (th: (typeof threads)[number]) => {
+    if (!confirm(t('bots.header.confirmDeleteThread', { title: th.title, name: bot.name }))) return
+    const wasCurrent = th.id === current
+    const next = threads.find((x) => x.id !== th.id)
     try {
-      onState(await api.sessions.remove(t.id))
+      onState(await api.sessions.remove(th.id))
       if (wasCurrent) {
         close()
         onState(await (next ? api.sessions.open(next.id) : api.bots.newThread(bot.id)))
@@ -92,7 +101,7 @@ export function BotHeader({ app, bot, running, talking, awaiting, onState, onErr
 
   return (
     <header className={`bot-head ${bot.enabled ? '' : 'off'}`} style={{ '--bot': botColor(bot) } as CSSProperties}>
-      <button className="bot-head-face" title={`Edit ${bot.name}`} aria-label={`Edit ${bot.name}`} onClick={() => onEditBot(bot.id)}>
+      <button className="bot-head-face" title={t('bots.editNamed', { name: bot.name })} aria-label={t('bots.editNamed', { name: bot.name })} onClick={() => onEditBot(bot.id)}>
         <BotAvatar app={app} bot={bot} size={36} mood={bot.enabled ? mood : undefined} />
       </button>
       <span className="bot-head-text">
@@ -118,50 +127,56 @@ export function BotHeader({ app, bot, running, talking, awaiting, onState, onErr
         <button
           className="btn ghost bot-head-new"
           disabled={fresh}
-          title={fresh ? 'This conversation is new' : 'Start a fresh conversation; this one stays in the history'}
+          title={fresh ? t('bots.header.fresh') : t('bots.header.newHint')}
           onClick={newThread}
         >
-          New conversation
+          {t('bots.newConversation')}
         </button>
       )}
       <span className="bot-head-more">
         <button
           ref={trigger}
           className="icon-btn bot-head-menu"
-          aria-label={`${bot.name}: history and options`}
+          aria-label={t('bots.header.historyFor', { name: bot.name })}
           aria-haspopup="menu"
           aria-expanded={menu}
-          title="History and options"
+          title={t('bots.header.history')}
           onClick={() => setMenu((m) => !m)}
         >
           ⋯
         </button>
         {menu && (
-          <div className="menu bot-head-list" role="menu" aria-label={`${bot.name}: history and options`} ref={menuRef} onKeyDown={onMenuKey}>
+          <div className="menu bot-head-list" role="menu" aria-label={t('bots.header.historyFor', { name: bot.name })} ref={menuRef} onKeyDown={onMenuKey}>
             <button role="menuitem" onClick={() => (close(), onEditBot(bot.id))}>
-              Edit {bot.name}…
+              {t('bots.header.editMenu', { name: bot.name })}
             </button>
             {threads.length > 0 && (
               <div className="menu-label" role="presentation">
-                Conversations
+                {t('bots.header.conversations')}
               </div>
             )}
-            {threads.slice(0, 30).map((t) => (
-              <div key={t.id} className="bot-thread-row" role="none">
+            {threads.slice(0, 30).map((th) => (
+              <div key={th.id} className="bot-thread-row" role="none">
                 <button
                   role="menuitemradio"
-                  aria-checked={t.id === current}
-                  className={`bot-thread-open ${t.id === current ? 'current' : ''}`}
-                  title={t.preview || t.title}
+                  aria-checked={th.id === current}
+                  className={`bot-thread-open ${th.id === current ? 'current' : ''}`}
+                  title={th.preview || th.title}
                   onClick={() => {
                     close()
-                    if (t.id !== current) api.sessions.open(t.id).then(onState, onError)
+                    if (th.id !== current) api.sessions.open(th.id).then(onState, onError)
                   }}
                 >
-                  <span className="bot-thread-title">{t.title}</span>
-                  <span className="muted small">{ago(t.updatedAt)}</span>
+                  <span className="bot-thread-title">{th.title}</span>
+                  <span className="muted small">{fmt.ago(th.updatedAt)}</span>
                 </button>
-                <button role="menuitem" className="bot-thread-delete" aria-label={`Delete conversation “${t.title}”`} title="Delete conversation" onClick={() => removeThread(t)}>
+                <button
+                  role="menuitem"
+                  className="bot-thread-delete"
+                  aria-label={t('bots.header.deleteThreadNamed', { title: th.title })}
+                  title={t('bots.header.deleteThread')}
+                  onClick={() => removeThread(th)}
+                >
                   <svg width="12" height="12" viewBox="0 0 16 16" aria-hidden>
                     <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
                   </svg>

@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { AppState, SessionMeta } from '../../../shared/ipc'
 import { isBotChat } from '@harness/core/bots'
 import { api } from '../lib/api'
-import { ago, basename } from '../lib/format'
+import { basename } from '../lib/format'
+import { useFormat, useT } from '../lib/i18n'
 import { BotsPanel } from './BotsPanel'
 
 interface Props {
@@ -21,6 +22,8 @@ interface Props {
 type Tab = 'sessions' | 'bots'
 
 export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpen, onEditBot, onEditLobby }: Props) {
+  const { t } = useT()
+  const fmt = useFormat()
   const [menu, setMenu] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -116,24 +119,24 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
         >
           <span className="session-title">{s.title}</span>
           {awaiting ? (
-            <span className="session-meta session-status awaiting">{app.questions.some((q) => q.sessionId === s.id) ? 'Has a question' : 'Needs approval'}</span>
+            <span className="session-meta session-status awaiting">{app.questions.some((q) => q.sessionId === s.id) ? t('bots.sidebar.hasQuestion') : t('bots.sidebar.needsApproval')}</span>
           ) : working ? (
             <span className="session-meta session-status">
               <span className="spinner" aria-hidden />
-              Working…
+              {t('bots.sidebar.working')}
             </span>
           ) : (
             <span className="session-meta">
-              {ago(s.updatedAt)} · {s.model.modelId.split('/').pop()}
+              {fmt.ago(s.updatedAt)} · {s.model.modelId.split('/').pop()}
             </span>
           )}
         </button>
         <button
           className="session-del"
-          aria-label={`Delete chat "${s.title}"`}
-          title="Delete chat"
+          aria-label={t('bots.sidebar.deleteChatNamed', { title: s.title })}
+          title={t('bots.sidebar.deleteChat')}
           onClick={() => {
-            if (confirm(`Delete "${s.title}"?`)) api.sessions.remove(s.id).then(onState, onError)
+            if (confirm(t('bots.sidebar.confirmDelete', { title: s.title }))) api.sessions.remove(s.id).then(onState, onError)
           }}
         >
           ×
@@ -143,26 +146,24 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
   }
 
   return (
-    <aside className="sidebar" aria-label="Chats">
+    <aside className="sidebar" aria-label={t('bots.sidebar.chats')}>
       <div className="sidebar-drag" />
       {botsOn && (
-        <div className="side-tabs" role="tablist" aria-label="Sidebar">
-          {(['sessions', 'bots'] as const).map((t) => (
+        <div className="side-tabs" role="tablist" aria-label={t('bots.sidebar.tabs')}>
+          {(['sessions', 'bots'] as const).map((id) => (
             <button
-              key={t}
-              id={`side-tab-${t}`}
+              key={id}
+              id={`side-tab-${id}`}
               role="tab"
-              aria-selected={shownTab === t}
-              aria-controls={`side-panel-${t}`}
-              tabIndex={shownTab === t ? 0 : -1}
-              className={`side-tab ${shownTab === t ? 'on' : ''}`}
-              onClick={() => setTab(t)}
+              aria-selected={shownTab === id}
+              aria-controls={`side-panel-${id}`}
+              tabIndex={shownTab === id ? 0 : -1}
+              className={`side-tab ${shownTab === id ? 'on' : ''}`}
+              onClick={() => setTab(id)}
               onKeyDown={tabKeys}
             >
-              {t === 'sessions' ? 'Sessions' : 'Bots'}
-              {t === 'bots' && unread > 0 && (
-                <span className="side-tab-dot" role="img" aria-label={`${unread} new ${unread === 1 ? 'reply' : 'replies'}`} />
-              )}
+              {id === 'sessions' ? t('bots.sidebar.sessions') : t('bots.sidebar.bots')}
+              {id === 'bots' && unread > 0 && <span className="side-tab-dot" role="img" aria-label={t('bots.sidebar.newReplies', { count: unread })} />}
             </button>
           ))}
         </div>
@@ -175,20 +176,20 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
         <div className="side-panel" id="side-panel-sessions" role={botsOn ? 'tabpanel' : undefined} aria-labelledby={botsOn ? 'side-tab-sessions' : undefined}>
           <div className="workspace">
             <button ref={trigger} className="workspace-btn" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
-              <span className="workspace-name">Folders</span>
+              <span className="workspace-name">{t('bots.sidebar.folders')}</span>
               <span className="chev" aria-hidden>
                 ＋
               </span>
-              <span className="sr-only">Open a folder</span>
+              <span className="sr-only">{t('bots.sidebar.openAFolder')}</span>
             </button>
             {menu && (
               <div className="menu" role="menu" ref={menuRef} onKeyDown={onMenuKey}>
                 <button role="menuitem" onClick={() => pick(() => api.workspace.pick())}>
-                  Open folder…
+                  {t('bots.sidebar.openFolder')}
                 </button>
                 {recents.length > 0 && (
                   <div className="menu-label" role="presentation">
-                    Recent
+                    {t('bots.sidebar.recent')}
                   </div>
                 )}
                 {recents.map((w) => (
@@ -204,17 +205,17 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
           <button
             className="new-chat"
             disabled={!app.workspace}
-            title={app.workspace ? `New chat in ${basename(app.workspace)}` : undefined}
+            title={app.workspace ? t('bots.sidebar.newChatIn', { folder: basename(app.workspace) }) : undefined}
             onClick={() => {
               onChat()
               api.sessions.create().then(onState, onError)
             }}
           >
-            + New chat <kbd>{mod}N</kbd>
+            + {t('bots.sidebar.newChat')} <kbd>{mod}N</kbd>
           </button>
 
-          <nav className="sessions" aria-label="Folders and chats">
-            {app.folders.length === 0 && <div className="muted small pad">Open a folder to start.</div>}
+          <nav className="sessions" aria-label={t('bots.sidebar.foldersAndChats')}>
+            {app.folders.length === 0 && <div className="muted small pad">{t('bots.sidebar.openToStart')}</div>}
             {app.folders.map((f, fi) => {
               const isCurrent = f.path === app.workspace
               const shut = collapsed.has(f.path)
@@ -251,7 +252,7 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
                       className="folder-toggle"
                       aria-expanded={!shut}
                       aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
-                      title={`${f.path}\nDrag or press Alt+↑/↓ to reorder`}
+                      title={`${f.path}\n${t('bots.sidebar.reorder')}`}
                       onClick={() => toggle(f.path)}
                       onKeyDown={(e) => onFolderKey(e, fi)}
                     >
@@ -259,12 +260,12 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
                         {shut ? '▸' : '▾'}
                       </span>
                       <span className="folder-name">{basename(f.path)}</span>
-                      {shut && busy && <span className={`folder-dot ${busy}`} aria-label={busy === 'awaiting' ? 'A chat needs approval' : 'A chat is working'} />}
+                      {shut && busy && <span className={`folder-dot ${busy}`} aria-label={busy === 'awaiting' ? t('bots.sidebar.folderAwaiting') : t('bots.sidebar.folderWorking')} />}
                     </button>
                     <button
                       className="folder-act"
-                      aria-label={`New chat in ${basename(f.path)}`}
-                      title="New chat"
+                      aria-label={t('bots.sidebar.newChatIn', { folder: basename(f.path) })}
+                      title={t('bots.sidebar.newChat')}
                       onClick={() => {
                         onChat()
                         if (shut) toggle(f.path)
@@ -275,11 +276,11 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
                     </button>
                     <button
                       className="folder-act"
-                      aria-label={`Close ${basename(f.path)}`}
-                      title="Close folder (chats are kept)"
+                      aria-label={t('bots.sidebar.closeNamed', { folder: basename(f.path) })}
+                      title={t('bots.sidebar.closeFolder')}
                       onClick={() => {
                         const running = f.sessions.filter((s) => app.runningSessions.includes(s.id)).length
-                        if (running && !confirm(`${running} chat${running > 1 ? 's are' : ' is'} still working in ${basename(f.path)}. Close the folder anyway? They'll finish in the background.`)) return
+                        if (running && !confirm(t('bots.sidebar.confirmClose', { count: running, folder: basename(f.path) }))) return
                         api.workspace.close(f.path).then(onState, onError)
                       }}
                     >
@@ -288,7 +289,7 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
                   </div>
                   {!shut && (
                     <ul>
-                      {f.sessions.length === 0 && <li className="muted small pad">No chats yet.</li>}
+                      {f.sessions.length === 0 && <li className="muted small pad">{t('bots.sidebar.noChats')}</li>}
                       {f.sessions.map((s) => (
                         renderSession(s, isCurrent ? app.sessions.findIndex((x) => x.id === s.id) : -1)
                       ))}
@@ -303,7 +304,8 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
 
       <button className={`sidebar-settings ${settingsOpen ? 'active' : ''}`} aria-pressed={settingsOpen} onClick={settingsOpen ? onChat : onSettings}>
         <span>
-          <span aria-hidden>⚙ </span>Settings
+          <span aria-hidden>⚙ </span>
+          {t('bots.sidebar.settings')}
         </span>
         <kbd>{mod},</kbd>
       </button>

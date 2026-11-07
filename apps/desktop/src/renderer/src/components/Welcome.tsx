@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { AppState } from '../../../shared/ipc'
 import { api } from '../lib/api'
+import { useT } from '../lib/i18n'
 import mark from '../assets/mark.png'
 import { PluginDialog } from './PluginDialog'
 
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export function Welcome({ app, onState, onError, onSettings }: Props) {
+  const { t } = useT()
   const connected = Object.values(app.ready).some(Boolean)
   const hasFolder = !!app.workspace
   // The first unfinished step carries the primary action.
@@ -31,43 +33,43 @@ export function Welcome({ app, onState, onError, onSettings }: Props) {
     <div className="welcome">
       <img className="welcome-mark" src={mark} alt="" width={96} height={76} />
       <h1>Xarı Bülbül</h1>
-      <p className="muted">An AI coding agent that works in your project, with any model you like.</p>
+      <p className="muted">{t('bots.welcome.tagline')}</p>
       <ol className="steps">
         <li className={connected ? 'done' : ''}>
           <div>
-            <b>Connect a model</b>
+            <b>{t('bots.welcome.connect')}</b>
             <div className="muted small">
               {connected
-                ? 'A provider is ready.'
-                : 'Add an OpenRouter or Ollama Cloud key (both have free models), or add a local Ollama / LM Studio server, which needs no key.'}
+                ? t('bots.welcome.ready')
+                : t('bots.welcome.connectHint')}
             </div>
           </div>
           <button className={`btn ${next === 'connect' ? 'primary' : ''}`} onClick={() => onSettings('providers')}>
-            {connected ? 'Manage providers' : 'Connect…'}
+            {connected ? t('bots.welcome.manage') : t('bots.welcome.connectButton')}
           </button>
         </li>
         <li className={hasFolder ? 'done' : ''}>
           <div>
-            <b>Open a project folder</b>
-            <div className="muted small">{app.workspace ?? 'Xarı Bülbül works inside one folder at a time.'}</div>
+            <b>{t('bots.welcome.openProject')}</b>
+            <div className="muted small">{app.workspace ?? t('bots.welcome.oneFolder')}</div>
           </div>
           <button className={`btn ${next === 'folder' ? 'primary' : ''}`} onClick={() => api.workspace.pick().then(onState, onError)}>
-            {hasFolder ? 'Change folder…' : 'Open folder…'}
+            {hasFolder ? t('bots.welcome.changeFolder') : t('bots.sidebar.openFolder')}
           </button>
         </li>
       </ol>
       {suggestions.map((p) => (
-        <section key={p.id} className="plugin-suggestion" aria-label={`${p.name} plugin`}>
+        <section key={p.id} className="plugin-suggestion" aria-label={t('bots.welcome.pluginLabel', { name: p.name })}>
           <div>
-            <b>Found {p.name}. Want its plugin?</b>
+            <b>{t('bots.welcome.pluginFound', { name: p.name })}</b>
             <div className="muted small">{p.description}</div>
           </div>
           <div className="inline">
             <button className="btn ghost" onClick={() => skip(p.id)}>
-              Skip
+              {t('bots.welcome.skip')}
             </button>
             <button className="btn" onClick={() => setInstalling(p.id)}>
-              Review and install…
+              {t('bots.welcome.review')}
             </button>
           </div>
         </section>
@@ -75,7 +77,7 @@ export function Welcome({ app, onState, onError, onSettings }: Props) {
       {dialogPlugin && <PluginDialog plugin={dialogPlugin} workspace={app.workspace} onClose={() => setInstalling(null)} onState={onState} />}
       {recents.length > 0 && (
         <div className="recents">
-          <div className="muted small">Recent folders</div>
+          <div className="muted small">{t('bots.welcome.recent')}</div>
           {recents.map((w) => (
             <button key={w} className="link" onClick={() => api.workspace.set(w).then(onState, onError)}>
               {w}
