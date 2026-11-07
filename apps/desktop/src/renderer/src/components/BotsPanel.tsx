@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { lobbyBots, newBotId, shownBots, shownLobbies } from '@harness/core/bots'
 import type { AppState, BotRow, LobbyRow, Settings } from '../../../shared/ipc'
 import { api } from '../lib/api'
+import { useFormat, useT } from '../lib/i18n'
 import { BotFaceView } from './BotFace'
 import { BotAvatar, StackedFaces, withBot } from './Bots'
 
@@ -20,20 +21,13 @@ interface Props {
   settingsOpen: boolean
 }
 
-/** "now", "5m", "3h", "2d", "4w": the time since a bot's last message. */
-function since(ts: number): string {
-  const s = Math.max(0, Math.round((Date.now() - ts) / 1000))
-  if (s < 60) return 'now'
-  if (s < 3600) return `${Math.floor(s / 60)}m`
-  if (s < 86400) return `${Math.floor(s / 3600)}h`
-  if (s < 86400 * 7) return `${Math.floor(s / 86400)}d`
-  return `${Math.floor(s / (86400 * 7))}w`
-}
-
 const EMPTY_ROW: BotRow = { id: '', threads: [], unread: false, running: false, awaiting: false }
 
 /** The sidebar's Bots tab: one row per bot, like a messaging app. */
 export function BotsPanel({ app, onState, onError, onEditBot, onEditLobby, onChat, settingsOpen }: Props) {
+  const { t } = useT()
+  // "now", "5m", "3h", "2d", "4w": the time since a bot's last message.
+  const since = useFormat().ago
   const bots = shownBots(app.settings)
   const rows = new Map(app.bots.map((r) => [r.id, r]))
   const muted = app.settings.botOptions.muted
@@ -42,8 +36,8 @@ export function BotsPanel({ app, onState, onError, onEditBot, onEditLobby, onCha
   // The "5m" times age while nothing else changes.
   const [, tick] = useState(0)
   useEffect(() => {
-    const t = setInterval(() => tick((n) => n + 1), 60_000)
-    return () => clearInterval(t)
+    const timer = setInterval(() => tick((n) => n + 1), 60_000)
+    return () => clearInterval(timer)
   }, [])
 
   const save = (s: Settings) => api.settings.set(s).then(onState, onError)
@@ -55,17 +49,17 @@ export function BotsPanel({ app, onState, onError, onEditBot, onEditLobby, onCha
   return (
     <div className="bots-panel">
       <div className="bots-head">
-        <h2 className="bots-title">Bots</h2>
+        <h2 className="bots-title">{t('bots.panel.title')}</h2>
         <button
           className="icon-btn"
           aria-pressed={muted}
-          aria-label="Mute bot notifications"
-          title={muted ? 'Bot notifications are muted' : 'Mute bot notifications'}
+          aria-label={t('bots.panel.mute')}
+          title={muted ? t('bots.panel.muted') : t('bots.panel.mute')}
           onClick={() => save({ ...app.settings, botOptions: { ...app.settings.botOptions, muted: !muted } })}
         >
           <BellIcon off={muted} />
         </button>
-        <button className="icon-btn" aria-label="New bot" title="New bot" onClick={() => onEditBot()}>
+        <button className="icon-btn" aria-label={t('bots.panel.newBot')} title={t('bots.panel.newBot')} onClick={() => onEditBot()}>
           <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
             <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           </svg>
@@ -81,35 +75,35 @@ export function BotsPanel({ app, onState, onError, onEditBot, onEditLobby, onCha
               <BotFaceView face={{ kind: 'shape', shape: 'ghost', color: '#6cc3a0' }} size={34} />
               <BotFaceView face={{ kind: 'pet', pet: 'frog', color: '#9cbb6a' }} size={34} />
             </div>
-            <p className="muted small">Make a character to chat with. It remembers you and can use every tool.</p>
+            <p className="muted small">{t('bots.panel.empty')}</p>
             <button className="btn primary" onClick={() => onEditBot()}>
-              Make a bot
+              {t('bots.panel.make')}
             </button>
           </div>
         ) : (
-          <ul className="bot-rows" aria-label="Bots">
+          <ul className="bot-rows" aria-label={t('bots.panel.title')}>
             {bots.map((b) => {
               const row = rows.get(b.id) ?? EMPTY_ROW
               const last = row.threads[0]
               const active = currentBot === b.id && !settingsOpen
               const status = !b.enabled ? 'off' : row.awaiting ? 'awaiting' : row.running ? 'working' : 'on'
-              const statusText = { off: 'Turned off', awaiting: 'Needs you', working: 'Working', on: '' }[status]
+              const statusText = { off: t('bots.panel.off'), awaiting: t('bots.panel.needsYou'), working: t('bots.panel.working'), on: '' }[status]
               const preview = !b.enabled
-                ? 'Turned off'
+                ? t('bots.panel.off')
                 : row.awaiting
-                  ? app.questions.some((q) => row.threads.some((t) => t.id === q.sessionId))
-                    ? 'Has a question'
-                    : 'Needs approval'
+                  ? app.questions.some((q) => row.threads.some((th) => th.id === q.sessionId))
+                    ? t('bots.sidebar.hasQuestion')
+                    : t('bots.sidebar.needsApproval')
                   : row.running
-                    ? 'Typing…'
-                    : last?.preview || b.tagline || 'Say hi'
+                    ? t('bots.panel.typing')
+                    : last?.preview || b.tagline || t('bots.panel.sayHi')
               const openMenu = (x: number, y: number, opener: HTMLElement | null) => setMenu({ bot: b, x, y, opener })
               return (
                 <li key={b.id} className={`bot-row ${active ? 'active' : ''} ${b.enabled ? '' : 'off'} ${row.unread ? 'unread' : ''} ${status}`}>
                   <button
                     className="bot-row-open"
                     aria-current={active ? 'page' : undefined}
-                    aria-label={[b.name || 'Bot', statusText, row.unread ? 'New reply' : '', b.muted ? 'Muted' : '', preview !== statusText ? preview : ''].filter(Boolean).join('. ')}
+                    aria-label={[b.name || t('bots.botName'), statusText, row.unread ? t('bots.panel.newReply') : '', b.muted ? t('bots.panel.mutedBot') : '', preview !== statusText ? preview : ''].filter(Boolean).join('. ')}
                     onClick={() => open(b)}
                     onContextMenu={(e) => {
                       e.preventDefault()
@@ -130,7 +124,7 @@ export function BotsPanel({ app, onState, onError, onEditBot, onEditLobby, onCha
                     </span>
                     <span className="bot-row-text">
                       <span className="bot-row-top">
-                        <span className="bot-row-name">{b.name || 'Bot'}</span>
+                        <span className="bot-row-name">{b.name || t('bots.botName')}</span>
                         {b.muted && <BellIcon off small />}
                         <span className="bot-row-time">{last ? since(last.updatedAt) : ''}</span>
                       </span>
@@ -142,10 +136,10 @@ export function BotsPanel({ app, onState, onError, onEditBot, onEditLobby, onCha
                   </button>
                   <button
                     className="bot-row-more"
-                    aria-label={`More for ${b.name}`}
+                    aria-label={t('bots.panel.moreFor', { name: b.name })}
                     aria-haspopup="menu"
                     aria-expanded={menu?.bot.id === b.id}
-                    title="More"
+                    title={t('bots.panel.more')}
                     onClick={(e) => {
                       const r = e.currentTarget.getBoundingClientRect()
                       openMenu(r.left, r.bottom + 2, e.currentTarget)
@@ -158,7 +152,7 @@ export function BotsPanel({ app, onState, onError, onEditBot, onEditLobby, onCha
             })}
           </ul>
         )}
-        {bots.length > 0 && !app.workspace && <p className="muted small pad">Open a folder in Sessions to chat with a bot: bots work in a folder.</p>}
+        {bots.length > 0 && !app.workspace && <p className="muted small pad">{t('bots.panel.noFolder')}</p>}
         {bots.length > 0 && <LobbiesSection app={app} onState={onState} onError={onError} onEditLobby={onEditLobby} onChat={onChat} settingsOpen={settingsOpen} />}
       </div>
 
@@ -184,6 +178,7 @@ export function BotsPanel({ app, onState, onError, onEditBot, onEditLobby, onCha
 }
 
 function BellIcon({ off, small }: { off?: boolean; small?: boolean }) {
+  const { t } = useT()
   const size = small ? 11 : 14
   return (
     <svg
@@ -193,7 +188,7 @@ function BellIcon({ off, small }: { off?: boolean; small?: boolean }) {
       viewBox="0 0 16 16"
       aria-hidden={small ? undefined : true}
       role={small ? 'img' : undefined}
-      aria-label={small ? 'Muted' : undefined}
+      aria-label={small ? t('bots.panel.mutedBot') : undefined}
     >
       <path d="M4 11.5V7a4 4 0 0 1 8 0v4.5l1 1H3zM6.5 13.5a1.5 1.5 0 0 0 3 0" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" />
       {off && <path d="M2.5 2.5l11 11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />}
@@ -223,6 +218,7 @@ function BotMenu({
   onEditBot: (id?: string) => void
   onChat: () => void
 }) {
+  const { t } = useT()
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ left: x, top: y })
 
@@ -245,7 +241,7 @@ function BotMenu({
   const save = (s: Settings) => api.settings.set(s).then(onState, onError)
   const duplicate = () => {
     const s = structuredClone(app.settings)
-    const name = `${bot.name} copy`
+    const name = t('bots.panel.copyName', { name: bot.name })
     const at = s.bots.findIndex((b) => b.id === bot.id)
     s.bots.splice(at + 1, 0, {
       ...structuredClone(bot),
@@ -258,7 +254,7 @@ function BotMenu({
     void save(s)
   }
   const remove = () => {
-    if (!confirm(`Delete ${bot.name}? Its chats are kept and move to Sessions as plain chats.`)) return
+    if (!confirm(t('bots.panel.confirmDelete', { name: bot.name }))) return
     const s = structuredClone(app.settings)
     s.bots = s.bots.filter((b) => b.id !== bot.id)
     void save(s)
@@ -276,22 +272,22 @@ function BotMenu({
   return (
     <div className="menu bot-menu" role="menu" aria-label={bot.name} ref={ref} style={{ left: pos.left, top: pos.top }} onKeyDown={onKey}>
       <button role="menuitem" disabled={!bot.enabled} onClick={() => run(() => (onChat(), api.bots.newThread(bot.id).then(onState, onError)))}>
-        New conversation
+        {t('bots.newConversation')}
       </button>
       <button role="menuitem" onClick={() => run(() => onEditBot(bot.id))}>
-        Edit…
+        {t('bots.panel.edit')}
       </button>
       <button role="menuitem" onClick={() => run(duplicate)}>
-        Duplicate
+        {t('bots.panel.duplicate')}
       </button>
       <button role="menuitem" onClick={() => run(() => void save(withBot(app, bot.id, (b) => ({ ...b, muted: !b.muted }))))}>
-        {bot.muted ? 'Unmute' : 'Mute'}
+        {bot.muted ? t('bots.panel.unmute') : t('bots.panel.muteOne')}
       </button>
       <button role="menuitem" onClick={() => run(() => void save(withBot(app, bot.id, (b) => ({ ...b, enabled: !b.enabled }))))}>
-        {bot.enabled ? 'Turn off' : 'Turn on'}
+        {bot.enabled ? t('bots.panel.turnOff') : t('bots.panel.turnOn')}
       </button>
       <button role="menuitem" className="danger" onClick={() => run(remove)}>
-        Delete…
+        {t('bots.panel.delete')}
       </button>
     </div>
   )
@@ -317,6 +313,8 @@ function LobbiesSection({
   onChat: () => void
   settingsOpen: boolean
 }) {
+  const { t } = useT()
+  const since = useFormat().ago
   const lobbies = shownLobbies(app.settings)
   const rows = new Map(app.lobbies.map((r) => [r.id, r]))
   const current = app.session?.meta.lobbyId
@@ -331,12 +329,12 @@ function LobbiesSection({
     <section className="lobbies" aria-labelledby="lobbies-title">
       <div className="bots-head">
         <h2 className="bots-title" id="lobbies-title">
-          Lobbies
+          {t('bots.lobbies.title')}
         </h2>
         <button
           className="icon-btn"
-          aria-label="New lobby"
-          title={enough ? 'New lobby' : 'A lobby needs at least two bots that are turned on'}
+          aria-label={t('bots.lobbies.new')}
+          title={enough ? t('bots.lobbies.new') : t('bots.lobbies.needTwo')}
           disabled={!enough}
           onClick={() => onEditLobby()}
         >
@@ -347,28 +345,28 @@ function LobbiesSection({
       </div>
       {lobbies.length === 0 ? (
         <div className="lobbies-empty">
-          <p className="muted small">{enough ? 'Put two or more bots in one chat and let them talk.' : 'Make a second bot to start a lobby: a group chat where bots talk with you and each other.'}</p>
+          <p className="muted small">{enough ? t('bots.lobbies.empty') : t('bots.lobbies.emptyOneBot')}</p>
           {enough && (
             <button className="btn" onClick={() => onEditLobby()}>
-              New lobby
+              {t('bots.lobbies.new')}
             </button>
           )}
         </div>
       ) : (
-        <ul className="bot-rows" aria-label="Lobbies">
+        <ul className="bot-rows" aria-label={t('bots.lobbies.title')}>
           {lobbies.map((l) => {
             const row = rows.get(l.id) ?? EMPTY_LOBBY
             const members = lobbyBots(app.settings, l)
             const active = current === l.id && !settingsOpen
-            const names = members.map((b) => b.name || 'Bot').join(', ')
-            const preview = row.running ? 'Talking…' : row.preview || names || 'No members'
+            const names = members.map((b) => b.name || t('bots.botName')).join(', ')
+            const preview = row.running ? t('bots.lobbies.talking') : row.preview || names || t('bots.lobbies.noMembers')
             const openMenu = (x: number, y: number, opener: HTMLElement | null) => setMenu({ lobby: l, x, y, opener })
             return (
               <li key={l.id} className={`bot-row lobby-row ${active ? 'active' : ''} ${row.unread ? 'unread' : ''}`}>
                 <button
                   className="bot-row-open"
                   aria-current={active ? 'page' : undefined}
-                  aria-label={[l.name || 'Lobby', `With ${names || 'no one'}`, row.running ? 'Talking' : '', row.unread ? 'New replies' : '', row.preview].filter(Boolean).join('. ')}
+                  aria-label={[l.name || t('bots.lobbyName'), names ? t('bots.lobbies.with', { names }) : t('bots.lobbies.withNoOne'), row.running ? t('bots.lobbies.talkingNow') : '', row.unread ? t('bots.lobbies.newReplies') : '', row.preview].filter(Boolean).join('. ')}
                   onClick={() => open(l)}
                   onContextMenu={(e) => {
                     e.preventDefault()
@@ -387,7 +385,7 @@ function LobbiesSection({
                   </span>
                   <span className="bot-row-text">
                     <span className="bot-row-top">
-                      <span className="bot-row-name">{l.name || 'Lobby'}</span>
+                      <span className="bot-row-name">{l.name || t('bots.lobbyName')}</span>
                       <span className="bot-row-time">{row.updatedAt ? since(row.updatedAt) : ''}</span>
                     </span>
                     <span className="bot-row-bottom">
@@ -398,10 +396,10 @@ function LobbiesSection({
                 </button>
                 <button
                   className="bot-row-more"
-                  aria-label={`More for ${l.name}`}
+                  aria-label={t('bots.panel.moreFor', { name: l.name })}
                   aria-haspopup="menu"
                   aria-expanded={menu?.lobby.id === l.id}
-                  title="More"
+                  title={t('bots.panel.more')}
                   onClick={(e) => {
                     const r = e.currentTarget.getBoundingClientRect()
                     openMenu(r.left, r.bottom + 2, e.currentTarget)
@@ -457,6 +455,7 @@ function LobbyMenu({
   onError: (e: unknown) => void
   onEditLobby: (id?: string) => void
 }) {
+  const { t } = useT()
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ left: x, top: y })
 
@@ -476,7 +475,7 @@ function LobbyMenu({
     fn()
   }
   const remove = () => {
-    if (!confirm(`Delete the lobby ${lobby.name}? Its conversation is deleted too. The bots stay.`)) return
+    if (!confirm(t('bots.lobbies.confirmDelete', { name: lobby.name }))) return
     const s = structuredClone(app.settings)
     s.lobbies = s.lobbies.filter((l) => l.id !== lobby.id)
     api.settings.set(s).then(onState, onError)
@@ -493,13 +492,13 @@ function LobbyMenu({
   return (
     <div className="menu bot-menu" role="menu" aria-label={lobby.name} ref={ref} style={{ left: pos.left, top: pos.top }} onKeyDown={onKey}>
       <button role="menuitem" onClick={() => run(onOpen)}>
-        Open
+        {t('common.open')}
       </button>
       <button role="menuitem" onClick={() => run(() => onEditLobby(lobby.id))}>
-        Rename or change members…
+        {t('bots.lobbies.editMembers')}
       </button>
       <button role="menuitem" className="danger" onClick={() => run(remove)}>
-        Delete…
+        {t('bots.panel.delete')}
       </button>
     </div>
   )

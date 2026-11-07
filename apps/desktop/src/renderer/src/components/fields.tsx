@@ -1,4 +1,5 @@
 import { useEffect, useId, useState, type ReactNode } from 'react'
+import { useT } from '../lib/i18n'
 
 export function Section({ title, description, children }: { title?: string; description?: ReactNode; children?: ReactNode }) {
   return (
@@ -125,6 +126,7 @@ export function TextField({ value, onChange, placeholder, multiline, rows, mono,
 
 /** Editable list of strings (rules, file names). */
 export function ListField({ value, onChange, placeholder, label }: { value: string[]; onChange: (v: string[]) => void; placeholder?: string; label?: string }) {
+  const { t } = useT()
   const [draft, setDraft] = useState('')
   const add = () => {
     const v = draft.trim()
@@ -136,15 +138,15 @@ export function ListField({ value, onChange, placeholder, label }: { value: stri
       {value.map((v) => (
         <div key={v} className="list-item">
           <code>{v}</code>
-          <button className="link danger small" aria-label={`Remove ${v}`} onClick={() => onChange(value.filter((x) => x !== v))}>
-            Remove
+          <button className="link danger small" aria-label={t('bots.fields.removeNamed', { item: v })} onClick={() => onChange(value.filter((x) => x !== v))}>
+            {t('common.remove')}
           </button>
         </div>
       ))}
       <div className="list-add">
-        <input className="mono" aria-label={label ? `Add to ${label}` : undefined} value={draft} placeholder={placeholder} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} />
+        <input className="mono" aria-label={label ? t('bots.fields.addTo', { list: label }) : undefined} value={draft} placeholder={placeholder} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && add()} />
         <button className="btn" onClick={add} disabled={!draft.trim()}>
-          Add
+          {t('common.add')}
         </button>
       </div>
     </div>

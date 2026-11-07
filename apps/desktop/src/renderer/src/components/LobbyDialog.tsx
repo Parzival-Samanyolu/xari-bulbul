@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import { LOBBY_ALL_ANSWER, LOBBY_CAST, newLobby } from '@harness/core/bots'
 import type { AppState, Settings } from '../../../shared/ipc'
 import { api } from '../lib/api'
+import { useFormat, useT } from '../lib/i18n'
+import { withSlots } from './BotDialog'
 import { BotAvatar, StackedFaces } from './Bots'
 
 type Lobby = Settings['lobbies'][number]
@@ -17,17 +19,13 @@ interface Props {
 }
 
 const NAME_MAX = 40
-/** How long the bots may keep talking after everyone answered you. */
-const ROUNDS = [
-  { value: 0, label: 'Off' },
-  { value: 1, label: '1' },
-  { value: 2, label: '2' },
-  { value: 3, label: '3' },
-  { value: 5, label: '5' },
-]
+/** How long the bots may keep talking after everyone answered you (0 is off). */
+const ROUNDS = [0, 1, 2, 3, 5]
 
 /** New lobby / edit a lobby: a name and two or more bots. */
 export function LobbyDialog({ app, lobbyId, onClose, onState, onError }: Props) {
+  const { t } = useT()
+  const fmt = useFormat()
   const existing = lobbyId ? app.settings.lobbies.find((l) => l.id === lobbyId) : undefined
   const [name, setName] = useState(existing?.name ?? '')
   const [members, setMembers] = useState<string[]>(existing?.botIds.filter((id) => app.settings.bots.some((b) => b.id === id)) ?? [])
@@ -112,23 +110,23 @@ export function LobbyDialog({ app, lobbyId, onClose, onState, onError }: Props) 
           <StackedFaces app={app} bots={picked} size={30} max={5} />
           <div>
             <h2 className="dialog-title" id={`${ids}-t`}>
-              {existing ? `Edit ${existing.name}` : 'New lobby'}
+              {existing ? t('bots.editNamed', { name: existing.name }) : t('bots.lobbies.new')}
             </h2>
             <p className="muted small" id={`${ids}-d`}>
-              A group chat where bots talk with you and with each other. Replies are chat only: no tools.
+              {t('bots.lobbyDialog.description')}
             </p>
           </div>
         </header>
 
         <div className="bd-field">
-          <label htmlFor={`${ids}-name`}>Name</label>
+          <label htmlFor={`${ids}-name`}>{t('bots.dialog.name')}</label>
           <input
             id={`${ids}-name`}
             ref={nameRef}
             type="text"
             value={name}
             maxLength={NAME_MAX}
-            placeholder="Kitchen table"
+            placeholder={t('bots.lobbyDialog.namePlaceholder')}
             autoComplete="off"
             aria-required
             aria-invalid={nameError || undefined}
@@ -140,15 +138,15 @@ export function LobbyDialog({ app, lobbyId, onClose, onState, onError }: Props) 
           />
           {nameError && (
             <span className="bd-field-error" id={`${ids}-name-err`}>
-              Give the lobby a name.
+              {t('bots.lobbyDialog.nameRequired')}
             </span>
           )}
         </div>
 
         <fieldset className="ld-fieldset" aria-describedby={`${ids}-m-hint${membersError ? ` ${ids}-m-err` : ''}`}>
-          <legend>Members</legend>
+          <legend>{t('bots.lobbyDialog.members')}</legend>
           <p className="muted small ld-hint" id={`${ids}-m-hint`}>
-            Pick two or more. They answer in the order you pick them; @name a bot to ask it first.
+            {t('bots.lobbyDialog.membersHint')}
           </p>
           <div className="ld-members">
             {bots.map((b) => {
@@ -159,13 +157,13 @@ export function LobbyDialog({ app, lobbyId, onClose, onState, onError }: Props) 
                   type="button"
                   className={`ld-member ${b.enabled ? '' : 'off'}`}
                   aria-pressed={at >= 0}
-                  title={b.enabled ? undefined : `${b.name} is turned off and stays quiet until you turn it on`}
+                  title={b.enabled ? undefined : t('bots.lobbyDialog.memberOff', { name: b.name })}
                   onClick={() => toggle(b.id)}
                 >
                   <BotAvatar app={app} bot={b} size={28} />
                   <span className="ld-member-text">
-                    <span className="ld-member-name">{b.name || 'Bot'}</span>
-                    <span className="ld-member-tag">{b.enabled ? b.tagline || ' ' : 'Turned off'}</span>
+                    <span className="ld-member-name">{b.name || t('bots.botName')}</span>
+                    <span className="ld-member-tag">{b.enabled ? b.tagline || ' ' : t('bots.panel.off')}</span>
                   </span>
                   <span className="ld-order" aria-hidden>
                     {at >= 0 ? at + 1 : ''}
@@ -176,37 +174,35 @@ export function LobbyDialog({ app, lobbyId, onClose, onState, onError }: Props) 
           </div>
           {membersError && (
             <span className="bd-field-error" id={`${ids}-m-err`} role="alert">
-              Pick at least two bots.
+              {t('bots.lobbyDialog.pickTwo')}
             </span>
           )}
         </fieldset>
 
         <div className="bd-field">
-          <span id={`${ids}-r`}>Bots keep talking for</span>
+          <span id={`${ids}-r`}>{t('bots.lobbyDialog.rounds')}</span>
           <div className="bd-seg ld-rounds" role="group" aria-labelledby={`${ids}-r`} aria-describedby={`${ids}-r-hint`}>
             {ROUNDS.map((r) => (
-              <button key={r.value} type="button" aria-pressed={rounds === r.value} onClick={() => setRounds(r.value)}>
-                {r.label}
+              <button key={r} type="button" aria-pressed={rounds === r} onClick={() => setRounds(r)}>
+                {r === 0 ? t('common.off') : fmt.num(r)}
               </button>
             ))}
           </div>
           <span className="muted small" id={`${ids}-r-hint`}>
-            {rounds === 0
-              ? 'The bots answer you once, then they wait for you.'
-              : `After answering you, they react to each other for up to ${rounds} ${rounds === 1 ? 'round' : 'rounds'}. They stop early when nobody has anything to add.`}
-            {members.length > LOBBY_ALL_ANSWER && ` With more than ${LOBBY_ALL_ANSWER} bots, ${LOBBY_CAST} take each turn: the ones you name, then whoever has been quiet longest.`}
+            {rounds === 0 ? t('bots.lobbyDialog.roundsOff') : t('bots.lobbyDialog.roundsHint', { count: rounds })}
+            {members.length > LOBBY_ALL_ANSWER && ` ${t('bots.lobbyDialog.cast', { count: LOBBY_CAST, max: LOBBY_ALL_ANSWER })}`}
           </span>
         </div>
 
         <div className="dialog-actions bd-actions">
           <span className="muted small bd-keys">
-            <kbd>Enter</kbd> to save · <kbd>Esc</kbd> to cancel
+            {withSlots(t('bots.dialog.keys'), { save: <kbd>Enter</kbd>, cancel: <kbd>Esc</kbd> })}
           </span>
           <button type="button" className="btn ghost" onClick={onClose} disabled={busy}>
-            Cancel
+            {t('common.cancel')}
           </button>
           <button type="button" className="btn primary" onClick={save} disabled={busy}>
-            {busy ? 'Saving…' : existing ? 'Save' : 'Create'}
+            {busy ? t('bots.dialog.saving') : existing ? t('common.save') : t('bots.dialog.create')}
           </button>
         </div>
       </div>
