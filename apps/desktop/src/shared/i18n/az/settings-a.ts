@@ -460,7 +460,7 @@ export default {
   'settings.moa.title': 'Agentlər qarışığı',
   'settings.moa.desc': 'Söhbətin yekun cavabı üçün bir neçə model söhbətə yan-yana cavab verir (yalnız mətn, alətsiz), birləşdirən model isə onların cavablarından və söhbət modelinin qaralamasından yekun cavabı yazır. Faylları oxuyan və ya əmr işlədən addımlar yenə söhbətin modelindən istifadə edir.',
   'settings.moa.onByDefault': 'Standart olaraq yandırılı',
-  'settings.moa.onByDefaultHint': 'Mesaj sahəsində “Qarışdır” keçidini işlətmədiyiniz söhbətlər üçün.',
+  'settings.moa.onByDefaultHint': 'Mesaj sahəsində “Qarışıq” keçidini işlətmədiyiniz söhbətlər üçün.',
   'settings.moa.notReady': 'Əvvəlcə ən azı 2 təklifçi və birləşdirən model əlavə edin.',
   'settings.moa.proposers': 'Təklifçilər',
   'settings.moa.proposersHint': 'Yan-yana cavab verən 2–{max} model. Fərqli istehsalçıların modelləri bir-birinin səhvini daha yaxşı tutur.',

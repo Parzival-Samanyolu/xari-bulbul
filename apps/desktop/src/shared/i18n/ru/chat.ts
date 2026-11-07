@@ -174,7 +174,7 @@ export default {
   'chat.handsfree.stop': 'Выключить режим «без рук»',
   'chat.handsfree.start': 'Режим «без рук»: говорите и слушайте ответ',
   'chat.handsfree.stopTitle': 'Выключить режим «без рук» (Esc или скажите «стоп»)',
-  'chat.handsfree.silentTitle': 'Режим «без рук» (ответы без звука: включите озвучивание текста в Настройки › Голос)',
+  'chat.handsfree.silentTitle': 'Режим «без рук» (ответы без звука: включите озвучивание в разделе Настройки › Агент › Озвучивание текста)',
   'chat.handsfree.startTitle': 'Режим «без рук»: говорите и слушайте ответ. Esc или «стоп» выключает его.',
 
   // SpeakButton.tsx, lib/speech.ts
@@ -226,11 +226,11 @@ export default {
 
   // ThinkingPicker.tsx
   'chat.thinking.effort.none': 'Нет',
-  'chat.thinking.effort.low': 'Низкий',
-  'chat.thinking.effort.medium': 'Средний',
-  'chat.thinking.effort.high': 'Высокий',
-  'chat.thinking.effort.xhigh': 'Очень высокий',
-  'chat.thinking.effort.max': 'Максимальный',
+  'chat.thinking.effort.low': 'Низкое',
+  'chat.thinking.effort.medium': 'Среднее',
+  'chat.thinking.effort.high': 'Высокое',
+  'chat.thinking.effort.xhigh': 'Очень высокое',
+  'chat.thinking.effort.max': 'Максимальное',
   'chat.thinking.default': 'По умолчанию',
   'chat.thinking.providerDefault': 'как у провайдера',
   'chat.thinking.botLevel': '{level} ({bot})',

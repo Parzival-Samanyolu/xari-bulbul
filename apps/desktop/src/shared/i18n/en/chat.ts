@@ -147,7 +147,7 @@ export default {
   'chat.handsfree.stop': 'Stop hands-free',
   'chat.handsfree.start': 'Hands-free: talk, and hear the reply',
   'chat.handsfree.stopTitle': 'Stop hands-free (Esc, or say “stop”)',
-  'chat.handsfree.silentTitle': 'Hands-free (replies stay silent: turn on text to speech in Settings › Voice)',
+  'chat.handsfree.silentTitle': 'Hands-free (replies stay silent: turn on text to speech in Settings › Agent › Text to speech)',
   'chat.handsfree.startTitle': 'Hands-free: talk, and hear the reply. Esc or “stop” ends it.',
 
   // SpeakButton.tsx, lib/speech.ts

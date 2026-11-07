@@ -151,7 +151,7 @@ export default {
   'chat.handsfree.stop': '“Eller serbest” modunu durdur',
   'chat.handsfree.start': 'Eller serbest: konuşun ve yanıtı dinleyin',
   'chat.handsfree.stopTitle': '“Eller serbest” modunu durdur (Esc veya “dur” deyin)',
-  'chat.handsfree.silentTitle': 'Eller serbest (yanıtlar sessiz kalır: Ayarlar › Ses bölümünde metin okumayı açın)',
+  'chat.handsfree.silentTitle': 'Eller serbest (yanıtlar sessiz kalır: Ayarlar › Ajan › Metinden konuşmaya bölümünde metin okumayı açın)',
   'chat.handsfree.startTitle': 'Eller serbest: konuşun ve yanıtı dinleyin. Esc veya “dur” modu bitirir.',
 
   // SpeakButton.tsx, lib/speech.ts

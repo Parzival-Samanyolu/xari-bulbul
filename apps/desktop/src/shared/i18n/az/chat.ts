@@ -151,7 +151,7 @@ export default {
   'chat.handsfree.stop': '“Əllər sərbəst” rejimini dayandır',
   'chat.handsfree.start': 'Əllər sərbəst: danışın və cavabı dinləyin',
   'chat.handsfree.stopTitle': '“Əllər sərbəst” rejimini dayandır (Esc və ya “dayan” deyin)',
-  'chat.handsfree.silentTitle': 'Əllər sərbəst (cavablar səssiz qalır: Ayarlar › Səs bölməsində mətnin səsləndirilməsini yandırın)',
+  'chat.handsfree.silentTitle': 'Əllər sərbəst (cavablar səssiz qalır: Ayarlar › Agent › Mətndən nitqə bölməsində səsləndirməni yandırın)',
   'chat.handsfree.startTitle': 'Əllər sərbəst: danışın və cavabı dinləyin. Esc və ya “dayan” rejimi bitirir.',
 
   // SpeakButton.tsx, lib/speech.ts
@@ -208,7 +208,7 @@ export default {
   'chat.thinking.effort.high': 'Yüksək',
   'chat.thinking.effort.xhigh': 'Çox yüksək',
   'chat.thinking.effort.max': 'Maksimum',
-  'chat.thinking.default': 'Susmaya görə',
+  'chat.thinking.default': 'Standart',
   'chat.thinking.providerDefault': 'provayderin standartı',
   'chat.thinking.botLevel': '{level} ({bot})',
   'chat.thinking.chip': 'Düşünmə: {level}',
@@ -217,7 +217,7 @@ export default {
   'chat.thinking.heading': 'Düşünmə',
   'chat.thinking.level': 'Düşünmə səviyyəsi',
   'chat.thinking.speed': 'Sürət',
-  'chat.thinking.standard': 'Adi',
+  'chat.thinking.standard': 'Standart',
   'chat.thinking.standardHint': 'Adi sürət və qiymət',
   'chat.thinking.fast': 'Sürətli',
   'chat.thinking.batch': 'Paket',
