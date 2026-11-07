@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CATALOGS } from '../../../apps/desktop/src/shared/i18n/catalog'
+import { CATALOGS, searchText } from '../../../apps/desktop/src/shared/i18n/catalog'
 import { LANGS, placeholders, type Message } from '../src/i18n'
 
 const en = CATALOGS.en as Record<string, Message>
@@ -39,4 +39,16 @@ describe('desktop catalogue', () => {
       })
     })
   }
+})
+
+describe('settings search', () => {
+  it('search text contains both languages', () => {
+    const text = searchText(['settings.general.language'], 'ru')
+    expect(text).toContain('Язык')
+    expect(text).toContain('Language')
+  })
+
+  it('search text has each English word once for English', () => {
+    expect(searchText(['settings.general.language'], 'en')).toBe('Language')
+  })
 })

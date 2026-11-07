@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent as ReactKeyboa
 import { createPortal } from 'react-dom'
 import type { AppState, UpdateStatus } from '../../../../shared/ipc'
 import { api } from '../../lib/api'
+import { useT } from '../../lib/i18n'
 import { formatCombo, isMac, matchesShortcut, shortcutFor } from '../../lib/shortcuts'
 import type { PageProps, Save } from './common'
 import { Icon } from './icons'
@@ -25,11 +26,12 @@ const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), selec
 
 /** Settings as an overlay over the dimmed app: a flat list of tabs, search, and one tab at a time. */
 export function SettingsOverlay({ app, page, onPage, onState, onClose, update, onEditBot }: Props) {
+  const { t, lang } = useT()
   const { tab: shownTab } = pageEntry(page)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
-  /** Where to scroll after a tab renders: a section, and a row in it to highlight. */
-  const [target, setTarget] = useState<{ section: string | null; row: string | null; n: number } | null>(null)
+  /** Where to scroll after a tab renders: a section, and a row in it to highlight (its `data-row` values, tried in order). */
+  const [target, setTarget] = useState<{ section: string | null; rows: string[]; n: number } | null>(null)
   const [notice, setNotice] = useState<{ ok: boolean; text: string } | null>(null)
   const dialog = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
@@ -40,7 +42,7 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
   const mac = isMac(app.platform)
   // Sections for features that are turned off leave their tab and search.
   const tabs = useMemo(() => visibleTabs(app.settings), [app.settings])
-  const tab = tabs.find((t) => t.id === shownTab.id) ?? shownTab
+  const tab = tabs.find((tb) => tb.id === shownTab.id) ?? shownTab
 
   // Text and number fields save on blur, which an unmounting input never gets: blur first.
   const close = () => {
@@ -49,12 +51,12 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
   }
   const fail = (e: unknown) => setNotice({ ok: false, text: clean(e) })
   const save: Save = (fn) => void api.settings.set(fn(structuredClone(app.settings))).then(onState, fail)
-  /** Opens a tab, or a section's tab scrolled to it (and to `row` in it). */
-  const open = (id: string, row?: string) => {
+  /** Opens a tab, or a section's tab scrolled to it (and to the row in it that `rows` names). */
+  const open = (id: string, rows: string[] = []) => {
     const to = resolvePage(id, app.settings)
     const { section } = pageEntry(to)
     setNotice(null)
-    setTarget({ section: section?.id ?? null, row: row || null, n: Date.now() })
+    setTarget({ section: section?.id ?? null, rows: rows.filter(Boolean), n: Date.now() })
     if (to !== page) {
       opening.current = true
       onPage(to)
@@ -76,7 +78,7 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
   // Opened elsewhere (at launch, or a deep link while open): scroll to its section.
   useEffect(() => {
     if (opening.current) return void (opening.current = false)
-    setTarget({ section: pageEntry(page).section?.id ?? null, row: null, n: Date.now() })
+    setTarget({ section: pageEntry(page).section?.id ?? null, rows: [], n: Date.now() })
   }, [page])
 
   // The open tab or section was turned off (an import or reset): show the default tab.
@@ -91,22 +93,23 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
     const box = content.current
     if (!box || !target) return
     const scope = target.section ? box.querySelector<HTMLElement>(`[data-section="${CSS.escape(target.section)}"]`) : null
-    if (!target.row) {
+    if (!target.rows.length) {
       if (scope && tab.sections.length > 1) scope.scrollIntoView({ block: 'start' })
       else box.scrollTop = 0
       return
     }
-    const row = (scope ?? box).querySelector<HTMLElement>(`[data-row="${CSS.escape(target.row)}"]`)
+    // A row is labelled in the current language, or keeps an English `data-row`.
+    const row = target.rows.map((r) => (scope ?? box).querySelector<HTMLElement>(`[data-row="${CSS.escape(r)}"]`)).find((el) => el)
     if (!row) return
     row.scrollIntoView({ block: 'center' })
     row.classList.add('flash')
     row.querySelector<HTMLElement>(FOCUSABLE)?.focus({ preventScroll: true })
-    const t = setTimeout(() => row.classList.remove('flash'), 1600)
-    return () => (clearTimeout(t), row.classList.remove('flash'))
+    const timer = setTimeout(() => row.classList.remove('flash'), 1600)
+    return () => (clearTimeout(timer), row.classList.remove('flash'))
   }, [target])
 
   const onTabsKey = (e: ReactKeyboardEvent) => {
-    const i = tabs.findIndex((t) => t.id === (e.target as HTMLElement).dataset.id)
+    const i = tabs.findIndex((tb) => tb.id === (e.target as HTMLElement).dataset.id)
     if (i < 0) return
     const to = e.key === 'ArrowDown' ? i + 1 : e.key === 'ArrowUp' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : null
     if (to == null) return
@@ -114,11 +117,11 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
     items.current.get(tabs[Math.max(0, Math.min(tabs.length - 1, to))].id)?.focus()
   }
 
-  const hits = useMemo(() => searchSettings(query, 12, app.settings), [query, app.settings])
+  const hits = useMemo(() => searchSettings(query, lang, 12, app.settings), [query, lang, app.settings])
   const jump = (hit: SearchHit) => {
     setQuery('')
     setActive(0)
-    open(hit.sectionId || hit.tabId, hit.row)
+    open(hit.sectionId || hit.tabId, hit.rows)
   }
 
   const onSearchKey = (e: ReactKeyboardEvent) => {
@@ -147,8 +150,8 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
   commandRef.current = commandKey
   useEffect(() => {
     const onDocKey = (e: KeyboardEvent) => {
-      const t = e.target as Element | null
-      if (t && t !== document.body && t !== document.documentElement) return
+      const el = e.target as Element | null
+      if (el && el !== document.body && el !== document.documentElement) return
       if (commandRef.current(e)) return
       // Any other key brings focus back into the dialog.
       if (e.key === 'Tab') (e.preventDefault(), dialog.current?.querySelector<HTMLElement>('.so-row.current')?.focus())
@@ -172,16 +175,16 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
   }
 
   const importFile = () =>
-    confirm('Importing replaces your current settings with the file’s. API keys, chats and your open folders stay. Choose a file?') &&
+    confirm(t('settings.importConfirm')) &&
     api.settings.import().then((s) => {
       if (!s) return
       onState(s)
-      setNotice({ ok: true, text: 'Settings imported.' })
+      setNotice({ ok: true, text: t('settings.imported') })
     }, fail)
-  const exportFile = () => api.settings.export().then((ok) => ok && setNotice({ ok: true, text: 'Settings exported. API keys, tokens and your open folders are never included.' }), fail)
+  const exportFile = () => api.settings.export().then((ok) => ok && setNotice({ ok: true, text: t('settings.exported') }), fail)
   const reset = () => {
-    if (!confirm('Reset every setting to its default? API keys, chats and your open folders are kept.')) return
-    api.settings.reset().then((s) => (onState(s), setNotice({ ok: true, text: 'Settings reset to defaults.' })), fail)
+    if (!confirm(t('settings.resetConfirm'))) return
+    api.settings.reset().then((s) => (onState(s), setNotice({ ok: true, text: t('settings.resetDone') })), fail)
   }
 
   const props: PageProps = { app, save, onState, onError: fail, go: open, update, close, editBot: onEditBot }
@@ -190,7 +193,7 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
 
   return createPortal(
     <div className="so-backdrop" onMouseDown={(e) => e.target === e.currentTarget && close()}>
-      <div className="so" role="dialog" aria-modal="true" aria-label="Settings" ref={dialog} onKeyDown={onKey}>
+      <div className="so" role="dialog" aria-modal="true" aria-label={t('settings.title')} ref={dialog} onKeyDown={onKey}>
         <header className="so-top">
           <div className="so-search">
             <Icon name="search" className="muted" />
@@ -198,79 +201,79 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
               ref={search}
               type="text"
               role="combobox"
-              aria-label="Search settings"
+              aria-label={t('settings.searchLabel')}
               aria-expanded={listOpen}
               aria-controls="so-results"
               aria-autocomplete="list"
               aria-activedescendant={listOpen && hits[active] ? `so-hit-${active}` : undefined}
-              placeholder="Search"
+              placeholder={t('settings.searchPlaceholder')}
               value={query}
               onChange={(e) => (setQuery(e.target.value), setActive(0))}
               onKeyDown={onSearchKey}
             />
             {!query && <kbd aria-hidden>{searchKeys}</kbd>}
             {listOpen && (
-              <ul className="so-results" id="so-results" role="listbox" aria-label="Matching settings">
+              <ul className="so-results" id="so-results" role="listbox" aria-label={t('settings.searchResults')}>
                 {hits.map((h, i) => (
-                  <li key={`${h.tabId}:${h.sectionId}:${h.row}`} id={`so-hit-${i}`} role="option" aria-selected={i === active} className={i === active ? 'sel' : ''} onMouseEnter={() => setActive(i)} onMouseDown={(e) => (e.preventDefault(), jump(h))}>
+                  <li key={`${h.tabId}:${h.sectionId}:${h.rows[0] ?? ''}`} id={`so-hit-${i}`} role="option" aria-selected={i === active} className={i === active ? 'sel' : ''} onMouseEnter={() => setActive(i)} onMouseDown={(e) => (e.preventDefault(), jump(h))}>
                     <span>{h.label}</span>
                     <span className="muted small">{h.where}</span>
                   </li>
                 ))}
-                {!hits.length && <li className="muted small so-empty">No settings match “{query.trim()}”.</li>}
+                {!hits.length && <li className="muted small so-empty">{t('settings.searchNone', { query: query.trim() })}</li>}
               </ul>
             )}
           </div>
-          <button className="so-close icon-btn" aria-label="Close settings" title="Close (Esc)" onClick={close}>
+          <button className="so-close icon-btn" aria-label={t('settings.close')} title={t('settings.closeTitle')} onClick={close}>
             <Icon name="close" />
           </button>
         </header>
         <div className="so-body">
-          <nav className="so-side" aria-label="Settings">
+          <nav className="so-side" aria-label={t('settings.title')}>
             <ul className="so-tree" onKeyDown={onTabsKey}>
-              {tabs.map((t) => (
-                <li key={t.id} className="so-item">
+              {tabs.map((tb) => (
+                <li key={tb.id} className="so-item">
                   <button
-                    ref={(el) => void (el ? items.current.set(t.id, el) : items.current.delete(t.id))}
-                    data-id={t.id}
-                    className={`so-row ${t.id === tab.id ? 'current' : ''}`}
-                    aria-current={t.id === tab.id ? 'page' : undefined}
-                    onClick={() => open(t.id)}
+                    ref={(el) => void (el ? items.current.set(tb.id, el) : items.current.delete(tb.id))}
+                    data-id={tb.id}
+                    className={`so-row ${tb.id === tab.id ? 'current' : ''}`}
+                    aria-current={tb.id === tab.id ? 'page' : undefined}
+                    onClick={() => open(tb.id)}
                   >
-                    <Icon name={t.icon} />
-                    <span className="so-label">{t.label}</span>
+                    <Icon name={tb.icon} />
+                    <span className="so-label">{t(tb.label)}</span>
                   </button>
                 </li>
               ))}
             </ul>
             <div className="so-side-foot">
-              <button className="icon-btn" aria-label="Import settings from a file" title="Import settings" onClick={importFile}>
+              <button className="icon-btn" aria-label={t('settings.importLabel')} title={t('settings.importTitle')} onClick={importFile}>
                 <Icon name="download" />
               </button>
-              <button className="icon-btn" aria-label="Export settings to a file" title="Export settings (no API keys)" onClick={exportFile}>
+              <button className="icon-btn" aria-label={t('settings.exportLabel')} title={t('settings.exportTitle')} onClick={exportFile}>
                 <Icon name="upload" />
               </button>
-              <button className="icon-btn" aria-label="Reset settings to defaults" title="Reset to defaults" onClick={reset}>
+              <button className="icon-btn" aria-label={t('settings.resetLabel')} title={t('settings.resetTitle')} onClick={reset}>
                 <Icon name="reset" />
               </button>
             </div>
           </nav>
           <div className="so-content" ref={content} role="region" aria-labelledby="so-page-title">
             <div className="so-page">
-              <nav aria-label="Breadcrumb">
+              <nav aria-label={t('settings.breadcrumb')}>
                 <ol className="so-crumbs">
-                  <li>Settings</li>
+                  <li>{t('settings.title')}</li>
                   <li aria-current="page">
-                    <h2 id="so-page-title">{tab.label}</h2>
+                    <h2 id="so-page-title">{t(tab.label)}</h2>
                   </li>
                 </ol>
               </nav>
-              <p className="muted so-desc">{tab.description}</p>
+              <p className="muted so-desc">{t(tab.description)}</p>
               {tab.sections.length > 1 && (
-                <nav className="so-toc" aria-label={`Sections in ${tab.label}`}>
+                <nav className="so-toc" aria-label={t('settings.sectionsIn', { tab: t(tab.label) })}>
                   {tab.sections.map((p) => (
                     <button key={p.id} className="so-toc-link" onClick={() => open(p.id)}>
-                      {p.label}
+                      {t(p.label)}
                     </button>
                   ))}
                 </nav>
@@ -278,7 +281,7 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
               {notice && (
                 <div className={`so-notice ${notice.ok ? 'ok' : 'error'}`} role={notice.ok ? 'status' : 'alert'}>
                   <span>{notice.text}</span>
-                  <button className="notice-close" aria-label="Dismiss" onClick={() => setNotice(null)}>
+                  <button className="notice-close" aria-label={t('settings.dismiss')} onClick={() => setNotice(null)}>
                     ×
                   </button>
                 </div>
@@ -294,8 +297,8 @@ export function SettingsOverlay({ app, page, onPage, onState, onClose, update, o
                 return (
                   <section key={p.id} className="so-part" data-section={p.id} aria-labelledby={`so-part-${p.id}`}>
                     <header className="so-part-head">
-                      <h3 id={`so-part-${p.id}`}>{p.label}</h3>
-                      {p.description && <p className="muted small">{p.description}</p>}
+                      <h3 id={`so-part-${p.id}`}>{t(p.label)}</h3>
+                      {p.description && <p className="muted small">{t(p.description)}</p>}
                     </header>
                     <Page {...props} />
                   </section>

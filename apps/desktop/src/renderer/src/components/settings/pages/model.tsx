@@ -1,30 +1,34 @@
 import { useState } from 'react'
-import { EFFORT_LABELS, EFFORT_LEVELS, refKey } from '@harness/core/catalog'
+import { EFFORT_LEVELS, refKey } from '@harness/core/catalog'
 import type { ModelRef, Settings } from '../../../../../shared/ipc'
 import { moaReady, MOA_MAX_PROPOSERS } from '@harness/core/moa'
+import { useFormat, useT } from '../../../lib/i18n'
 import { ListOfModels, OrderedModels } from './parts'
 import { NumberField, Row, Section, Select, Toggle } from '../../fields'
 import { ModelPicker } from '../../ModelPicker'
 import { ModelChoice, refText, type PageProps } from '../common'
 
-export const EFFORTS = [{ value: '', label: 'Provider default' }, ...EFFORT_LEVELS.map((e) => ({ value: e, label: EFFORT_LABELS[e] }))]
+type T = ReturnType<typeof useT>['t']
 
-const TRI_STATE = [
-  { value: '', label: 'Auto' },
-  { value: 'on', label: 'On' },
-  { value: 'off', label: 'Off' },
+/** Reasoning effort options, "provider default" first. */
+export const efforts = (t: T) => [{ value: '', label: t('settings.effort.default') }, ...EFFORT_LEVELS.map((e) => ({ value: e, label: t(`settings.effort.${e}`) }))]
+
+const triState = (t: T) => [
+  { value: '', label: t('settings.model.auto') },
+  { value: 'on', label: t('common.on') },
+  { value: 'off', label: t('common.off') },
 ]
 
-export const PROMPT_STYLES = [
-  { value: 'auto', label: 'Auto (short for free models)' },
-  { value: 'full', label: 'Full' },
-  { value: 'lean', label: 'Short' },
+export const promptStyles = (t: T) => [
+  { value: 'auto', label: t('settings.promptStyle.auto') },
+  { value: 'full', label: t('settings.promptStyle.full') },
+  { value: 'lean', label: t('settings.promptStyle.lean') },
 ]
 
-const SPEEDS = [
-  { value: '', label: 'Standard' },
-  { value: 'fast', label: 'Fast' },
-  { value: 'batch', label: 'Batch' },
+const speeds = (t: T) => [
+  { value: '', label: t('settings.model.speedStandard') },
+  { value: 'fast', label: t('settings.model.speedFast') },
+  { value: 'batch', label: t('settings.model.speedBatch') },
 ]
 
 /** Sets one field of a per-model override, dropping the override once it's empty. */
@@ -37,10 +41,12 @@ function setOverride(s: Settings, key: string, patch: Partial<Settings['models']
 }
 
 export function MainModelPage({ app, save, onState, onError }: PageProps) {
+  const { t } = useT()
   const m = app.settings.models
   const [picking, setPicking] = useState<null | 'override' | 'favorite'>(null)
   const defKey = refKey(m.default)
   const mod = app.platform === 'darwin' ? '⌘K' : 'Ctrl+K'
+  const effortOptions = efforts(t)
   const onPick = (r: ModelRef) => {
     const k = refKey(r)
     if (picking === 'favorite') save((s) => (s.models.favorites.some((f) => refKey(f) === k) || s.models.favorites.push(r), s))
@@ -48,121 +54,142 @@ export function MainModelPage({ app, save, onState, onError }: PageProps) {
   }
   return (
     <>
-      <Section title="Defaults">
-        <Row label="Default model" hint={`Used for new chats. Switch any time with ${mod}.`}>
-          <ModelChoice app={app} value={m.default} empty="Choose…" required onChange={(r) => r && save((s) => ((s.models.default = r), s))} onState={onState} onError={onError} title="Default model for new chats…" />
+      <Section title={t('settings.model.defaults')}>
+        <Row label={t('settings.model.defaultModel')} hint={t('settings.model.defaultModelHint', { keys: mod })}>
+          <ModelChoice
+            app={app}
+            value={m.default}
+            empty={t('settings.model.choose')}
+            required
+            onChange={(r) => r && save((s) => ((s.models.default = r), s))}
+            onState={onState}
+            onError={onError}
+            title={t('settings.model.defaultModelTitle')}
+          />
         </Row>
-        <Row label="Reasoning effort" hint="How long thinking models think before answering, when the model supports it.">
-          <Select label="Reasoning effort" value={(m.reasoningEffort ?? '') as string} options={EFFORTS} onChange={(v) => save((s) => ((s.models.reasoningEffort = (v || null) as never), s))} />
+        <Row label={t('settings.model.reasoningEffort')} hint={t('settings.model.reasoningEffortHint')}>
+          <Select label={t('settings.model.reasoningEffort')} value={(m.reasoningEffort ?? '') as string} options={effortOptions} onChange={(v) => save((s) => ((s.models.reasoningEffort = (v || null) as never), s))} />
         </Row>
-        <Row label="Context window" hint={`For ${refText(m.default)}. Empty uses the size the provider reports.`}>
+        <Row label={t('settings.model.contextWindow')} hint={t('settings.model.contextWindowHint', { model: refText(m.default) })}>
           <NumberField
-            label="Context window"
+            label={t('settings.model.contextWindow')}
             nullable
             value={m.overrides[defKey]?.contextLength ?? null}
             min={1000}
             step={1000}
-            placeholder="Auto"
-            suffix="tokens"
+            placeholder={t('settings.model.auto')}
+            suffix={t('settings.model.tokens')}
             onChange={(v) => save((s) => setOverride(s, defKey, { contextLength: v ?? undefined }))}
           />
         </Row>
-        <Row label="Temperature" hint="Empty uses the provider's default.">
-          <NumberField label="Temperature" nullable value={m.temperature} min={0} max={2} step={0.1} placeholder="Default" onChange={(v) => save((s) => ((s.models.temperature = v), s))} />
+        <Row label={t('settings.model.temperature')} hint={t('settings.model.temperatureHint')}>
+          <NumberField label={t('settings.model.temperature')} nullable value={m.temperature} min={0} max={2} step={0.1} placeholder={t('common.default')} onChange={(v) => save((s) => ((s.models.temperature = v), s))} />
         </Row>
-        <Row label="Max output tokens" hint="Longest reply per request. Empty uses the provider's default.">
-          <NumberField label="Max output tokens" nullable value={m.maxTokens} min={1} placeholder="Default" onChange={(v) => save((s) => ((s.models.maxTokens = v), s))} />
+        <Row label={t('settings.model.maxOutputTokens')} hint={t('settings.model.maxOutputTokensHint')}>
+          <NumberField label={t('settings.model.maxOutputTokens')} nullable value={m.maxTokens} min={1} placeholder={t('common.default')} onChange={(v) => save((s) => ((s.models.maxTokens = v), s))} />
         </Row>
-        <Row label="Fallback context size" hint="Used when a provider doesn't report a model's context size (Ollama, some local servers).">
-          <NumberField label="Fallback context size" value={m.defaultContextLength} min={1000} step={1000} suffix="tokens" onChange={(v) => save((s) => ((s.models.defaultContextLength = v ?? 128000), s))} />
+        <Row label={t('settings.model.fallbackContext')} hint={t('settings.model.fallbackContextHint')}>
+          <NumberField
+            label={t('settings.model.fallbackContext')}
+            value={m.defaultContextLength}
+            min={1000}
+            step={1000}
+            suffix={t('settings.model.tokens')}
+            onChange={(v) => save((s) => ((s.models.defaultContextLength = v ?? 128000), s))}
+          />
         </Row>
       </Section>
-      <Section title="Model switcher">
-        <Row label="Free models only" hint="Hides paid models from providers that list prices. The switcher has the same filter.">
-          <Toggle label="Free models only" value={m.picker.freeOnly} onChange={(v) => save((s) => ((s.models.picker.freeOnly = v), s))} />
+      <Section title={t('settings.model.switcher')}>
+        <Row label={t('settings.model.freeOnly')} hint={t('settings.model.freeOnlyHint')}>
+          <Toggle label={t('settings.model.freeOnly')} value={m.picker.freeOnly} onChange={(v) => save((s) => ((s.models.picker.freeOnly = v), s))} />
         </Row>
-        <Row label="Only models that can use tools" hint="The agent needs tools to read and edit files and run commands.">
-          <Toggle label="Only models that can use tools" value={m.picker.toolsOnly} onChange={(v) => save((s) => ((s.models.picker.toolsOnly = v), s))} />
+        <Row label={t('settings.model.toolsOnly')} hint={t('settings.model.toolsOnlyHint')}>
+          <Toggle label={t('settings.model.toolsOnly')} value={m.picker.toolsOnly} onChange={(v) => save((s) => ((s.models.picker.toolsOnly = v), s))} />
         </Row>
-        <Row label="Favorites" hint="Pinned at the top of the switcher." wide>
+        <Row label={t('settings.model.favorites')} hint={t('settings.model.favoritesHint')} wide>
           <ListOfModels refs={m.favorites} onRemove={(r) => save((s) => ((s.models.favorites = s.models.favorites.filter((x) => refKey(x) !== refKey(r))), s))} />
           <button className="btn" onClick={() => setPicking('favorite')}>
-            Add favorite
+            {t('settings.model.addFavorite')}
           </button>
         </Row>
       </Section>
-      <Section title="Per-model overrides" description="Settings that apply to one model only.">
+      <Section title={t('settings.model.overrides')} description={t('settings.model.overridesDesc')}>
         {Object.entries(m.overrides).map(([k, o]) => (
           <div key={k} className="override">
             <div className="provider-head">
               <code>{k}</code>
               <div className="spacer" />
               <button className="link danger small" onClick={() => save((s) => (delete s.models.overrides[k], s))}>
-                Remove
+                {t('common.remove')}
               </button>
             </div>
             <div className="override-grid">
               <label>
-                Temperature
+                {t('settings.model.temperature')}
                 <NumberField nullable value={o.temperature ?? null} min={0} max={2} step={0.1} placeholder="—" onChange={(v) => save((s) => setOverride(s, k, { temperature: v ?? undefined }))} />
               </label>
               <label>
-                Max tokens
+                {t('settings.model.maxTokens')}
                 <NumberField nullable value={o.maxTokens ?? null} min={1} placeholder="—" onChange={(v) => save((s) => setOverride(s, k, { maxTokens: v ?? undefined }))} />
               </label>
               <label>
-                Context size
+                {t('settings.model.contextSize')}
                 <NumberField nullable value={o.contextLength ?? null} min={1000} placeholder="—" onChange={(v) => save((s) => setOverride(s, k, { contextLength: v ?? undefined }))} />
               </label>
               <label>
-                Reasoning
-                <Select value={(o.reasoningEffort ?? '') as string} options={EFFORTS} onChange={(v) => save((s) => setOverride(s, k, { reasoningEffort: (v || undefined) as never }))} />
+                {t('settings.model.reasoning')}
+                <Select value={(o.reasoningEffort ?? '') as string} options={effortOptions} onChange={(v) => save((s) => setOverride(s, k, { reasoningEffort: (v || undefined) as never }))} />
               </label>
-              <label title="Fast: the provider's fast option (Anthropic fast mode, OpenAI priority, OpenRouter fastest host), costs more. Batch: Anthropic and OpenAI batch APIs, about half price but each step can take minutes.">
-                Speed
-                <Select value={o.speed === 'standard' ? '' : (o.speed ?? '')} options={SPEEDS} onChange={(v) => save((s) => setOverride(s, k, { speed: (v || undefined) as never }))} />
+              <label title={t('settings.model.speedHelp')}>
+                {t('settings.model.speed')}
+                <Select value={o.speed === 'standard' ? '' : (o.speed ?? '')} options={speeds(t)} onChange={(v) => save((s) => setOverride(s, k, { speed: (v || undefined) as never }))} />
               </label>
-              <label title="Send the model's reasoning back during a tool loop. Auto = on, except OpenAI's own API.">
-                Replay reasoning
-                <Select value={o.replayReasoning == null ? '' : o.replayReasoning ? 'on' : 'off'} options={TRI_STATE} onChange={(v) => save((s) => setOverride(s, k, { replayReasoning: v ? v === 'on' : undefined }))} />
+              <label title={t('settings.model.replayHelp')}>
+                {t('settings.model.replay')}
+                <Select value={o.replayReasoning == null ? '' : o.replayReasoning ? 'on' : 'off'} options={triState(t)} onChange={(v) => save((s) => setOverride(s, k, { replayReasoning: v ? v === 'on' : undefined }))} />
               </label>
               <label>
-                Prompt
-                <Select value={o.promptStyle ?? ''} options={[{ value: '', label: 'Chat setting' }, ...PROMPT_STYLES.slice(1)]} onChange={(v) => save((s) => setOverride(s, k, { promptStyle: (v || undefined) as never }))} />
+                {t('settings.model.prompt')}
+                <Select
+                  value={o.promptStyle ?? ''}
+                  options={[{ value: '', label: t('settings.model.chatSetting') }, ...promptStyles(t).slice(1)]}
+                  onChange={(v) => save((s) => setOverride(s, k, { promptStyle: (v || undefined) as never }))}
+                />
               </label>
             </div>
           </div>
         ))}
         <div>
           <button className="btn" onClick={() => setPicking('override')}>
-            Add override
+            {t('settings.model.addOverride')}
           </button>
         </div>
       </Section>
-      {picking && <ModelPicker app={app} onClose={() => setPicking(null)} onState={onState} onError={onError} onPick={onPick} title="Choose a model…" />}
+      {picking && <ModelPicker app={app} onClose={() => setPicking(null)} onState={onState} onError={onError} onPick={onPick} title={t('settings.common.chooseModel')} />}
     </>
   )
 }
 
 export function AuxModelsPage({ app, save, onState, onError, go }: PageProps) {
+  const { t } = useT()
   const m = app.settings.models
   const common = { app, onState, onError }
   return (
-    <Section title="Background tasks">
-      <Row label="Chat naming model" hint="Names new chats from the first message. Off: the first line becomes the title.">
-        <ModelChoice {...common} value={m.title} empty="Off" resetLabel="turn off" onChange={(r) => save((s) => ((s.models.title = r), s))} />
+    <Section title={t('settings.model.background')}>
+      <Row label={t('settings.model.titleModel')} hint={t('settings.model.titleModelHint')}>
+        <ModelChoice {...common} value={m.title} empty={t('common.off')} resetLabel={t('settings.model.turnOff')} onChange={(r) => save((s) => ((s.models.title = r), s))} />
       </Row>
-      <Row label="Memory model" hint="After each reply, saves lasting facts (your preferences, project commands) to memory. Empty uses the chat naming model.">
-        <ModelChoice {...common} value={m.memoryReview} empty={m.title ? 'Same as chat naming model' : 'Off'} onChange={(r) => save((s) => ((s.models.memoryReview = r), s))} />
+      <Row label={t('settings.model.memoryModel')} hint={t('settings.model.memoryModelHint')}>
+        <ModelChoice {...common} value={m.memoryReview} empty={m.title ? t('settings.model.sameAsTitle') : t('common.off')} onChange={(r) => save((s) => ((s.models.memoryReview = r), s))} />
       </Row>
-      <Row label="Summarization model" hint="Summarizes older messages when a chat fills its context. A cheap, fast model works well. Empty uses the chat's model.">
-        <ModelChoice {...common} value={m.compaction} empty="Same as the chat's model" onChange={(r) => save((s) => ((s.models.compaction = r), s))} />
+      <Row label={t('settings.model.summaryModel')} hint={t('settings.model.summaryModelHint')}>
+        <ModelChoice {...common} value={m.compaction} empty={t('settings.model.sameAsChat')} onChange={(r) => save((s) => ((s.models.compaction = r), s))} />
       </Row>
-      <Row label="Transcription model" hint="Turns voice recordings into text.">
+      <Row label={t('settings.model.transcriptionModel')} hint={t('settings.model.transcriptionModelHint')}>
         <div className="inline">
-          <span className="muted small">{m.transcription ? refText(m.transcription) : 'Off'}</span>
+          <span className="muted small">{m.transcription ? refText(m.transcription) : t('common.off')}</span>
           <button className="link small" onClick={() => go('voice.stt')}>
-            Change in Speech to text
+            {t('settings.model.changeInStt')}
           </button>
         </div>
       </Row>
@@ -171,23 +198,24 @@ export function AuxModelsPage({ app, save, onState, onError, go }: PageProps) {
 }
 
 export function SubagentsPage({ app, save, onState, onError }: PageProps) {
+  const { t } = useT()
   const a = app.settings.agent.subagents
   return (
     <Section>
-      <Row label="Allow subagents" hint="Gives the agent the task tool. Subagents follow the same permissions, and their cost counts toward the chat.">
-        <Toggle label="Allow subagents" value={a.enabled} onChange={(v) => save((s) => ((s.agent.subagents.enabled = v), s))} />
+      <Row label={t('settings.subagents.allow')} hint={t('settings.subagents.allowHint')}>
+        <Toggle label={t('settings.subagents.allow')} value={a.enabled} onChange={(v) => save((s) => ((s.agent.subagents.enabled = v), s))} />
       </Row>
-      <Row label="Subagent model" hint="A fast free model suits searching and research. Empty uses the chat's model.">
-        <ModelChoice app={app} onState={onState} onError={onError} value={a.model} empty="Same as the chat's model" onChange={(r) => save((s) => ((s.agent.subagents.model = r), s))} />
+      <Row label={t('settings.subagents.model')} hint={t('settings.subagents.modelHint')}>
+        <ModelChoice app={app} onState={onState} onError={onError} value={a.model} empty={t('settings.model.sameAsChat')} onChange={(r) => save((s) => ((s.agent.subagents.model = r), s))} />
       </Row>
-      <Row label="Subagents can edit" hint="Off: subagents only read and search. Edits and commands still ask in Ask mode.">
-        <Toggle label="Subagents can edit" value={a.allowWrite} onChange={(v) => save((s) => ((s.agent.subagents.allowWrite = v), s))} />
+      <Row label={t('settings.subagents.canEdit')} hint={t('settings.subagents.canEditHint')}>
+        <Toggle label={t('settings.subagents.canEdit')} value={a.allowWrite} onChange={(v) => save((s) => ((s.agent.subagents.allowWrite = v), s))} />
       </Row>
-      <Row label="Run at once" hint="Subagents started together run in parallel, up to this many.">
-        <NumberField label="Subagents at once" value={a.maxParallel} min={1} max={8} onChange={(v) => save((s) => ((s.agent.subagents.maxParallel = v ?? 3), s))} />
+      <Row label={t('settings.subagents.parallel')} hint={t('settings.subagents.parallelHint')}>
+        <NumberField label={t('settings.subagents.parallelLabel')} value={a.maxParallel} min={1} max={8} onChange={(v) => save((s) => ((s.agent.subagents.maxParallel = v ?? 3), s))} />
       </Row>
-      <Row label="Max steps per subagent" hint="Model requests one subagent may make before it has to report back.">
-        <NumberField label="Max steps per subagent" value={a.maxSteps} min={1} max={500} onChange={(v) => save((s) => ((s.agent.subagents.maxSteps = v ?? 50), s))} />
+      <Row label={t('settings.subagents.maxSteps')} hint={t('settings.subagents.maxStepsHint')}>
+        <NumberField label={t('settings.subagents.maxSteps')} value={a.maxSteps} min={1} max={500} onChange={(v) => save((s) => ((s.agent.subagents.maxSteps = v ?? 50), s))} />
       </Row>
     </Section>
   )
@@ -196,27 +224,22 @@ export function SubagentsPage({ app, save, onState, onError }: PageProps) {
 const sameRef = (a: ModelRef) => (b: ModelRef) => refKey(a) === refKey(b)
 
 export function FallbackPage({ app, save, onState, onError }: PageProps) {
+  const { t } = useT()
   const list = app.settings.models.fallbacks
   const [adding, setAdding] = useState(false)
   return (
     <>
-      <Section
-        title="Fallback models"
-        description="When the chat's model fails after its retries (an outage, a rate limit, a model that's gone, a missing key), the same step runs on the first fallback, then the next. The next step tries the chat's own model again. A note in the chat says when this happens."
-      >
-        <Row label="Fallback order" hint="Tried top to bottom. Subagents, chat naming, memory and summaries use this list too." wide>
+      <Section title={t('settings.fallback.models')} description={t('settings.fallback.modelsDesc')}>
+        <Row label={t('settings.fallback.order')} hint={t('settings.fallback.orderHint')} wide>
           <OrderedModels refs={list} ready={app.ready} onChange={(refs) => save((s) => ((s.models.fallbacks = refs), s))} />
           <div>
             <button className="btn" onClick={() => setAdding(true)}>
-              Add fallback model
+              {t('settings.fallback.add')}
             </button>
           </div>
         </Row>
       </Section>
-      <Section
-        title="When it doesn't switch"
-        description="Stopping a reply, budget limits, and a request the provider rejects as malformed never switch models, so real problems stay visible. A conversation too long for the model only moves to a fallback with a bigger context window. A model that isn't found or has no key is skipped for the rest of that turn."
-      />
+      <Section title={t('settings.fallback.noSwitch')} description={t('settings.fallback.noSwitchDesc')} />
       {adding && (
         <ModelPicker
           app={app}
@@ -224,7 +247,7 @@ export function FallbackPage({ app, save, onState, onError }: PageProps) {
           onState={onState}
           onError={onError}
           onPick={(r) => save((s) => (s.models.fallbacks.some(sameRef(r)) || s.models.fallbacks.push(r), s))}
-          title="Add a fallback model…"
+          title={t('settings.fallback.addTitle')}
         />
       )}
     </>
@@ -232,35 +255,40 @@ export function FallbackPage({ app, save, onState, onError }: PageProps) {
 }
 
 export function MoaPage({ app, save, onState, onError }: PageProps) {
+  const { t } = useT()
+  const { num } = useFormat()
   const moa = app.settings.moa
   const ready = moaReady(app.settings)
   const [adding, setAdding] = useState(false)
   const full = moa.proposers.length >= MOA_MAX_PROPOSERS
   return (
     <>
-      <Section
-        title="Mixture of Agents"
-        description="For a chat's final answer, several models answer the conversation side by side (text only, no tools), and a combining model writes the reply from their answers and the chat model's draft. Steps that read files or run commands still use the chat's model."
-      >
-        <Row label="On by default" hint={ready ? 'For chats where you haven\'t used the Mix toggle in the composer.' : 'Add at least 2 proposers and a combining model first.'}>
-          <Toggle label="On by default" value={moa.enabled && ready} disabled={!ready} onChange={(v) => save((s) => ((s.moa.enabled = v), s))} />
+      <Section title={t('settings.moa.title')} description={t('settings.moa.desc')}>
+        <Row label={t('settings.moa.onByDefault')} hint={ready ? t('settings.moa.onByDefaultHint') : t('settings.moa.notReady')}>
+          <Toggle label={t('settings.moa.onByDefault')} value={moa.enabled && ready} disabled={!ready} onChange={(v) => save((s) => ((s.moa.enabled = v), s))} />
         </Row>
-        <Row label="Proposers" hint={`2 to ${MOA_MAX_PROPOSERS} models that answer side by side. Models from different makers tend to catch each other's mistakes.`} wide>
+        <Row label={t('settings.moa.proposers')} hint={t('settings.moa.proposersHint', { max: MOA_MAX_PROPOSERS })} wide>
           <ListOfModels refs={moa.proposers} onRemove={(r) => save((s) => ((s.moa.proposers = s.moa.proposers.filter((x) => !sameRef(r)(x))), s))} />
           <div>
             <button className="btn" disabled={full} onClick={() => setAdding(true)}>
-              {full ? `${MOA_MAX_PROPOSERS} proposers at most` : 'Add proposer'}
+              {full ? t('settings.moa.atMost', { count: MOA_MAX_PROPOSERS }) : t('settings.moa.addProposer')}
             </button>
           </div>
         </Row>
-        <Row label="Combining model" hint="Reads every answer and writes the reply. A strong model works best here.">
-          <ModelChoice app={app} onState={onState} onError={onError} value={moa.aggregator} empty="Choose…" resetLabel="clear" title="Combining model…" onChange={(r) => save((s) => ((s.moa.aggregator = r), s))} />
+        <Row label={t('settings.moa.aggregator')} hint={t('settings.moa.aggregatorHint')}>
+          <ModelChoice
+            app={app}
+            onState={onState}
+            onError={onError}
+            value={moa.aggregator}
+            empty={t('settings.model.choose')}
+            resetLabel={t('settings.moa.clear')}
+            title={t('settings.moa.aggregatorTitle')}
+            onChange={(r) => save((s) => ((s.moa.aggregator = r), s))}
+          />
         </Row>
       </Section>
-      <Section
-        title="Cost"
-        description={`Each mixed reply makes ${Math.max(moa.proposers.length, 2) + 1} extra requests: one per proposer and one to combine. Each sends up to about 6,000 tokens of the conversation, and the combining request also carries every answer. All of it counts toward the chat's usage and budget. Once a budget set to stop is reached, replies aren't mixed.`}
-      />
+      <Section title={t('settings.moa.cost')} description={t('settings.moa.costDesc', { count: Math.max(moa.proposers.length, 2) + 1, tokens: num(6000) })} />
       {adding && (
         <ModelPicker
           app={app}
@@ -268,7 +296,7 @@ export function MoaPage({ app, save, onState, onError }: PageProps) {
           onState={onState}
           onError={onError}
           onPick={(r) => save((s) => (s.moa.proposers.some(sameRef(r)) || s.moa.proposers.length >= MOA_MAX_PROPOSERS || s.moa.proposers.push(r), s))}
-          title="Add a proposer…"
+          title={t('settings.moa.addProposerTitle')}
         />
       )}
     </>

@@ -3088,12 +3088,11 @@ body.resizing * {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }
+/* Longer tab names (Russian, Azerbaijani) wrap to a second line instead of being cut. */
 .so-label {
   flex: 1;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: break-word;
 }
 .so-side-foot {
   display: flex;
@@ -3460,7 +3459,8 @@ body.resizing * {
 }
 .endpoint-form .checks {
   display: flex;
-  gap: 20px;
+  flex-wrap: wrap;
+  gap: 8px 20px;
   padding: 8px 0;
 }
 .endpoint-form .form-actions {
