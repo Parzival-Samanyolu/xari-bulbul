@@ -19,8 +19,6 @@ export default {
   'common.back': 'Назад',
   'common.done': 'Готово',
   'common.reset': 'Сбросить',
-  'common.show': 'Показать',
-  'common.hide': 'Скрыть',
   'common.loading': 'Загрузка…',
   'common.on': 'Вкл.',
   'common.off': 'Выкл.',

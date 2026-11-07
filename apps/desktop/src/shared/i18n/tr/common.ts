@@ -19,8 +19,6 @@ export default {
   'common.back': 'Geri',
   'common.done': 'Tamam',
   'common.reset': 'Sıfırla',
-  'common.show': 'Göster',
-  'common.hide': 'Gizle',
   'common.loading': 'Yükleniyor…',
   'common.on': 'Açık',
   'common.off': 'Kapalı',

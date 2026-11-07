@@ -19,8 +19,6 @@ export default {
   'common.back': 'Back',
   'common.done': 'Done',
   'common.reset': 'Reset',
-  'common.show': 'Show',
-  'common.hide': 'Hide',
   'common.loading': 'Loading…',
   'common.on': 'On',
   'common.off': 'Off',
