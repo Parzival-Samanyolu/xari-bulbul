@@ -4,20 +4,22 @@ import { api } from '../lib/api'
 import { Listener } from '../lib/listen'
 import { speaker, speakerFor } from '../lib/speech'
 import { recordingToWav } from '../lib/wav'
+import { useT } from '../lib/i18n'
+import type { MessageKey } from '../../../shared/i18n/catalog'
 
 type Phase = 'off' | 'listening' | 'hearing' | 'transcribing' | 'thinking' | 'speaking'
 
-const PHASE_TEXT: Record<Phase, string> = {
-  off: '',
-  listening: 'Listening',
-  hearing: 'Listening',
-  transcribing: 'Got it…',
-  thinking: 'Thinking…',
-  speaking: 'Speaking',
+const PHASE_TEXT: Record<Exclude<Phase, 'off'>, MessageKey> = {
+  listening: 'chat.handsfree.listening',
+  hearing: 'chat.handsfree.listening',
+  transcribing: 'chat.handsfree.gotIt',
+  thinking: 'chat.handsfree.thinking',
+  speaking: 'chat.handsfree.speaking',
 }
 
-/** Said on its own, ends hands-free mode instead of being sent. */
-const STOP_WORDS = /^(stop|stop listening|goodbye|bye|that's all|end hands[- ]?free|exit)[.!]?$/i
+/** Said on its own, ends hands-free mode instead of being sent (English, Azerbaijani, Turkish, Russian). */
+const STOP_WORDS =
+  /^(stop|stop listening|goodbye|bye|that's all|end hands[- ]?free|exit|dayan|dayandır|bəsdir|sağ ol|dur|durdur|yeter|hoşça kal|стоп|хватит|достаточно|пока|до свидания)[.!]?$/i
 
 interface Props {
   app: AppState
@@ -31,6 +33,7 @@ interface Props {
  * click starts it; the button, Esc, or saying "stop" ends it. It doesn't listen while it speaks.
  */
 export function HandsFree({ app, send, onError }: Props) {
+  const { t } = useT()
   const [phase, setPhase] = useState<Phase>('off')
   const [level, setLevel] = useState(0)
   const run = useRef<{ ac: AbortController } | null>(null)
@@ -93,7 +96,7 @@ export function HandsFree({ app, send, onError }: Props) {
     const listener = new Listener()
     ac.signal.addEventListener('abort', () => listener.close(), { once: true })
     try {
-      if (!(await api.voice.prepare())) throw new Error('Microphone access was not allowed.')
+      if (!(await api.voice.prepare())) throw new Error(t('chat.voice.notAllowed'))
       await listener.open()
       while (!ac.signal.aborted) {
         setPhase('listening')
@@ -122,7 +125,7 @@ export function HandsFree({ app, send, onError }: Props) {
       }
     } catch (e) {
       const name = (e as DOMException)?.name
-      if (!ac.signal.aborted) onError(name === 'NotAllowedError' ? new Error('Microphone access was not allowed.') : name === 'NotFoundError' ? new Error('No microphone found.') : e)
+      if (!ac.signal.aborted) onError(name === 'NotAllowedError' ? new Error(t('chat.voice.notAllowed')) : name === 'NotFoundError' ? new Error(t('chat.voice.noMic')) : e)
     } finally {
       listener.close()
       if (run.current?.ac === ac) stop()
@@ -130,14 +133,14 @@ export function HandsFree({ app, send, onError }: Props) {
   }
 
   const on = phase !== 'off'
-  const label = on ? 'Stop hands-free' : 'Hands-free: talk, and hear the reply'
+  const label = on ? t('chat.handsfree.stop') : t('chat.handsfree.start')
   return (
     <>
       <button
         className={`icon-btn attach handsfree ${on ? 'on' : ''} ${phase}`}
         aria-pressed={on}
         aria-label={label}
-        title={on ? 'Stop hands-free (Esc, or say “stop”)' : tts === 'off' ? 'Hands-free (replies stay silent: turn on text to speech in Settings › Voice)' : 'Hands-free: talk, and hear the reply. Esc or “stop” ends it.'}
+        title={on ? t('chat.handsfree.stopTitle') : tts === 'off' ? t('chat.handsfree.silentTitle') : t('chat.handsfree.startTitle')}
         onClick={() => (on ? stop() : void start())}
       >
         <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden>
@@ -148,7 +151,8 @@ export function HandsFree({ app, send, onError }: Props) {
         {on && <span className="handsfree-level" style={{ transform: `scaleY(${0.15 + level * 0.85})` }} aria-hidden />}
       </button>
       <span className="mic-status small" role="status">
-        {on && PHASE_TEXT[phase]}
+        {phase !== 'off' && t(PHASE_TEXT[phase])}
+
       </span>
     </>
   )

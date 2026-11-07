@@ -5,6 +5,7 @@ import '@xterm/xterm/css/xterm.css'
 import type { AppState, UiEvent } from '../../../shared/ipc'
 import { api } from '../lib/api'
 import { basename } from '../lib/format'
+import { useT } from '../lib/i18n'
 
 /** Any CSS color (the theme uses oklch) as #rrggbb, which xterm understands. */
 function toHex(css: string, fallback: string): string {
@@ -70,6 +71,7 @@ interface ViewProps {
 
 /** One xterm bound to one PTY in main. The PTY starts on mount and is killed on unmount. */
 function TerminalView({ cwd, active, platform, font, onExit, onRestart, onClose, onError }: ViewProps) {
+  const { t: tr } = useT()
   const mac = platform === 'darwin'
   const host = useRef<HTMLDivElement>(null)
   const [menu, setMenu] = useState<{ x: number; y: number; selection: boolean } | null>(null)
@@ -214,23 +216,25 @@ function TerminalView({ cwd, active, platform, font, onExit, onRestart, onClose,
       {menu && active && (
         <TermMenu x={menu.x} y={menu.y} onClose={closeMenu}>
           <button role="menuitem" disabled={!menu.selection} onClick={() => run((t) => void clipboard(t, 'copy', onError))}>
-            Copy<span className="term-menu-key">{keys.copy}</span>
+            {tr('common.copy')}
+            <span className="term-menu-key">{keys.copy}</span>
           </button>
           <button role="menuitem" onClick={() => run((t) => void clipboard(t, 'paste', onError))}>
-            Paste<span className="term-menu-key">{keys.paste}</span>
+            {tr('chat.terminal.paste')}
+            <span className="term-menu-key">{keys.paste}</span>
           </button>
           <button role="menuitem" onClick={() => run((t) => t.selectAll())}>
-            Select all
+            {tr('chat.terminal.selectAll')}
           </button>
           <button role="menuitem" onClick={() => run((t) => t.clear())}>
-            Clear
+            {tr('chat.terminal.clear')}
           </button>
           <div className="term-menu-sep" role="separator" />
           <button role="menuitem" onClick={() => run(() => onRestart())}>
-            Restart terminal
+            {tr('chat.terminal.restart')}
           </button>
           <button role="menuitem" className="danger" onClick={() => run(() => onClose())}>
-            Close terminal
+            {tr('chat.terminal.close')}
           </button>
         </TermMenu>
       )}
@@ -255,6 +259,7 @@ async function clipboard(term: XTerm, action: ClipAction, onError: (e: unknown) 
 
 /** Right-click menu on a terminal, styled like the app's other menus. */
 function TermMenu({ x, y, onClose, children }: { x: number; y: number; onClose: () => void; children: React.ReactNode }) {
+  const { t } = useT()
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState({ left: x, top: y })
   const closeRef = useRef(onClose)
@@ -289,7 +294,7 @@ function TermMenu({ x, y, onClose, children }: { x: number; y: number; onClose: 
   }
 
   return (
-    <div className="menu term-menu" role="menu" aria-label="Terminal" ref={ref} style={{ left: pos.left, top: pos.top }} onKeyDown={onKey} onContextMenu={(e) => e.preventDefault()}>
+    <div className="menu term-menu" role="menu" aria-label={t('chat.terminal.menu')} ref={ref} style={{ left: pos.left, top: pos.top }} onKeyDown={onKey} onContextMenu={(e) => e.preventDefault()}>
       {children}
     </div>
   )
@@ -311,6 +316,7 @@ interface PanelProps {
 
 /** Terminals for the bottom panel, per folder: the chat's folder shows its own. */
 export function TerminalPanel({ app, visible, onError }: PanelProps) {
+  const { t: tr } = useT()
   const cwd = app.workspace
   const [tabs, setTabs] = useState<Tab[]>([])
   const [active, setActive] = useState<Record<string, number>>({})
@@ -349,25 +355,26 @@ export function TerminalPanel({ app, visible, onError }: PanelProps) {
 
   return (
     <div className="bpanel">
-      <div className="ptabs" role="group" aria-label="Terminals">
-        <span className="ptabs-title">Terminal</span>
+      <div className="ptabs" role="group" aria-label={tr('chat.terminal.tabs')}>
+        <span className="ptabs-title">{tr('chat.terminal.title')}</span>
         {mine.map((t, i) => (
           <span key={t.key} className={`ttab ${current?.key === t.key ? 'active' : ''}`}>
             <button aria-pressed={current?.key === t.key} onClick={() => setActive((a) => ({ ...a, [t.cwd]: t.key }))} title={t.cwd}>
               {basename(t.cwd)}
               {mine.length > 1 ? ` ${i + 1}` : ''}
             </button>
-            <button className="ttab-close" aria-label="Close terminal" title="Close terminal" onClick={() => close(t.key)}>
+            <button className="ttab-close" aria-label={tr('chat.terminal.close')} title={tr('chat.terminal.close')} onClick={() => close(t.key)}>
               ×
             </button>
           </span>
         ))}
-        <button className="ttab-add" aria-label="New terminal" title="New terminal" onClick={() => add()} disabled={!cwd}>
+        <button className="ttab-add" aria-label={tr('chat.terminal.new')} title={tr('chat.terminal.new')} onClick={() => add()} disabled={!cwd}>
           +
         </button>
       </div>
       <div className="term-body">
-        {!cwd && <p className="muted small pad">Open a folder to use the terminal.</p>}
+        {!cwd && <p className="muted small pad">{tr('chat.terminal.noFolder')}</p>}
+
         {tabs.map((t) => (
           <TerminalView
             key={t.key}

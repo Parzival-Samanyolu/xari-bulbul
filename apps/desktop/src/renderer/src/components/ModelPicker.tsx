@@ -4,6 +4,7 @@ import { displayName, matchesQuery, passesFilters, sortModels } from '@harness/c
 import { api } from '../lib/api'
 import { perMillion, tokens } from '../lib/format'
 import { MakerLogo, ProviderLogo } from './ProviderLogo'
+import { useT } from '../lib/i18n'
 
 interface Props {
   app: AppState
@@ -22,20 +23,21 @@ type Row = { header: string; providerId?: string; shown?: number; total?: number
 const key = (r: ModelRef) => `${r.providerId}:${r.modelId}`
 const refOf = (m: ModelInfo): ModelRef => ({ providerId: m.providerId, modelId: m.id })
 
-const SORTS: { value: Sort; label: string }[] = [
-  { value: 'newest', label: 'Newest' },
-  { value: 'name', label: 'Name' },
-  { value: 'context', label: 'Context' },
-  { value: 'price', label: 'Price' },
-]
+const SORTS = [
+  { value: 'newest', label: 'chat.picker.sortNewest' },
+  { value: 'name', label: 'chat.picker.sortName' },
+  { value: 'context', label: 'chat.picker.sortContext' },
+  { value: 'price', label: 'chat.picker.sortPrice' },
+] as const satisfies readonly { value: Sort; label: string }[]
 
-function price(m: ModelInfo): string {
-  if (m.free) return 'free'
+function price(m: ModelInfo, free: string): string {
+  if (m.free) return free
   if (!m.pricing) return '—'
-  return `${perMillion(m.pricing.prompt)} / ${perMillion(m.pricing.completion)}`
+  return `${perMillion(m.pricing.prompt, free)} / ${perMillion(m.pricing.completion, free)}`
 }
 
 export function ModelPicker({ app, onClose, onState, onError, onPick, title }: Props) {
+  const { t } = useT()
   const [q, setQ] = useState('')
   const [models, setModels] = useState<Record<string, ModelInfo[]>>({})
   const [loading, setLoading] = useState<Record<string, boolean>>({})
@@ -91,9 +93,9 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
       }
     }
     // Current, favorites and recents are always shown, whatever the filters say.
-    if (current) pin('Current', 'current', [find(current)])
-    pin('Favorites', 'fav', favorites.map(find))
-    if (!terms.length) pin('Recent', 'recent', recent.slice(0, 5).map(find))
+    if (current) pin(t('chat.picker.current'), 'current', [find(current)])
+    pin(t('chat.picker.favorites'), 'fav', favorites.map(find))
+    if (!terms.length) pin(t('chat.picker.recent'), 'recent', recent.slice(0, 5).map(find))
     for (const p of providers) {
       const all = models[p.id] ?? []
       const priced = all.some((m) => m.pricing)
@@ -106,7 +108,7 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
       if (!collapsed) shown.forEach((m) => out.push({ model: m, section: 'all' }))
     }
     return out
-  }, [q, models, favorites, recent, picker, current?.providerId, current?.modelId, loading, errors])
+  }, [q, models, favorites, recent, picker, current?.providerId, current?.modelId, loading, errors, t])
 
   const selectable = rows.filter((r): r is Extract<Row, { model: ModelInfo }> => 'model' in r)
   const noMatches = q.trim() !== '' && selectable.length === 0
@@ -154,7 +156,7 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
         ref={dialog}
         role="dialog"
         aria-modal="true"
-        aria-label={title ?? 'Switch model'}
+        aria-label={title ?? t('chat.picker.title')}
         onMouseDown={(e) => e.stopPropagation()}
         onKeyDown={onKey}
       >
@@ -166,41 +168,41 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
             aria-expanded="true"
             aria-controls="model-list"
             aria-activedescendant={selectable.length ? optionId(sel) : undefined}
-            aria-label="Search models"
-            placeholder={title ?? 'Search models…'}
+            aria-label={t('chat.picker.search')}
+            placeholder={title ?? t('chat.picker.searchPlaceholder')}
             onChange={(e) => (setQ(e.target.value), setSel(0))}
           />
         </div>
         <div className="picker-filters">
           <button className={`fchip ${picker.freeOnly ? 'on' : ''}`} aria-pressed={picker.freeOnly} onClick={() => savePicker({ freeOnly: !picker.freeOnly })}>
-            Free only
+            {t('chat.picker.freeOnly')}
           </button>
           <button
             className={`fchip ${picker.toolsOnly ? 'on' : ''}`}
             aria-pressed={picker.toolsOnly}
             onClick={() => savePicker({ toolsOnly: !picker.toolsOnly })}
-            title="Only models that can call tools, which the agent needs to edit files and run commands"
+            title={t('chat.picker.toolsTitle')}
           >
-            Can use tools
+            {t('chat.picker.tools')}
           </button>
           <div className="spacer" />
           <label className="muted small" htmlFor="model-sort">
-            Sort
+            {t('chat.picker.sort')}
           </label>
           <select id="model-sort" value={picker.sort} onChange={(e) => savePicker({ sort: e.target.value as Sort })}>
             {SORTS.map((s) => (
               <option key={s.value} value={s.value}>
-                {s.label}
+                {t(s.label)}
               </option>
             ))}
           </select>
         </div>
         <div className="picker-cols muted small" aria-hidden>
-          <span>Model</span>
-          <span>Context</span>
-          <span>$ per M tokens</span>
+          <span>{t('chat.picker.colModel')}</span>
+          <span>{t('chat.picker.colContext')}</span>
+          <span>{t('chat.picker.colPrice')}</span>
         </div>
-        <div className="picker-list" ref={list} id="model-list" role="listbox" aria-label="Models">
+        <div className="picker-list" ref={list} id="model-list" role="listbox" aria-label={t('chat.picker.models')}>
           {rows.map((r, i) => {
             if ('header' in r) {
               const id = r.providerId
@@ -210,7 +212,7 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
                     <button
                       className="picker-fold"
                       aria-expanded={!r.collapsed}
-                      title={r.collapsed ? `Show ${r.header} models` : `Hide ${r.header} models`}
+                      title={t(r.collapsed ? 'chat.picker.showGroup' : 'chat.picker.hideGroup', { provider: r.header })}
                       onClick={() => savePicker({ collapsed: r.collapsed ? picker.collapsed.filter((x) => x !== id) : [...picker.collapsed, id] })}
                     >
                       <span className="fold-caret" aria-hidden>
@@ -224,11 +226,11 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
                   )}
                   {id && (
                     <>
-                      {r.total ? <span className="muted small">{r.shown === r.total ? r.total : `${r.shown} of ${r.total}`}</span> : null}
-                      {loading[id] && <span className="muted small">loading…</span>}
+                      {r.total ? <span className="muted small">{r.shown === r.total ? r.total : t('chat.picker.shownOf', { shown: r.shown ?? 0, total: r.total })}</span> : null}
+                      {loading[id] && <span className="muted small">{t('chat.picker.loading')}</span>}
                       {errors[id] && <span className="warn small">{errors[id]}</span>}
                       <button className="link small" onClick={() => load(id, true)}>
-                        Refresh
+                        {t('chat.picker.refresh')}
                       </button>
                     </>
                   )}
@@ -253,7 +255,7 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
                 <button
                   className={`star ${isFav ? 'on' : ''}`}
                   aria-pressed={isFav}
-                  aria-label={`${isFav ? 'Remove' : 'Add'} ${displayName(m)} ${isFav ? 'from' : 'to'} favorites`}
+                  aria-label={t(isFav ? 'chat.picker.removeFav' : 'chat.picker.addFav', { name: displayName(m) })}
                   tabIndex={-1}
                   onClick={(e) => (e.stopPropagation(), toggleFav(m))}
                 >
@@ -271,25 +273,25 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
                   )}
                 </span>
                 <span className="muted">{m.contextLength ? tokens(m.contextLength) : '—'}</span>
-                <span className={m.free ? 'okc' : 'muted'}>{price(m)}</span>
+                <span className={m.free ? 'okc' : 'muted'}>{price(m, t('chat.picker.free'))}</span>
               </div>
             )
           })}
           {providers.length === 0 && (
             <div className="picker-empty">
-              <p>No provider is connected yet. Add an API key or a local endpoint in Settings › Providers.</p>
+              <p>{t('chat.picker.noProvider')}</p>
             </div>
           )}
           {noMatches && providers.length > 0 && (
             <div className="picker-empty">
-              <p>No models match "{q.trim()}".</p>
+              <p>{t('chat.picker.noMatches', { query: q.trim() })}</p>
               <div className="inline">
                 <button className="btn" onClick={() => (setQ(''), input.current?.focus())}>
-                  Clear search
+                  {t('chat.picker.clearSearch')}
                 </button>
                 {(picker.freeOnly || picker.toolsOnly) && (
                   <button className="btn" onClick={() => savePicker({ freeOnly: false, toolsOnly: false })}>
-                    Show all models
+                    {t('chat.picker.showAll')}
                   </button>
                 )}
               </div>
@@ -297,18 +299,20 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
           )}
           {!noMatches && picker.freeOnly && !q && (
             <div className="picker-hint muted small">
-              Showing free models.{' '}
+              {t('chat.picker.showingFree')}{' '}
               <button className="link small" onClick={() => savePicker({ freeOnly: false })}>
-                Show paid models too
+                {t('chat.picker.showPaid')}
               </button>
             </div>
           )}
         </div>
         <div className="picker-foot muted small">
           <span>
-            <kbd>↑↓</kbd> move · <kbd>↵</kbd> select · <kbd>{app.platform === 'darwin' ? '⌘D' : 'Ctrl+D'}</kbd> favorite · <kbd>Esc</kbd> close
+            <kbd>↑↓</kbd> {t('chat.picker.keyMove')} · <kbd>↵</kbd> {t('chat.picker.keySelect')} · <kbd>{app.platform === 'darwin' ? '⌘D' : 'Ctrl+D'}</kbd> {t('chat.picker.keyFavorite')} · <kbd>Esc</kbd>{' '}
+            {t('chat.picker.keyClose')}
           </span>
-          {picker.freeOnly && <span>Free models are rate-limited by the provider.</span>}
+          {picker.freeOnly && <span>{t('chat.picker.rateLimited')}</span>}
+
         </div>
       </div>
     </div>

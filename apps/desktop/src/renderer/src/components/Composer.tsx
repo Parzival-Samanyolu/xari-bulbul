@@ -9,7 +9,21 @@ import { MakerLogo, ProviderLogo } from './ProviderLogo'
 import { ThinkingPicker } from './ThinkingPicker'
 import { moaOn, moaReady } from '@harness/core/moa'
 import { activeBot } from '@harness/core/bots'
+import { useFormat, useT } from '../lib/i18n'
 
+type T = ReturnType<typeof useT>['t']
+
+/** The permission modes with their labels in the interface language. */
+export function modes(t: T): { id: PermissionMode; label: string; hint: string }[] {
+  return [
+    { id: 'ask', label: t('chat.mode.ask'), hint: t('chat.mode.askHint') },
+    { id: 'acceptEdits', label: t('chat.mode.acceptEdits'), hint: t('chat.mode.acceptEditsHint') },
+    { id: 'plan', label: t('chat.mode.plan'), hint: t('chat.mode.planHint') },
+    { id: 'auto', label: t('chat.mode.auto'), hint: t('chat.mode.autoHint') },
+  ]
+}
+
+/** English labels, for the settings pages until they switch to `modes(t)`. */
 export const MODES: { id: PermissionMode; label: string; hint: string }[] = [
   { id: 'ask', label: 'Ask', hint: 'Ask before edits and commands' },
   { id: 'acceptEdits', label: 'Auto-edit', hint: 'Edit files freely, ask before commands' },
@@ -36,7 +50,7 @@ function readAsDataUrl(file: File): Promise<string> {
 }
 
 /** Dropped or pasted files: real files are sent by path; pasted images (no path) by content. */
-async function toPending(files: File[]): Promise<Pending[]> {
+async function toPending(files: File[], t: T): Promise<Pending[]> {
   return Promise.all(
     files.map(async (f) => {
       const path = api.files.pathFor(f)
@@ -44,12 +58,11 @@ async function toPending(files: File[]): Promise<Pending[]> {
       const preview = image && f.size < 8 * 1024 * 1024 ? await readAsDataUrl(f) : undefined
       if (path) return { id: ++attachId, name: f.name, path, size: f.size, preview }
       if (image && preview) return { id: ++attachId, name: f.name || 'pasted-image.png', mediaType: f.type, data: preview.split(',')[1], size: f.size, preview }
-      throw new Error(`Couldn't attach "${f.name}".`)
+      throw new Error(t('chat.composer.attachFailed', { name: f.name }))
     }),
   )
 }
 
-const kb = (n?: number) => (n == null ? '' : n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`)
 
 interface Props {
   app: AppState
@@ -59,6 +72,9 @@ interface Props {
 }
 
 export function Composer({ app, onState, onError, onOpenPicker }: Props) {
+  const { t } = useT()
+  const fmt = useFormat()
+  const MODE_LIST = modes(t)
   const [text, setText] = useState('')
   const [sel, setSel] = useState(0)
   const [history, setHistory] = useState<string[]>([])
@@ -86,13 +102,13 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
   )
 
   const cycleMode = () => {
-    const i = MODES.findIndex((m) => m.id === app.mode)
-    api.agent.setMode(MODES[(i + 1) % MODES.length].id).then(onState, onError)
+    const i = MODE_LIST.findIndex((m) => m.id === app.mode)
+    api.agent.setMode(MODE_LIST[(i + 1) % MODE_LIST.length].id).then(onState, onError)
   }
 
   const add = (files: File[]) => {
     if (!files.length || lobby !== undefined) return
-    toPending(files).then((p) => setAttachments((a) => [...a, ...p]), onError)
+    toPending(files, t).then((p) => setAttachments((a) => [...a, ...p]), onError)
     ref.current?.focus()
   }
 
@@ -139,14 +155,14 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
   }
 
   /** Dictated text goes where the cursor is (or replaces the selection), with a space on either side when needed. */
-  const insert = (t: string) => {
+  const insert = (said: string) => {
     const el = ref.current
     setText((cur) => {
       const start = el ? el.selectionStart : cur.length
       const end = el ? el.selectionEnd : cur.length
       const before = cur.slice(0, start)
       const after = cur.slice(end)
-      const piece = (before && !/\s$/.test(before) ? ' ' : '') + t + (after && !/^\s/.test(after) ? ' ' : '')
+      const piece = (before && !/\s$/.test(before) ? ' ' : '') + said + (after && !/^\s/.test(after) ? ' ' : '')
       requestAnimationFrame(() => {
         if (!el) return
         el.focus()
@@ -160,51 +176,51 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
     api.files.pick().then((p) => p.length && setAttachments((a) => [...a, ...p.map((x) => ({ ...x, id: ++attachId }))]), onError)
 
   const submit = async (raw = text) => {
-    const t = raw.trim()
+    const msg = raw.trim()
     if (lobby !== undefined) {
       // Sending while the bots talk interrupts them.
-      if (!t) return
-      setHistory((h) => [t, ...h.filter((x) => x !== t)].slice(0, 50))
+      if (!msg) return
+      setHistory((h) => [msg, ...h.filter((x) => x !== msg)].slice(0, 50))
       setHIdx(-1)
       setText('')
-      api.agent.send(t).catch((e) => {
-        setText((cur) => cur || t)
+      api.agent.send(msg).catch((e) => {
+        setText((cur) => cur || msg)
         onError(e)
       })
       return
     }
-    if ((!t && !attachments.length) || app.running) return
+    if ((!msg && !attachments.length) || app.running) return
     if (attachments.length) {
       const sending = attachments
       setText('')
       setAttachments([])
-      if (t) setHistory((h) => [t, ...h.filter((x) => x !== t)].slice(0, 50))
+      if (msg) setHistory((h) => [msg, ...h.filter((x) => x !== msg)].slice(0, 50))
       // Put them back if the send is rejected (e.g. an unreadable file), so nothing is lost.
-      api.agent.send(t, sending.map(({ id, preview, ...a }) => a)).catch((e) => {
-        setText((cur) => cur || t)
+      api.agent.send(msg, sending.map(({ id, preview, ...a }) => a)).catch((e) => {
+        setText((cur) => cur || msg)
         setAttachments((cur) => (cur.length ? cur : sending))
         onError(e)
       })
       return
     }
-    setHistory((h) => [t, ...h.filter((x) => x !== t)].slice(0, 50))
+    setHistory((h) => [msg, ...h.filter((x) => x !== msg)].slice(0, 50))
     setHIdx(-1)
     setText('')
     // Built-in commands handled by the UI.
     // In a bot chat, /clear starts a new conversation with the same bot.
-    if (t === '/clear') return (bot ? api.bots.newThread(bot.id) : api.sessions.create()).then(onState, onError)
-    if (t === '/model') return onOpenPicker()
-    if (t === '/mode') return cycleMode()
-    if (t === '/compact') return api.agent.compact().catch(onError)
-    api.agent.send(t).catch(onError)
+    if (msg === '/clear') return (bot ? api.bots.newThread(bot.id) : api.sessions.create()).then(onState, onError)
+    if (msg === '/model') return onOpenPicker()
+    if (msg === '/mode') return cycleMode()
+    if (msg === '/compact') return api.agent.compact().catch(onError)
+    api.agent.send(msg).catch(onError)
   }
 
   // Transcribed speech: typed in, or sent right away (Settings › Voice). A ref, because the
   // recording finishes long after the render that started it.
-  const onVoice = useRef((_t: string) => {})
-  onVoice.current = (t: string) => {
-    if (app.settings.voice.autoSend && (!app.running || lobby !== undefined)) submit(text.trim() ? `${text.trimEnd()} ${t}` : t)
-    else insert(t)
+  const onVoice = useRef((_said: string) => {})
+  onVoice.current = (said: string) => {
+    if (app.settings.voice.autoSend && (!app.running || lobby !== undefined)) submit(text.trim() ? `${text.trimEnd()} ${said}` : said)
+    else insert(said)
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -266,15 +282,15 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
         </div>
       )}
       <div className={`composer-box ${app.running ? 'running' : ''} ${dragging ? 'dragging' : ''}`}>
-        {dragging && <div className="drop-hint">Drop to attach</div>}
+        {dragging && <div className="drop-hint">{t('chat.composer.drop')}</div>}
         {attachments.length > 0 && (
-          <ul className="attachments" aria-label="Attachments">
+          <ul className="attachments" aria-label={t('chat.composer.attachments')}>
             {attachments.map((a) => (
               <li key={a.id} className="attachment" title={a.path ?? a.name}>
                 {a.preview ? <img src={a.preview} alt="" /> : <span className="attachment-icon" aria-hidden>{IMAGE.test(a.mediaType ?? '') || /\.(png|jpe?g|gif|webp)$/i.test(a.name) ? '▣' : '≡'}</span>}
                 <span className="attachment-name">{a.name}</span>
-                <span className="muted small">{kb(a.size)}</span>
-                <button className="attachment-del" aria-label={`Remove ${a.name}`} onClick={() => setAttachments((x) => x.filter((y) => y.id !== a.id))}>
+                <span className="muted small">{a.size == null ? '' : fmt.bytes(a.size)}</span>
+                <button className="attachment-del" aria-label={t('chat.composer.remove', { name: a.name })} onClick={() => setAttachments((x) => x.filter((y) => y.id !== a.id))}>
                   ×
                 </button>
               </li>
@@ -285,17 +301,19 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
           ref={ref}
           value={text}
           rows={1}
-          aria-label="Message"
+          aria-label={t('chat.composer.message')}
           placeholder={
             lobby !== undefined
               ? app.running
-                ? 'Jump in, or press Esc to stop them'
-                : `Message ${lobby?.name ?? 'the lobby'}. @name a bot to ask it first`
+                ? t('chat.composer.lobbyRunning')
+                : lobby
+                  ? t('chat.composer.lobbyIdle', { name: lobby.name })
+                  : t('chat.composer.lobbyIdleUnnamed')
               : app.running
-                ? 'Working… (Esc to stop)'
+                ? t('chat.composer.working')
                 : bot
-                  ? `Message ${bot.name}`
-                  : 'Ask Xarı Bülbül to do something… (/ for commands)'
+                  ? t('chat.composer.messageBot', { name: bot.name })
+                  : t('chat.composer.placeholder')
           }
           onChange={(e) => {
             setText(e.target.value)
@@ -307,21 +325,21 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
         <div className="composer-bar">
           <div className="composer-tools">
           {lobby !== undefined ? (
-            <MicButton app={app} onText={(t) => onVoice.current(t)} onError={onError} />
+            <MicButton app={app} onText={(said) => onVoice.current(said)} onError={onError} />
           ) : (
             <>
-              <button className="icon-btn attach" onClick={pick} aria-label="Attach files" title="Attach files (or drop / paste them)">
+              <button className="icon-btn attach" onClick={pick} aria-label={t('chat.composer.attach')} title={t('chat.composer.attachTitle')}>
                 <svg viewBox="0 0 16 16" width="15" height="15" aria-hidden>
                   <path d="M10.5 4.5 5.8 9.2a1.4 1.4 0 0 0 2 2l5-5a2.8 2.8 0 0 0-4-4l-5.2 5.2a4.2 4.2 0 0 0 6 6l4.4-4.4" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
               </button>
-              <MicButton app={app} onText={(t) => onVoice.current(t)} onError={onError} />
-              <HandsFree app={app} send={(t) => void api.agent.send(t).catch(onError)} onError={onError} />
-              <button className="chip model-chip" onClick={onOpenPicker} title={`Switch model (${app.platform === 'darwin' ? '⌘K' : 'Ctrl+K'})`}>
-                <span className={`dot ${ready ? 'ok' : 'bad'}`} aria-label={ready ? 'Provider ready' : 'Provider needs setup'} />
+              <MicButton app={app} onText={(said) => onVoice.current(said)} onError={onError} />
+              <HandsFree app={app} send={(said) => void api.agent.send(said).catch(onError)} onError={onError} />
+              <button className="chip model-chip" onClick={onOpenPicker} title={t('chat.composer.switchModel', { key: app.platform === 'darwin' ? '⌘K' : 'Ctrl+K' })}>
+                <span className={`dot ${ready ? 'ok' : 'bad'}`} aria-label={t(ready ? 'chat.composer.providerReady' : 'chat.composer.providerSetup')} />
                 {model && <ProviderLogo id={model.providerId} size={13} />}
                 {model && <MakerLogo modelId={model.modelId} providerId={model.providerId} size={13} />}
-                <span className="model-chip-name">{model ? modelLabel(model.modelId) : 'Pick a model'}</span>
+                <span className="model-chip-name">{model ? modelLabel(model.modelId) : t('chat.composer.pickModel')}</span>
                 <span className="muted small">{model?.providerId}</span>
               </button>
               {model && <ThinkingPicker app={app} model={model} onState={onState} onError={onError} />}
@@ -330,27 +348,27 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
                   className={`chip mix ${mixing ? 'on' : ''}`}
                   aria-pressed={mixing}
                   onClick={() => api.agent.setMoa(!mixing).then(onState, onError)}
-                  title={`Mixture of Agents for this chat: ${moa.proposers.length} models answer, ${modelLabel(moa.aggregator!.modelId)} combines them. Each reply costs more.`}
+                  title={t('chat.composer.mixTitle', { count: moa.proposers.length, model: modelLabel(moa.aggregator!.modelId) })}
                 >
-                  Mix{mixing ? ` · ${moa.proposers.length}` : ''}
+                  {mixing ? t('chat.composer.mixCount', { count: moa.proposers.length }) : t('chat.composer.mix')}
                 </button>
             )}
               {/* Narrow windows: the same choice as one compact picker, so the bar never wraps. */}
               <select
                 className="chip mode-compact"
-                aria-label="Permission mode"
-                title="Permission mode (Shift+Tab to cycle)"
+                aria-label={t('chat.composer.mode')}
+                title={t('chat.composer.modeTitle')}
                 value={app.mode}
                 onChange={(e) => api.agent.setMode(e.target.value as PermissionMode).then(onState, onError)}
               >
-                {MODES.map((m) => (
+                {MODE_LIST.map((m) => (
                   <option key={m.id} value={m.id}>
                     {m.label}
                   </option>
                 ))}
               </select>
-              <div className="modes" title="Permission mode (Shift+Tab to cycle)">
-                {MODES.map((m) => (
+              <div className="modes" title={t('chat.composer.modeTitle')}>
+                {MODE_LIST.map((m) => (
                   <button key={m.id} aria-pressed={app.mode === m.id} className={`mode mode-${m.id} ${app.mode === m.id ? 'on' : ''}`} title={m.hint} onClick={() => api.agent.setMode(m.id).then(onState, onError)}>
                     {m.label}
                   </button>
@@ -360,17 +378,18 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
           )}
           </div>
           {app.running && lobby !== undefined && text.trim() ? (
-            <button className="btn primary" onClick={() => submit()} title="Stops the reply in progress and sends yours">
-              Send ↵
+            <button className="btn primary" onClick={() => submit()} title={t('chat.composer.interrupt')}>
+              {t('chat.composer.send')} ↵
             </button>
           ) : app.running ? (
             <button className="btn stop" onClick={() => api.agent.stop()}>
-              ■ Stop
+              ■ {t('common.stop')}
             </button>
           ) : (
             <button className="btn primary" disabled={!text.trim() && !attachments.length} onClick={() => submit()}>
-              Send ↵
+              {t('chat.composer.send')} ↵
             </button>
+
           )}
         </div>
       </div>

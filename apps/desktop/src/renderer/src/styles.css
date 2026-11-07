@@ -869,8 +869,10 @@ kbd {
   white-space: nowrap;
 }
 .tool-state {
+  flex: none;
   font-size: 0.8em;
   color: var(--muted);
+  white-space: nowrap;
 }
 .tool-error .tool-state,
 .tool-denied .tool-state {
@@ -1332,6 +1334,23 @@ kbd {
     display: inline-flex;
   }
 }
+/* Longer mode labels need the compact picker sooner. */
+@container (max-width: 1000px) {
+  :root:is(:lang(az), :lang(tr)) .composer-tools .modes {
+    display: none;
+  }
+  :root:is(:lang(az), :lang(tr)) .composer-tools .mode-compact {
+    display: inline-flex;
+  }
+}
+@container (max-width: 1120px) {
+  :root:lang(ru) .composer-tools .modes {
+    display: none;
+  }
+  :root:lang(ru) .composer-tools .mode-compact {
+    display: inline-flex;
+  }
+}
 .composer-tools > .thinking {
   flex: 0 1 auto;
   min-width: 52px;
@@ -1340,6 +1359,13 @@ kbd {
   max-width: 100%;
   text-overflow: ellipsis;
 }
+/* Text in a flex chip only ellipsizes inside its own box. */
+.thinking-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 @container (max-width: 640px) {
   .composer-tools .model-chip .muted.small {
     display: none;
@@ -1537,6 +1563,7 @@ details.mixed > summary {
   border-radius: 99px;
   font-size: 0.8em;
   color: var(--muted);
+  white-space: nowrap;
 }
 .mode.on {
   background: var(--panel-2);
@@ -2065,6 +2092,7 @@ button.sb-item:hover {
   border: 1px solid var(--border);
   font-size: 0.82em;
   color: var(--muted);
+  white-space: nowrap;
 }
 .fchip:hover {
   border-color: var(--muted);

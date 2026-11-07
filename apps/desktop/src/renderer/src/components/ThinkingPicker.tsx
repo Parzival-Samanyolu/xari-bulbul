@@ -1,8 +1,19 @@
 import { useEffect, useRef, useState } from 'react'
-import { EFFORT_LABELS, EFFORT_LEVELS, batchMode, fastMode, refKey, type ReasoningEffort } from '@harness/core/catalog'
+import { EFFORT_LEVELS, batchMode, fastMode, refKey, type ReasoningEffort } from '@harness/core/catalog'
 import { activeBot } from '@harness/core/bots'
 import type { AppState, ModelRef, Settings } from '../../../shared/ipc'
 import { api } from '../lib/api'
+import { useT } from '../lib/i18n'
+import type { MessageKey } from '../../../shared/i18n/catalog'
+
+const EFFORT_LABELS: Record<ReasoningEffort, MessageKey> = {
+  none: 'chat.thinking.effort.none',
+  low: 'chat.thinking.effort.low',
+  medium: 'chat.thinking.effort.medium',
+  high: 'chat.thinking.effort.high',
+  xhigh: 'chat.thinking.effort.xhigh',
+  max: 'chat.thinking.effort.max',
+}
 
 interface Props {
   app: AppState
@@ -13,6 +24,7 @@ interface Props {
 
 /** Thinking level and fast mode for the model on screen, saved as that model's override. */
 export function ThinkingPicker({ app, model, onState, onError }: Props) {
+  const { t } = useT()
   const [open, setOpen] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
   const pop = useRef<HTMLDivElement>(null)
@@ -30,9 +42,9 @@ export function ThinkingPicker({ app, model, onState, onError }: Props) {
   // What the next request uses: Plan mode's batch setting wins over the model's own speed.
   const speed = planBatch ? 'batch' : o.speed === 'fast' && fast.supported ? 'fast' : o.speed === 'batch' && batch.supported ? 'batch' : 'standard'
   const speeds = [
-    { id: 'standard' as const, label: 'Standard', hint: 'Normal speed and price', show: true },
-    { id: 'fast' as const, label: 'Fast', hint: fast.hint, show: fast.supported },
-    { id: 'batch' as const, label: 'Batch', hint: batch.hint, show: batch.supported },
+    { id: 'standard' as const, label: t('chat.thinking.standard'), hint: t('chat.thinking.standardHint'), show: true },
+    { id: 'fast' as const, label: t('chat.thinking.fast'), hint: fast.hint, show: fast.supported },
+    { id: 'batch' as const, label: t('chat.thinking.batch'), hint: batch.hint, show: batch.supported },
   ].filter((x) => x.show)
 
   const close = (refocus = true) => {
@@ -77,7 +89,7 @@ export function ThinkingPicker({ app, model, onState, onError }: Props) {
   }
 
   const levels: (ReasoningEffort | null)[] = [null, ...EFFORT_LEVELS]
-  const label = effort ? EFFORT_LABELS[effort] : 'Default'
+  const label = effort ? t(EFFORT_LABELS[effort]) : t('chat.thinking.default')
 
   return (
     <div className="thinking">
@@ -86,16 +98,16 @@ export function ThinkingPicker({ app, model, onState, onError }: Props) {
         className={`chip ${speed !== 'standard' ? 'fast' : ''}`}
         aria-haspopup="dialog"
         aria-expanded={open}
-        title="Thinking level and speed for this model"
+        title={`${t('chat.thinking.chip', { level: label })}\n${t('chat.thinking.chipTitle')}`}
         onClick={() => setOpen((v) => !v)}
       >
-        Thinking: {label}
-        {speed !== 'standard' && <span className="fast-tag">· {speed === 'fast' ? 'Fast' : 'Batch'}</span>}
+        <span className="thinking-label">{t('chat.thinking.chip', { level: label })}</span>
+        {speed !== 'standard' && <span className="fast-tag">· {t(speed === 'fast' ? 'chat.thinking.fast' : 'chat.thinking.batch')}</span>}
       </button>
       {open && (
-        <div className="thinking-pop" ref={pop} role="dialog" aria-label="Thinking and speed" onKeyDown={onKey}>
-          <div className="menu-label">Thinking</div>
-          <div role="radiogroup" aria-label="Thinking level">
+        <div className="thinking-pop" ref={pop} role="dialog" aria-label={t('chat.thinking.dialog')} onKeyDown={onKey}>
+          <div className="menu-label">{t('chat.thinking.heading')}</div>
+          <div role="radiogroup" aria-label={t('chat.thinking.level')}>
             {levels.map((l) => {
               const on = (o.reasoningEffort ?? null) === l
               return (
@@ -107,16 +119,24 @@ export function ThinkingPicker({ app, model, onState, onError }: Props) {
                   onClick={() => save((x) => (x.reasoningEffort = l ?? undefined))}
                 >
                   <span className="check" aria-hidden>{on ? '✓' : ''}</span>
-                  {l ? EFFORT_LABELS[l] : 'Default'}
-                  {!l && <span className="muted small">{fallback ? `${EFFORT_LABELS[fallback]}${bot?.thinking ? ` (${bot.name})` : ''}` : 'provider default'}</span>}
+                  {l ? t(EFFORT_LABELS[l]) : t('chat.thinking.default')}
+                  {!l && (
+                    <span className="muted small">
+                      {fallback
+                        ? bot?.thinking
+                          ? t('chat.thinking.botLevel', { level: t(EFFORT_LABELS[fallback]), bot: bot.name })
+                          : t(EFFORT_LABELS[fallback])
+                        : t('chat.thinking.providerDefault')}
+                    </span>
+                  )}
                 </button>
               )
             })}
           </div>
           {speeds.length > 1 && (
             <>
-              <div className="menu-label">Speed</div>
-              <div role="radiogroup" aria-label="Speed">
+              <div className="menu-label">{t('chat.thinking.speed')}</div>
+              <div role="radiogroup" aria-label={t('chat.thinking.speed')}>
                 {speeds.map((x) => {
                   const on = (o.speed ?? 'standard') === x.id
                   return (
@@ -138,8 +158,9 @@ export function ThinkingPicker({ app, model, onState, onError }: Props) {
                 <span />
               </span>
               <span className="speed-text">
-                Batch while planning
-                <span className="muted small">Plan mode uses batch, for any model on this provider</span>
+                {t('chat.thinking.batchPlanning')}
+                <span className="muted small">{t('chat.thinking.batchPlanningHint')}</span>
+
               </span>
             </button>
           )}

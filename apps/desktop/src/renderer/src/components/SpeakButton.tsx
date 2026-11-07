@@ -1,15 +1,18 @@
 import { useSyncExternalStore } from 'react'
 import { speaker, type SpeakAs } from '../lib/speech'
+import { useT } from '../lib/i18n'
 
 /** Play/stop for reading one assistant message aloud. */
 export function SpeakButton({ id, text, as }: { id: string; text: string; as?: SpeakAs }) {
+  const { t } = useT()
   const playing = useSyncExternalStore(speaker.subscribe, () => speaker.playing === id)
   return (
     <button
       type="button"
       className={`speak-btn${playing ? ' on' : ''}`}
-      aria-label={playing ? 'Stop reading aloud' : 'Read aloud'}
-      title={playing ? 'Stop reading aloud (Esc)' : 'Read aloud'}
+      aria-label={t(playing ? 'chat.speak.stop' : 'chat.speak.read')}
+      title={t(playing ? 'chat.speak.stopTitle' : 'chat.speak.read')}
+
       onClick={() => speaker.toggle(id, text, as)}
     >
       {playing ? (

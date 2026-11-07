@@ -9,13 +9,14 @@ export function cost(usd: number, partial = false): string {
   return partial ? `${s}+` : s
 }
 
-/** Per-token USD → "$x / M tokens". */
-export function perMillion(perToken?: number): string {
+/** Per-token USD → "$x / M tokens"; `free` is the word for a zero price, in the interface language. */
+export function perMillion(perToken?: number, free = 'free'): string {
   if (perToken == null) return '—'
   const m = perToken * 1_000_000
-  return m === 0 ? 'free' : `$${m < 1 ? m.toFixed(2) : m.toFixed(m < 10 ? 2 : 0)}`
+  return m === 0 ? free : `$${m < 1 ? m.toFixed(2) : m.toFixed(m < 10 ? 2 : 0)}`
 }
 
+/** English only; translated views use `useFormat().ago`. */
 export function ago(ts: number): string {
   const s = Math.round((Date.now() - ts) / 1000)
   if (s < 60) return 'just now'

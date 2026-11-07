@@ -1,11 +1,13 @@
 import { useRef } from 'react'
 import type { Settings } from '../../../shared/ipc'
+import type { MessageKey } from '../../../shared/i18n/catalog'
+import { useT } from '../lib/i18n'
 
 export type Layout = Settings['appearance']['layout']
 
-const LAYOUTS: { id: Layout; name: string; blurb: string }[] = [
-  { id: 'basic', name: 'Basic', blurb: 'For chatting with the agent.' },
-  { id: 'elite', name: 'Elite', blurb: 'For developers: terminal, files, diffs.' },
+const LAYOUTS: { id: Layout; name: MessageKey; blurb: MessageKey }[] = [
+  { id: 'basic', name: 'chat.layout.basic', blurb: 'chat.layout.basicBlurb' },
+  { id: 'elite', name: 'chat.layout.elite', blurb: 'chat.layout.eliteBlurb' },
 ]
 
 /** Settings with `layout` chosen: Elite opens the side and bottom panels, Basic closes them. */
@@ -37,6 +39,7 @@ function Wireframe({ layout }: { layout: Layout }) {
 
 /** The two layouts as a radio group: arrow keys move the choice, Tab leaves the group. */
 export function LayoutPicker({ value, onChange }: { value: Layout; onChange: (l: Layout) => void }) {
+  const { t } = useT()
   const refs = useRef<(HTMLButtonElement | null)[]>([])
   const onKey = (e: React.KeyboardEvent, i: number) => {
     const step = e.key === 'ArrowRight' || e.key === 'ArrowDown' ? 1 : e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 0
@@ -47,7 +50,7 @@ export function LayoutPicker({ value, onChange }: { value: Layout; onChange: (l:
     refs.current[j]?.focus()
   }
   return (
-    <div className="layout-tiles" role="radiogroup" aria-label="Layout">
+    <div className="layout-tiles" role="radiogroup" aria-label={t('chat.layout.label')}>
       {LAYOUTS.map((l, i) => {
         const on = l.id === value
         return (
@@ -65,8 +68,9 @@ export function LayoutPicker({ value, onChange }: { value: Layout; onChange: (l:
             onKeyDown={(e) => onKey(e, i)}
           >
             <Wireframe layout={l.id} />
-            <span className="layout-name">{l.name}</span>
-            <span className="layout-blurb">{l.blurb}</span>
+            <span className="layout-name">{t(l.name)}</span>
+            <span className="layout-blurb">{t(l.blurb)}</span>
+
           </button>
         )
       })}

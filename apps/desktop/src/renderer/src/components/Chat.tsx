@@ -13,6 +13,8 @@ import { ProviderLogo } from './ProviderLogo'
 import { basename, modelLabel } from '../lib/format'
 import { SpeakButton } from './SpeakButton'
 import { speakerFor, type SpeakAs } from '../lib/speech'
+import { useFormat, useT } from '../lib/i18n'
+import { rich } from '../lib/rich'
 
 type ToolCallT = NonNullable<Extract<ChatMessage, { role: 'assistant' }>['toolCalls']>[number]
 
@@ -41,7 +43,7 @@ type UserMessage = Extract<ChatMessage, { role: 'user' }>
 type AssistantMessageT = Extract<ChatMessage, { role: 'assistant' }>
 type ToolMessage = Extract<ChatMessage, { role: 'tool' }>
 
-const FIX_LABEL = { providers: 'Open API keys', usage: 'Open Usage', agent: 'Open Agent limits' } as const
+const FIX_LABEL = { providers: 'chat.notice.fixProviders', usage: 'chat.notice.fixUsage', agent: 'chat.notice.fixAgent' } as const
 /** The Settings section each fix opens. */
 const FIX_TARGET = { providers: 'providers.keys', usage: 'usage', agent: 'advanced.limits' } as const
 
@@ -57,6 +59,7 @@ function OneChat({ app, live, onDismiss, onSettings, approval, question, onRetry
   // Memoized: a new object every render would re-render every message.
   const chatVoice = useMemo(() => speakerFor(app), [app.session?.meta.botId, app.settings.bots])
   const botVoices = useMemo(() => Object.fromEntries(app.settings.bots.map((b) => [b.id, b.voice ?? null])), [app.settings.bots])
+  const { t } = useT()
   const scroller = useRef<HTMLDivElement>(null)
   const stick = useRef(true)
   const appearance = app.settings.appearance
@@ -96,11 +99,11 @@ function OneChat({ app, live, onDismiss, onSettings, approval, question, onRetry
   const botOn = !!bot?.enabled
   // Announced to screen readers; streamed text itself is not announced token by token.
   const status = approval
-    ? `Approval needed: ${approval.request.tool} ${approval.request.subject}`
+    ? t('chat.status.approval', { tool: approval.request.tool, subject: approval.request.subject })
     : question
-      ? `Question: ${question.request.question}`
+      ? t('chat.status.question', { question: question.request.question })
       : app.running
-        ? 'Working'
+        ? t('chat.status.working')
         : ''
   // The turn in progress can't be reverted or edited until it ends.
   const lastTurn = turns.starts.at(-1) ?? -1
@@ -139,9 +142,9 @@ function OneChat({ app, live, onDismiss, onSettings, approval, question, onRetry
       <div className="chat-inner">
         {bot && !botOn && (
           <div className="notice notice-warn" role="status">
-            <span>This bot is turned off, so this chat works as a plain chat.</span>
+            <span>{t('chat.bot.off')}</span>
             <button className="btn" onClick={() => api.settings.set(turnOnBot(app, bot.id)).then(onState, onError)}>
-              Turn on
+              {t('chat.bot.turnOn')}
             </button>
           </div>
         )}
@@ -152,8 +155,8 @@ function OneChat({ app, live, onDismiss, onSettings, approval, question, onRetry
             <h2>{bot.name}</h2>
             {bot.tagline && <p className="bot-intro-tag">{bot.tagline}</p>}
             <p className="muted small">
-              Works in <span title={session.meta.cwd}>{basename(session.meta.cwd)}</span> with {modelLabel(session.meta.model.modelId)}.{' '}
-              {bot.greeting?.trim() ? '' : `Say hi to ${bot.name}.`}
+              {rich(t('chat.bot.worksIn', { model: modelLabel(session.meta.model.modelId) }), { folder: <span title={session.meta.cwd}>{basename(session.meta.cwd)}</span> })}{' '}
+              {bot.greeting?.trim() ? '' : t('chat.bot.sayHi', { name: bot.name })}
             </p>
           </div>
         )}
@@ -214,7 +217,7 @@ function OneChat({ app, live, onDismiss, onSettings, approval, question, onRetry
             <div className="tool-head static">
               <span className="tool-name">{approval.request.tool}</span>
               <span className="tool-subject">{approval.request.subject}</span>
-              <span className="tool-state">needs approval</span>
+              <span className="tool-state">{t('chat.tool.needsApproval')}</span>
             </div>
             <Approval key={approval.request.callId} request={approval.request} onAnswer={approval.onAnswer} />
           </div>
@@ -228,7 +231,7 @@ function OneChat({ app, live, onDismiss, onSettings, approval, question, onRetry
         {session.todos.length > 0 && <Todos todos={session.todos} />}
         {live.notices.map((n) => (
           <div key={n.id} className={`notice notice-${n.level}`} role={n.level === 'error' ? 'alert' : 'status'}>
-            <span>{n.text}</span>
+            <span>{n.msg ? t(n.msg.key, n.msg.vars) : n.text}</span>
             {n.retry && !app.running && (
               <button
                 className="btn"
@@ -237,7 +240,7 @@ function OneChat({ app, live, onDismiss, onSettings, approval, question, onRetry
                   onRetry()
                 }}
               >
-                Retry
+                {t('common.retry')}
               </button>
             )}
             {n.resume && !app.running && (
@@ -248,7 +251,7 @@ function OneChat({ app, live, onDismiss, onSettings, approval, question, onRetry
                   onContinue()
                 }}
               >
-                Continue
+                {t('chat.notice.continue')}
               </button>
             )}
             {n.memory && (
@@ -259,15 +262,15 @@ function OneChat({ app, live, onDismiss, onSettings, approval, question, onRetry
                   onUndoMemory(n.memory!)
                 }}
               >
-                Undo
+                {t('chat.notice.undo')}
               </button>
             )}
             {n.fix && (
               <button className="btn" onClick={() => onSettings(FIX_TARGET[n.fix!])}>
-                {FIX_LABEL[n.fix]}
+                {t(FIX_LABEL[n.fix])}
               </button>
             )}
-            <button className="notice-close" aria-label="Dismiss" onClick={() => onDismiss(n.id)}>
+            <button className="notice-close" aria-label={t('chat.notice.dismiss')} onClick={() => onDismiss(n.id)}>
               ×
             </button>
           </div>
@@ -278,22 +281,18 @@ function OneChat({ app, live, onDismiss, onSettings, approval, question, onRetry
 }
 
 function EmptyChat({ app }: { app: AppState }) {
+  const { t } = useT()
   const cmds = app.extensions.commands.filter((c) => c.source !== 'builtin')
   return (
     <div className="empty">
-      <h2>What should we build?</h2>
-      <p className="muted">
-        Xarı Bülbül can read, search, edit and run code in <code>{app.workspace}</code>. It asks before changing anything unless you pick a different
-        permission mode below.
-      </p>
+      <h2>{t('chat.empty.title')}</h2>
+      <p className="muted">{rich(t('chat.empty.intro'), { folder: <code>{app.workspace}</code> })}</p>
       <ul className="tips">
         <li>
-          <kbd>{app.platform === 'darwin' ? '⌘K' : 'Ctrl+K'}</kbd> switch model · <kbd>/</kbd> commands · <kbd>Esc</kbd> stop
+          <kbd>{app.platform === 'darwin' ? '⌘K' : 'Ctrl+K'}</kbd> {t('chat.empty.tipModel')} · <kbd>/</kbd> {t('chat.empty.tipCommands')} · <kbd>Esc</kbd> {t('chat.empty.tipStop')}
         </li>
-        <li>
-          Add an <code>AGENTS.md</code> to the project to give Xarı Bülbül standing instructions.
-        </li>
-        {cmds.length > 0 && <li>Your commands: {cmds.map((c) => `/${c.name}`).join(', ')}</li>}
+        <li>{rich(t('chat.empty.agentsMd'), { file: <code>AGENTS.md</code> })}</li>
+        {cmds.length > 0 && <li>{t('chat.empty.commands', { list: cmds.map((c) => `/${c.name}`).join(', ') })}</li>}
       </ul>
     </div>
   )
@@ -324,19 +323,18 @@ function turnLayout(messages: ChatMessage[], checkpoints: Checkpoint[]) {
 const base = (p: string) => p.split(/[\\/]/).pop() ?? p
 
 function RevertBar({ checkpoint, onRevert }: { checkpoint: Checkpoint; onRevert: (at: number) => void }) {
+  const { t } = useT()
   const files = Object.keys(checkpoint.files)
-  const label = files.length === 1 ? base(files[0]) : `${files.length} files`
+  const one = files.length === 1
   return (
     <div className="revert-bar">
-      <span className="muted small">
-        Changed {label}
-      </span>
+      <span className="muted small">{one ? t('chat.revert.changedOne', { name: base(files[0]) }) : t('chat.revert.changedMany', { count: files.length })}</span>
       <button
         className="link small"
         title={files.join('\n')}
-        onClick={() => confirm(`Put ${label} back the way ${files.length === 1 ? 'it was' : 'they were'} before this turn? Changes made with shell commands aren't undone.`) && onRevert(checkpoint.at)}
+        onClick={() => confirm(one ? t('chat.revert.confirmOne', { name: base(files[0]) }) : t('chat.revert.confirmMany', { count: files.length })) && onRevert(checkpoint.at)}
       >
-        Revert changes
+        {t('chat.revert.button')}
       </button>
     </div>
   )
@@ -353,6 +351,7 @@ const UserBubble = memo(function UserBubble({
   laterChanges: number
   onEdit?: (index: number, text: string, revert: boolean) => void
 }) {
+  const { t } = useT()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(message.content)
   const [undo, setUndo] = useState(true)
@@ -360,12 +359,12 @@ const UserBubble = memo(function UserBubble({
   // Reminders are notes for the model (mode switches, files changed on disk), not part of the chat.
   if (message.synthetic === 'reminder') return null
   const summary = text.startsWith('[Summary of the earlier conversation]')
-  if (summary) return <div className="user summary"><details><summary>Earlier conversation (summarized)</summary><Markdown text={text} /></details></div>
+  if (summary) return <div className="user summary"><details><summary>{t('chat.user.summary')}</summary><Markdown text={text} /></details></div>
   if (message.synthetic === 'review')
     return (
       <div className="user summary review">
         <details>
-          <summary>Checked for unfinished steps before finishing</summary>
+          <summary>{t('chat.user.review')}</summary>
           <Markdown text={text.replace(/^\[Automatic check before you finish\]\s*/, '')} />
         </details>
       </div>
@@ -383,7 +382,7 @@ const UserBubble = memo(function UserBubble({
             <span key={`f${i}`} className="attachment" title={f.path ?? f.name}>
               <span className="attachment-icon" aria-hidden>≡</span>
               <span className="attachment-name">{f.name}</span>
-              <span className="muted small">{f.text.split('\n').length} lines</span>
+              <span className="muted small">{t('chat.user.lines', { count: f.text.split('\n').length })}</span>
             </span>
           ))}
         </div>
@@ -401,7 +400,7 @@ const UserBubble = memo(function UserBubble({
           <textarea
             autoFocus
             value={draft}
-            aria-label="Edit message"
+            aria-label={t('chat.user.editLabel')}
             rows={Math.min(12, draft.split('\n').length + 1)}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
@@ -415,16 +414,15 @@ const UserBubble = memo(function UserBubble({
           <div className="user-edit-actions">
             {laterChanges > 0 && (
               <label className="small">
-                <input type="checkbox" checked={undo} onChange={(e) => setUndo(e.target.checked)} /> Also undo the file changes made after this message (
-                {laterChanges} {laterChanges === 1 ? 'file' : 'files'})
+                <input type="checkbox" checked={undo} onChange={(e) => setUndo(e.target.checked)} /> {t('chat.user.alsoUndo', { count: laterChanges })}
               </label>
             )}
-            <span className="muted small">Later messages are removed.</span>
+            <span className="muted small">{t('chat.user.laterRemoved')}</span>
             <button type="button" className="btn ghost" onClick={() => setEditing(false)}>
-              Cancel
+              {t('common.cancel')}
             </button>
             <button type="submit" className="btn primary" disabled={!draft.trim()}>
-              Send
+              {t('chat.user.send')}
             </button>
           </div>
         </form>
@@ -440,7 +438,7 @@ const UserBubble = memo(function UserBubble({
                   setEditing(true)
                 }}
               >
-                Edit
+                {t('common.edit')}
               </button>
             )}
             <div className="user">{text}</div>
@@ -472,6 +470,7 @@ const AssistantMessage = memo(function AssistantMessage(props: {
   voices?: Record<string, SpeakAs['voice']>
 }) {
   const { message: m, tools, results, displays, denied, approval, question, checkpoint, onRevert } = props
+  const { t } = useT()
   return (
     <div className="assistant">
       {m.reasoning && props.showReasoning && <Reasoning text={m.reasoning} />}
@@ -492,7 +491,7 @@ const AssistantMessage = memo(function AssistantMessage(props: {
             expandDefault={props.expandDefault}
             approval={approval && owns(c.id, approval.request) ? approval : undefined}
             question={question?.request.callId === c.id ? question : undefined}
-            onRevertFile={file && checkpoint ? () => confirm(`Put ${base(file)} back the way it was before this turn?`) && onRevert(checkpoint.at, file) : undefined}
+            onRevertFile={file && checkpoint ? () => confirm(t('chat.revert.confirmFile', { name: base(file) })) && onRevert(checkpoint.at, file) : undefined}
           />
         )
       })}
@@ -502,16 +501,17 @@ const AssistantMessage = memo(function AssistantMessage(props: {
 
 /** "Mixed from N models": who answered, and each answer on request. */
 function MixedFrom({ info }: { info: MixtureInfo }) {
+  const { t } = useT()
   const answers = [
-    ...(info.draft ? [{ model: info.draft.model, content: info.draft.content, error: undefined, note: 'chat model draft' }] : []),
+    ...(info.draft ? [{ model: info.draft.model, content: info.draft.content, error: undefined, note: t('chat.mixed.draftNote') }] : []),
     ...info.proposals.map((p) => ({ ...p, note: '' })),
   ]
   const used = answers.filter((a) => a.content).length
   return (
     <details className="mixed">
       <summary>
-        Mixed from {used} {used === 1 ? 'model' : 'models'}
-        <span className="muted"> · combined by {modelLabel(info.aggregator.modelId)}</span>
+        {t('chat.mixed.from', { count: used })}
+        <span className="muted"> · {t('chat.mixed.combinedBy', { model: modelLabel(info.aggregator.modelId) })}</span>
       </summary>
       <ul className="mixed-list">
         {answers.map((a, i) => (
@@ -529,7 +529,7 @@ function MixedFrom({ info }: { info: MixtureInfo }) {
             ) : (
               <div className="mixed-failed">
                 <ProviderLogo id={a.model.providerId} size={12} /> {modelLabel(a.model.modelId)}
-                <span className="muted"> · left out: {a.error}</span>
+                <span className="muted"> · {t('chat.mixed.leftOut', { error: a.error ?? '' })}</span>
               </div>
             )}
           </li>
@@ -540,18 +540,21 @@ function MixedFrom({ info }: { info: MixtureInfo }) {
 }
 
 function LiveReply({ live, showReasoning, botName }: { live: LiveState; showReasoning: boolean; botName?: string }) {
+  const { t } = useT()
+  const status = live.status ? t(live.status.key, live.status.vars) : botName ? t('chat.live.botThinking', { name: botName }) : undefined
   return (
     <div className="assistant live">
       {live.streamReasoning && showReasoning && <Reasoning text={live.streamReasoning} open />}
-      {live.streamText ? <Markdown text={live.streamText} /> : <Thinking tools={live.tools} status={live.status ?? (botName ? `${botName} is thinking…` : undefined)} />}
+      {live.streamText ? <Markdown text={live.streamText} /> : <Thinking tools={live.tools} status={status} />}
     </div>
   )
 }
 
 function Reasoning({ text, open }: { text: string; open?: boolean }) {
+  const { t } = useT()
   return (
     <details className="reasoning" open={open}>
-      <summary>Thinking</summary>
+      <summary>{t('chat.reasoning.title')}</summary>
       <div className="reasoning-body">{text}</div>
     </details>
   )
@@ -563,7 +566,8 @@ function owns(callId: string, request: PermissionRequest): boolean {
 }
 
 function Thinking({ tools, status }: { tools: Record<string, ToolLive>; status?: string }) {
-  const running = Object.values(tools).find((t) => !t.done)
+  const { t } = useT()
+  const running = Object.values(tools).find((x) => !x.done)
   return (
     <div className="thinking">
       <span className="dots">
@@ -571,7 +575,7 @@ function Thinking({ tools, status }: { tools: Record<string, ToolLive>; status?:
         <i />
         <i />
       </span>
-      {running ? (running.name === 'task' ? 'Subagent working…' : `Running ${running.name}…`) : (status ?? 'Working…')}
+      {running ? (running.name === 'task' ? t('chat.live.subagent') : t('chat.live.running', { tool: running.name })) : (status ?? t('chat.live.working'))}
     </div>
   )
 }
@@ -588,6 +592,8 @@ const ToolCard = memo(function ToolCard(props: {
   onRevertFile?: () => void
 }) {
   const { call, live, result, display, denied, approval, question } = props
+  const { t } = useT()
+  const fmt = useFormat()
   // null = follow the default (diffs open automatically once they arrive); a click overrides it.
   const [toggled, setToggled] = useState<boolean | null>(null)
   const input = useMemo<Record<string, unknown>>(() => {
@@ -611,7 +617,7 @@ const ToolCard = memo(function ToolCard(props: {
   return (
     <div className={`tool tool-${state}`}>
       <button className="tool-head" aria-expanded={open} onClick={() => setToggled(!open)}>
-        <span className="tool-name">{task ? (input.type === 'general' ? 'subagent' : 'subagent · read-only') : call.name}</span>
+        <span className="tool-name">{task ? (input.type === 'general' ? t('chat.tool.subagent') : t('chat.tool.subagentReadOnly')) : call.name}</span>
         <span className="tool-subject">{subject}</span>
         {diff && (
           <span className="diffstat">
@@ -619,7 +625,19 @@ const ToolCard = memo(function ToolCard(props: {
           </span>
         )}
         <span className="tool-state">
-          {state === 'awaiting' ? (question ? 'needs an answer' : 'needs approval') : state === 'running' ? <span className="spinner" aria-label="Running" /> : state === 'denied' ? 'denied' : state === 'error' ? 'failed' : live?.durationMs != null ? `${(live.durationMs / 1000).toFixed(1)}s` : ''}
+          {state === 'awaiting' ? (
+            t(question ? 'chat.tool.needsAnswer' : 'chat.tool.needsApproval')
+          ) : state === 'running' ? (
+            <span className="spinner" aria-label={t('chat.tool.running')} />
+          ) : state === 'denied' ? (
+            t('chat.tool.denied')
+          ) : state === 'error' ? (
+            t('chat.tool.failed')
+          ) : live?.durationMs != null ? (
+            t('chat.tool.seconds', { seconds: fmt.num(live.durationMs / 1000, { minimumFractionDigits: 1, maximumFractionDigits: 1 }) })
+          ) : (
+            ''
+          )}
         </span>
       </button>
       {approval && <Approval key={approval.request.callId} request={approval.request} onAnswer={approval.onAnswer} />}
@@ -631,7 +649,7 @@ const ToolCard = memo(function ToolCard(props: {
               {props.onRevertFile && (
                 <div className="tool-actions">
                   <button className="link small" onClick={props.onRevertFile}>
-                    Revert this file
+                    {t('chat.revert.file')}
                   </button>
                 </div>
               )}
@@ -662,19 +680,20 @@ const ToolCard = memo(function ToolCard(props: {
 
 /** An ask_user call: the open question with its answer form, or the question and what you answered. */
 function AskUserCard({ input, result, question }: { input: Record<string, unknown>; result?: ToolMessage; question?: { request: QuestionRequest; onAnswer: (text: string) => void } }) {
+  const { t } = useT()
   const answer = result?.content.replace(/^The user answered: /, '')
   return (
     <div className={`tool ${question ? 'tool-awaiting' : 'tool-ok'} ask`}>
       <div className="tool-head static">
-        <span className="tool-name">question</span>
+        <span className="tool-name">{t('chat.ask.name')}</span>
         {/* While open, the question is shown in full below. */}
         <span className="tool-subject">{question ? '' : String(input.question ?? '')}</span>
-        <span className="tool-state">{question ? 'needs an answer' : result ? '' : <span className="spinner" aria-label="Waiting" />}</span>
+        <span className="tool-state">{question ? t('chat.tool.needsAnswer') : result ? '' : <span className="spinner" aria-label={t('chat.tool.waiting')} />}</span>
       </div>
       {question ? (
         <Question key={question.request.callId} request={question.request} onAnswer={question.onAnswer} />
       ) : (
-        result && <div className="ask-answer">{result.content.startsWith('The user answered: ') ? answer : 'No answer; the agent decided itself.'}</div>
+        result && <div className="ask-answer">{result.content.startsWith('The user answered: ') ? answer : t('chat.ask.noAnswer')}</div>
       )}
     </div>
   )
@@ -695,16 +714,18 @@ export function DiffView({ patch }: { patch: string }) {
 }
 
 function Todos({ todos }: { todos: { content: string; status: string }[] }) {
-  const done = todos.filter((t) => t.status === 'completed').length
+  const { t } = useT()
+  const done = todos.filter((x) => x.status === 'completed').length
   return (
     <div className="todos">
       <div className="todos-head">
-        Tasks <span className="muted">{done}/{todos.length}</span>
+        {t('chat.todos.title')} <span className="muted">{done}/{todos.length}</span>
       </div>
-      {todos.map((t, i) => (
-        <div key={i} className={`todo todo-${t.status}`}>
-          <span className="todo-box">{t.status === 'completed' ? '✓' : t.status === 'in_progress' ? '▸' : ''}</span>
-          {t.content}
+      {todos.map((x, i) => (
+        <div key={i} className={`todo todo-${x.status}`}>
+          <span className="todo-box">{x.status === 'completed' ? '✓' : x.status === 'in_progress' ? '▸' : ''}</span>
+          {x.content}
+
         </div>
       ))}
     </div>

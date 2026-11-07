@@ -6,6 +6,9 @@ import { useEffect, useRef } from 'react'
 import { prepareSpeech } from '@harness/core/speech'
 import type { AppState, Settings, SpeechAudio } from '../../../shared/ipc'
 import { api } from './api'
+import { makeT } from '@harness/core/i18n'
+import { CATALOGS, type MessageKey } from '../../../shared/i18n/catalog'
+import type { Msg } from '../App'
 
 type TtsSettings = Settings['voice']['tts']
 export type BotVoice = NonNullable<Settings['bots'][number]['voice']>
@@ -17,7 +20,13 @@ export interface SpeakAs {
   /** The bot editor: send `voice` to main instead of the saved one. */
   preview?: boolean
 }
-export type SpeechNotice = (level: 'info' | 'warn' | 'error', text: string) => void
+/** `text` is English; `msg` is the same notice as a catalogue message, to show it in the interface language. */
+export type SpeechNotice = (level: 'info' | 'warn' | 'error', text: string, msg?: Msg) => void
+
+const english = makeT<MessageKey>('en', CATALOGS)
+
+/** The page has no speechSynthesis. */
+class NoVoiceError extends Error {}
 
 const errorText = (e: unknown) => String((e as Error)?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
 
@@ -100,14 +109,14 @@ class Speaker {
     const chunks = prepareSpeech(markdown)
     if (!chunks.length) return
     const gen = this.gen
-    const notice: SpeechNotice = (level, text) => (opts.notice ?? this.onNotice)?.(level, text)
+    const notice = (level: 'info' | 'warn' | 'error', msg: Msg) => (opts.notice ?? this.onNotice)?.(level, english(msg.key, msg.vars), msg)
     this.setCurrent(id)
     try {
       const v = opts.as?.voice
       if (settings.provider === 'system') await this.system(chunks, v?.system || settings.voice, v?.rate ?? settings.rate, gen, v?.pitch ?? 1)
       else await this.remote(chunks, gen, opts.as)
     } catch (e) {
-      if (gen === this.gen) notice('error', `Couldn't read this aloud: ${errorText(e)}`)
+      if (gen === this.gen) notice('error', e instanceof NoVoiceError ? { key: 'chat.speech.noVoice' } : { key: 'chat.speech.failed', vars: { error: errorText(e) } })
     } finally {
       if (gen === this.gen) {
         this.releaseAudio()
@@ -118,7 +127,7 @@ class Speaker {
 
   private async system(chunks: string[], voiceId: string | null, rate: number, gen: number, pitch = 1): Promise<void> {
     const synth = window.speechSynthesis
-    if (!synth) throw new Error('this system has no speech voice')
+    if (!synth) throw new NoVoiceError('this system has no speech voice')
     const voices = voiceId ? await systemVoices() : []
     if (gen !== this.gen) return
     const voice = voiceId ? (voices.find((v) => v.voiceURI === voiceId) ?? voices.find((v) => v.name === voiceId) ?? null) : null

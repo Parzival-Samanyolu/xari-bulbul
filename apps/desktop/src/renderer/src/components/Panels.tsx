@@ -3,6 +3,8 @@ import type { AppState, DirListing, FileChange, FilePreview } from '../../../sha
 import { api } from '../lib/api'
 import { basename } from '../lib/format'
 import { DiffView } from './Chat'
+import { useFormat, useT } from '../lib/i18n'
+import type { MessageKey } from '../../../shared/i18n/catalog'
 
 /** Drag type for files dragged from the Files panel into the composer. */
 export const PATH_DRAG_TYPE = 'application/x-harness-path'
@@ -84,10 +86,11 @@ interface RightProps {
 type RightTab = 'files' | 'changes'
 
 export function RightPanel({ app, onState, onError }: RightProps) {
+  const { t } = useT()
   const [tab, setTab] = useState<RightTab>('files')
   const tabs: { id: RightTab; label: string }[] = [
-    { id: 'files', label: 'Files' },
-    { id: 'changes', label: 'Changes' },
+    { id: 'files', label: t('chat.panel.files') },
+    { id: 'changes', label: t('chat.panel.changes') },
   ]
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
@@ -98,26 +101,26 @@ export function RightPanel({ app, onState, onError }: RightProps) {
   }
   return (
     <div className="rpanel">
-      <div className="ptabs" role="tablist" aria-label="Side panel">
-        {tabs.map((t) => (
+      <div className="ptabs" role="tablist" aria-label={t('chat.panel.label')}>
+        {tabs.map((x) => (
           <button
-            key={t.id}
-            id={`rp-tab-${t.id}`}
+            key={x.id}
+            id={`rp-tab-${x.id}`}
             role="tab"
-            aria-selected={tab === t.id}
-            aria-controls={`rp-${t.id}`}
-            tabIndex={tab === t.id ? 0 : -1}
-            className={tab === t.id ? 'active' : ''}
-            onClick={() => setTab(t.id)}
+            aria-selected={tab === x.id}
+            aria-controls={`rp-${x.id}`}
+            tabIndex={tab === x.id ? 0 : -1}
+            className={tab === x.id ? 'active' : ''}
+            onClick={() => setTab(x.id)}
             onKeyDown={onKey}
           >
-            {t.label}
+            {x.label}
           </button>
         ))}
       </div>
       <div className="ppane" role="tabpanel" id={`rp-${tab}`} aria-labelledby={`rp-tab-${tab}`}>
         {tab === 'files' ? (
-          app.workspace ? <FilesPanel key={app.workspace} root={app.workspace} onError={onError} /> : <p className="muted small pad">Open a folder to see its files.</p>
+          app.workspace ? <FilesPanel key={app.workspace} root={app.workspace} onError={onError} /> : <p className="muted small pad">{t('chat.files.noFolder')}</p>
         ) : (
           <ChangesPanel app={app} onState={onState} onError={onError} />
         )}
@@ -129,6 +132,8 @@ export function RightPanel({ app, onState, onError }: RightProps) {
 // ---------------------------------------------------------------- files
 
 function FilesPanel({ root, onError }: { root: string; onError: (e: unknown) => void }) {
+  const { t } = useT()
+  const fmt = useFormat()
   const [dirs, setDirs] = useState<Record<string, DirListing | 'loading' | 'error'>>({})
   const [open, setOpen] = useState<Set<string>>(new Set())
   const [preview, setPreview] = useState<FilePreview | null>(null)
@@ -175,22 +180,22 @@ function FilesPanel({ root, onError }: { root: string; onError: (e: unknown) => 
       <div className="fpreview">
         <div className="phead">
           <button className="link small" onClick={() => setPreview(null)}>
-            ← Files
+            {t('chat.files.back')}
           </button>
           <span className="ellipsis small mono" title={preview.path}>
             {rel(preview.path)}
           </span>
           <span className="spacer" />
           <button className="link small" onClick={refresh}>
-            Reload
+            {t('chat.files.reload')}
           </button>
         </div>
         {preview.binary ? (
-          <p className="muted small pad">Binary file, not shown.</p>
+          <p className="muted small pad">{t('chat.files.binary')}</p>
         ) : (
           <>
-            {preview.truncated && <p className="muted small pad">Showing the first {Math.round(preview.text.length / 1024)} KB of {Math.round(preview.size / 1024)} KB.</p>}
-            <pre className="fpreview-text" tabIndex={0} aria-label={`Contents of ${basename(preview.path)}`}>
+            {preview.truncated && <p className="muted small pad">{t('chat.files.truncated', { shown: fmt.bytes(preview.text.length), total: fmt.bytes(preview.size) })}</p>}
+            <pre className="fpreview-text" tabIndex={0} aria-label={t('chat.files.contents', { name: basename(preview.path) })}>
               {preview.text}
             </pre>
           </>
@@ -200,9 +205,9 @@ function FilesPanel({ root, onError }: { root: string; onError: (e: unknown) => 
 
   const render = (dir: string, depth: number): React.ReactNode => {
     const l = dirs[dir]
-    if (!l || l === 'loading') return <li className="tree-note muted small" style={{ paddingLeft: 8 + depth * 12 }}>Loading…</li>
-    if (l === 'error') return <li className="tree-note muted small" style={{ paddingLeft: 8 + depth * 12 }}>Couldn't read this folder.</li>
-    if (!l.entries.length && depth > 0) return <li className="tree-note muted small" style={{ paddingLeft: 8 + depth * 12 }}>Empty</li>
+    if (!l || l === 'loading') return <li className="tree-note muted small" style={{ paddingLeft: 8 + depth * 12 }}>{t('common.loading')}</li>
+    if (l === 'error') return <li className="tree-note muted small" style={{ paddingLeft: 8 + depth * 12 }}>{t('chat.files.unreadable')}</li>
+    if (!l.entries.length && depth > 0) return <li className="tree-note muted small" style={{ paddingLeft: 8 + depth * 12 }}>{t('chat.files.empty')}</li>
     return (
       <>
         {l.entries.map((e) => {
@@ -221,7 +226,7 @@ function FilesPanel({ root, onError }: { root: string; onError: (e: unknown) => 
                   className={`tree-row file ${selected === e.path ? 'sel' : ''}`}
                   style={{ paddingLeft: 20 + depth * 12 }}
                   onClick={() => openFile(e.path)}
-                  title={`${rel(e.path)}\nDrag into the message box to attach it.`}
+                  title={`${rel(e.path)}\n${t('chat.files.dragHint')}`}
                   draggable
                   onDragStart={(ev) => {
                     ev.dataTransfer.setData(PATH_DRAG_TYPE, e.path)
@@ -238,7 +243,7 @@ function FilesPanel({ root, onError }: { root: string; onError: (e: unknown) => 
         })}
         {l.hidden > 0 && (
           <li className="tree-note muted small" style={{ paddingLeft: 8 + depth * 12 }}>
-            {l.hidden} more not shown
+            {t('chat.files.hidden', { count: l.hidden })}
           </li>
         )}
       </>
@@ -253,10 +258,10 @@ function FilesPanel({ root, onError }: { root: string; onError: (e: unknown) => 
         </span>
         <span className="spacer" />
         <button className="link small" onClick={refresh}>
-          Refresh
+          {t('chat.files.refresh')}
         </button>
       </div>
-      <ul className="tree" aria-label={`Files in ${basename(root)}`}>
+      <ul className="tree" aria-label={t('chat.files.tree', { folder: basename(root) })}>
         {render(root, 0)}
       </ul>
     </div>
@@ -265,13 +270,14 @@ function FilesPanel({ root, onError }: { root: string; onError: (e: unknown) => 
 
 // ---------------------------------------------------------------- changes
 
-const STATUS: Record<FileChange['status'], { letter: string; label: string }> = {
-  added: { letter: 'A', label: 'Added' },
-  modified: { letter: 'M', label: 'Modified' },
-  deleted: { letter: 'D', label: 'Deleted' },
+const STATUS: Record<FileChange['status'], { letter: string; label: MessageKey }> = {
+  added: { letter: 'A', label: 'chat.changes.added' },
+  modified: { letter: 'M', label: 'chat.changes.modified' },
+  deleted: { letter: 'D', label: 'chat.changes.deleted' },
 }
 
 function ChangesPanel({ app, onState, onError }: RightProps) {
+  const { t } = useT()
   const id = app.session?.meta.id
   const [changes, setChanges] = useState<FileChange[] | null>(null)
   const [open, setOpen] = useState<Set<string>>(new Set())
@@ -289,7 +295,7 @@ function ChangesPanel({ app, onState, onError }: RightProps) {
   useEffect(refresh, [refresh, marker, app.running])
 
   const revert = async (c: FileChange) => {
-    if (!confirm(`Put ${c.rel} back the way it was before this chat changed it?`)) return
+    if (!confirm(t('chat.changes.confirm', { name: c.rel }))) return
     setBusy(true)
     try {
       let state: AppState | null = null
@@ -311,8 +317,8 @@ function ChangesPanel({ app, onState, onError }: RightProps) {
       return next
     })
 
-  if (!id) return <p className="muted small pad">Open a chat to see what it changed.</p>
-  if (!changes) return <p className="muted small pad">Loading…</p>
+  if (!id) return <p className="muted small pad">{t('chat.changes.noChat')}</p>
+  if (!changes) return <p className="muted small pad">{t('common.loading')}</p>
   const added = changes.reduce((n, c) => n + c.added, 0)
   const removed = changes.reduce((n, c) => n + c.removed, 0)
   return (
@@ -321,18 +327,18 @@ function ChangesPanel({ app, onState, onError }: RightProps) {
         <span className="small">
           {changes.length ? (
             <>
-              {changes.length} {changes.length === 1 ? 'file' : 'files'} <span className="diffstat"><span className="add">+{added}</span> <span className="del">−{removed}</span></span>
+              {t('chat.changes.count', { count: changes.length })} <span className="diffstat"><span className="add">+{added}</span> <span className="del">−{removed}</span></span>
             </>
           ) : (
-            <span className="muted">No changes in this chat</span>
+            <span className="muted">{t('chat.changes.none')}</span>
           )}
         </span>
         <span className="spacer" />
         <button className="link small" onClick={refresh}>
-          Refresh
+          {t('chat.files.refresh')}
         </button>
       </div>
-      {changes.length === 0 && <p className="muted small pad">Files the agent edits in this chat show up here, compared with what's on disk now.</p>}
+      {changes.length === 0 && <p className="muted small pad">{t('chat.changes.hint')}</p>}
       <ul className="change-list">
         {changes.map((c) => {
           const isOpen = open.has(c.path)
@@ -344,9 +350,9 @@ function ChangesPanel({ app, onState, onError }: RightProps) {
                   <span className="tree-chev" aria-hidden>
                     {isOpen ? '▾' : '▸'}
                   </span>
-                  <span className={`change-status st-${c.status}`} title={s.label}>
+                  <span className={`change-status st-${c.status}`} title={t(s.label)}>
                     <span aria-hidden>{s.letter}</span>
-                    <span className="sr-only">{s.label}</span>
+                    <span className="sr-only">{t(s.label)}</span>
                   </span>
                   <span className="ellipsis mono">{c.rel}</span>
                 </button>
@@ -355,8 +361,9 @@ function ChangesPanel({ app, onState, onError }: RightProps) {
                     <span className="add">+{c.added}</span> <span className="del">−{c.removed}</span>
                   </span>
                 )}
-                <button className="link small" disabled={busy || app.running} onClick={() => revert(c)} title={app.running ? 'Wait for the turn to finish' : 'Restore the file as it was before this chat'}>
-                  Revert
+                <button className="link small" disabled={busy || app.running} onClick={() => revert(c)} title={t(app.running ? 'chat.changes.wait' : 'chat.changes.restoreTitle')}>
+                  {t('chat.changes.revert')}
+
                 </button>
               </div>
               {isOpen && (c.note ? <p className="muted small pad">{c.note}</p> : <DiffView patch={c.patch} />)}

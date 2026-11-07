@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { QuestionRequest } from '../../../shared/ipc'
+import { useT } from '../lib/i18n'
 
 interface Props {
   request: QuestionRequest
@@ -8,6 +9,7 @@ interface Props {
 
 /** An ask_user question inside its tool card: pick an option (or several) or write your own answer. */
 export function Question({ request, onAnswer }: Props) {
+  const { t } = useT()
   const [picked, setPicked] = useState<string[]>([])
   const [own, setOwn] = useState('')
   const first = useRef<HTMLButtonElement>(null)
@@ -48,14 +50,15 @@ export function Question({ request, onAnswer }: Props) {
           submit()
         }}
       >
-        <input className="approval-note" value={own} aria-label="Your own answer" placeholder={request.multiSelect ? 'Add something else (optional)' : 'Or write your own answer'} onChange={(e) => setOwn(e.target.value)} />
+        <input className="approval-note" value={own} aria-label={t('chat.question.ownLabel')} placeholder={t(request.multiSelect ? 'chat.question.addMore' : 'chat.question.writeOwn')} onChange={(e) => setOwn(e.target.value)} />
         {(request.multiSelect || own.trim()) && (
           <button type="submit" className="btn primary" disabled={!picked.length && !own.trim()}>
-            Answer
+            {t('chat.question.answer')}
           </button>
         )}
         <button type="button" className="btn ghost" onClick={() => onAnswer('')}>
-          Skip
+          {t('chat.question.skip')}
+
         </button>
       </form>
     </div>

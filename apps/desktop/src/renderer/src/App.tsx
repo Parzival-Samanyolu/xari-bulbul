@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
+import { useCallback, useEffect, useReducer, useRef, useState, type ReactNode } from 'react'
 import type { AgentEvent, AppState, MemoryFact, PermissionAnswer, PermissionRequest, UpdateStatus } from '../../shared/ipc'
 import { api } from './lib/api'
 import { Chat } from './components/Chat'
@@ -17,7 +17,23 @@ import { Welcome } from './components/Welcome'
 import { BotDialog } from './components/BotDialog'
 import { LobbyDialog } from './components/LobbyDialog'
 import { Loading } from './components/Loading'
-import { I18nProvider } from './lib/i18n'
+import { I18nProvider, useT } from './lib/i18n'
+import { makeT, type Vars } from '@harness/core/i18n'
+import { CATALOGS, type MessageKey } from '../../shared/i18n/catalog'
+
+/** A message built outside React, translated where it is shown. */
+export interface Msg {
+  key: MessageKey
+  vars?: Vars
+}
+
+/** English text of a message, for code that reads notice text (fixFor) and views not yet translated. */
+const english = makeT<MessageKey>('en', CATALOGS)
+
+/** Renders with the current `t`; App itself sits above the I18nProvider. */
+function WithT({ children }: { children: (t: ReturnType<typeof useT>['t']) => ReactNode }) {
+  return <>{children(useT().t)}</>
+}
 
 export interface ToolLive {
   name: string
@@ -33,7 +49,9 @@ export interface ToolLive {
 export interface Notice {
   id: number
   level: 'info' | 'warn' | 'error'
+  /** English (or untranslated, from main) text; `msg` replaces it on screen when set. */
   text: string
+  msg?: Msg
   /** A settings tab that fixes the problem, shown as a button. */
   fix?: 'providers' | 'usage' | 'agent'
   /** The turn failed; offer to run the request again. */
@@ -59,7 +77,7 @@ export interface LiveState {
   notices: Notice[]
   context?: { tokens: number; length: number }
   /** What the chat is doing while nothing streams (Mixture of Agents asking its models). */
-  status?: string
+  status?: Msg
   lastUsage?: { prompt: number; completion: number; cost: number | null }
   /** Lobbies: the bot replying now. */
   speaker?: string | null
@@ -71,7 +89,7 @@ type Action =
   | { type: 'state'; state: AppState }
   | { type: 'agent'; sessionId: string; event: AgentEvent }
   | { type: 'dismiss'; id: number }
-  | { type: 'notice'; level: Notice['level']; text: string; sessionId?: string }
+  | { type: 'notice'; level: Notice['level']; text: string; msg?: Msg; sessionId?: string }
 
 interface Model {
   app: AppState | null
@@ -88,18 +106,20 @@ function withLive(m: Model, id: string, fn: (l: LiveState) => LiveState): Model 
   return { ...m, lives: { ...m.lives, [id]: fn(m.lives[id] ?? emptyLive) } }
 }
 
-function addNotice(l: LiveState, level: Notice['level'], text: string, retry?: boolean): LiveState {
-  const notice: Notice = { id: ++noticeId, level, text, fix: fixFor(text), ...(retry && { retry }) }
+function addNotice(l: LiveState, level: Notice['level'], text: string, retry?: boolean, msg?: Msg): LiveState {
+  const notice: Notice = { id: ++noticeId, level, text, fix: fixFor(text), ...(retry && { retry }), ...(msg && { msg }) }
   return { ...l, notices: [...l.notices, notice].slice(-5) }
 }
 
-function memoryText(added: MemoryFact[], removed: MemoryFact[]): string {
+function memoryMsg(added: MemoryFact[], removed: MemoryFact[]): Msg {
   const list = (facts: MemoryFact[]) => facts.map((f) => f.fact).join('; ')
-  const parts = []
-  if (added.length) parts.push(`Saved to memory: ${list(added)}`)
-  if (removed.length) parts.push(`Removed from memory: ${list(removed)}`)
-  return parts.join('. ')
+  if (added.length && removed.length) return { key: 'chat.app.memorySavedRemoved', vars: { added: list(added), removed: list(removed) } }
+  if (removed.length) return { key: 'chat.app.memoryRemoved', vars: { facts: list(removed) } }
+  return { key: 'chat.app.memorySaved', vars: { facts: list(added) } }
 }
+
+/** A notice whose text is a catalogue message. */
+const msgNotice = (l: LiveState, level: Notice['level'], msg: Msg): LiveState => addNotice(l, level, english(msg.key, msg.vars), false, msg)
 
 function reducer(m: Model, a: Action): Model {
   if (a.type === 'state') return { ...m, app: a.state }
@@ -108,7 +128,7 @@ function reducer(m: Model, a: Action): Model {
     for (const [k, l] of Object.entries(m.lives)) lives[k] = { ...l, notices: l.notices.filter((n) => n.id !== a.id) }
     return { ...m, lives }
   }
-  if (a.type === 'notice') return withLive(m, a.sessionId ?? activeId(m.app), (l) => addNotice(l, a.level, a.text))
+  if (a.type === 'notice') return withLive(m, a.sessionId ?? activeId(m.app), (l) => addNotice(l, a.level, a.text, false, a.msg))
   const app = m.app
   if (!app) return m
   const e = a.event
@@ -170,15 +190,16 @@ function reducer(m: Model, a: Action): Model {
     case 'todos':
       return shown && app.session ? { ...m, app: { ...app, session: { ...app.session, todos: e.todos } } } : m
     case 'compacted':
-      return setLive(addNotice(live, 'info', `Summarized ${e.removedMessages} older messages to free up context.`))
+      return setLive(msgNotice(live, 'info', { key: 'chat.app.compacted', vars: { count: e.removedMessages } }))
     case 'notice':
       return setLive(addNotice(live, e.level, e.text))
     case 'fallback':
       return setLive(addNotice(live, 'info', e.text))
     case 'mixing':
-      return setLive({ ...live, status: e.phase === 'proposing' ? `Asking ${e.models.length} models…` : 'Combining their answers…' })
+      return setLive({ ...live, status: e.phase === 'proposing' ? { key: 'chat.app.mixingAsk', vars: { count: e.models.length } } : { key: 'chat.app.mixingCombine' } })
     case 'memory': {
-      const notice: Notice = { id: ++noticeId, level: 'info', text: memoryText(e.added, e.removed), memory: { sessionId: id, added: e.added, removed: e.removed } }
+      const msg = memoryMsg(e.added, e.removed)
+      const notice: Notice = { id: ++noticeId, level: 'info', text: english(msg.key, msg.vars), msg, memory: { sessionId: id, added: e.added, removed: e.removed } }
       return setLive({ ...live, notices: [...live.notices, notice].slice(-5) })
     }
     case 'error':
@@ -240,7 +261,7 @@ export function App() {
   const fail = useCallback((e: unknown) => dispatch({ type: 'notice', level: 'error', text: String((e as Error)?.message ?? e).replace(/^Error invoking remote method '[^']+': (Error: )?/, '') }), [])
 
   // Read aloud: the speaker button on replies, automatic reading, and stopping on input.
-  useSpeech(app, (level, text) => dispatch({ type: 'notice', level, text }))
+  useSpeech(app, (level, text, msg) => dispatch({ type: 'notice', level, text, msg }))
 
   const boot = useCallback(() => {
     setBootError(null)
@@ -404,17 +425,21 @@ export function App() {
           )}
         </main>
         {showRight && panels && (
-          <aside className="side-right" style={{ width: panels.right }} aria-label="Files and changes">
-            <Resizer axis="x" label="Resize files and changes panel" value={panels.right} min={220} max={Math.max(220, Math.min(1200, window.innerWidth - 570))} onChange={(right) => setPanels({ ...panels, right })} onCommit={(right) => savePanels({ right })} />
+          <WithT>{(t) => (
+          <aside className="side-right" style={{ width: panels.right }} aria-label={t('chat.app.filesPanel')}>
+            <Resizer axis="x" label={t('chat.app.resizeFiles')} value={panels.right} min={220} max={Math.max(220, Math.min(1200, window.innerWidth - 570))} onChange={(right) => setPanels({ ...panels, right })} onCommit={(right) => savePanels({ right })} />
             <RightPanel app={app} onState={setState} onError={fail} />
           </aside>
+          )}</WithT>
         )}
         {/* Stays mounted once used, so terminals keep running while the panel is closed. */}
         {bottomUsed && panels && (
-          <section className="side-bottom" hidden={!showBottom} style={{ height: panels.bottom }} aria-label="Terminal">
-            <Resizer axis="y" label="Resize terminal panel" value={panels.bottom} min={120} max={Math.max(120, Math.min(1000, window.innerHeight - 220))} onChange={(bottom) => setPanels({ ...panels, bottom })} onCommit={(bottom) => savePanels({ bottom })} />
+          <WithT>{(t) => (
+          <section className="side-bottom" hidden={!showBottom} style={{ height: panels.bottom }} aria-label={t('chat.app.terminalPanel')}>
+            <Resizer axis="y" label={t('chat.app.resizeTerminal')} value={panels.bottom} min={120} max={Math.max(120, Math.min(1000, window.innerHeight - 220))} onChange={(bottom) => setPanels({ ...panels, bottom })} onCommit={(bottom) => savePanels({ bottom })} />
             <TerminalPanel app={app} visible={showBottom} onError={fail} />
           </section>
+          )}</WithT>
         )}
         <StatusBar
           app={app}

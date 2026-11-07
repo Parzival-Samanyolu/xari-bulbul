@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { AppState } from '../../../shared/ipc'
 import { api } from '../lib/api'
 import { recordingToWav } from '../lib/wav'
+import { useT } from '../lib/i18n'
 
 type Phase = 'idle' | 'starting' | 'recording' | 'transcribing'
 
@@ -22,6 +23,7 @@ interface Props {
 
 /** Records from the microphone on the first click and transcribes on the second. Hidden when no engine is set up. */
 export function MicButton({ app, onText, onError }: Props) {
+  const { t } = useT()
   const [phase, setPhase] = useState<Phase>('idle')
   const [seconds, setSeconds] = useState(0)
   const rec = useRef<{ recorder: MediaRecorder; stream: MediaStream; chunks: Blob[]; cancelled: boolean } | null>(null)
@@ -41,8 +43,8 @@ export function MicButton({ app, onText, onError }: Props) {
   useEffect(() => {
     if (phase !== 'recording') return
     setSeconds(0)
-    const t = setInterval(() => setSeconds((s) => s + 1), 1000)
-    return () => clearInterval(t)
+    const timer = setInterval(() => setSeconds((s) => s + 1), 1000)
+    return () => clearInterval(timer)
   }, [phase])
 
   // The longest recording (Settings › Voice) ends it and transcribes what was said.
@@ -79,7 +81,7 @@ export function MicButton({ app, onText, onError }: Props) {
   const start = async () => {
     setPhase('starting')
     try {
-      if (!(await api.voice.prepare())) throw new Error('Microphone access was not allowed.')
+      if (!(await api.voice.prepare())) throw new Error(t('chat.voice.notAllowed'))
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const type = recorderType()
       const recorder = new MediaRecorder(stream, type ? { mimeType: type } : undefined)
@@ -99,7 +101,7 @@ export function MicButton({ app, onText, onError }: Props) {
     } catch (e) {
       setPhase('idle')
       const name = (e as DOMException)?.name
-      onError(name === 'NotAllowedError' ? new Error('Microphone access was not allowed.') : name === 'NotFoundError' ? new Error('No microphone found.') : e)
+      onError(name === 'NotAllowedError' ? new Error(t('chat.voice.notAllowed')) : name === 'NotFoundError' ? new Error(t('chat.voice.noMic')) : e)
     }
   }
 
@@ -112,7 +114,7 @@ export function MicButton({ app, onText, onError }: Props) {
 
   const recording = phase === 'recording'
   const busy = phase === 'starting' || phase === 'transcribing'
-  const label = recording ? 'Stop recording and transcribe' : phase === 'transcribing' ? 'Transcribing…' : 'Dictate a message'
+  const label = recording ? t('chat.mic.stopAndTranscribe') : phase === 'transcribing' ? t('chat.voice.transcribing') : t('chat.mic.dictate')
   return (
     <>
       <button
@@ -120,7 +122,7 @@ export function MicButton({ app, onText, onError }: Props) {
         aria-pressed={recording}
         aria-busy={busy}
         aria-label={label}
-        title={recording ? 'Stop recording (Esc cancels)' : `Dictate a message (${engine === 'provider' ? 'sent to your transcription provider' : 'transcribed on this computer'})`}
+        title={recording ? t('chat.mic.stopTitle') : t(engine === 'provider' ? 'chat.mic.dictateProvider' : 'chat.mic.dictateLocal')}
         disabled={busy}
         onClick={() => (recording ? stop() : start())}
         onKeyDown={(e) => recording && e.key === 'Escape' && (e.preventDefault(), stop(true))}
@@ -137,7 +139,8 @@ export function MicButton({ app, onText, onError }: Props) {
       {/* The clock is visual only, so screen readers hear "Recording" once rather than every second. */}
       <span className="mic-status small" role="status">
         {recording && <span className="rec-dot" aria-hidden />}
-        {recording ? 'Recording' : phase === 'transcribing' ? 'Transcribing…' : ''}
+        {recording ? t('chat.mic.recording') : phase === 'transcribing' ? t('chat.voice.transcribing') : ''}
+
         {recording && <span aria-hidden> {clock(seconds)}</span>}
       </span>
     </>

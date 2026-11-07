@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { PermissionAnswer, PermissionRequest } from '../../../shared/ipc'
+import { useT } from '../lib/i18n'
+import { rich } from '../lib/rich'
 
 interface Props {
   request: PermissionRequest
@@ -11,6 +13,7 @@ interface Props {
  * Keys: Enter allows once, Shift+Enter allows for the session, Esc denies (handled in App).
  */
 export function Approval({ request, onAnswer }: Props) {
+  const { t } = useT()
   const [note, setNote] = useState('')
   const allowRef = useRef<HTMLButtonElement>(null)
   const input = request.input as Record<string, unknown>
@@ -32,31 +35,31 @@ export function Approval({ request, onAnswer }: Props) {
   }
 
   return (
-    <div className={`approval${oneTime ? ' destructive' : ''}`} role="group" aria-label={`Approve ${request.tool}`} onKeyDown={onKeyDown}>
+    <div className={`approval${oneTime ? ' destructive' : ''}`} role="group" aria-label={t('chat.approval.group', { tool: request.tool })} onKeyDown={onKeyDown}>
       <Preview tool={request.tool} input={input} subject={request.subject} />
       <div className="approval-q">
         <span>
-          {request.reason} <b>Allow it?</b>
+          {request.reason} <b>{t('chat.approval.allowIt')}</b>
         </span>
       </div>
       <div className="approval-actions">
         <button ref={allowRef} className="btn primary" onClick={() => onAnswer({ type: 'allow' })}>
-          Allow <kbd>↵</kbd>
+          {t('common.allow')} <kbd>↵</kbd>
         </button>
         {!oneTime && (
           <button className="btn" onClick={() => onAnswer({ type: 'allowAlways' })}>
-            Allow <code>{request.suggestedRule}</code> for this session <kbd>⇧↵</kbd>
+            {rich(t('chat.approval.allowSession'), { rule: <code>{request.suggestedRule}</code> })} <kbd>⇧↵</kbd>
           </button>
         )}
         <button className="btn danger" onClick={deny}>
-          {note.trim() ? 'Deny with note' : 'Deny'} <kbd>Esc</kbd>
+          {note.trim() ? t('chat.approval.denyNote') : t('common.deny')} <kbd>Esc</kbd>
         </button>
       </div>
       <input
         className="approval-note"
         value={note}
-        aria-label="Note for the agent if you deny (optional)"
-        placeholder="Optional: tell the agent what to do instead, then Deny"
+        aria-label={t('chat.approval.noteLabel')}
+        placeholder={t('chat.approval.notePlaceholder')}
         onChange={(e) => setNote(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
@@ -71,10 +74,12 @@ export function Approval({ request, onAnswer }: Props) {
 }
 
 function Preview({ tool, input, subject }: { tool: string; input: Record<string, unknown>; subject: string }) {
+  const { t } = useT()
   if (tool === 'bash') return <pre className="approval-preview cmd">$ {String(input.command)}</pre>
   if (tool === 'edit_file')
     return (
-      <pre className="approval-preview diff" aria-label={`Proposed change to ${subject}`}>
+      <pre className="approval-preview diff" aria-label={t('chat.approval.proposed', { file: subject })}
+>
         {String(input.old_string)
           .split('\n')
           .map((l, i) => (
