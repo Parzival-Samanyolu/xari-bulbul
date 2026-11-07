@@ -30,6 +30,10 @@ describe('desktop catalogue', () => {
         }
       })
 
+      it('is a plural wherever English is one, and only there', () => {
+        for (const [key, msg] of Object.entries(cat)) expect(typeof msg, `${lang} ${key}`).toBe(typeof en[key])
+      })
+
       it('has every plural form the language needs', () => {
         const cats = new Intl.PluralRules(lang).resolvedOptions().pluralCategories
         for (const [key, msg] of Object.entries(cat)) {
