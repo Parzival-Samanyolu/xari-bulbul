@@ -9,7 +9,7 @@ import type { PageProps } from '../common'
 
 const KIND_ORDER: ProcessUsage['kind'][] = ['app', 'local', 'mcp', 'terminal', 'child']
 
-export function ResourcesPage({ app, save }: PageProps) {
+export function ResourcesPage({ app, save, onError }: PageProps) {
   const s = useResources(true, 2000)
   const procs = useMemo(
     () => (s ? [...s.processes].sort((a, b) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind) || (b.memory ?? 0) - (a.memory ?? 0)) : []),
@@ -84,6 +84,11 @@ export function ResourcesPage({ app, save }: PageProps) {
                       {p.label}
                       {p.count && <span className="muted small"> · {p.count} processes</span>}
                       {p.kind !== 'app' && <span className="muted small"> · started by the app</span>}
+                      {p.kind === 'local' && (
+                        <button className="link small res-unload" title="Stop the local model and free its memory. It loads again on the next message that uses it." onClick={() => api.local.stop().catch(onError)}>
+                          Unload
+                        </button>
+                      )}
                     </td>
                     <td className="num">{cpuText(p.cpu)}</td>
                     <td className="num">{bytes(p.memory)}</td>

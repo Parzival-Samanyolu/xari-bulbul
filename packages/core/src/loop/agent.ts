@@ -87,6 +87,19 @@ interface Draft {
 /** Files larger than this aren't kept for undo. */
 const MAX_CHECKPOINT_BYTES = 2_000_000
 
+/** Share of a model's context the tool definitions may take. */
+const TOOL_BUDGET = 0.3
+const toolSizes = new WeakMap<Tool, number>()
+/** A rough token count of a tool's definition (about 3.5 characters a token for JSON schemas). */
+function toolTokens(t: Tool): number {
+  let n = toolSizes.get(t)
+  if (n === undefined) {
+    n = Math.ceil(JSON.stringify({ name: t.name, description: t.description, parameters: t.parameters }).length / 3.5)
+    toolSizes.set(t, n)
+  }
+  return n
+}
+
 export interface AgentOptions {
   session: Session
   registry: ProviderRegistry
@@ -409,6 +422,28 @@ export class Agent {
     const own = this.bot?.memory === 'own'
     return { global: this.memory('global'), project: this.memory('project'), ...(own ? { bot: this.memoryAccess().list('bot') } : {}) }
   }
+
+  /**
+   * The tools that fit the model. Tool definitions are sent with every request; a big MCP server
+   * (GitHub's 46 tools are ~14K tokens) fills a small local model's context and makes each reply
+   * take minutes. Past TOOL_BUDGET of the context, MCP tools are left out, then extension tools.
+   */
+  private fitTools(tools: Tool[], ref: ModelRef): Tool[] {
+    const budget = this.contextLength(ref) * TOOL_BUDGET
+    const size = (list: Tool[]) => list.reduce((n, t) => n + toolTokens(t), 0)
+    if (size(tools) <= budget) return tools
+    let kept = tools.filter((t) => t.source !== 'mcp')
+    if (size(kept) > budget) kept = kept.filter((t) => !t.source || t.source === 'builtin')
+    const dropped = tools.length - kept.length
+    const key = `${modelKey(ref)}:${dropped}`
+    if (dropped && this.trimNoticed !== key) {
+      this.trimNoticed = key
+      const what = kept.some((t) => t.source === 'user' || t.source === 'project') || !tools.some((t) => t.source === 'user' || t.source === 'project') ? 'MCP' : 'MCP and extension'
+      this.emit({ type: 'notice', level: 'info', text: `Left out ${dropped} ${what} tools for ${ref.modelId}: they don't fit its ${Math.round(this.contextLength(ref) / 1024)}K context. A model with a larger context gets them all.` })
+    }
+    return kept
+  }
+  private trimNoticed = ''
 
   /** Small and free models follow a short prompt better than the full one. */
   private leanPrompt(ref: ModelRef = this.model): boolean {
@@ -755,17 +790,26 @@ export class Agent {
    * answer (no tool calls) isn't streamed or appended but returned as a draft.
    */
   private async step(signal: AbortSignal, hold = false): Promise<{ calls: ToolCall[]; draft?: Draft }> {
-    const tools = this.activeTools()
+    const all = this.activeTools()
     const main = { ...this.model }
     const chain = fallbackChain(main, this.settings.models.fallbacks, this.skipped)
     if (!chain.length) chain.push(main)
     const failed: string[] = []
+    let emptyRetried = false
     for (let i = 0; ; i++) {
       const ref = chain[i]
       const partial = { content: '' }
       try {
+        const tools = this.fitTools(all, ref)
         const out = await this.request(ref, tools, signal, hold, partial)
         const { content, reasoning, calls, usage, extra } = out
+        // Small thinking models sometimes stop right after thinking, with no answer. Ask once more.
+        if (!content.trim() && !calls.length && !signal.aborted && !emptyRetried) {
+          emptyRetried = true
+          if (usage) this.recordUsage(ref, usage)
+          i--
+          continue
+        }
         const draft = hold && !calls.length ? { ref, content, reasoning, extra } : undefined
         if (!draft) this.push({ role: 'assistant', content, ...(calls.length ? { toolCalls: calls } : {}), ...(reasoning ? { reasoning } : {}), ...(extra ? { extra } : {}) })
         if (usage) {

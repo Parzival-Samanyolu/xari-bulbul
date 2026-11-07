@@ -4991,6 +4991,8 @@ body.resizing * {
   font-weight: 600;
 }
 .res-table .num {
+  /* The global .num (number inputs) is inline-flex; a table cell must stay a cell. */
+  display: table-cell;
   width: 1%;
   padding-left: 16px;
   text-align: right;
@@ -4998,6 +5000,9 @@ body.resizing * {
 }
 .res-table .num:last-child {
   padding-right: 0;
+}
+.res-unload {
+  margin-left: 10px;
 }
 
 .log-tools,
