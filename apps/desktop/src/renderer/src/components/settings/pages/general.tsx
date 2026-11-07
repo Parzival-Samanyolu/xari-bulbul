@@ -69,17 +69,10 @@ export function InstructionsPage({ app, save }: PageProps) {
   )
 }
 
-export const THEMES = [
-  { value: 'system', label: 'System' },
-  { value: 'dark', label: 'Dark' },
-  { value: 'light', label: 'Light' },
-  { value: 'oled', label: 'OLED black' },
-  { value: 'sepia', label: 'Sepia' },
-  { value: 'contrast', label: 'High contrast' },
-] as const
+export const THEMES = ['system', 'dark', 'light', 'oled', 'sepia', 'contrast'] as const
 
 /** THEMES with labels in the current language. */
-export const themes = (t: T) => THEMES.map((th) => ({ value: th.value, label: t(`settings.theme.${th.value}`) }))
+export const themes = (t: T) => THEMES.map((value) => ({ value, label: t(`settings.theme.${value}`) }))
 
 export function AppearancePage({ app, save }: PageProps) {
   const a = app.settings.appearance
