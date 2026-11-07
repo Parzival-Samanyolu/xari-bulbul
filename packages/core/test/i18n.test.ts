@@ -24,6 +24,10 @@ describe('formatMessage', () => {
     expect(formatMessage('en', { one: '{count} file', other: '{count} files' }, { count: 1 })).toBe('1 file')
     expect(formatMessage('en', { one: '{count} file', other: '{count} files' }, { count: 3 })).toBe('3 files')
   })
+  it('formats a plural without a count as count 0', () => {
+    expect(formatMessage('en', { one: 'one file', other: 'no or many files' })).toBe('no or many files')
+    expect(formatMessage('ru', { one: 'один', few: 'несколько', many: 'много', other: 'дробь' }, { name: 'x' })).toBe('много')
+  })
   it('fills placeholders and leaves unknown ones', () => {
     expect(formatMessage('en', 'Hi {name}', { name: 'Ali' })).toBe('Hi Ali')
     expect(formatMessage('en', 'Hi {x}', { name: 'Ali' })).toBe('Hi {x}')
@@ -66,6 +70,6 @@ describe('helpers', () => {
   })
   it('formats numbers and names languages', () => {
     expect(formatNumber('en', 1234.5)).toBe('1,234.5')
-    expect(LANGUAGE_NAMES.az).toBe('Azərbaycanca')
+    expect(LANGUAGE_NAMES.az).toBe('Azərbaycan dili')
   })
 })

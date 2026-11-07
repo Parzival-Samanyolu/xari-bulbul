@@ -30,7 +30,7 @@ The chosen translation of each recurring term in the app. Use these every time, 
 | message | mesaj | mesaj | сообщение | |
 | reply | cavab | yanıt | ответ | The model's answer. Avoid tr *cevap* for consistency. |
 | bot | bot | bot | бот | A companion persona in the Bots tab. |
-| lobby | lobbi | lobi | лобби | A group chat of several bots. Explain it as a group chat in hints: *qrup söhbəti* / *grup sohbeti* / *групповой чат*. |
+| lobby | qrup söhbəti | grup sohbeti | групповой чат | A chat where several bots talk with you and each other. Use the group-chat wording in labels and hints too: "New lobby" is *Yeni qrup söhbəti* / *Yeni grup sohbeti* / *Новый групповой чат*. Do not transliterate (*lobbi*, *lobi*, *лобби*). |
 | agent | agent | ajan | агент | The assistant that runs tools. |
 | subagent | köməkçi agent | yardımcı ajan | субагент | Started by the `task` tool. |
 | model | model | model | модель | |
@@ -52,10 +52,10 @@ The chosen translation of each recurring term in the app. Use these every time, 
 | mode: Ask | Soruş | Sor | Спрашивать | Asks before edits and commands. |
 | mode: Auto-edit | Avto-redaktə | Otomatik düzenleme | Автоправки | Edits files freely and asks before commands. |
 | mode: Plan | Plan | Plan | План | Read-only: investigates and proposes a plan. |
-| mode: Full auto | Tam avtomatik | Tam otomatik | Полный автомат | Never asks. Deny rules still apply. |
+| mode: Full auto | Tam avtomatik | Tam otomatik | Полностью автоматически | Never asks. Deny rules still apply. |
 | settings | Ayarlar | Ayarlar | Настройки | |
 | general | Ümumi | Genel | Общие | Settings page. |
-| advanced | Əlavə | Gelişmiş | Дополнительно | Settings page. |
+| advanced | Qabaqcıl | Gelişmiş | Дополнительно | Settings page. Not az *Əlavə*, which reads as "appendix". |
 | safety | Təhlükəsizlik | Güvenlik | Безопасность | Settings page. |
 | data | Məlumatlar | Veriler | Данные | Settings page. |
 | logs | Qeydlər | Günlükler | Журналы | Settings page. |
@@ -70,7 +70,7 @@ The chosen translation of each recurring term in the app. Use these every time, 
 | task / to-do | tapşırıq | görev | задача | Items in the agent's to-do list. |
 | session | sessiya | oturum | сеанс | Prefer "chat" in UI copy. Use this only where the code concept leaks, as in usage per session. |
 | context | kontekst | bağlam | контекст | The model's context window. "Context is full": *Kontekst doludur* / *Bağlam dolu* / *Контекст заполнен*. |
-| compact (context) | yığcamlaşdır | sıkıştır | сжать | Summarising earlier messages to free context. |
+| compact (context) | sıxlaşdır | sıkıştır | сжать | Summarising earlier messages to free context. |
 | thinking / reasoning | düşünmə | düşünme | рассуждение | The model's reasoning. "Thinking…": *Düşünür…* / *Düşünüyor…* / *Думает…*. |
 | usage | istifadə | kullanım | расход | Tokens and cost. |
 | cost | xərc | maliyet | стоимость | |
@@ -79,7 +79,7 @@ The chosen translation of each recurring term in the app. Use these every time, 
 | read aloud | səsli oxu | sesli oku | прочитать вслух | Button on a reply. |
 | hands-free | əllər sərbəst | eller serbest | без рук | Voice mode that listens and replies on its own. ru: *режим «без рук»*. |
 | transcription | mətnə çevirmə | yazıya dökme | расшифровка | Speech to text. "Transcribing…": *Mətnə çevrilir…* / *Yazıya dökülüyor…* / *Расшифровка…*. |
-| gateway | körpü | köprü | мост | Connection to WhatsApp, Telegram and similar services. |
+| gateway | kanal | kanal | канал | One way to reach the agent from another app, such as iMessage or WhatsApp ("the WhatsApp channel"). The Settings page that groups them is *Messencerlər* / *Mesajlaşma uygulamaları* / *Мессенджеры*. Never translate it literally (*şlüz*, *ağ geçidi*, *шлюз*, *мост*). |
 | terminal | terminal | terminal | терминал | |
 | update | yeniləmə | güncelleme | обновление | App update. "Download update": *Yeniləməni endir* / *Güncellemeyi indir* / *Скачать обновление*. |
 | stop | dayandır | durdur | остановить | Stops a running turn. |

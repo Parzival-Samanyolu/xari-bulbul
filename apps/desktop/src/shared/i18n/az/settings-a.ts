@@ -4,5 +4,5 @@ import type en from '../en/settings-a'
 export default {
   'settings.general.language': 'Dil',
   'settings.general.languageSystem': 'Sistem ({lang})',
-  'settings.general.languageHint': 'Tətbiqdəki menyuların, düymələrin və bildirişlərin dili.',
+  'settings.general.languageHint': 'Tətbiqdəki menyuların, düymələrin və mesajların dili.',
 } satisfies Record<keyof typeof en, Message>

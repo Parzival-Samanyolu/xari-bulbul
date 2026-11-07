@@ -11,7 +11,7 @@ export type Lang = (typeof LANGS)[number]
 /** Each language's name in itself, for the language picker. */
 export const LANGUAGE_NAMES: Record<Lang, string> = {
   en: 'English',
-  az: 'Azərbaycanca',
+  az: 'Azərbaycan dili',
   tr: 'Türkçe',
   ru: 'Русский',
 }
