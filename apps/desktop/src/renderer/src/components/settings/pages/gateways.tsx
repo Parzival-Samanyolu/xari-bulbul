@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { normalizeSender } from '@harness/core/gateway-senders'
 import type { PermissionMode } from '../../../../../shared/ipc'
 import { api } from '../../../lib/api'
+import { useFormat, useT } from '../../../lib/i18n'
 import { MODES } from '../../Composer'
 import { NumberField, Row, Section, Select, TextField, Toggle } from '../../fields'
 import type { PageProps } from '../common'
@@ -9,6 +10,7 @@ import type { PageProps } from '../common'
 // ---------------------------------------------------------------- iMessage
 
 export function IMessagePage({ app, save, onState, onError }: PageProps) {
+  const { t } = useT()
   const g = app.settings.gateways.imessage
   const st = app.imessage
   const [busy, setBusy] = useState<'' | 'test' | 'check'>('')
@@ -27,64 +29,72 @@ export function IMessagePage({ app, save, onState, onError }: PageProps) {
   const pickFolder = () => api.imessage.pickFolder().then((dir) => dir && save((s) => ((s.gateways.imessage.cwd = dir), s)), onError)
   return (
     <>
-      <Section description="Text the agent from your phone. Messages from the senders below run in a chat on this Mac, and the reply comes back as a text.">
+      <Section description={t('settings.gateways.imIntro')}>
         <ul className="gw-notes small">
-          <li>It only runs while Xarı Bülbül is open. Texts sent while it's closed are skipped.</li>
-          <li>Anyone who can text from an allowed number or Apple ID can drive the agent. Add only your own.</li>
-          <li>Keep the permission mode on Ask: approvals wait in the app, and you get a text when one does.</li>
+          <li>{t('settings.gateways.imNoteOpen')}</li>
+          <li>{t('settings.gateways.imNoteSenders')}</li>
+          <li>{t('settings.gateways.imNoteAsk')}</li>
         </ul>
-        <Row label="Receive texts from iMessage" hint="Reads new messages from Messages on this Mac every few seconds.">
-          <Toggle label="Receive texts from iMessage" value={g.enabled} onChange={(v) => save((s) => ((s.gateways.imessage.enabled = v), s))} />
+        <Row label={t('settings.gateways.imReceive')} search="Receive texts from iMessage" hint={t('settings.gateways.imReceiveHint')}>
+          <Toggle label={t('settings.gateways.imReceive')} value={g.enabled} onChange={(v) => save((s) => ((s.gateways.imessage.enabled = v), s))} />
         </Row>
       </Section>
 
       <Status app={app} busy={busy} onCheck={() => run('check', () => api.imessage.check())} />
 
-      <Section title="Who and where">
-        <Row label="Allowed senders" hint="Your own phone numbers (with the country code) and Apple ID emails. Nobody else is answered." wide>
+      <Section title={t('settings.gateways.whoAndWhere')}>
+        <Row label={t('settings.gateways.allowedSenders')} search="Allowed senders" hint={t('settings.gateways.allowedSendersHint')} wide>
           <SenderList value={g.senders} onChange={(senders) => save((s) => ((s.gateways.imessage.senders = senders), s))} />
         </Row>
-        <Row label="Folder" hint="Each sender gets one chat, in this folder. It shows in the sidebar.">
+        <Row label={t('settings.gateways.folder')} search="Folder" hint={t('settings.gateways.imFolderHint')}>
           <div className="inline">
             <span className="mono small schedule-path" title={g.cwd}>
-              {g.cwd || 'None'}
+              {g.cwd || t('common.none')}
             </span>
             <button className="btn" onClick={pickFolder}>
-              Choose…
+              {t('settings.parts.choose')}
             </button>
           </div>
         </Row>
         {bots.length > 0 && (
-          <Row label="Bot" hint="New iMessage chats use this bot's persona and model.">
+          <Row label={t('settings.gateways.bot')} search="Bot" hint={t('settings.gateways.imBotHint')}>
             <Select
-              label="Bot"
+              label={t('settings.gateways.bot')}
               value={g.botId && bots.some((b) => b.id === g.botId) ? g.botId : ''}
-              options={[{ value: '', label: 'None' }, ...bots.map((b) => ({ value: b.id, label: b.name }))]}
+              options={[{ value: '', label: t('common.none') }, ...bots.map((b) => ({ value: b.id, label: b.name }))]}
               onChange={(v) => save((s) => ((s.gateways.imessage.botId = v || null), s))}
             />
           </Row>
         )}
-        <Row label="Permission mode" hint={`${MODES.find((m) => m.id === g.mode)?.hint ?? ''}. Applies to iMessage chats only.`}>
-          <Select<PermissionMode> label="Permission mode" value={g.mode} options={MODES.map((m) => ({ value: m.id, label: m.label }))} onChange={(v) => save((s) => ((s.gateways.imessage.mode = v), s))} />
+        <Row label={t('settings.gateways.permissionMode')} search="Permission mode" hint={t('settings.gateways.imModeHint', { hint: MODES.find((m) => m.id === g.mode)?.hint ?? '' })}>
+          <Select<PermissionMode> label={t('settings.gateways.permissionMode')} value={g.mode} options={MODES.map((m) => ({ value: m.id, label: m.label }))} onChange={(v) => save((s) => ((s.gateways.imessage.mode = v), s))} />
         </Row>
-        {g.mode !== 'ask' && <div className="notice notice-warn small">With {MODES.find((m) => m.id === g.mode)?.label}, a text can make the agent {g.mode === 'plan' ? 'read your files' : 'change files or run commands'} without you seeing it first.</div>}
-        <Row label="Start fresh" hint="After this many quiet hours, a sender's next text starts a new chat, like a daily reset. Texting /new does it any time.">
+        {g.mode !== 'ask' && (
+          <div className="notice notice-warn small">
+            {t(g.mode === 'plan' ? 'settings.gateways.imModeWarnPlan' : 'settings.gateways.imModeWarn', { mode: MODES.find((m) => m.id === g.mode)?.label ?? g.mode })}
+          </div>
+        )}
+        <Row label={t('settings.gateways.startFresh')} search="Start fresh" hint={t('settings.gateways.imStartFreshHint')}>
           <QuietHours value={g.newChatAfterHours} onChange={(v) => save((s) => ((s.gateways.imessage.newChatAfterHours = v), s))} />
         </Row>
-        <Row label="Check for new texts every" hint="Seconds between reads of the Messages database.">
-          <NumberField label="Seconds" value={g.pollSeconds} min={2} max={300} onChange={(v) => v && save((s) => ((s.gateways.imessage.pollSeconds = Math.round(v)), s))} />
+        <Row label={t('settings.gateways.pollEvery')} search="Check for new texts every" hint={t('settings.gateways.pollEveryHint')}>
+          <NumberField label={t('settings.gateways.pollSeconds')} value={g.pollSeconds} min={2} max={300} onChange={(v) => v && save((s) => ((s.gateways.imessage.pollSeconds = Math.round(v)), s))} />
         </Row>
       </Section>
 
-      <Section title="Replies">
-        <Row label="Send test message" hint={`Texts “Xarı Bülbül is connected.” to ${g.senders[0] ?? 'the first allowed sender'}. The first send asks for permission to control Messages.`}>
+      <Section title={t('settings.gateways.replies')}>
+        <Row
+          label={t('settings.gateways.sendTest')}
+          search="Send test message"
+          hint={g.senders[0] ? t('settings.gateways.imSendTestHint', { sender: g.senders[0] }) : t('settings.gateways.imSendTestHintNobody')}
+        >
           <div className="inline">
             <button className="btn" disabled={!g.senders.length || busy === 'test'} onClick={() => run('test', () => api.imessage.test())}>
-              {busy === 'test' ? 'Sending…' : 'Send test message'}
+              {busy === 'test' ? t('settings.parts.sending') : t('settings.gateways.sendTest')}
             </button>
             {sent && (
               <span className="small okc" role="status">
-                Sent.
+                {t('settings.parts.sent')}
               </span>
             )}
           </div>
@@ -92,15 +102,15 @@ export function IMessagePage({ app, save, onState, onError }: PageProps) {
         {st.automation === 'denied' ? (
           <div className="notice notice-error small gw-steps" role="alert">
             <div>
-              <b>macOS blocked the app from sending through Messages.</b>
+              <b>{t('settings.gateways.automationBlocked')}</b>
               <ol>
-                <li>Open System Settings › Privacy &amp; Security › Automation.</li>
-                <li>Under Xarı Bülbül, turn on Messages.</li>
-                <li>Send the test message again.</li>
+                <li>{t('settings.gateways.automationStep1')}</li>
+                <li>{t('settings.gateways.automationStep2')}</li>
+                <li>{t('settings.gateways.automationStep3')}</li>
               </ol>
             </div>
             <button className="btn" onClick={() => api.imessage.openPrivacy('automation').catch(onError)}>
-              Open Automation settings
+              {t('settings.gateways.openAutomation')}
             </button>
           </div>
         ) : (
@@ -116,27 +126,29 @@ export function IMessagePage({ app, save, onState, onError }: PageProps) {
 }
 
 function Status({ app, busy, onCheck }: { app: PageProps['app']; busy: string; onCheck: () => void }) {
+  const { t } = useT()
+  const fmt = useFormat()
   const st = app.imessage
   if (st.state === 'off') return null
   if (st.state === 'no-access') {
     return (
-      <Section title="Full Disk Access">
+      <Section title={t('settings.gateways.fullDiskAccess')}>
         <div className="notice notice-warn small gw-steps" role="alert">
           <div>
-            <b>macOS blocked reading your messages.</b> Messages keeps them in a protected folder, so the app needs Full Disk Access.
+            <b>{t('settings.gateways.diskBlocked')}</b> {t('settings.gateways.diskBlockedWhy')}
             <ol>
-              <li>Open System Settings › Privacy &amp; Security › Full Disk Access.</li>
-              <li>Turn on Xarı Bülbül. If it isn't listed, add it with the + button from Applications.</li>
-              <li>Come back and press Check again. If it still can't read, quit and reopen the app.</li>
+              <li>{t('settings.gateways.diskStep1')}</li>
+              <li>{t('settings.gateways.diskStep2')}</li>
+              <li>{t('settings.gateways.diskStep3')}</li>
             </ol>
           </div>
         </div>
         <div className="inline">
           <button className="btn primary" onClick={() => api.imessage.openPrivacy('disk')}>
-            Open Full Disk Access settings
+            {t('settings.gateways.openDiskAccess')}
           </button>
           <button className="btn" disabled={busy === 'check'} onClick={onCheck}>
-            {busy === 'check' ? 'Checking…' : 'Check again'}
+            {busy === 'check' ? t('settings.parts.checking') : t('settings.parts.checkAgain')}
           </button>
         </div>
       </Section>
@@ -145,7 +157,7 @@ function Status({ app, busy, onCheck }: { app: PageProps['app']; busy: string; o
   const n = app.settings.gateways.imessage.senders.length
   const line =
     st.state === 'listening'
-      ? `Listening for texts from ${n} ${n === 1 ? 'sender' : 'senders'}.${st.lastReceivedAt ? ` Last text ${new Date(st.lastReceivedAt).toLocaleTimeString()}.` : ''}`
+      ? t('settings.gateways.listening', { count: n }) + (st.lastReceivedAt ? ` ${t('settings.gateways.lastText', { time: fmt.date(st.lastReceivedAt, { timeStyle: 'medium' }) })}` : '')
       : (st.message ?? '')
   return (
     <div className={`notice small ${st.state === 'listening' ? '' : st.state === 'needs-setup' ? 'notice-warn' : 'notice-error'}`} role="status">
@@ -155,7 +167,7 @@ function Status({ app, busy, onCheck }: { app: PageProps['app']; busy: string; o
       </span>
       {(st.state === 'error' || st.state === 'missing') && (
         <button className="btn" disabled={busy === 'check'} onClick={onCheck}>
-          Check again
+          {t('settings.parts.checkAgain')}
         </button>
       )}
     </div>
@@ -164,6 +176,7 @@ function Status({ app, busy, onCheck }: { app: PageProps['app']; busy: string; o
 
 /** Allowed senders: one per line in a list, each normalized when added. */
 function SenderList({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+  const { t } = useT()
   const [text, setText] = useState('')
   const [error, setError] = useState('')
   const add = () => {
@@ -171,7 +184,7 @@ function SenderList({ value, onChange }: { value: string[]; onChange: (v: string
     if (!raw) return
     const s = normalizeSender(raw)
     if (!s) {
-      setError(raw.includes('@') ? 'That email doesn’t look right.' : 'Use the full number with the country code, like +15551234567.')
+      setError(raw.includes('@') ? t('settings.gateways.badEmail') : t('settings.gateways.badNumber', { example: '+15551234567' }))
       return
     }
     setError('')
@@ -181,14 +194,14 @@ function SenderList({ value, onChange }: { value: string[]; onChange: (v: string
   return (
     <div className="gw-senders">
       {value.length === 0 ? (
-        <p className="muted small">Nobody yet, so no texts are answered.</p>
+        <p className="muted small">{t('settings.gateways.noSenders')}</p>
       ) : (
         <div className="list-field">
           {value.map((s) => (
             <div key={s} className="list-item">
               <code>{s}</code>
-              <button className="link danger small" aria-label={`Remove ${s}`} onClick={() => onChange(value.filter((x) => x !== s))}>
-                Remove
+              <button className="link danger small" aria-label={t('settings.gateways.removeSender', { sender: s })} onClick={() => onChange(value.filter((x) => x !== s))}>
+                {t('common.remove')}
               </button>
             </div>
           ))}
@@ -197,9 +210,9 @@ function SenderList({ value, onChange }: { value: string[]; onChange: (v: string
       <div className="inline">
         <input
           className="grow"
-          aria-label="Phone number or email"
+          aria-label={t('settings.gateways.senderLabel')}
           aria-invalid={!!error}
-          placeholder="+15551234567 or you@icloud.com"
+          placeholder={t('settings.gateways.senderPlaceholder', { phone: '+15551234567', email: 'you@icloud.com' })}
           value={text}
           spellCheck={false}
           autoComplete="off"
@@ -207,7 +220,7 @@ function SenderList({ value, onChange }: { value: string[]; onChange: (v: string
           onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), add())}
         />
         <button className="btn" disabled={!text.trim()} onClick={add}>
-          Add
+          {t('common.add')}
         </button>
       </div>
       {error && (
@@ -222,53 +235,58 @@ function SenderList({ value, onChange }: { value: string[]; onChange: (v: string
 // ---------------------------------------------------------------- WhatsApp
 
 export function WhatsAppPage({ app, save, onState, onError }: PageProps) {
+  const { t } = useT()
   const g = app.settings.gateways.whatsapp
   const bots = app.settings.botOptions.enabled ? app.settings.bots.filter((b) => b.enabled) : []
   const pickFolder = () => api.whatsapp.pickFolder().then((dir) => dir && save((s) => ((s.gateways.whatsapp.cwd = dir), s)), onError)
   return (
     <>
-      <Section description="Message the agent from WhatsApp on your phone. Link your account, then write in your own “Message yourself” chat. The reply comes back there.">
+      <Section description={t('settings.gateways.waIntro')}>
         <ul className="gw-notes small">
-          <li>It only runs while Xarı Bülbül is open. Messages sent while it's closed are skipped.</li>
-          <li>Only your “Message yourself” chat is read. Messages from other people and groups never reach the agent.</li>
-          <li>Unofficial and at your own risk: this links like WhatsApp Web, and WhatsApp may restrict accounts that automate messages.</li>
-          <li>WhatsApp support downloads the open-source Baileys library (MIT) and its libsignal dependency (GPL-3.0) to your computer when you turn it on. It needs Node.js 20 or newer.</li>
+          <li>{t('settings.gateways.waNoteOpen')}</li>
+          <li>{t('settings.gateways.waNoteSelf')}</li>
+          <li>{t('settings.gateways.waNoteRisk')}</li>
+          <li>{t('settings.gateways.waNoteBaileys')}</li>
         </ul>
-        <Row label="Use WhatsApp" hint="Starts a small helper program that stays connected to WhatsApp while the app is open.">
-          <Toggle label="Use WhatsApp" value={g.enabled} onChange={(v) => save((s) => ((s.gateways.whatsapp.enabled = v), s))} />
+        <Row label={t('settings.gateways.useWhatsApp')} search="Use WhatsApp" hint={t('settings.gateways.useWhatsAppHint')}>
+          <Toggle label={t('settings.gateways.useWhatsApp')} value={g.enabled} onChange={(v) => save((s) => ((s.gateways.whatsapp.enabled = v), s))} />
         </Row>
       </Section>
 
       {g.enabled && <WhatsAppLink app={app} onState={onState} onError={onError} />}
 
-      <Section title="Where it runs">
-        <Row label="Folder" hint="The WhatsApp chat runs in this folder and shows in the sidebar as “💬 WhatsApp”.">
+      <Section title={t('settings.gateways.whereItRuns')}>
+        <Row label={t('settings.gateways.folder')} search="Folder" hint={t('settings.gateways.waFolderHint', { name: '💬 WhatsApp' })}>
           <div className="inline">
             <span className="mono small schedule-path" title={g.cwd}>
-              {g.cwd || 'None'}
+              {g.cwd || t('common.none')}
             </span>
             <button className="btn" onClick={pickFolder}>
-              Choose…
+              {t('settings.parts.choose')}
             </button>
           </div>
         </Row>
-        {g.enabled && !g.cwd && <div className="notice notice-warn small">Choose a folder. Until then, messages get a reply asking for one.</div>}
+        {g.enabled && !g.cwd && <div className="notice notice-warn small">{t('settings.gateways.waNoFolder')}</div>}
         {bots.length > 0 && (
-          <Row label="Bot" hint="The WhatsApp chat uses this bot's persona and model.">
+          <Row label={t('settings.gateways.bot')} search="Bot" hint={t('settings.gateways.waBotHint')}>
             <Select
-              label="Bot"
+              label={t('settings.gateways.bot')}
               value={g.botId && bots.some((b) => b.id === g.botId) ? g.botId : ''}
-              options={[{ value: '', label: 'None' }, ...bots.map((b) => ({ value: b.id, label: b.name }))]}
+              options={[{ value: '', label: t('common.none') }, ...bots.map((b) => ({ value: b.id, label: b.name }))]}
               onChange={(v) => save((s) => ((s.gateways.whatsapp.botId = v || null), s))}
             />
           </Row>
         )}
-        <Row label="Permission mode" hint={`${MODES.find((m) => m.id === g.mode)?.hint ?? ''}. Applies to the WhatsApp chat only.`}>
-          <Select<PermissionMode> label="Permission mode" value={g.mode} options={MODES.map((m) => ({ value: m.id, label: m.label }))} onChange={(v) => save((s) => ((s.gateways.whatsapp.mode = v), s))} />
+        <Row label={t('settings.gateways.permissionMode')} search="Permission mode" hint={t('settings.gateways.waModeHint', { hint: MODES.find((m) => m.id === g.mode)?.hint ?? '' })}>
+          <Select<PermissionMode> label={t('settings.gateways.permissionMode')} value={g.mode} options={MODES.map((m) => ({ value: m.id, label: m.label }))} onChange={(v) => save((s) => ((s.gateways.whatsapp.mode = v), s))} />
         </Row>
-        {g.mode !== 'ask' && <div className="notice notice-warn small">With {MODES.find((m) => m.id === g.mode)?.label}, a message can make the agent {g.mode === 'plan' ? 'read your files' : 'change files or run commands'} without you seeing it first.</div>}
-        <Row label="Reply prefix" hint="Starts every reply, so you can tell the agent's messages from yours. Your messages that start with it are ignored.">
-          <TextField label="Reply prefix" value={g.prefix} onChange={(v) => save((s) => ((s.gateways.whatsapp.prefix = v.slice(0, 40)), s))} />
+        {g.mode !== 'ask' && (
+          <div className="notice notice-warn small">
+            {t(g.mode === 'plan' ? 'settings.gateways.waModeWarnPlan' : 'settings.gateways.waModeWarn', { mode: MODES.find((m) => m.id === g.mode)?.label ?? g.mode })}
+          </div>
+        )}
+        <Row label={t('settings.gateways.replyPrefix')} search="Reply prefix" hint={t('settings.gateways.replyPrefixHint')}>
+          <TextField label={t('settings.gateways.replyPrefix')} value={g.prefix} onChange={(v) => save((s) => ((s.gateways.whatsapp.prefix = v.slice(0, 40)), s))} />
         </Row>
       </Section>
 
@@ -281,39 +299,41 @@ const QUIET_HOURS = [2, 4, 8, 12, 24, 48]
 
 /** "Never" or a number of quiet hours after which a gateway chat starts over. */
 function QuietHours({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
-  const options = [{ value: '', label: 'Never: keep one chat' }, ...QUIET_HOURS.map((h) => ({ value: String(h), label: h % 24 === 0 ? `After ${h / 24} day${h === 24 ? '' : 's'} quiet` : `After ${h} hours quiet` }))]
-  if (value && !QUIET_HOURS.includes(value)) options.push({ value: String(value), label: `After ${value} hours quiet` })
-  return <Select label="Start fresh" value={value ? String(value) : ''} options={options} onChange={(v) => onChange(v ? Number(v) : null)} />
+  const { t } = useT()
+  const label = (h: number) => (h % 24 === 0 ? t('settings.gateways.quietDays', { count: h / 24 }) : t('settings.gateways.quietHours', { count: h }))
+  const options = [{ value: '', label: t('settings.gateways.quietNever') }, ...QUIET_HOURS.map((h) => ({ value: String(h), label: label(h) }))]
+  if (value && !QUIET_HOURS.includes(value)) options.push({ value: String(value), label: t('settings.gateways.quietHours', { count: value }) })
+  return <Select label={t('settings.gateways.startFresh')} value={value ? String(value) : ''} options={options} onChange={(v) => onChange(v ? Number(v) : null)} />
 }
-
-const day = (ts: number) => new Date(ts).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: new Date(ts).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' })
 
 /** The current WhatsApp chat and earlier ones: start a new one, delete old ones. */
 function WhatsAppChats({ app, save, onState, onError }: Pick<PageProps, 'app' | 'save' | 'onState' | 'onError'>) {
+  const { t, lang } = useT()
+  const day = (ts: number) => new Date(ts).toLocaleDateString(lang, { month: 'short', day: 'numeric', year: new Date(ts).getFullYear() === new Date().getFullYear() ? undefined : 'numeric' })
   const chats = app.whatsappChats
   const earlier = chats.filter((c) => !c.current)
   const current = chats.find((c) => c.current)
-  const remove = (id: string, title: string) => confirm(`Delete “${title}”? This can't be undone.`) && api.sessions.remove(id).then(onState, onError)
+  const remove = (id: string, title: string) => confirm(t('settings.gateways.deleteChatConfirm', { title })) && api.sessions.remove(id).then(onState, onError)
   const removeEarlier = () => {
-    if (!confirm(`Delete ${earlier.length} earlier WhatsApp chat${earlier.length === 1 ? '' : 's'}? This can't be undone.`)) return
+    if (!confirm(t('settings.gateways.deleteEarlierConfirm', { count: earlier.length }))) return
     earlier.reduce<Promise<unknown>>((p, c) => p.then(() => api.sessions.remove(c.id).then(onState)), Promise.resolve()).catch(onError)
   }
   return (
-    <Section title="Chats" description="Your messages go to the current chat. Start a new one here, or text /new on WhatsApp. Earlier chats stay until you delete them.">
-      <Row label="Current chat" hint={current ? `Since ${day(current.createdAt)}` : 'None yet. Your next message starts one.'}>
+    <Section title={t('settings.gateways.chats')} description={t('settings.gateways.chatsHint')}>
+      <Row label={t('settings.gateways.currentChat')} search="Current chat" hint={current ? t('settings.gateways.since', { date: day(current.createdAt) }) : t('settings.gateways.noCurrentChat')}>
         <div className="inline">
           {current && <span className="small">{current.title}</span>}
           <button className="btn" disabled={!current} onClick={() => api.whatsapp.newChat().then(onState, onError)}>
-            New chat
+            {t('settings.gateways.newChat')}
           </button>
         </div>
       </Row>
-      <Row label="Start fresh" hint="After this many quiet hours, your next message starts a new chat, like a daily reset. The bot still remembers you through its memory.">
+      <Row label={t('settings.gateways.startFresh')} search="Start fresh" hint={t('settings.gateways.waStartFreshHint')}>
         <QuietHours value={app.settings.gateways.whatsapp.newChatAfterHours} onChange={(v) => save((s) => ((s.gateways.whatsapp.newChatAfterHours = v), s))} />
       </Row>
       {earlier.length > 0 && (
         <>
-          <ul className="wa-chats" aria-label="Earlier WhatsApp chats">
+          <ul className="wa-chats" aria-label={t('settings.gateways.earlierChats')}>
             {earlier.map((c) => (
               <li key={c.id} className="wa-chat">
                 <span className="grow">{c.title}</span>
@@ -321,15 +341,15 @@ function WhatsAppChats({ app, save, onState, onError }: Pick<PageProps, 'app' | 
                   {day(c.createdAt)}
                   {c.updatedAt - c.createdAt > 86_400_000 ? ` – ${day(c.updatedAt)}` : ''}
                 </span>
-                <button className="link danger small" aria-label={`Delete ${c.title}, ${day(c.updatedAt)}`} onClick={() => remove(c.id, c.title)}>
-                  Delete
+                <button className="link danger small" aria-label={t('settings.gateways.deleteChatLabel', { title: c.title, date: day(c.updatedAt) })} onClick={() => remove(c.id, c.title)}>
+                  {t('common.delete')}
                 </button>
               </li>
             ))}
           </ul>
           {earlier.length > 1 && (
             <button className="link danger small" onClick={removeEarlier}>
-              Delete all {earlier.length} earlier chats
+              {t('settings.gateways.deleteEarlier', { count: earlier.length })}
             </button>
           )}
         </>
@@ -340,6 +360,8 @@ function WhatsAppChats({ app, save, onState, onError }: Pick<PageProps, 'app' | 
 
 /** Install progress, the QR code or pairing code, and the linked account. */
 function WhatsAppLink({ app, onState, onError }: Pick<PageProps, 'app' | 'onState' | 'onError'>) {
+  const { t } = useT()
+  const fmt = useFormat()
   const st = app.whatsapp
   const [busy, setBusy] = useState<'' | 'retry' | 'pair' | 'unlink' | 'test'>('')
   const [phone, setPhone] = useState('')
@@ -364,16 +386,16 @@ function WhatsAppLink({ app, onState, onError }: Pick<PageProps, 'app' | 'onStat
   if (st.state === 'off') return null
   if (st.state === 'needs-node') {
     return (
-      <Section title="Link your account">
+      <Section title={t('settings.gateways.linkAccount')}>
         <div className="notice notice-warn small" role="alert">
-          <span>{st.message ?? 'Install Node.js 20+ to use WhatsApp.'}</span>
+          <span>{st.message ?? t('settings.gateways.needsNode')}</span>
         </div>
         <div className="inline">
           <button className="btn primary" onClick={() => api.app.openExternal(st.url ?? 'https://nodejs.org/en/download').catch(onError)}>
-            Download Node.js
+            {t('settings.gateways.downloadNode')}
           </button>
           <button className="btn" disabled={busy === 'retry'} onClick={() => run('retry', () => api.whatsapp.retry())}>
-            I installed it, try again
+            {t('settings.gateways.installedRetry')}
           </button>
         </div>
       </Section>
@@ -381,7 +403,7 @@ function WhatsAppLink({ app, onState, onError }: Pick<PageProps, 'app' | 'onStat
   }
   if (st.state === 'installing') {
     return (
-      <Section title="Link your account">
+      <Section title={t('settings.gateways.linkAccount')}>
         <div className="notice small" role="status">
           <span>
             {st.message}
@@ -393,22 +415,22 @@ function WhatsAppLink({ app, onState, onError }: Pick<PageProps, 'app' | 'onStat
   }
   if (st.state === 'linking') {
     return (
-      <Section title="Link your account">
+      <Section title={t('settings.gateways.linkAccount')}>
         <div className="wa-link">
           {st.pairingCode ? (
             <div className="wa-code" aria-live="polite">
-              <span className="small muted">Your code</span>
+              <span className="small muted">{t('settings.gateways.yourCode')}</span>
               <b className="mono">{st.pairingCode}</b>
             </div>
           ) : st.qrSvg ? (
-            <img className="wa-qr" alt="QR code to link WhatsApp" src={`data:image/svg+xml;utf8,${encodeURIComponent(st.qrSvg)}`} />
+            <img className="wa-qr" alt={t('settings.gateways.qrAlt')} src={`data:image/svg+xml;utf8,${encodeURIComponent(st.qrSvg)}`} />
           ) : (
             <code className="small">{st.qr}</code>
           )}
           <ol className="small">
-            <li>On your phone, open WhatsApp › Settings › Linked devices.</li>
-            <li>Tap Link a device.</li>
-            <li>{st.pairingCode ? 'Tap “Link with phone number instead” and type the code above.' : 'Scan this code. It changes every few seconds.'}</li>
+            <li>{t('settings.gateways.linkStep1')}</li>
+            <li>{t('settings.gateways.linkStep2')}</li>
+            <li>{st.pairingCode ? t('settings.gateways.linkStep3Code') : t('settings.gateways.linkStep3Qr')}</li>
           </ol>
         </div>
         {!st.pairingCode && (
@@ -417,7 +439,7 @@ function WhatsAppLink({ app, onState, onError }: Pick<PageProps, 'app' | 'onStat
               <>
                 <input
                   className="grow"
-                  aria-label="Your WhatsApp number"
+                  aria-label={t('settings.gateways.yourNumber')}
                   placeholder="+4915112345678"
                   value={phone}
                   spellCheck={false}
@@ -426,12 +448,12 @@ function WhatsAppLink({ app, onState, onError }: Pick<PageProps, 'app' | 'onStat
                   onKeyDown={(e) => e.key === 'Enter' && phone.trim() && run('pair', () => api.whatsapp.pair(phone))}
                 />
                 <button className="btn" disabled={!phone.trim() || busy === 'pair'} onClick={() => run('pair', () => api.whatsapp.pair(phone))}>
-                  {busy === 'pair' ? 'Getting a code…' : 'Get code'}
+                  {busy === 'pair' ? t('settings.gateways.gettingCode') : t('settings.gateways.getCode')}
                 </button>
               </>
             ) : (
               <button className="link small" onClick={() => setByPhone(true)}>
-                Link with phone number instead
+                {t('settings.gateways.linkWithPhone')}
               </button>
             )}
           </div>
@@ -441,11 +463,11 @@ function WhatsAppLink({ app, onState, onError }: Pick<PageProps, 'app' | 'onStat
   }
   if (st.state === 'connected') {
     return (
-      <Section title="Linked">
+      <Section title={t('settings.gateways.linked')}>
         <div className="notice small" role="status">
           <span>
-            Linked to {st.account ?? 'your account'}. Write in your “Message yourself” chat to reach the agent.
-            {st.lastReceivedAt ? ` Last message ${new Date(st.lastReceivedAt).toLocaleTimeString()}.` : ''}
+            {st.account ? t('settings.gateways.linkedTo', { account: st.account }) : t('settings.gateways.linkedToYours')}
+            {st.lastReceivedAt ? ` ${t('settings.gateways.lastMessage', { time: fmt.date(st.lastReceivedAt, { timeStyle: 'medium' }) })}` : ''}
             {st.runError ? ` ${st.runError}` : ''}
           </span>
         </div>
@@ -456,23 +478,32 @@ function WhatsAppLink({ app, onState, onError }: Pick<PageProps, 'app' | 'onStat
         )}
         <div className="inline">
           <button className="btn" disabled={busy === 'test'} onClick={() => run('test', () => api.whatsapp.test())}>
-            {busy === 'test' ? 'Sending…' : 'Send test message'}
+            {busy === 'test' ? t('settings.parts.sending') : t('settings.gateways.sendTest')}
           </button>
           {sent && (
             <span className="small okc" role="status">
-              Sent.
+              {t('settings.parts.sent')}
             </span>
           )}
           <button className="btn danger" disabled={busy === 'unlink'} onClick={() => run('unlink', () => api.whatsapp.unlink())}>
-            {busy === 'unlink' ? 'Unlinking…' : 'Unlink'}
+            {busy === 'unlink' ? t('settings.gateways.unlinking') : t('settings.gateways.unlink')}
           </button>
         </div>
       </Section>
     )
   }
-  const held = st.state === 'qr-expired' ? 'Show a new code' : st.state === 'logged-out' ? 'Link again' : st.state === 'replaced' ? 'Use this computer' : st.state === 'error' ? 'Try again' : null
+  const held =
+    st.state === 'qr-expired'
+      ? t('settings.gateways.newCode')
+      : st.state === 'logged-out'
+        ? t('settings.gateways.linkAgain')
+        : st.state === 'replaced'
+          ? t('settings.gateways.useThisComputer')
+          : st.state === 'error'
+            ? t('settings.gateways.tryAgain')
+            : null
   return (
-    <Section title="Link your account">
+    <Section title={t('settings.gateways.linkAccount')}>
       <div className={`notice small ${st.state === 'error' ? 'notice-error' : st.state === 'reconnecting' || held ? 'notice-warn' : ''}`} role="status">
         <span>{st.message}</span>
       </div>

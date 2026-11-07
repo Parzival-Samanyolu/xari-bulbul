@@ -1,16 +1,19 @@
+import { useT } from '../../../lib/i18n'
 import { MODES } from '../../Composer'
 import { ListField, NumberField, Row, Section, TextField, Toggle } from '../../fields'
 import type { PageProps } from '../common'
+import { rich } from './parts'
 
 type HookKind = 'preTool' | 'postTool'
 
 export function SafetyPage({ app, save }: PageProps) {
+  const { t } = useT()
   const p = app.settings.permissions
   return (
     <>
-      <Section title="Permission mode">
-        <Row label="Default mode" hint={`${MODES.find((m) => m.id === p.mode)?.hint ?? ''}. New windows start in it; switch any time in the message box or with Shift+Tab.`}>
-          <div className="modes large" role="radiogroup" aria-label="Default permission mode">
+      <Section title={t('settings.safety.permissionMode')}>
+        <Row label={t('settings.safety.defaultMode')} search="Default mode" hint={t('settings.safety.defaultModeHint', { hint: MODES.find((m) => m.id === p.mode)?.hint ?? '' })}>
+          <div className="modes large" role="radiogroup" aria-label={t('settings.safety.defaultModeLabel')}>
             {MODES.map((m) => (
               <button key={m.id} role="radio" aria-checked={p.mode === m.id} className={`mode mode-${m.id} ${p.mode === m.id ? 'on' : ''}`} onClick={() => save((s) => ((s.permissions.mode = m.id), s))}>
                 {m.label}
@@ -19,27 +22,30 @@ export function SafetyPage({ app, save }: PageProps) {
           </div>
         </Row>
       </Section>
-      <Section title="Guards">
-        <Row label="Confirm destructive commands" hint="Asks before rm, git reset --hard, force pushes and similar, even in Full auto. Allow rules below still apply.">
-          <Toggle label="Confirm destructive commands" value={p.confirmDestructive} onChange={(v) => save((s) => ((s.permissions.confirmDestructive = v), s))} />
+      <Section title={t('settings.safety.guards')}>
+        <Row label={t('settings.safety.confirmDestructive')} search="Confirm destructive commands" hint={t('settings.safety.confirmDestructiveHint')}>
+          <Toggle label={t('settings.safety.confirmDestructive')} value={p.confirmDestructive} onChange={(v) => save((s) => ((s.permissions.confirmDestructive = v), s))} />
         </Row>
-        <Row label="Allow edits outside the project folder" hint="Off: writing outside the open folder always asks, even in Full auto.">
-          <Toggle label="Allow edits outside the project folder" value={p.allowOutsideWorkspace} onChange={(v) => save((s) => ((s.permissions.allowOutsideWorkspace = v), s))} />
+        <Row label={t('settings.safety.allowOutside')} search="Allow edits outside the project folder" hint={t('settings.safety.allowOutsideHint')}>
+          <Toggle label={t('settings.safety.allowOutside')} value={p.allowOutsideWorkspace} onChange={(v) => save((s) => ((s.permissions.allowOutsideWorkspace = v), s))} />
         </Row>
       </Section>
       <Section
-        title="Rules"
-        description={
-          <>
-            Format: <code>tool</code> or <code>tool(pattern)</code>. For commands <code>*</code> matches anything (<code>bash(npm test*)</code>); for paths <code>*</code> is one folder level and <code>**</code> any depth (<code>edit_file(src/**)</code>). Deny rules win over everything, including Full auto.
-          </>
-        }
+        title={t('settings.safety.rules')}
+        description={rich(t('settings.safety.rulesFormat'), {
+          tool: <code>tool</code>,
+          toolPattern: <code>tool(pattern)</code>,
+          star: <code>*</code>,
+          bashExample: <code>bash(npm test*)</code>,
+          doubleStar: <code>**</code>,
+          editExample: <code>edit_file(src/**)</code>,
+        })}
       >
-        <Row label="Always allow" wide>
-          <ListField label="Always allow" value={p.allow} placeholder="bash(npm test*)" onChange={(v) => save((s) => ((s.permissions.allow = v), s))} />
+        <Row label={t('settings.safety.alwaysAllow')} search="Always allow" wide>
+          <ListField label={t('settings.safety.alwaysAllow')} value={p.allow} placeholder="bash(npm test*)" onChange={(v) => save((s) => ((s.permissions.allow = v), s))} />
         </Row>
-        <Row label="Always deny" wide>
-          <ListField label="Always deny" value={p.deny} placeholder="bash(git push*)" onChange={(v) => save((s) => ((s.permissions.deny = v), s))} />
+        <Row label={t('settings.safety.alwaysDeny')} search="Always deny" wide>
+          <ListField label={t('settings.safety.alwaysDeny')} value={p.deny} placeholder="bash(git push*)" onChange={(v) => save((s) => ((s.permissions.deny = v), s))} />
         </Row>
       </Section>
     </>
@@ -48,53 +54,58 @@ export function SafetyPage({ app, save }: PageProps) {
 
 /** Shell commands around tool calls (the Hooks tab). */
 export function HooksPage({ app, save }: PageProps) {
+  const { t } = useT()
   const h = app.settings.hooks
-  const hooks = (kind: HookKind, label: string, hint: string) => (
-    <Row label={label} hint={hint} wide>
-      {h[kind].length === 0 && <p className="muted small">None.</p>}
+  const hooks = (kind: HookKind, label: string, search: string, hint: string) => (
+    <Row label={label} search={search} hint={hint} wide>
+      {h[kind].length === 0 && <p className="muted small">{t('settings.safety.noHooks')}</p>}
       {h[kind].map((rule, i) => (
-        <div key={i} className="override">
+        <div key={i} className="override hook-card">
           <div className="provider-head">
-            <Toggle label={`Hook ${i + 1} on`} value={rule.enabled} onChange={(v) => save((s) => ((s.hooks[kind][i].enabled = v), s))} />
-            <span className="muted small">{rule.enabled ? 'On' : 'Off'}</span>
+            <Toggle label={t('settings.safety.hookOn', { n: i + 1 })} value={rule.enabled} onChange={(v) => save((s) => ((s.hooks[kind][i].enabled = v), s))} />
+            <span className="muted small">{rule.enabled ? t('common.on') : t('common.off')}</span>
             <div className="spacer" />
             <button className="link danger small" onClick={() => save((s) => (s.hooks[kind].splice(i, 1), s))}>
-              Remove
+              {t('common.remove')}
             </button>
           </div>
           <div className="hook-grid">
             <label>
-              Match
-              <TextField label="Match" mono value={rule.match} placeholder="bash(git commit*)" onChange={(v) => save((s) => ((s.hooks[kind][i].match = v), s))} />
+              {t('settings.safety.match')}
+              <TextField label={t('settings.safety.match')} mono value={rule.match} placeholder="bash(git commit*)" onChange={(v) => save((s) => ((s.hooks[kind][i].match = v), s))} />
             </label>
             <label>
-              Command
-              <TextField label="Command" mono value={rule.command} placeholder="./scripts/check.sh" onChange={(v) => save((s) => ((s.hooks[kind][i].command = v), s))} />
+              {t('settings.safety.command')}
+              <TextField label={t('settings.safety.command')} mono value={rule.command} placeholder="./scripts/check.sh" onChange={(v) => save((s) => ((s.hooks[kind][i].command = v), s))} />
             </label>
             <label>
-              Time limit
-              <NumberField label="Time limit" value={rule.timeoutSec} min={1} max={600} suffix="s" onChange={(v) => save((s) => ((s.hooks[kind][i].timeoutSec = v ?? 30), s))} />
+              {t('settings.safety.timeLimit')}
+              <NumberField label={t('settings.safety.timeLimit')} value={rule.timeoutSec} min={1} max={600} suffix={t('settings.parts.secondsShort')} onChange={(v) => save((s) => ((s.hooks[kind][i].timeoutSec = v ?? 30), s))} />
             </label>
           </div>
         </div>
       ))}
       <div>
         <button className="btn" onClick={() => save((s) => (s.hooks[kind].push({ match: '*', command: '', timeoutSec: 30, enabled: true }), s))}>
-          Add hook
+          {t('settings.safety.addHook')}
         </button>
       </div>
     </Row>
   )
   return (
     <Section
-      description={
-        <>
-          They run in the project folder, with your permissions and without asking. <b>Match</b> uses the rule format from Permissions (<code>tool</code> or <code>tool(pattern)</code>), or <code>*</code> for every call. The command gets the call as JSON on stdin and <code>HARNESS_TOOL</code>, <code>HARNESS_SUBJECT</code> and <code>HARNESS_CWD</code> in its environment.
-        </>
-      }
+      description={rich(t('settings.safety.hooksIntro'), {
+        match: <b>{t('settings.safety.match')}</b>,
+        tool: <code>tool</code>,
+        toolPattern: <code>tool(pattern)</code>,
+        star: <code>*</code>,
+        toolVar: <code>HARNESS_TOOL</code>,
+        subjectVar: <code>HARNESS_SUBJECT</code>,
+        cwdVar: <code>HARNESS_CWD</code>,
+      })}
     >
-      {hooks('preTool', 'Before a tool runs', 'Exit code 2 blocks the call; what the command printed to stderr is the reason the agent sees.')}
-      {hooks('postTool', 'After a tool runs', "What the command prints is added to the tool's result. Exit code 2 adds its stderr as feedback.")}
+      {hooks('preTool', t('settings.safety.beforeTool'), 'Before a tool runs', t('settings.safety.beforeToolHint'))}
+      {hooks('postTool', t('settings.safety.afterTool'), 'After a tool runs', t('settings.safety.afterToolHint'))}
     </Section>
   )
 }

@@ -1849,6 +1849,11 @@ button.sb-item:hover {
 .modes.large .mode {
   padding: 4px 16px;
 }
+/* Translated mode names can be long: the Safety mode picker wraps instead of overflowing. */
+.modes.large {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
 .mode-hint {
   margin: 8px 0 0;
 }
@@ -2291,6 +2296,15 @@ button.sb-item:hover {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Schedule, plugin, MCP server and hook card heads: longer translated buttons and badges move to a second line. */
+.schedule .provider-head,
+.plugin-card .provider-head,
+.mcp-card .provider-head,
+.hook-card .provider-head {
+  flex-wrap: wrap;
+  row-gap: 6px;
 }
 
 .schedule-times {
