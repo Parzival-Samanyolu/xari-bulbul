@@ -2,28 +2,33 @@ import { useEffect, useState } from 'react'
 import { TRANSCRIPTION_SUGGESTIONS } from '@harness/core/voice'
 import type { VoiceDownload } from '../../../../../shared/ipc'
 import { api } from '../../../lib/api'
+import { useFormat, useT } from '../../../lib/i18n'
 import { NumberField, Row, Section, Select, Slider, TextField, Toggle } from '../../fields'
 import { ProviderLogo } from '../../ProviderLogo'
 import type { PageProps } from '../common'
+import { rich } from './parts'
+
+type T = ReturnType<typeof useT>['t']
 
 // ---------------------------------------------------------------- Browser
 
 export function BrowserPage({ app, save, go }: PageProps) {
+  const { t } = useT()
   const b = app.settings.tools.browser
   return (
     <Section>
-      <Row label="Let the agent use a browser" hint={app.browser ? <>Uses <code>{app.browser}</code></> : 'No browser found. Install Chrome, Edge, Brave or Chromium, or set its path below.'}>
-        <Toggle label="Let the agent use a browser" value={b.enabled} onChange={(v) => save((s) => ((s.tools.browser.enabled = v), s))} />
+      <Row label={t('settings.system.useBrowser')} search="Let the agent use a browser" hint={app.browser ? rich(t('settings.system.usesBrowser'), { browser: <code>{app.browser}</code> }) : t('settings.system.noBrowser')}>
+        <Toggle label={t('settings.system.useBrowser')} value={b.enabled} onChange={(v) => save((s) => ((s.tools.browser.enabled = v), s))} />
       </Row>
-      <Row label="Hide the browser window" hint="Turn off to watch the agent click and type.">
-        <Toggle label="Hide the browser window" value={b.headless} onChange={(v) => save((s) => ((s.tools.browser.headless = v), s))} />
+      <Row label={t('settings.system.hideBrowser')} search="Hide the browser window" hint={t('settings.system.hideBrowserHint')}>
+        <Toggle label={t('settings.system.hideBrowser')} value={b.headless} onChange={(v) => save((s) => ((s.tools.browser.headless = v), s))} />
       </Row>
-      <Row label="Browser path" hint="Leave empty to find one automatically." labelFor="browser-path">
-        <TextField id="browser-path" mono value={b.path} placeholder="Found automatically" onChange={(v) => save((s) => ((s.tools.browser.path = v.trim()), s))} />
+      <Row label={t('settings.system.browserPath')} search="Browser path" hint={t('settings.system.browserPathHint')} labelFor="browser-path">
+        <TextField id="browser-path" mono value={b.path} placeholder={t('settings.system.foundAutomatically')} onChange={(v) => save((s) => ((s.tools.browser.path = v.trim()), s))} />
       </Row>
-      <Row label="Site logins" hint={b.keepLogins ? 'Kept between chats.' : 'Each browser starts signed out and its profile is deleted afterwards.'}>
+      <Row label={t('settings.system.siteLogins')} search="Site logins" hint={b.keepLogins ? t('settings.system.siteLoginsKept') : t('settings.system.siteLoginsNotKept')}>
         <button className="link small" onClick={() => go('passwords')}>
-          Change in Passwords &amp; Logins
+          {t('settings.system.changeInPasswords')}
         </button>
       </Row>
     </Section>
@@ -35,63 +40,58 @@ export function BrowserPage({ app, save, go }: PageProps) {
 const SEARCH_NAMES: Record<string, string> = { brave: 'Brave Search', tavily: 'Tavily' }
 
 export function PasswordsPage({ app, save, onState, onError }: PageProps) {
+  const { t } = useT()
   const providers = app.settings.providers.filter((p) => app.keys[p.id])
   const search = Object.keys(SEARCH_NAMES).filter((id) => app.keys[id])
   const tokens = app.settings.mcp.servers.filter((s) => app.mcp.tokens[s.id])
   const none = !providers.length && !search.length && !tokens.length
   const b = app.settings.tools.browser
-  const remove = (what: string, run: () => Promise<unknown>) => confirm(`Remove the saved ${what}?`) && run().catch(onError)
+  const remove = (question: string, run: () => Promise<unknown>) => confirm(question) && run().catch(onError)
   return (
     <>
       <Section
-        title="Saved keys"
-        description={
-          app.keyStorage === 'os' ? (
-            'Stored in your system keychain and never shown again. Environment variables such as OPENROUTER_API_KEY override them.'
-          ) : (
-            <span className="warn">No system keychain was found, so keys are only obfuscated in the data folder.</span>
-          )
-        }
+        title={t('settings.system.savedKeys')}
+        description={app.keyStorage === 'os' ? t('settings.system.savedKeysHint', { example: 'OPENROUTER_API_KEY' }) : <span className="warn">{t('settings.system.noKeychain')}</span>}
       >
-        {none && <p className="muted small">No keys saved yet.</p>}
+        {none && <p className="muted small">{t('settings.system.noKeys')}</p>}
         {providers.map((p) => (
-          <Row key={p.id} label={<span className="inline"><ProviderLogo id={p.id} name={p.name} size={14} /> {p.name}</span>} hint="API key" search={`${p.name} key`}>
+          <Row key={p.id} label={<span className="inline"><ProviderLogo id={p.id} name={p.name} size={14} /> {p.name}</span>} hint={t('settings.system.apiKey')} search={`${p.name} key`}>
             <div className="inline">
-              <span className="mono muted" aria-label="Hidden key">••••••••</span>
-              <button className="link danger small" onClick={() => remove(`${p.name} key`, () => api.keys.set(p.id, null).then(onState))}>
-                Remove
+              <span className="mono muted" aria-label={t('settings.parts.hiddenKey')}>••••••••</span>
+              <button className="link danger small" onClick={() => remove(t('settings.system.removeKeyConfirm', { name: p.name }), () => api.keys.set(p.id, null).then(onState))}>
+                {t('common.remove')}
               </button>
             </div>
           </Row>
         ))}
         {search.map((id) => (
-          <Row key={id} label={SEARCH_NAMES[id]} hint="Web search key">
+          <Row key={id} label={SEARCH_NAMES[id]} hint={t('settings.system.webSearchKey')}>
             <div className="inline">
-              <span className="mono muted" aria-label="Hidden key">••••••••</span>
-              <button className="link danger small" onClick={() => remove(`${SEARCH_NAMES[id]} key`, () => api.keys.set(id, null).then(onState))}>
-                Remove
+              <span className="mono muted" aria-label={t('settings.parts.hiddenKey')}>••••••••</span>
+              <button className="link danger small" onClick={() => remove(t('settings.system.removeKeyConfirm', { name: SEARCH_NAMES[id] }), () => api.keys.set(id, null).then(onState))}>
+                {t('common.remove')}
               </button>
             </div>
           </Row>
         ))}
         {tokens.map((srv) => (
-          <Row key={srv.id} label={srv.name} hint="MCP server token">
+          <Row key={srv.id} label={srv.name} hint={t('settings.system.mcpToken')}>
             <div className="inline">
-              <span className="mono muted" aria-label="Hidden token">••••••••</span>
-              <button className="link danger small" onClick={() => remove(`token for ${srv.name}`, () => api.mcp.setToken(srv.id, null).then(onState))}>
-                Remove
+              <span className="mono muted" aria-label={t('settings.system.hiddenToken')}>••••••••</span>
+              <button className="link danger small" onClick={() => remove(t('settings.system.removeTokenConfirm', { name: srv.name }), () => api.mcp.setToken(srv.id, null).then(onState))}>
+                {t('common.remove')}
               </button>
             </div>
           </Row>
         ))}
       </Section>
-      <Section title="Browser logins">
-        <Row label="Keep site logins" hint="The agent's browser keeps one profile in the data folder, so sites you sign in to there stay signed in. Your own browser's profile is never used.">
-          <Toggle label="Keep site logins" value={b.keepLogins} onChange={(v) => save((s) => ((s.tools.browser.keepLogins = v), s))} />
+      <Section title={t('settings.system.browserLogins')}>
+        <Row label={t('settings.system.keepLogins')} search="Keep site logins" hint={t('settings.system.keepLoginsHint')}>
+          <Toggle label={t('settings.system.keepLogins')} value={b.keepLogins} onChange={(v) => save((s) => ((s.tools.browser.keepLogins = v), s))} />
         </Row>
-        <Row label="Saved logins" hint={app.browserLogins ? 'Cookies and site data from the kept profile.' : 'Nothing saved.'}>
-          <button className="btn ghost danger" disabled={!app.browserLogins} onClick={() => confirm('Sign out of every site in the agent’s browser and delete its profile?') && api.browser.clearLogins().then(onState, onError)}>
-            Delete saved logins
+        <Row label={t('settings.system.savedLogins')} search="Saved logins" hint={app.browserLogins ? t('settings.system.savedLoginsHint') : t('settings.system.nothingSaved')}>
+          <button className="btn ghost danger" disabled={!app.browserLogins} onClick={() => confirm(t('settings.system.deleteLoginsConfirm')) && api.browser.clearLogins().then(onState, onError)}>
+            {t('settings.system.deleteLogins')}
           </button>
         </Row>
       </Section>
@@ -102,39 +102,41 @@ export function PasswordsPage({ app, save, onState, onError }: PageProps) {
 // ---------------------------------------------------------------- Memory & Context
 
 export function MemoryPage({ app, save, onState, onError, go }: PageProps) {
+  const { t } = useT()
   const m = app.settings.memory
   const info = app.memory
   const models = app.settings.models
   const reviewer = models.memoryReview ?? models.title
   const scopes = [
-    { scope: 'project' as const, title: 'This project', facts: info.project, file: info.projectFile, empty: app.workspace ? 'Nothing saved for this folder yet.' : 'Open a folder to see its memories.' },
-    { scope: 'global' as const, title: 'All projects', facts: info.global, file: info.globalFile, empty: 'Nothing saved yet.' },
+    { scope: 'project' as const, title: t('settings.system.thisProject'), facts: info.project, file: info.projectFile, empty: app.workspace ? t('settings.system.nothingForFolder') : t('settings.system.openFolderForMemories') },
+    { scope: 'global' as const, title: t('settings.system.allProjects'), facts: info.global, file: info.globalFile, empty: t('settings.system.nothingSavedYet') },
   ]
   return (
     <>
       <Section>
-        <Row label="Let the agent remember" hint="Off: saved memories are neither used nor updated.">
-          <Toggle label="Let the agent remember" value={m.enabled} onChange={(v) => save((s) => ((s.memory.enabled = v), s))} />
+        <Row label={t('settings.system.remember')} search="Let the agent remember" hint={t('settings.system.rememberHint')}>
+          <Toggle label={t('settings.system.remember')} value={m.enabled} onChange={(v) => save((s) => ((s.memory.enabled = v), s))} />
         </Row>
         <Row
-          label="Save facts after each reply"
+          label={t('settings.system.autoReview')}
+          search="Save facts after each reply"
           hint={
             reviewer ? (
-              'The memory model reads the turn and saves lasting facts. You can undo each save.'
+              t('settings.system.autoReviewHint')
             ) : (
               <>
-                Needs a memory or chat naming model.{' '}
+                {t('settings.system.autoReviewNeedsModel')}{' '}
                 <button className="link small" onClick={() => go('model.aux')}>
-                  Choose one
+                  {t('settings.system.chooseOne')}
                 </button>
               </>
             )
           }
         >
-          <Toggle label="Save facts after each reply" value={m.autoReview} onChange={(v) => save((s) => ((s.memory.autoReview = v), s))} />
+          <Toggle label={t('settings.system.autoReview')} value={m.autoReview} onChange={(v) => save((s) => ((s.memory.autoReview = v), s))} />
         </Row>
-        <Row label="Size limit" hint="Characters per list. When a list is full the agent must remove or merge entries.">
-          <NumberField label="Memory size limit" value={m.maxChars} min={500} max={50000} step={500} suffix="chars" onChange={(v) => v && save((s) => ((s.memory.maxChars = v), s))} />
+        <Row label={t('settings.system.sizeLimit')} search="Size limit" hint={t('settings.system.sizeLimitHint')}>
+          <NumberField label={t('settings.system.sizeLimitLabel')} value={m.maxChars} min={500} max={50000} step={500} suffix={t('settings.parts.chars')} onChange={(v) => v && save((s) => ((s.memory.maxChars = v), s))} />
         </Row>
       </Section>
       {scopes.map(({ scope, title, facts, file, empty }) => (
@@ -146,8 +148,8 @@ export function MemoryPage({ app, save, onState, onError, go }: PageProps) {
               {facts.map((f) => (
                 <div key={f} className="tool-item memory-item">
                   <span className="tool-desc">{f}</span>
-                  <button className="btn ghost" aria-label={`Delete memory: ${f}`} onClick={() => api.memory.remove(scope, f).then(onState, onError)}>
-                    Delete
+                  <button className="btn ghost" aria-label={t('settings.system.deleteMemoryLabel', { fact: f })} onClick={() => api.memory.remove(scope, f).then(onState, onError)}>
+                    {t('common.delete')}
                   </button>
                 </div>
               ))}
@@ -155,10 +157,10 @@ export function MemoryPage({ app, save, onState, onError, go }: PageProps) {
           )}
           <div className="inline">
             <button className="btn" disabled={!file || facts.length === 0} onClick={() => file && api.app.openPath(file)}>
-              Open file
+              {t('settings.system.openFile')}
             </button>
-            <button className="btn ghost danger" disabled={facts.length === 0} onClick={() => confirm(`Delete every memory in "${title}"?`) && api.memory.clear(scope).then(onState, onError)}>
-              Clear
+            <button className="btn ghost danger" disabled={facts.length === 0} onClick={() => confirm(t('settings.system.clearMemoryConfirm', { title })) && api.memory.clear(scope).then(onState, onError)}>
+              {t('settings.system.clear')}
             </button>
           </div>
         </Section>
@@ -168,23 +170,33 @@ export function MemoryPage({ app, save, onState, onError, go }: PageProps) {
 }
 
 export function ContextPage({ app, save, go }: PageProps) {
+  const { t } = useT()
+  const fmt = useFormat()
   const a = app.settings.agent
   return (
     <Section>
-      <Row label="Auto-compact" hint="Summarize older messages when the context window fills up.">
-        <Toggle label="Auto-compact" value={a.compactionEnabled} onChange={(v) => save((s) => ((s.agent.compactionEnabled = v), s))} />
+      <Row label={t('settings.system.autoCompact')} search="Auto-compact" hint={t('settings.system.autoCompactHint')}>
+        <Toggle label={t('settings.system.autoCompact')} value={a.compactionEnabled} onChange={(v) => save((s) => ((s.agent.compactionEnabled = v), s))} />
       </Row>
-      <Row label="Compact at" hint="How full the context window gets before older messages are summarized.">
-        <Slider label="Compact at" value={a.compactionThreshold} min={0.3} max={0.95} step={0.05} format={(v) => `${Math.round(v * 100)}% full`} onChange={(v) => save((s) => ((s.agent.compactionThreshold = v), s))} />
+      <Row label={t('settings.system.compactAt')} search="Compact at" hint={t('settings.system.compactAtHint')}>
+        <Slider
+          label={t('settings.system.compactAt')}
+          value={a.compactionThreshold}
+          min={0.3}
+          max={0.95}
+          step={0.05}
+          format={(v) => t('settings.system.percentFull', { percent: fmt.num(Math.round(v * 100) / 100, { style: 'percent' }) })}
+          onChange={(v) => save((s) => ((s.agent.compactionThreshold = v), s))}
+        />
       </Row>
-      <Row label="Summarization model" hint="The model that writes the summaries.">
+      <Row label={t('settings.system.summaryModel')} search="Summarization model" hint={t('settings.system.summaryModelHint')}>
         <button className="link small" onClick={() => go('model.aux')}>
-          Change in Auxiliary models
+          {t('settings.system.changeInAux')}
         </button>
       </Row>
-      <Row label="Context window" hint="The default model's window, or the fallback size for models that don't report one.">
+      <Row label={t('settings.system.contextWindow')} search="Context window" hint={t('settings.system.contextWindowHint')}>
         <button className="link small" onClick={() => go('model.main')}>
-          Change in Main model
+          {t('settings.system.changeInMain')}
         </button>
       </Row>
     </Section>
@@ -194,38 +206,62 @@ export function ContextPage({ app, save, go }: PageProps) {
 // ---------------------------------------------------------------- Voice
 
 export function VoiceConversationPage({ app, save, go }: PageProps) {
+  const { t } = useT()
   const v = app.settings.voice
   return (
     <Section>
-      <Row label="Voice input" hint={app.voice.engine ? 'The mic button in the message box records you and types what you said.' : <>No speech engine is set up, so the mic button is hidden. <button className="link small" onClick={() => go('voice.stt')}>Set one up</button></>}>
-        <Toggle label="Voice input" value={v.enabled} onChange={(x) => save((s) => ((s.voice.enabled = x), s))} />
+      <Row
+        label={t('settings.system.voiceInput')}
+        search="Voice input"
+        hint={
+          app.voice.engine ? (
+            t('settings.system.voiceInputHint')
+          ) : (
+            <>
+              {t('settings.system.noSpeechEngine')}{' '}
+              <button className="link small" onClick={() => go('voice.stt')}>
+                {t('settings.system.setOneUp')}
+              </button>
+            </>
+          )
+        }
+      >
+        <Toggle label={t('settings.system.voiceInput')} value={v.enabled} onChange={(x) => save((s) => ((s.voice.enabled = x), s))} />
       </Row>
-      <Row label="Longest recording" hint="Recording stops and is transcribed after this long.">
-        <NumberField label="Longest recording" value={v.maxRecordingSec} min={10} max={600} step={10} suffix="seconds" onChange={(x) => save((s) => ((s.voice.maxRecordingSec = x ?? 120), s))} />
+      <Row label={t('settings.system.longestRecording')} search="Longest recording" hint={t('settings.system.longestRecordingHint')}>
+        <NumberField label={t('settings.system.longestRecording')} value={v.maxRecordingSec} min={10} max={600} step={10} suffix={t('settings.parts.seconds')} onChange={(x) => save((s) => ((s.voice.maxRecordingSec = x ?? 120), s))} />
       </Row>
-      <Row label="Send after transcribing" hint="Off: the text goes into the message box so you can check it first.">
-        <Toggle label="Send after transcribing" value={v.autoSend} onChange={(x) => save((s) => ((s.voice.autoSend = x), s))} />
+      <Row label={t('settings.system.autoSend')} search="Send after transcribing" hint={t('settings.system.autoSendHint')}>
+        <Toggle label={t('settings.system.autoSend')} value={v.autoSend} onChange={(x) => save((s) => ((s.voice.autoSend = x), s))} />
       </Row>
     </Section>
   )
 }
 
-const mb = (n: number) => `${Math.round(n / 1_000_000)} MB`
-
-const ENGINE_OPTIONS = [
-  { value: 'auto' as const, label: 'Auto: local model if downloaded, else provider' },
-  { value: 'local' as const, label: 'Local model only' },
-  { value: 'provider' as const, label: 'Provider only' },
+const engineOptions = (t: T) => [
+  { value: 'auto' as const, label: t('settings.system.engineAuto') },
+  { value: 'local' as const, label: t('settings.system.engineLocal') },
+  { value: 'provider' as const, label: t('settings.system.engineProvider') },
 ]
 
-const LANGUAGES = [
-  ['', 'Detect automatically'], ['en', 'English'], ['tr', 'Turkish'], ['az', 'Azerbaijani'], ['ru', 'Russian'], ['de', 'German'],
-  ['fr', 'French'], ['es', 'Spanish'], ['it', 'Italian'], ['pt', 'Portuguese'], ['nl', 'Dutch'], ['pl', 'Polish'], ['uk', 'Ukrainian'],
-  ['ar', 'Arabic'], ['fa', 'Persian'], ['hi', 'Hindi'], ['zh', 'Chinese'], ['ja', 'Japanese'], ['ko', 'Korean'],
-].map(([value, label]) => ({ value, label }))
+/** Languages whisper.cpp and the transcription APIs handle well, by ISO code. */
+const SPOKEN = ['en', 'tr', 'az', 'ru', 'de', 'fr', 'es', 'it', 'pt', 'nl', 'pl', 'uk', 'ar', 'fa', 'hi', 'zh', 'ja', 'ko']
+
+/** The spoken-language choices, each named in the UI language. */
+function spokenLanguages(t: T, lang: string) {
+  const names = new Intl.DisplayNames(lang, { type: 'language' })
+  const name = (code: string) => {
+    const n = names.of(code) ?? code
+    return n.charAt(0).toLocaleUpperCase(lang) + n.slice(1)
+  }
+  return [{ value: '', label: t('settings.system.detectLanguage') }, ...SPOKEN.map((code) => ({ value: code, label: name(code) }))]
+}
 
 /** The optional offline engine: whisper.cpp plus a ggml model in the data folder. */
 function LocalSpeech({ app, save, onState, onError }: PageProps) {
+  const { t } = useT()
+  const fmt = useFormat()
+  const mb = (n: number) => fmt.bytes(n)
   const v = app.voice
   const local = v.local
   const [live, setLive] = useState<VoiceDownload | null>(null)
@@ -233,7 +269,10 @@ function LocalSpeech({ app, save, onState, onError }: PageProps) {
   const download = v.download ? (live ?? v.download) : null
   const chosen = local.models.find((m) => m.id === app.settings.voice.localModel)!
   const needBinary = !local.binary && local.canDownloadBinary
-  const missing = [needBinary && `whisper.cpp (${mb(local.binarySize ?? 0)})`, !chosen.installed && `the ${chosen.id} model (${mb(chosen.size)})`].filter(Boolean)
+  const missing = [
+    needBinary && t('settings.system.missingBinary', { size: mb(local.binarySize ?? 0) }),
+    !chosen.installed && t('settings.system.missingModel', { model: chosen.id, size: mb(chosen.size) }),
+  ].filter((x): x is string => !!x)
   const start = () => {
     setLive(null)
     api.voice.download().then(onState, onError)
@@ -245,70 +284,64 @@ function LocalSpeech({ app, save, onState, onError }: PageProps) {
   return (
     <div className="voice-model">
       <div className="inline">
-        <Select label="Local speech model" value={app.settings.voice.localModel} options={local.models.map((m) => ({ value: m.id, label: `${m.label} (${mb(m.size)})` }))} onChange={(id) => save((s) => ((s.voice.localModel = id), s))} />
+        <Select label={t('settings.system.localSpeechModel')} value={app.settings.voice.localModel} options={local.models.map((m) => ({ value: m.id, label: `${m.label} (${mb(m.size)})` }))} onChange={(id) => save((s) => ((s.voice.localModel = id), s))} />
         {download ? (
           <button className="btn" onClick={() => api.voice.cancelDownload().then(onState, onError)}>
-            Cancel download
+            {t('settings.system.cancelDownload')}
           </button>
         ) : (
           missing.length > 0 && (
             <button className="btn primary" onClick={start}>
-              Download
+              {t('settings.system.download')}
             </button>
           )
         )}
       </div>
       {download && (
         <div className="voice-progress">
-          <progress value={download.received} max={download.total || undefined} aria-label={download.step === 'binary' ? 'Downloading whisper.cpp' : `Downloading the ${download.model} model`} />
+          <progress value={download.received} max={download.total || undefined} aria-label={download.step === 'binary' ? t('settings.system.downloadingBinary') : t('settings.system.downloadingModel', { model: download.model ?? '' })} />
           <span className="small muted" aria-hidden>
-            {download.step === 'binary' ? 'whisper.cpp' : `${download.model} model`}: {mb(download.received)}
-            {download.total ? ` of ${mb(download.total)}` : ''}
+            {download.total
+              ? t('settings.system.downloadProgressOf', { what: download.step === 'binary' ? 'whisper.cpp' : t('settings.system.modelName', { model: download.model ?? '' }), received: mb(download.received), total: mb(download.total) })
+              : t('settings.system.downloadProgress', { what: download.step === 'binary' ? 'whisper.cpp' : t('settings.system.modelName', { model: download.model ?? '' }), received: mb(download.received) })}
           </span>
         </div>
       )}
-      {!download && missing.length > 0 && <p className="small muted">Downloads {missing.join(' and ')}. Checksums are verified before anything is used.</p>}
+      {!download && missing.length > 0 && <p className="small muted">{t('settings.system.downloadsWhat', { what: missing.length > 1 ? t('settings.system.binaryAndModel', { binary: missing[0], model: missing[1] }) : missing[0] })}</p>}
       <p className="small muted">
         {local.binary ? (
-          <>
-            whisper.cpp: <code>{local.binary.path}</code> {local.binary.source === 'path' ? '(found on your system)' : '(downloaded)'}
-          </>
+          rich(t(local.binary.source === 'path' ? 'settings.system.binaryFound' : 'settings.system.binaryDownloaded'), { path: <code>{local.binary.path}</code> })
         ) : local.canDownloadBinary ? (
-          'whisper.cpp is not installed yet.'
+          t('settings.system.binaryMissing')
         ) : (
-          <>
-            whisper.cpp publishes no ready-made build for {isMac ? 'macOS' : 'this system'}. {isMac ? 'Install it with Homebrew' : 'Install whisper-cli with your package manager or build it'}
-            {isMac && (
-              <>
-                : <code>brew install whisper-cpp</code>
-              </>
-            )}
-            . Then{' '}
-            <button className="link" onClick={() => api.getState().then(onState, onError)}>
-              check again
-            </button>
-            .
-          </>
+          rich(t(isMac ? 'settings.system.noBuildMac' : 'settings.system.noBuildOther'), {
+            command: <code>brew install whisper-cpp</code>,
+            check: (
+              <button className="link" onClick={() => api.getState().then(onState, onError)}>
+                {t('settings.system.checkAgainLink')}
+              </button>
+            ),
+          })
         )}
       </p>
       {(installed.length > 0 || local.binary?.source === 'download') && (
-        <ul className="voice-installed" aria-label="Downloaded speech files">
+        <ul className="voice-installed" aria-label={t('settings.system.downloadedFiles')}>
           {installed.map((m) => (
             <li key={m.id}>
               <span>
-                {m.id} model <span className="muted small">{mb(m.size)}</span>
-                {local.model === m.id && <span className="badge ok">in use</span>}
+                {t('settings.system.modelName', { model: m.id })} <span className="muted small">{mb(m.size)}</span>
+                {local.model === m.id && <span className="badge ok">{t('settings.system.inUse')}</span>}
               </span>
-              <button className="link danger small" disabled={!!download} aria-label={`Delete the ${m.id} model`} onClick={() => remove(m.id)}>
-                Delete
+              <button className="link danger small" disabled={!!download} aria-label={t('settings.system.deleteModelLabel', { model: m.id })} onClick={() => remove(m.id)}>
+                {t('common.delete')}
               </button>
             </li>
           ))}
           {local.binary?.source === 'download' && (
             <li>
               <span>whisper.cpp</span>
-              <button className="link danger small" disabled={!!download} aria-label="Delete the downloaded whisper.cpp" onClick={() => remove('binary')}>
-                Delete
+              <button className="link danger small" disabled={!!download} aria-label={t('settings.system.deleteBinaryLabel')} onClick={() => remove('binary')}>
+                {t('common.delete')}
               </button>
             </li>
           )}
@@ -320,6 +353,7 @@ function LocalSpeech({ app, save, onState, onError }: PageProps) {
 
 export function SpeechToTextPage(props: PageProps) {
   const { app, save, go } = props
+  const { t: tr, lang } = useT()
   const t = app.settings.models.transcription
   // Anthropic's API has no audio endpoint; every other connected provider speaks the OpenAI one.
   const providers = app.settings.providers.filter((p) => p.api === 'openai' && (app.ready[p.id] || p.id === t?.providerId))
@@ -334,34 +368,35 @@ export function SpeechToTextPage(props: PageProps) {
   return (
     <Section>
       <Row
-        label="Engine"
+        label={tr('settings.system.engine')}
+        search="Engine"
         hint={
           app.voice.engine === 'local'
-            ? 'Now using the local speech model.'
+            ? tr('settings.system.engineNowLocal')
             : app.voice.engine === 'provider'
-              ? `Now using ${t?.modelId} on ${provider?.name ?? t?.providerId}.`
+              ? tr('settings.system.engineNowProvider', { model: t?.modelId ?? '', provider: provider?.name ?? t?.providerId ?? '' })
               : !app.settings.voice.enabled
-                ? 'Voice input is off.'
-                : 'Nothing is set up yet, so the mic button is hidden.'
+                ? tr('settings.system.voiceOff')
+                : tr('settings.system.engineNone')
         }
       >
-        <Select label="Voice engine" value={app.settings.voice.engine} options={ENGINE_OPTIONS} onChange={(e) => save((s) => ((s.voice.engine = e), s))} />
+        <Select label={tr('settings.system.voiceEngine')} value={app.settings.voice.engine} options={engineOptions(tr)} onChange={(e) => save((s) => ((s.voice.engine = e), s))} />
       </Row>
-      <Row label="Language" hint="The language you speak. Detecting works, but naming it is faster and more accurate for short recordings.">
-        <Select label="Spoken language" value={LANGUAGES.some((l) => l.value === app.settings.voice.language) ? app.settings.voice.language : ''} options={LANGUAGES} onChange={(v) => save((s) => ((s.voice.language = v), s))} />
+      <Row label={tr('settings.system.language')} search="Language" hint={tr('settings.system.languageHint')}>
+        <Select label={tr('settings.system.spokenLanguage')} value={SPOKEN.includes(app.settings.voice.language) ? app.settings.voice.language : ''} options={spokenLanguages(tr, lang)} onChange={(v) => save((s) => ((s.voice.language = v), s))} />
       </Row>
-      <Row label="Local speech model" hint="whisper.cpp runs on this computer, without a key or network. Base suits most dictation; Small is more accurate but slower." wide>
+      <Row label={tr('settings.system.localSpeechModel')} search="Local speech model" hint={tr('settings.system.localSpeechModelHint')} wide>
         <LocalSpeech {...props} />
       </Row>
-      <Row label="Transcription model" hint="Sends recordings to a provider with an OpenAI-style transcription endpoint." wide>
+      <Row label={tr('settings.system.transcriptionModel')} search="Transcription model" hint={tr('settings.system.transcriptionModelHint')} wide>
         <div className="voice-model">
           <div className="inline">
-            <Select label="Transcription provider" value={t?.providerId ?? ''} options={[{ value: '', label: 'Off' }, ...providers.map((p) => ({ value: p.id, label: p.name }))]} onChange={setProvider} />
-            {t && <TextField label="Transcription model id" mono value={t.modelId} placeholder="whisper-1" onChange={(v) => save((s) => ((s.models.transcription = { providerId: t.providerId, modelId: v.trim() }), s))} />}
+            <Select label={tr('settings.system.transcriptionProvider')} value={t?.providerId ?? ''} options={[{ value: '', label: tr('common.off') }, ...providers.map((p) => ({ value: p.id, label: p.name }))]} onChange={setProvider} />
+            {t && <TextField label={tr('settings.system.transcriptionModelId')} mono value={t.modelId} placeholder="whisper-1" onChange={(v) => save((s) => ((s.models.transcription = { providerId: t.providerId, modelId: v.trim() }), s))} />}
           </div>
           {suggestions.length > 0 && (
             <div className="inline small">
-              <span className="muted">Suggested:</span>
+              <span className="muted">{tr('settings.system.suggested')}</span>
               {suggestions.map((x) => (
                 <button key={x.label} className="btn small" aria-pressed={t?.providerId === x.providerId && t.modelId === x.modelId} onClick={() => save((s) => ((s.models.transcription = { providerId: x.providerId, modelId: x.modelId }), s))}>
                   {x.label}
@@ -371,9 +406,9 @@ export function SpeechToTextPage(props: PageProps) {
           )}
           {t && provider && !app.ready[t.providerId] && (
             <p className="small warn">
-              {provider.enabled ? `${provider.name} needs an API key.` : `${provider.name} is turned off.`}{' '}
+              {provider.enabled ? tr('settings.system.providerNeedsKey', { name: provider.name }) : tr('settings.system.providerOff', { name: provider.name })}{' '}
               <button className="link" onClick={() => go('providers.keys')}>
-                Open API keys
+                {tr('settings.system.openApiKeys')}
               </button>
             </p>
           )}

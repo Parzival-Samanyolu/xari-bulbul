@@ -1,9 +1,20 @@
+import { Fragment, type ReactNode } from 'react'
 import type { ModelRef } from '../../../../../shared/ipc'
+import { useT } from '../../../lib/i18n'
 import { ProviderLogo } from '../../ProviderLogo'
+
+/**
+ * A translated sentence with React nodes (code, links, bold text) in its `{name}` slots.
+ * Call `t(key)` without those names in `vars`, so their placeholders reach this function intact.
+ */
+export function rich(text: string, nodes: Record<string, ReactNode>): ReactNode {
+  return text.split(/\{(\w+)\}/g).map((part, i) => (i % 2 === 0 ? part : <Fragment key={i}>{part in nodes ? nodes[part] : `{${part}}`}</Fragment>))
+}
 
 /** A list of models with a Remove link each. */
 export function ListOfModels({ refs, onRemove }: { refs: ModelRef[]; onRemove: (r: ModelRef) => void }) {
-  if (!refs.length) return <p className="muted small">None yet.</p>
+  const { t } = useT()
+  if (!refs.length) return <p className="muted small">{t('settings.parts.noneYet')}</p>
   return (
     <div className="list-field">
       {refs.map((f) => (
@@ -12,8 +23,8 @@ export function ListOfModels({ refs, onRemove }: { refs: ModelRef[]; onRemove: (
           <span className="muted small">
             <ProviderLogo id={f.providerId} size={12} /> {f.providerId}
           </span>
-          <button className="link danger small" aria-label={`Remove ${f.modelId}`} onClick={() => onRemove(f)}>
-            Remove
+          <button className="link danger small" aria-label={t('settings.parts.removeModel', { model: f.modelId })} onClick={() => onRemove(f)}>
+            {t('common.remove')}
           </button>
         </div>
       ))}
@@ -28,7 +39,8 @@ export function StatusDot({ on, label }: { on: boolean; label: string }) {
 
 /** An ordered list of models: numbered, with move up/down and remove. Unconnected providers are flagged. */
 export function OrderedModels({ refs, ready, onChange }: { refs: ModelRef[]; ready: Record<string, boolean>; onChange: (refs: ModelRef[]) => void }) {
-  if (!refs.length) return <p className="muted small">None yet.</p>
+  const { t } = useT()
+  if (!refs.length) return <p className="muted small">{t('settings.parts.noneYet')}</p>
   const move = (i: number, by: number) => {
     const next = [...refs]
     ;[next[i], next[i + by]] = [next[i + by], next[i]]
@@ -42,17 +54,17 @@ export function OrderedModels({ refs, ready, onChange }: { refs: ModelRef[]; rea
           <code>{f.modelId}</code>
           <span className="muted small">
             <ProviderLogo id={f.providerId} size={12} /> {f.providerId}
-            {!ready[f.providerId] && ' · not connected, skipped'}
+            {!ready[f.providerId] && ` · ${t('settings.parts.notConnected')}`}
           </span>
           <span className="spacer" />
-          <button className="link small" disabled={i === 0} aria-label={`Move ${f.modelId} up`} onClick={() => move(i, -1)}>
-            Up
+          <button className="link small" disabled={i === 0} aria-label={t('settings.parts.moveUpLabel', { model: f.modelId })} onClick={() => move(i, -1)}>
+            {t('settings.parts.up')}
           </button>
-          <button className="link small" disabled={i === refs.length - 1} aria-label={`Move ${f.modelId} down`} onClick={() => move(i, 1)}>
-            Down
+          <button className="link small" disabled={i === refs.length - 1} aria-label={t('settings.parts.moveDownLabel', { model: f.modelId })} onClick={() => move(i, 1)}>
+            {t('settings.parts.down')}
           </button>
-          <button className="link danger small" aria-label={`Remove ${f.modelId}`} onClick={() => onChange(refs.filter((_, j) => j !== i))}>
-            Remove
+          <button className="link danger small" aria-label={t('settings.parts.removeModel', { model: f.modelId })} onClick={() => onChange(refs.filter((_, j) => j !== i))}>
+            {t('common.remove')}
           </button>
         </li>
       ))}

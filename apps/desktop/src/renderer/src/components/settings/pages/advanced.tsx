@@ -1,4 +1,5 @@
 import { api } from '../../../lib/api'
+import { useT } from '../../../lib/i18n'
 import { NumberField, Row, Section, Select, TextField, Toggle } from '../../fields'
 import type { Save, PageProps } from '../common'
 
@@ -9,31 +10,32 @@ export function toolToggle(app: PageProps['app'], save: Save, name: string, labe
 }
 
 export function DesktopPage({ app, save }: PageProps) {
+  const { t } = useT()
   const a = app.settings.app
   const loginItems = app.platform === 'darwin' || app.platform === 'win32'
   return (
     <Section>
-      <Row label="Launch at login" hint={loginItems ? 'Opens the app when you log in to this computer.' : 'Not available on Linux; add the app to your desktop’s startup programs instead.'}>
-        <Toggle label="Launch at login" value={loginItems && a.launchAtLogin} disabled={!loginItems} onChange={(v) => save((s) => ((s.app.launchAtLogin = v), s))} />
+      <Row label={t('settings.advanced.launchAtLogin')} search="Launch at login" hint={loginItems ? t('settings.advanced.launchAtLoginHint') : t('settings.advanced.launchAtLoginLinux')}>
+        <Toggle label={t('settings.advanced.launchAtLogin')} value={loginItems && a.launchAtLogin} disabled={!loginItems} onChange={(v) => save((s) => ((s.app.launchAtLogin = v), s))} />
       </Row>
-      <Row label="Reopen the last chat" hint="On launch, show the last folder's most recent chat. Off starts a new chat in that folder.">
-        <Toggle label="Reopen the last chat" value={a.resumeLastChat} onChange={(v) => save((s) => ((s.app.resumeLastChat = v), s))} />
+      <Row label={t('settings.advanced.reopenLastChat')} search="Reopen the last chat" hint={t('settings.advanced.reopenLastChatHint')}>
+        <Toggle label={t('settings.advanced.reopenLastChat')} value={a.resumeLastChat} onChange={(v) => save((s) => ((s.app.resumeLastChat = v), s))} />
       </Row>
-      <Row label="Keep the computer awake" hint="Stops the computer from sleeping, so long tasks and schedules aren't paused. The screen can still turn off.">
+      <Row label={t('settings.advanced.keepAwake')} search="Keep the computer awake" hint={t('settings.advanced.keepAwakeHint')}>
         <Select
-          label="Keep the computer awake"
+          label={t('settings.advanced.keepAwake')}
           value={a.keepAwake}
           options={[
-            { value: 'off', label: 'Never' },
-            { value: 'working', label: 'While a chat is working' },
-            { value: 'always', label: 'While the app is open' },
+            { value: 'off', label: t('settings.advanced.keepAwakeNever') },
+            { value: 'working', label: t('settings.advanced.keepAwakeWorking') },
+            { value: 'always', label: t('settings.advanced.keepAwakeAlways') },
           ]}
           onChange={(v) => save((s) => ((s.app.keepAwake = v), s))}
         />
       </Row>
-      <Row label="Data folder" hint={app.paths.data}>
+      <Row label={t('settings.advanced.dataFolder')} search="Data folder" hint={app.paths.data}>
         <button className="btn" onClick={() => api.app.openPath(app.paths.data)}>
-          Open
+          {t('common.open')}
         </button>
       </Row>
     </Section>
@@ -41,41 +43,43 @@ export function DesktopPage({ app, save }: PageProps) {
 }
 
 export function LimitsPage({ app, save }: PageProps) {
+  const { t } = useT()
   const a = app.settings.agent
   return (
     <Section>
-      <Row label="Max steps per message" hint="Model requests per message before the agent pauses and asks to continue. A safety net against loops.">
-        <NumberField label="Max steps per message" value={a.maxStepsPerTurn} min={1} max={500} onChange={(v) => save((s) => ((s.agent.maxStepsPerTurn = v ?? 200), s))} />
+      <Row label={t('settings.advanced.maxSteps')} search="Max steps per message" hint={t('settings.advanced.maxStepsHint')}>
+        <NumberField label={t('settings.advanced.maxSteps')} value={a.maxStepsPerTurn} min={1} max={500} onChange={(v) => save((s) => ((s.agent.maxStepsPerTurn = v ?? 200), s))} />
       </Row>
-      <Row label="Request retries" hint="Retries after rate limits (429) and server errors.">
-        <NumberField label="Request retries" value={a.requestRetries} min={0} max={10} onChange={(v) => save((s) => ((s.agent.requestRetries = v ?? 3), s))} />
+      <Row label={t('settings.advanced.retries')} search="Request retries" hint={t('settings.advanced.retriesHint')}>
+        <NumberField label={t('settings.advanced.retries')} value={a.requestRetries} min={0} max={10} onChange={(v) => save((s) => ((s.agent.requestRetries = v ?? 3), s))} />
       </Row>
-      <Row label="Stall timeout" hint="Stop waiting when a hosted provider sends nothing for this long. 0 waits forever.">
-        <NumberField label="Stall timeout" value={a.stallTimeoutSec} min={0} max={3600} suffix="seconds" onChange={(v) => save((s) => ((s.agent.stallTimeoutSec = v ?? 90), s))} />
+      <Row label={t('settings.advanced.stallTimeout')} search="Stall timeout" hint={t('settings.advanced.stallTimeoutHint')}>
+        <NumberField label={t('settings.advanced.stallTimeout')} value={a.stallTimeoutSec} min={0} max={3600} suffix={t('settings.parts.seconds')} onChange={(v) => save((s) => ((s.agent.stallTimeoutSec = v ?? 90), s))} />
       </Row>
-      <Row label="Batch while planning" hint="Plan mode sends requests through the Anthropic or OpenAI batch API: about half price, but each step can take minutes.">
-        <Toggle label="Batch while planning" value={a.batchInPlanMode} onChange={(v) => save((s) => ((s.agent.batchInPlanMode = v), s))} />
+      <Row label={t('settings.advanced.batchPlanning')} search="Batch while planning" hint={t('settings.advanced.batchPlanningHint')}>
+        <Toggle label={t('settings.advanced.batchPlanning')} value={a.batchInPlanMode} onChange={(v) => save((s) => ((s.agent.batchInPlanMode = v), s))} />
       </Row>
     </Section>
   )
 }
 
 export function ToolAccessPage({ app, save, go }: PageProps) {
-  const t = app.settings.tools
+  const { t } = useT()
+  const tools = app.settings.tools
   return (
     <Section>
-      <Row label="Check files after edits" hint="Runs the project's eslint or ruff, or a syntax check, on each edited file and shows the agent any problems.">
-        <Toggle label="Check files after edits" value={t.checkAfterEdit} onChange={(v) => save((s) => ((s.tools.checkAfterEdit = v), s))} />
+      <Row label={t('settings.advanced.checkAfterEdit')} search="Check files after edits" hint={t('settings.advanced.checkAfterEditHint')}>
+        <Toggle label={t('settings.advanced.checkAfterEdit')} value={tools.checkAfterEdit} onChange={(v) => save((s) => ((s.tools.checkAfterEdit = v), s))} />
       </Row>
-      <Row label="Check time limit" hint="A slower check is stopped, and the agent is told to run it itself.">
-        <NumberField label="Check time limit" value={t.checkTimeoutSec} min={5} max={300} suffix="seconds" onChange={(v) => save((s) => ((s.tools.checkTimeoutSec = v ?? 30), s))} />
+      <Row label={t('settings.advanced.checkTimeLimit')} search="Check time limit" hint={t('settings.advanced.checkTimeLimitHint')}>
+        <NumberField label={t('settings.advanced.checkTimeLimit')} value={tools.checkTimeoutSec} min={5} max={300} suffix={t('settings.parts.seconds')} onChange={(v) => save((s) => ((s.tools.checkTimeoutSec = v ?? 30), s))} />
       </Row>
-      <Row label="Let the agent ask you questions" hint="The ask_user tool: the agent stops and asks when a choice is yours to make.">
-        {toolToggle(app, save, 'ask_user', 'Let the agent ask you questions')}
+      <Row label={t('settings.advanced.askUser')} search="Let the agent ask you questions" hint={t('settings.advanced.askUserHint')}>
+        {toolToggle(app, save, 'ask_user', t('settings.advanced.askUser'))}
       </Row>
-      <Row label="Every tool" hint="Turn single tools on or off.">
+      <Row label={t('settings.advanced.everyTool')} search="Every tool" hint={t('settings.advanced.everyToolHint')}>
         <button className="link small" onClick={() => go('tools.list')}>
-          Open Tools
+          {t('settings.advanced.openTools')}
         </button>
       </Row>
     </Section>
@@ -83,25 +87,27 @@ export function ToolAccessPage({ app, save, go }: PageProps) {
 }
 
 export function TerminalPage({ app, save }: PageProps) {
+  const { t } = useT()
   const a = app.settings.agent
   return (
     <Section>
-      <Row label="Shell" hint={app.platform === 'win32' ? 'Empty: Git Bash if installed, else PowerShell. Or enter pwsh, powershell or a path.' : 'Empty: /bin/bash. Or enter a path such as /bin/zsh.'} labelFor="shell">
-        <TextField id="shell" mono value={a.shell} placeholder="Default" onChange={(v) => save((s) => ((s.agent.shell = v), s))} />
+      <Row label={t('settings.advanced.shell')} search="Shell" hint={app.platform === 'win32' ? t('settings.advanced.shellHintWindows') : t('settings.advanced.shellHint')} labelFor="shell">
+        <TextField id="shell" mono value={a.shell} placeholder={t('common.default')} onChange={(v) => save((s) => ((s.agent.shell = v), s))} />
       </Row>
-      <Row label="Command timeout" hint="A command running longer is stopped. Background jobs don't have this limit.">
-        <NumberField label="Command timeout" value={a.bashTimeoutSec} min={1} max={3600} suffix="seconds" onChange={(v) => save((s) => ((s.agent.bashTimeoutSec = v ?? 120), s))} />
+      <Row label={t('settings.advanced.commandTimeout')} search="Command timeout" hint={t('settings.advanced.commandTimeoutHint')}>
+        <NumberField label={t('settings.advanced.commandTimeout')} value={a.bashTimeoutSec} min={1} max={3600} suffix={t('settings.parts.seconds')} onChange={(v) => save((s) => ((s.agent.bashTimeoutSec = v ?? 120), s))} />
       </Row>
     </Section>
   )
 }
 
 export function OutputPage({ app, save }: PageProps) {
+  const { t } = useT()
   const a = app.settings.agent
   return (
     <Section>
-      <Row label="Max tool output" hint="Longer tool results are shortened before the model sees them; the start and end are kept.">
-        <NumberField label="Max tool output" value={a.toolOutputMaxChars} min={1000} step={1000} suffix="chars" onChange={(v) => save((s) => ((s.agent.toolOutputMaxChars = v ?? 30000), s))} />
+      <Row label={t('settings.advanced.maxToolOutput')} search="Max tool output" hint={t('settings.advanced.maxToolOutputHint')}>
+        <NumberField label={t('settings.advanced.maxToolOutput')} value={a.toolOutputMaxChars} min={1000} step={1000} suffix={t('settings.parts.chars')} onChange={(v) => save((s) => ((s.agent.toolOutputMaxChars = v ?? 30000), s))} />
       </Row>
     </Section>
   )

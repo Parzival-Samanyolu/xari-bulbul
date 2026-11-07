@@ -2,25 +2,49 @@ import { useState } from 'react'
 import { MCP_PRESETS, presetServer } from '@harness/core/mcp-presets'
 import type { McpServerStatus, Settings } from '../../../../../shared/ipc'
 import { api } from '../../../lib/api'
+import { useT } from '../../../lib/i18n'
 import { ListField, Row, Section, Select, TextField, Toggle } from '../../fields'
 import { SecretInput, type PageProps } from '../common'
+import { rich } from './parts'
+
+type T = ReturnType<typeof useT>['t']
+
+/** Where a tool, skill or command comes from, as shown on its badge. */
+function sourceText(t: T, source: string, plugin?: string): string {
+  if (plugin) return t('settings.tools.pluginBadge', { name: plugin })
+  if (source === 'user') return t('settings.tools.sourceUser')
+  if (source === 'project') return t('settings.tools.sourceProject')
+  if (source === 'claude') return 'Claude Code'
+  return source
+}
 
 // ---------------------------------------------------------------- Tools
 
 export function ToolsListPage({ app, save }: PageProps) {
+  const { t } = useT()
   const disabled = new Set(app.settings.tools.disabled)
   const tools = app.extensions.tools.filter((t) => t.source !== 'mcp')
   return (
-    <Section description="Turn off tools you don't want the model to use. MCP server tools are listed under MCP servers.">
+    <Section description={t('settings.tools.listIntro')}>
       <div className="tool-list">
         {tools.map((tool) => (
           <div key={tool.name} className="tool-item">
-            <Toggle label={`Enable ${tool.name}`} value={!disabled.has(tool.name)} onChange={(on) => save((s) => ((s.tools.disabled = on ? s.tools.disabled.filter((x) => x !== tool.name) : [...s.tools.disabled, tool.name]), s))} />
+            <Toggle label={t('settings.tools.enableTool', { name: tool.name })} value={!disabled.has(tool.name)} onChange={(on) => save((s) => ((s.tools.disabled = on ? s.tools.disabled.filter((x) => x !== tool.name) : [...s.tools.disabled, tool.name]), s))} />
             <code>{tool.name}</code>
             <span className={`badge ${tool.readOnly && tool.kind !== 'network' ? 'ok' : ''}`}>
-              {tool.kind === 'network' ? 'network' : tool.readOnly ? 'read-only' : tool.kind === 'exec' ? 'runs commands' : tool.kind === 'edit' ? 'edits files' : tool.kind}
+              {tool.kind === 'network'
+                ? t('settings.tools.kindNetwork')
+                : tool.readOnly
+                  ? t('settings.tools.kindReadOnly')
+                  : tool.kind === 'exec'
+                    ? t('settings.tools.kindExec')
+                    : tool.kind === 'edit'
+                      ? t('settings.tools.kindEdit')
+                      : tool.kind === 'other'
+                        ? t('settings.tools.kindOther')
+                        : tool.kind}
             </span>
-            {tool.source !== 'builtin' && <span className="badge">{tool.plugin ? `${tool.plugin} plugin` : tool.source}</span>}
+            {tool.source !== 'builtin' && <span className="badge">{sourceText(t, tool.source, tool.plugin)}</span>}
             <span className="muted small tool-desc" title={tool.description}>
               {tool.description}
             </span>
@@ -33,39 +57,45 @@ export function ToolsListPage({ app, save }: PageProps) {
 
 // ---------------------------------------------------------------- Web search
 
-const SEARCH_BACKENDS = [
-  { value: 'auto', label: 'Automatic (your free keys first, then keyless)' },
-  { value: 'duckduckgo', label: 'Keyless only (DuckDuckGo)' },
-  { value: 'brave', label: 'Brave Search API only (free key: 2,000/month)' },
-  { value: 'tavily', label: 'Tavily only (free key: 1,000/month)' },
-  { value: 'searxng', label: 'SearXNG (your instance)' },
-] as const
+const searchBackends = (t: T, num: (n: number) => string) =>
+  [
+    { value: 'auto', label: t('settings.tools.backendAuto') },
+    { value: 'duckduckgo', label: t('settings.tools.backendKeyless') },
+    { value: 'brave', label: t('settings.tools.backendBrave', { num: num(2000) }) },
+    { value: 'tavily', label: t('settings.tools.backendTavily', { num: num(1000) }) },
+    { value: 'searxng', label: t('settings.tools.backendSearxng') },
+  ] as const
 
 const SEARCH_KEY_LINKS: Record<string, string> = { brave: 'https://brave.com/search/api/', tavily: 'https://app.tavily.com/' }
 
 export function WebSearchPage({ app, save, onState, onError }: PageProps) {
+  const { t, lang } = useT()
+  const num = (n: number) => n.toLocaleString(lang)
+  const keyLabel = (id: 'brave' | 'tavily') => (id === 'brave' ? t('settings.tools.braveKey') : t('settings.tools.tavilyKey'))
   const ws = app.settings.tools.webSearch
   const keyIds = ['brave', 'tavily'] as const
   return (
-    <Section description="The web_search tool works without any key. Free keys from Brave Search or Tavily make it more reliable: in automatic mode they're used first, and the keyless engines take over if they fail or run out.">
-      <Row label="Search with">
-        <Select label="Search with" value={ws.backend} options={[...SEARCH_BACKENDS]} onChange={(v) => save((s) => ((s.tools.webSearch.backend = v), s))} />
+    <Section description={t('settings.tools.webSearchIntro')}>
+      <Row label={t('settings.tools.searchWith')} search="Search with">
+        <Select label={t('settings.tools.searchWith')} value={ws.backend} options={[...searchBackends(t, num)]} onChange={(v) => save((s) => ((s.tools.webSearch.backend = v), s))} />
       </Row>
       {keyIds.map((id) => (
         <Row
           key={id}
-          label={id === 'brave' ? 'Brave Search key' : 'Tavily key'}
+          label={keyLabel(id)}
+          search={id === 'brave' ? 'Brave Search key' : 'Tavily key'}
           hint={
             <>
-              {app.keys[id] ? 'Saved. ' : ''}Free tier: {id === 'brave' ? '2,000' : '1,000'} searches a month.{' '}
+              {app.keys[id] ? `${t('settings.tools.keySaved')} ` : ''}
+              {t('settings.tools.freeTier', { count: id === 'brave' ? 2000 : 1000, num: num(id === 'brave' ? 2000 : 1000) })}{' '}
               <button className="link small" onClick={() => api.app.openExternal(SEARCH_KEY_LINKS[id])}>
-                Get a key ↗
+                {t('settings.tools.getKey')}
               </button>
               {app.keys[id] && (
                 <>
                   {' · '}
                   <button className="link small danger" onClick={() => api.keys.set(id, null).then(onState, onError)}>
-                    Remove
+                    {t('common.remove')}
                   </button>
                 </>
               )}
@@ -73,10 +103,10 @@ export function WebSearchPage({ app, save, onState, onError }: PageProps) {
           }
           labelFor={`search-key-${id}`}
         >
-          <SecretInput id={`search-key-${id}`} label={id === 'brave' ? 'Brave Search key' : 'Tavily key'} saved={!!app.keys[id]} placeholder="Paste key" onSave={(v) => api.keys.set(id, v).then(onState, onError)} />
+          <SecretInput id={`search-key-${id}`} label={keyLabel(id)} saved={!!app.keys[id]} placeholder={t('settings.tools.pasteKey')} onSave={(v) => api.keys.set(id, v).then(onState, onError)} />
         </Row>
       ))}
-      <Row label="SearXNG URL" hint="Your own instance, used when Search with is SearXNG. It must allow JSON output (search.formats includes json)." labelFor="searxng-url">
+      <Row label={t('settings.tools.searxngUrl')} search="SearXNG URL" hint={t('settings.tools.searxngUrlHint')} labelFor="searxng-url">
         <TextField id="searxng-url" mono value={ws.searxngUrl} placeholder="https://searx.example.org" onChange={(v) => save((s) => ((s.tools.webSearch.searxngUrl = v.trim()), s))} />
       </Row>
     </Section>
@@ -106,13 +136,15 @@ function unpairs(list: string[], sep: string): Record<string, string> {
   return out
 }
 
-const STATE_TEXT: Record<McpServerStatus['state'], string> = { connecting: 'connecting…', ready: 'connected', error: 'failed', off: 'off' }
+const stateText = (t: T, state: McpServerStatus['state']): string =>
+  ({ connecting: t('settings.tools.mcpConnecting'), ready: t('settings.tools.mcpConnected'), error: t('settings.tools.mcpFailed'), off: t('settings.tools.mcpOff') })[state]
 
 export function McpPage({ app, save, onState, onError }: PageProps) {
+  const { t } = useT()
   const servers = app.settings.mcp.servers
   const status = new Map(app.mcp.servers.map((s) => [s.id, s]))
   const [draft, setDraft] = useState({ name: '', transport: 'stdio' as 'stdio' | 'http', target: '' })
-  const tools = app.extensions.tools.filter((t) => t.source === 'mcp')
+  const tools = app.extensions.tools.filter((x) => x.source === 'mcp')
 
   const update = (i: number, fn: (s: McpServer) => McpServer) => save((st) => ((st.mcp.servers[i] = fn(st.mcp.servers[i])), st))
   const idFor = (name: string) => {
@@ -134,61 +166,61 @@ export function McpPage({ app, save, onState, onError }: PageProps) {
 
   return (
     <>
-      <Section description="Tools from Model Context Protocol servers work in every chat and follow your permission rules; name them in rules as mcp__<server>__<tool>. Tools a server marks read-only run without asking.">
+      <Section description={t('settings.tools.mcpIntro', { pattern: 'mcp__<server>__<tool>' })}>
         {servers.length === 0 && (
           <div className="empty-box">
-            <b>No servers</b>
-            <span className="muted small">Add one below.</span>
+            <b>{t('settings.tools.noServers')}</b>
+            <span className="muted small">{t('settings.tools.addOneBelow')}</span>
           </div>
         )}
         {servers.map((srv, i) => {
           const st = status.get(srv.id)
           const state = st?.state ?? (srv.enabled ? 'connecting' : 'off')
           return (
-            <div key={srv.id} className="provider-card">
+            <div key={srv.id} className="provider-card mcp-card">
               <div className="provider-head">
-                <Toggle label={`Enable ${srv.name}`} value={srv.enabled} onChange={(v) => update(i, (s) => ({ ...s, enabled: v }))} />
+                <Toggle label={t('settings.tools.enableServer', { name: srv.name })} value={srv.enabled} onChange={(v) => update(i, (s) => ({ ...s, enabled: v }))} />
                 <b>{srv.name}</b>
                 <span className={`badge ${state === 'ready' ? 'ok' : ''}`} role="status">
-                  {STATE_TEXT[state]}
-                  {state === 'ready' ? ` · ${st?.toolCount ?? 0} ${st?.toolCount === 1 ? 'tool' : 'tools'}` : ''}
+                  {stateText(t, state)}
+                  {state === 'ready' ? ` · ${t('settings.tools.toolCount', { count: st?.toolCount ?? 0 })}` : ''}
                 </span>
                 <span className="muted small mono mcp-target" title={srv.transport === 'stdio' ? [srv.command, ...srv.args].join(' ') : srv.url}>
                   {srv.transport === 'stdio' ? [srv.command, ...srv.args].map(quote).join(' ') : srv.url}
                 </span>
                 <div className="spacer" />
                 <button className="btn ghost" disabled={!srv.enabled} onClick={() => api.mcp.restart(srv.id).then(onState, onError)}>
-                  Restart
+                  {t('settings.tools.restart')}
                 </button>
-                <button className="link danger small" onClick={() => confirm(`Remove ${srv.name}?`) && save((st) => ((st.mcp.servers = st.mcp.servers.filter((x) => x.id !== srv.id)), st))}>
-                  Remove
+                <button className="link danger small" onClick={() => confirm(t('settings.tools.removeServerConfirm', { name: srv.name })) && save((st) => ((st.mcp.servers = st.mcp.servers.filter((x) => x.id !== srv.id)), st))}>
+                  {t('common.remove')}
                 </button>
               </div>
               {state === 'error' && st?.error && <div className="notice notice-error small">{st.error}</div>}
               {srv.transport === 'http' && (
                 <Row
-                  label="Bearer token"
-                  hint={MCP_PRESETS.find((p) => p.server.transport === 'http' && p.server.url === srv.url)?.token?.hint ?? 'Optional. Sent as Authorization: Bearer …, stored in the keychain like API keys.'}
+                  label={t('settings.tools.bearerToken')}
+                  hint={MCP_PRESETS.find((p) => p.server.transport === 'http' && p.server.url === srv.url)?.token?.hint ?? t('settings.tools.bearerTokenHint', { header: 'Authorization: Bearer …' })}
                   labelFor={`mcp-token-${srv.id}`}
                   search=""
                 >
                   <div className="inline">
-                    <SecretInput id={`mcp-token-${srv.id}`} label={`Token for ${srv.name}`} saved={!!app.mcp.tokens[srv.id]} placeholder="Paste token" onSave={(v) => api.mcp.setToken(srv.id, v).then(onState, onError)} />
+                    <SecretInput id={`mcp-token-${srv.id}`} label={t('settings.tools.tokenFor', { name: srv.name })} saved={!!app.mcp.tokens[srv.id]} placeholder={t('settings.tools.pasteToken')} onSave={(v) => api.mcp.setToken(srv.id, v).then(onState, onError)} />
                     {app.mcp.tokens[srv.id] && (
                       <button className="btn ghost" onClick={() => api.mcp.setToken(srv.id, null).then(onState, onError)}>
-                        Remove token
+                        {t('settings.tools.removeToken')}
                       </button>
                     )}
                   </div>
                 </Row>
               )}
               <details className="advanced">
-                <summary>Edit</summary>
+                <summary>{t('common.edit')}</summary>
                 {srv.transport === 'stdio' ? (
                   <>
-                    <Row label="Command" hint="The program and its arguments" labelFor={`mcp-cmd-${srv.id}`} search="">
+                    <Row label={t('settings.tools.command')} hint={t('settings.tools.commandHint')} labelFor={`mcp-cmd-${srv.id}`} search="">
                       <TextField
-                        label="Command"
+                        label={t('settings.tools.command')}
                         id={`mcp-cmd-${srv.id}`}
                         mono
                         value={[srv.command, ...srv.args].map(quote).join(' ')}
@@ -198,17 +230,17 @@ export function McpPage({ app, save, onState, onError }: PageProps) {
                         }}
                       />
                     </Row>
-                    <Row label="Environment" hint="KEY=value, added to the server's environment" search="">
-                      <ListField label="Environment" placeholder="API_TOKEN=…" value={pairs(srv.env, '=')} onChange={(v) => update(i, (s) => ({ ...s, env: unpairs(v, '=') }) as McpServer)} />
+                    <Row label={t('settings.tools.environment')} hint={t('settings.tools.environmentHint', { format: 'KEY=value' })} search="">
+                      <ListField label={t('settings.tools.environment')} placeholder="API_TOKEN=…" value={pairs(srv.env, '=')} onChange={(v) => update(i, (s) => ({ ...s, env: unpairs(v, '=') }) as McpServer)} />
                     </Row>
                   </>
                 ) : (
                   <>
-                    <Row label="URL" hint="Streamable HTTP endpoint" labelFor={`mcp-url-${srv.id}`} search="">
+                    <Row label="URL" hint={t('settings.tools.urlHint')} labelFor={`mcp-url-${srv.id}`} search="">
                       <TextField label="URL" id={`mcp-url-${srv.id}`} mono value={srv.url} onChange={(v) => /^https?:\/\//.test(v) && update(i, (s) => ({ ...s, url: v.trim() }) as McpServer)} />
                     </Row>
-                    <Row label="Headers" hint="Name: value, sent with every request (not for secrets; use the token field)" search="">
-                      <ListField label="Headers" placeholder="X-Workspace: main" value={pairs(srv.headers, ': ')} onChange={(v) => update(i, (s) => ({ ...s, headers: unpairs(v, ':') }) as McpServer)} />
+                    <Row label={t('settings.tools.headers')} hint={t('settings.tools.headersHint', { format: 'Name: value' })} search="">
+                      <ListField label={t('settings.tools.headers')} placeholder="X-Workspace: main" value={pairs(srv.headers, ': ')} onChange={(v) => update(i, (s) => ({ ...s, headers: unpairs(v, ':') }) as McpServer)} />
                     </Row>
                   </>
                 )}
@@ -217,7 +249,7 @@ export function McpPage({ app, save, onState, onError }: PageProps) {
           )
         })}
       </Section>
-      <Section title="Add a server" description="Local servers run as a command on this computer; remote ones are reached by URL.">
+      <Section title={t('settings.tools.addServer')} description={t('settings.tools.addServerHint')}>
         {presets.map((p) => (
           <div key={p.id} className="mcp-preset">
             <div>
@@ -228,36 +260,36 @@ export function McpPage({ app, save, onState, onError }: PageProps) {
                   <>
                     {' '}
                     <button className="link small" onClick={() => api.app.openExternal(p.token!.url)}>
-                      Get a token ↗
+                      {t('settings.tools.getToken')}
                     </button>
                   </>
                 )}
               </div>
             </div>
             <button className="btn" onClick={() => save((st) => ((st.mcp.servers = [...st.mcp.servers, presetServer(p, st.mcp.servers)]), st))}>
-              Add {p.label}
+              {t('settings.tools.addPreset', { name: p.label })}
             </button>
           </div>
         ))}
         <div className="custom-provider">
           <label>
-            <span className="small muted">Name</span>
+            <span className="small muted">{t('settings.tools.name')}</span>
             <input placeholder="github" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           </label>
           <label>
-            <span className="small muted">Type</span>
+            <span className="small muted">{t('settings.tools.type')}</span>
             <Select
-              label="Server type"
+              label={t('settings.tools.serverType')}
               value={draft.transport}
               options={[
-                { value: 'stdio', label: 'Command' },
+                { value: 'stdio', label: t('settings.tools.command') },
                 { value: 'http', label: 'URL' },
               ]}
               onChange={(v) => setDraft({ ...draft, transport: v })}
             />
           </label>
           <label className="grow">
-            <span className="small muted">{draft.transport === 'stdio' ? 'Command' : 'URL'}</span>
+            <span className="small muted">{draft.transport === 'stdio' ? t('settings.tools.command') : 'URL'}</span>
             <input
               className="mono"
               placeholder={draft.transport === 'stdio' ? 'npx -y @modelcontextprotocol/server-filesystem ~/Documents' : 'https://example.com/mcp'}
@@ -267,20 +299,20 @@ export function McpPage({ app, save, onState, onError }: PageProps) {
             />
           </label>
           <button className="btn" disabled={!valid} onClick={add}>
-            Add
+            {t('common.add')}
           </button>
         </div>
-        {nameTaken && <div className="small warn">A server named "{draft.name.trim()}" already exists.</div>}
+        {nameTaken && <div className="small warn">{t('settings.tools.nameTaken', { name: draft.name.trim() })}</div>}
       </Section>
       {tools.length > 0 && (
-        <Section title="Available MCP tools">
+        <Section title={t('settings.tools.mcpTools')}>
           <div className="tool-list">
-            {tools.map((t) => (
-              <div key={t.name} className="tool-item">
-                <code>{t.name}</code>
-                <span className={`badge ${t.readOnly ? 'ok' : ''}`}>{t.readOnly ? 'read-only' : 'asks'}</span>
-                <span className="muted small tool-desc" title={t.description}>
-                  {t.description.replace(/^\[MCP: [^\]]*\]\s*/, '')}
+            {tools.map((tool) => (
+              <div key={tool.name} className="tool-item">
+                <code>{tool.name}</code>
+                <span className={`badge ${tool.readOnly ? 'ok' : ''}`}>{tool.readOnly ? t('settings.tools.kindReadOnly') : t('settings.tools.asks')}</span>
+                <span className="muted small tool-desc" title={tool.description}>
+                  {tool.description.replace(/^\[MCP: [^\]]*\]\s*/, '')}
                 </span>
               </div>
             ))}
@@ -294,34 +326,36 @@ export function McpPage({ app, save, onState, onError }: PageProps) {
 // ---------------------------------------------------------------- Skills & commands
 
 export function SkillsPage({ app, onState, onError }: PageProps) {
+  const { t } = useT()
   const ext = app.extensions
   return (
     <>
       <Section
-        title="Skills"
-        description={
-          <>
-            Instructions the agent loads before a matching task, one folder with a <code>SKILL.md</code> each. Read from <code>skills/</code> in your extensions folder, in the project's <code>.harness/</code> and in <code>~/.claude/skills</code>. The agent saves new ones to your folder after hard, repeatable tasks.
-          </>
-        }
+        title={t('settings.tools.skills')}
+        description={rich(t('settings.tools.skillsIntro'), {
+          file: <code>SKILL.md</code>,
+          skillsDir: <code>skills/</code>,
+          projectDir: <code>.harness/</code>,
+          claudeDir: <code>~/.claude/skills</code>,
+        })}
       >
         {app.skills.length === 0 ? (
-          <p className="muted small">No skills yet.</p>
+          <p className="muted small">{t('settings.tools.noSkills')}</p>
         ) : (
           <div className="tool-list">
             {app.skills.map((s) => (
               <div key={s.dir} className="tool-item">
                 <code>{s.name}</code>
-                <span className="badge">{s.plugin ? `${s.plugin} plugin` : s.source === 'claude' ? 'Claude Code' : s.source}</span>
+                <span className="badge">{sourceText(t, s.source, s.plugin)}</span>
                 <span className="muted small tool-desc" title={s.description}>
                   {s.description}
                 </span>
-                <button className="btn ghost" aria-label={`Open folder of skill ${s.name}`} onClick={() => api.app.openPath(s.dir)}>
-                  Open folder
+                <button className="btn ghost" aria-label={t('settings.tools.openSkillFolder', { name: s.name })} onClick={() => api.app.openPath(s.dir)}>
+                  {t('settings.parts.openFolder')}
                 </button>
                 {s.source !== 'claude' && !s.plugin && (
-                  <button className="btn ghost danger" aria-label={`Delete skill ${s.name}`} onClick={() => confirm(`Delete the skill "${s.name}" and its folder?`) && api.skills.remove(s.dir).then(onState, onError)}>
-                    Delete
+                  <button className="btn ghost danger" aria-label={t('settings.tools.deleteSkillLabel', { name: s.name })} onClick={() => confirm(t('settings.tools.deleteSkillConfirm', { name: s.name })) && api.skills.remove(s.dir).then(onState, onError)}>
+                    {t('common.delete')}
                   </button>
                 )}
               </div>
@@ -329,12 +363,12 @@ export function SkillsPage({ app, onState, onError }: PageProps) {
           </div>
         )}
       </Section>
-      <Section title="Slash commands" description="Type / in the message box to use one.">
+      <Section title={t('settings.tools.slashCommands')} description={t('settings.tools.slashCommandsHint')}>
         <div className="tool-list">
           {ext.commands.map((c) => (
             <div key={c.name} className="tool-item">
               <code>/{c.name}</code>
-              <span className="badge">{c.plugin ? `${c.plugin} plugin` : c.source}</span>
+              <span className="badge">{sourceText(t, c.source, c.plugin)}</span>
               <span className="muted small tool-desc" title={c.description}>
                 {c.description}
               </span>
@@ -349,31 +383,33 @@ export function SkillsPage({ app, onState, onError }: PageProps) {
 // ---------------------------------------------------------------- Extensions
 
 export function ExtensionsPage({ app, save, onState, onError }: PageProps) {
-  const t = app.settings.tools
+  const { t } = useT()
+  const tools = app.settings.tools
   const ext = app.extensions
   return (
     <Section
-      description={
-        <>
-          Your own tools (<code>tools/*.mjs</code>) and slash commands (<code>commands/*.md</code>) in <code>{ext.userDir}</code> or in <code>.harness/</code> inside a project.
-        </>
-      }
+      description={rich(t('settings.tools.extensionsIntro'), {
+        toolsGlob: <code>tools/*.mjs</code>,
+        commandsGlob: <code>commands/*.md</code>,
+        userDir: <code>{ext.userDir}</code>,
+        projectDir: <code>.harness/</code>,
+      })}
     >
-      <Row label="Load my extensions" hint={ext.userDir}>
-        <Toggle label="Load my extensions" value={t.loadUserExtensions} onChange={(v) => save((s) => ((s.tools.loadUserExtensions = v), s))} />
+      <Row label={t('settings.tools.loadMine')} search="Load my extensions" hint={ext.userDir}>
+        <Toggle label={t('settings.tools.loadMine')} value={tools.loadUserExtensions} onChange={(v) => save((s) => ((s.tools.loadUserExtensions = v), s))} />
       </Row>
-      <Row label="Load project tool code" hint="Runs .harness/tools/*.mjs from the open project. Only turn on for projects you trust. Project commands always load." search="Load project tool code (extensions)">
-        <Toggle label="Load project tool code" value={t.loadProjectExtensions} onChange={(v) => save((s) => ((s.tools.loadProjectExtensions = v), s))} />
+      <Row label={t('settings.tools.loadProject')} hint={t('settings.tools.loadProjectHint', { glob: '.harness/tools/*.mjs' })} search="Load project tool code (extensions)">
+        <Toggle label={t('settings.tools.loadProject')} value={tools.loadProjectExtensions} onChange={(v) => save((s) => ((s.tools.loadProjectExtensions = v), s))} />
       </Row>
       <div className="inline">
         <button className="btn" onClick={() => api.extensions.openDir('user')}>
-          Open my extensions folder
+          {t('settings.tools.openMine')}
         </button>
         <button className="btn" disabled={!ext.projectDir} onClick={() => api.extensions.openDir('project')}>
-          Open project .harness folder
+          {t('settings.tools.openProject', { dir: '.harness' })}
         </button>
         <button className="btn" onClick={() => api.extensions.reload().then(onState, onError)}>
-          Reload
+          {t('settings.tools.reload')}
         </button>
       </div>
       {ext.errors.map((e) => (
@@ -382,7 +418,7 @@ export function ExtensionsPage({ app, save, onState, onError }: PageProps) {
         </div>
       ))}
       <details className="howto">
-        <summary>Example tool and command</summary>
+        <summary>{t('settings.tools.example')}</summary>
         <pre>{`// ~/.harness/tools/run_tests.mjs
 export default {
   name: 'run_tests',
