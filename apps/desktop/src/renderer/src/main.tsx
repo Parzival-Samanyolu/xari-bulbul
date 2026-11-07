@@ -16,6 +16,14 @@ window.addEventListener('unhandledrejection', (e) => report('rejection', e.reaso
 const theme = new URLSearchParams(location.search).get('theme')
 document.documentElement.dataset.theme = theme && /^(dark|light|oled|sepia|contrast)$/.test(theme) ? theme : matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 
+// Endless animations (bot faces, typing dots, spinners) pause while the window isn't focused,
+// so the app sits nearly idle behind other apps and saves battery.
+const rest = () => document.documentElement.classList.toggle('app-resting', !document.hasFocus() || document.visibilityState !== 'visible')
+window.addEventListener('focus', rest)
+window.addEventListener('blur', rest)
+document.addEventListener('visibilitychange', rest)
+rest()
+
 createRoot(document.getElementById('root')!, {
   onUncaughtError: (error, info) => {
     console.error(error, info.componentStack)

@@ -35,6 +35,8 @@ const { values: argv } = parseArgs({
     reps: { type: 'string', default: '1' },
     out: { type: 'string' },
     'timeout-sec': { type: 'string', default: '420' },
+    /** Stop starting runs, and stop the ones in flight, once total spend reaches this. */
+    'max-usd': { type: 'string' },
   },
 })
 
@@ -102,6 +104,10 @@ console.log(`tools: ${baseTools.length} built-in, ${mcpTools.length} read-only M
 if (tasks.some((t) => t.category === 'github-mcp') && !mcpTools.some((t) => t.name.startsWith('mcp__github__')))
   console.warn('warning: GitHub MCP is not connected; github-mcp tasks will fail')
 
+const maxUsd = argv['max-usd'] ? Number(argv['max-usd']) : Infinity
+let spent = 0
+const agents = new Set<Agent>()
+
 async function runOne(model: ModelRef, task: Task, rep: number): Promise<RunResult> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `xb-bench-${task.id}-`)).normalize('NFC')
   for (const [f, body] of Object.entries(task.files ?? {})) {
@@ -159,6 +165,8 @@ async function runOne(model: ModelRef, task: Task, rep: number): Promise<RunResu
         r.promptTokens += e.record.promptTokens
         r.completionTokens += e.record.completionTokens
         r.cost = r.cost === null || e.record.cost === null ? null : r.cost + e.record.cost
+        spent += e.record.cost ?? 0
+        if (spent >= maxUsd) for (const a of agents) a.stop()
       }
       // Provider errors can name your account (e.g. Groq's org id); results are meant to be shared.
       if (e.type === 'error') error = e.message.replace(/\borg_[A-Za-z0-9]+/g, 'org_[redacted]')
@@ -166,6 +174,7 @@ async function runOne(model: ModelRef, task: Task, rep: number): Promise<RunResu
   })
   let reason: RunResult['reason']
   let timer: NodeJS.Timeout | undefined
+  agents.add(agent)
   try {
     reason = await Promise.race([
       agent.send(task.prompt),
@@ -176,6 +185,7 @@ async function runOne(model: ModelRef, task: Task, rep: number): Promise<RunResu
     error = (e as Error).message
   } finally {
     clearTimeout(timer)
+    agents.delete(agent)
   }
   const wallMs = Date.now() - started
   // The last assistant message is the answer; `text` events of earlier steps were reset above.
@@ -197,6 +207,7 @@ await Promise.all(
   models.map(async (m) => {
     for (let rep = 1; rep <= reps; rep++)
       for (const t of tasks) {
+        if (spent >= maxUsd) return
         const res = await runOne(m, t, rep)
         results.push(res)
         fs.appendFileSync(runsFile, JSON.stringify(res) + '\n')
@@ -205,4 +216,6 @@ await Promise.all(
   }),
 )
 await mcp.close()
+if (spent >= maxUsd) console.log(`\nstopped at the $${maxUsd} limit`)
+console.log(`spent $${spent.toFixed(2)}`)
 console.log(`\n${results.filter((r) => r.pass).length}/${results.length} passed. Raw results: ${runsFile}`)
