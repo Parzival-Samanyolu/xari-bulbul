@@ -80,7 +80,7 @@ export default {
   'bots.lobbies.withNoOne': 'İştirakçı yoxdur',
   'bots.lobbies.newReplies': 'Yeni cavablar',
   'bots.lobbies.editMembers': 'Adını və ya iştirakçıları dəyiş…',
-  'bots.lobbies.confirmDelete': '{name} qrup söhbəti silinsin? Yazışma da silinəcək. Botlar qalır.',
+  'bots.lobbies.confirmDelete': '{name} qrup söhbəti silinsin? Söhbət də silinəcək. Botlar qalır.',
 
   // A bot chat's header
   'bots.header.thinking': 'Düşünür…',
@@ -123,7 +123,7 @@ export default {
   'bots.dialog.shape.hexagon': 'Altıbucaq',
   'bots.dialog.shape.cloud': 'Bulud',
   'bots.dialog.shape.star': 'Ulduz',
-  'bots.dialog.shape.ghost': 'Kabus',
+  'bots.dialog.shape.ghost': 'Xəyal',
   'bots.dialog.pet.cat': 'Pişik',
   'bots.dialog.pet.dog': 'İt',
   'bots.dialog.pet.bunny': 'Dovşan',

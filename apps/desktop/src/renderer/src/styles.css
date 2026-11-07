@@ -4307,6 +4307,10 @@ body.resizing * {
 .bd-seg button {
   min-width: 0;
   padding: 5px 2px;
+  /* Longer translations wrap inside their column instead of overflowing it. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
   border-radius: 6px;
   color: var(--muted);
   font-weight: 500;
