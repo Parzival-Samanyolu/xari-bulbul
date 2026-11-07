@@ -9,15 +9,32 @@ interface I18n {
 
 const english: I18n = { t: makeT<MessageKey>('en', CATALOGS), lang: 'en' }
 const I18nContext = createContext<I18n>(english)
+/** The language 'system' resolves to right now. */
+const SystemLangContext = createContext<Lang>('en')
 
-/** The interface language for everything below it. `setting` is `appearance.language` ('system' follows the OS). */
-export function I18nProvider({ setting, children }: { setting: string; children: ReactNode }) {
-  const lang = useMemo(() => resolveLang(setting, navigator.languages), [setting])
+/**
+ * The interface language for everything below it. `setting` is `appearance.language`; 'system'
+ * picks from `system`, the OS languages main reports in `AppState.systemLanguages`, so main and
+ * renderer agree. `navigator.languages` stands in only before the first state arrives.
+ */
+export function I18nProvider({ setting, system, children }: { setting: string; system?: readonly string[]; children: ReactNode }) {
+  const systemKey = (system ?? navigator.languages).join(',')
+  const systemLang = useMemo(() => resolveLang('system', systemKey ? systemKey.split(',') : []), [systemKey])
+  const lang = setting === 'system' ? systemLang : resolveLang(setting, [])
   const value = useMemo<I18n>(() => (lang === 'en' ? english : { t: makeT<MessageKey>(lang, CATALOGS), lang }), [lang])
   useEffect(() => {
     document.documentElement.lang = lang
   }, [lang])
-  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
+  return (
+    <SystemLangContext.Provider value={systemLang}>
+      <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
+    </SystemLangContext.Provider>
+  )
+}
+
+/** The language `appearance.language: 'system'` resolves to, for the language picker. */
+export function useSystemLang(): Lang {
+  return useContext(SystemLangContext)
 }
 
 /** `t(key, vars)` in the current language (English for a missing message), and the language itself. */

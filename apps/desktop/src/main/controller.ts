@@ -121,7 +121,7 @@ import {
 } from '@harness/core'
 import type { AccountView, AppState, AttachmentInput, BotAvatarRequest, BotRow, LobbyRow, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
 import { LocalModels } from './local-models'
-import { tm } from './i18n'
+import { systemLanguages, tm } from './i18n'
 import { log } from './logger'
 import type { KnownChild } from './resources'
 import { Scheduler } from './scheduler'
@@ -2062,6 +2062,7 @@ export class AppController {
     return {
       version: this.version,
       platform: process.platform,
+      systemLanguages: systemLanguages(),
       settings: this.settings,
       shareInfoOff: !!this.opts.shareInfoOff,
       keys,

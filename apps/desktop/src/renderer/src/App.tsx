@@ -360,9 +360,10 @@ export function App() {
 
   // Every screen, the loading one included, renders in the interface language.
   const language = app?.settings.appearance.language ?? 'system'
-  if (!app) return <I18nProvider setting={language}><Loading error={bootError} onRetry={boot} /></I18nProvider>
+  const system = app?.systemLanguages
+  if (!app) return <I18nProvider setting={language} system={system}><Loading error={bootError} onRetry={boot} /></I18nProvider>
   // First run: full-window setup until it's finished or skipped.
-  if (!app.settings.app.onboarded) return <I18nProvider setting={language}><Onboarding app={app} onState={setState} onError={fail} /></I18nProvider>
+  if (!app.settings.app.onboarded) return <I18nProvider setting={language} system={system}><Onboarding app={app} onState={setState} onError={fail} /></I18nProvider>
 
   /** Opens Settings at a tab id ('providers', 'usage', …) or a section id ('model.aux'). */
   const openSettings = (tab?: string) => setSettingsPage(resolvePage(tab, app.settings))
@@ -373,7 +374,7 @@ export function App() {
   const showBottom = !!app.workspace && !!panels?.bottomOpen
 
   return (
-    <I18nProvider setting={language}>
+    <I18nProvider setting={language} system={system}>
       <div className="app">
         <Sidebar app={app} onState={setState} onError={fail} onSettings={() => openSettings()} settingsOpen={!!settingsPage} onChat={() => setSettingsPage(null)} onEditBot={editBot} onEditLobby={editLobby} />
         <main className="main">

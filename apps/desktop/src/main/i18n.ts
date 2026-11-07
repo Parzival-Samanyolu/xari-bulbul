@@ -6,16 +6,20 @@ import { CATALOGS, type MessageKey } from '../shared/i18n/catalog'
 let lang: Lang = 'en'
 let t = makeT<MessageKey>('en', CATALOGS)
 
-/** `setting` is `appearance.language`; `system` follows the OS's preferred languages. */
-export function setMainLanguage(setting: string): void {
+/** The OS's preferred languages, most preferred first (the app locale when the OS gives none). Also sent to the renderer in `AppState`. */
+export function systemLanguages(): string[] {
   let system: string[] = []
   try {
     system = app.getPreferredSystemLanguages()
   } catch {
     /* before ready on some platforms: fall back to the app locale */
   }
-  if (system.length === 0) system = [app.getLocale()]
-  const next = resolveLang(setting, system)
+  return system.length > 0 ? system : [app.getLocale()]
+}
+
+/** `setting` is `appearance.language`; `system` follows the OS's preferred languages. */
+export function setMainLanguage(setting: string): void {
+  const next = resolveLang(setting, systemLanguages())
   if (next === lang) return
   lang = next
   t = makeT<MessageKey>(lang, CATALOGS)

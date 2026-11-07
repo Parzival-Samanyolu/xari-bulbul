@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { LANGS, LANGUAGE_NAMES, resolveLang } from '@harness/core/i18n'
+import { LANGS, LANGUAGE_NAMES } from '@harness/core/i18n'
 import { api } from '../../../lib/api'
-import { useT } from '../../../lib/i18n'
+import { useSystemLang, useT } from '../../../lib/i18n'
 import { FIXED_SHORTCUTS, SHORTCUTS, comboFromEvent, comboProblem, formatCombo, isMac, shortcutFor, type ShortcutId } from '../../../lib/shortcuts'
 import { ListField, Row, Section, Select, Slider, TextField, Toggle } from '../../fields'
 import { LayoutPicker, withLayout } from '../../LayoutPicker'
@@ -57,7 +57,7 @@ export function AppearancePage({ app, save }: PageProps) {
   const a = app.settings.appearance
   const { t } = useT()
   // Each language is named in itself; "System" names the one it resolves to now.
-  const systemLang = resolveLang('system', navigator.languages)
+  const systemLang = useSystemLang()
   const languages = [
     { value: 'system' as const, label: t('settings.general.languageSystem', { lang: LANGUAGE_NAMES[systemLang] }) },
     ...LANGS.map((l) => ({ value: l, label: LANGUAGE_NAMES[l] })),

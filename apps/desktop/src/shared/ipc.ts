@@ -317,6 +317,8 @@ export interface AccountView {
 export interface AppState {
   version: string
   platform: NodeJS.Platform
+  /** The OS's preferred languages, most preferred first; `appearance.language: 'system'` picks from these in main and renderer alike. */
+  systemLanguages: string[]
   settings: Settings
   /** Share info can't send in this build or session (XB_TELEMETRY=0 or an empty XB_TELEMETRY_URL). */
   shareInfoOff: boolean
