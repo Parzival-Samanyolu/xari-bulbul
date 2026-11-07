@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { AppState } from '../../../shared/ipc'
 import { api } from '../lib/api'
-import { Listener } from '../lib/listen'
+import { Listener, MicNotOpenError } from '../lib/listen'
 import { speaker, speakerFor } from '../lib/speech'
 import { recordingToWav } from '../lib/wav'
 import { useT } from '../lib/i18n'
@@ -125,7 +125,7 @@ export function HandsFree({ app, send, onError }: Props) {
       }
     } catch (e) {
       const name = (e as DOMException)?.name
-      if (!ac.signal.aborted) onError(name === 'NotAllowedError' ? new Error(t('chat.voice.notAllowed')) : name === 'NotFoundError' ? new Error(t('chat.voice.noMic')) : e)
+      if (!ac.signal.aborted) onError(name === 'NotAllowedError' ? new Error(t('chat.voice.notAllowed')) : name === 'NotFoundError' ? new Error(t('chat.voice.noMic')) : e instanceof MicNotOpenError ? new Error(t('chat.voice.micNotOpen')) : e)
     } finally {
       listener.close()
       if (run.current?.ac === ac) stop()

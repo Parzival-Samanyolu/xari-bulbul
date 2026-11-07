@@ -141,6 +141,7 @@ export default {
   // MicButton.tsx, HandsFree.tsx
   'chat.voice.notAllowed': 'Mikrofon erişimine izin verilmedi.',
   'chat.voice.noMic': 'Mikrofon bulunamadı.',
+  'chat.voice.micNotOpen': 'Mikrofon açık değil.',
   'chat.voice.transcribing': 'Yazıya dökülüyor…',
   'chat.mic.stopAndTranscribe': 'Kaydı durdur ve yazıya dök',
   'chat.mic.dictate': 'Mesaj dikte et',

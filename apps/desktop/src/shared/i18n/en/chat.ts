@@ -137,6 +137,7 @@ export default {
   // MicButton.tsx, HandsFree.tsx
   'chat.voice.notAllowed': 'Microphone access was not allowed.',
   'chat.voice.noMic': 'No microphone found.',
+  'chat.voice.micNotOpen': 'The microphone is not open.',
   'chat.voice.transcribing': 'Transcribing…',
   'chat.mic.stopAndTranscribe': 'Stop recording and transcribe',
   'chat.mic.dictate': 'Dictate a message',

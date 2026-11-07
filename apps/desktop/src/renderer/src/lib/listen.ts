@@ -19,6 +19,14 @@ export interface ListenOptions {
   onSpeech?: () => void
 }
 
+/** `listen()` ran before `open()` or after `close()`; the caller shows `chat.voice.micNotOpen`. */
+export class MicNotOpenError extends Error {
+  constructor() {
+    super('The microphone is not open.')
+    this.name = 'MicNotOpenError'
+  }
+}
+
 export class Listener {
   private stream: MediaStream | null = null
   private ctx: AudioContext | null = null
@@ -56,7 +64,7 @@ export class Listener {
   listen(opts: ListenOptions): Promise<Blob | null> {
     const stream = this.stream
     const analyser = this.analyser
-    if (!stream || !analyser) return Promise.reject(new Error('The microphone is not open.'))
+    if (!stream || !analyser) return Promise.reject(new MicNotOpenError())
     const pauseMs = opts.pauseMs ?? 1300
     return new Promise((resolve) => {
       const type = recorderType()
