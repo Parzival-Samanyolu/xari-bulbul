@@ -1291,12 +1291,12 @@ kbd {
 .composer-box {
   container-type: inline-size;
 }
-/* The model name shortens first; when the row is still too narrow, the tools wrap to a second line. */
+/* One row at every width: the mode buttons stay whole; the model name and thinking chip shorten instead. */
 .composer-tools {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   flex: 1;
   min-width: 0;
 }
@@ -1326,7 +1326,7 @@ kbd {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-@container (max-width: 640px) {
+@container (max-width: 900px) {
   .composer-tools .model-chip .muted.small {
     display: none;
   }
@@ -4980,7 +4980,7 @@ body.resizing * {
 .local-search input {
   min-width: 220px;
 }
-@container (max-width: 500px) {
+@container (max-width: 640px) {
   .composer-tools > .chip.mix {
     display: none;
   }
