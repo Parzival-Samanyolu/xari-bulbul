@@ -1,7 +1,7 @@
 import type { ChatMessage, ImageAttachment, ModelInfo, ToolCall, Usage } from '../types.js'
 import type { ProviderConfig } from '../settings/schema.js'
 import { ROTATE_STATUSES } from './accounts.js'
-import { midStreamError, requestWithRetry, withStallGuard } from './http.js'
+import { inputProgress, midStreamError, requestWithRetry, withStallGuard } from './http.js'
 import { readSseData } from './sse.js'
 import { ProviderError, type ChatRequest, type Provider, type StreamEvent } from './types.js'
 import { BATCH_STATUS, findJsonl, pollBatch } from './batch.js'
@@ -114,6 +114,7 @@ export class OpenAICompatProvider implements Provider {
     const source = batch ? this.batch(body, req.signal) : readSseData(await this.send(body, req))
 
     const calls = new Map<number, ToolCall>()
+    let reported = 0
     let finishReason = 'stop'
     let usage: Usage | undefined
     const details: unknown[] = []
@@ -148,6 +149,10 @@ export class OpenAICompatProvider implements Provider {
         if (tc.function?.name) cur.name += tc.function.name
         if (tc.function?.arguments) cur.arguments += tc.function.arguments
         calls.set(idx, cur)
+        if (tc.function?.arguments && inputProgress(cur.arguments.length, reported)) {
+          reported = cur.arguments.length
+          yield { type: 'tool_input', name: cur.name, chars: reported }
+        }
       }
       if (choice.finish_reason === 'error') throw midStreamError(this.name, undefined, undefined)
       if (choice.finish_reason) finishReason = choice.finish_reason

@@ -68,6 +68,15 @@ export async function* withStallGuard<T>(
   }
 }
 
+/**
+ * Whether a streaming tool call's arguments grew enough to report progress again: at 200
+ * characters, then every 1000, or from the start when a new (shorter) call begins.
+ */
+export function inputProgress(chars: number, reported: number): boolean {
+  if (chars < reported) return chars >= 200
+  return reported === 0 ? chars >= 200 : chars - reported >= 1000
+}
+
 export function backoff(attempt: number): number {
   return Math.min(1000 * 2 ** (attempt - 1), 15_000) + Math.random() * 250
 }

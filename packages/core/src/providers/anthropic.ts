@@ -1,7 +1,7 @@
 import type { ChatMessage, ModelInfo, ToolCall, Usage } from '../types.js'
 import type { ProviderConfig } from '../settings/schema.js'
 import { ROTATE_STATUSES } from './accounts.js'
-import { midStreamError, requestWithRetry, withStallGuard } from './http.js'
+import { inputProgress, midStreamError, requestWithRetry, withStallGuard } from './http.js'
 import { userText } from './openai-compat.js'
 import { readSseData } from './sse.js'
 import { BATCH_STATUS, findJsonl, pollBatch } from './batch.js'
@@ -235,6 +235,7 @@ export class AnthropicProvider implements Provider {
     // Every content block in order, kept verbatim so it can be sent back next step.
     const blocks: Block[] = []
     const json = new Map<number, string>()
+    let reported = 0
     let stopReason = 'end_turn'
     let stopDetails: { explanation?: string } | undefined
     let model = req.model
@@ -279,7 +280,12 @@ export class AnthropicProvider implements Provider {
           } else if (d.type === 'signature_delta' && d.signature) {
             b.signature = ((b.signature as string) ?? '') + d.signature
           } else if (d.type === 'input_json_delta' && d.partial_json) {
-            json.set(i, (json.get(i) ?? '') + d.partial_json)
+            const args = (json.get(i) ?? '') + d.partial_json
+            json.set(i, args)
+            if (inputProgress(args.length, reported)) {
+              reported = args.length
+              yield { type: 'tool_input', name: b.name as string, chars: reported }
+            }
           }
           break
         }

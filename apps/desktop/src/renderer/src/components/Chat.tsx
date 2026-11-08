@@ -545,7 +545,9 @@ function LiveReply({ live, showReasoning, botName }: { live: LiveState; showReas
   return (
     <div className="assistant live">
       {live.streamReasoning && showReasoning && <Reasoning text={live.streamReasoning} open />}
-      {live.streamText ? <Markdown text={live.streamText} /> : <Thinking tools={live.tools} status={status} />}
+      {live.streamText && <Markdown text={live.streamText} />}
+      {/* After some text, the model may still be writing a long tool call: show that it is. */}
+      {(!live.streamText || live.status) && <Thinking tools={live.tools} status={status} />}
     </div>
   )
 }

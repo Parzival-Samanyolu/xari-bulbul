@@ -5,6 +5,7 @@ export default {
   // App.tsx: notices and labels built in the reducer
   'chat.app.compacted': { one: 'Summarized {count} older message to free up context.', other: 'Summarized {count} older messages to free up context.' },
   'chat.app.mixingAsk': { one: 'Asking {count} model…', other: 'Asking {count} models…' },
+  'chat.app.writingTool': { one: 'Writing {name}… {count} character so far', other: 'Writing {name}… {count} characters so far' },
   'chat.app.mixingCombine': 'Combining their answers…',
   'chat.app.memorySaved': 'Saved to memory: {facts}',
   'chat.app.memoryRemoved': 'Removed from memory: {facts}',

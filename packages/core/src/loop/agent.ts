@@ -44,6 +44,8 @@ export type AgentEvent =
   | { type: 'message'; message: ChatMessage; index: number }
   | { type: 'tool_start'; callId: string; name: string; subject: string; input: unknown }
   | { type: 'tool_progress'; callId: string; text: string }
+  /** The model is still writing a tool call's arguments (`chars` so far); nothing else streams meanwhile. */
+  | { type: 'tool_input'; name: string; chars: number }
   | { type: 'tool_end'; callId: string; name: string; result: ToolResult; durationMs: number; denied?: boolean }
   | { type: 'usage'; record: UsageRecord; summary: UsageSummary; contextTokens: number; contextLength: number }
   | { type: 'todos'; todos: TodoItem[] }
@@ -885,6 +887,7 @@ export class Agent {
           else if (ev.type === 'usage') usage = ev.usage
           else if (ev.type === 'extra') extra = ev.extra
           else if (ev.type === 'status') this.emit({ type: 'notice', level: 'info', text: ev.text })
+          else if (ev.type === 'tool_input' && !hold) this.emit(ev)
         }
         return { content, reasoning, calls, usage, extra }
       } catch (err) {

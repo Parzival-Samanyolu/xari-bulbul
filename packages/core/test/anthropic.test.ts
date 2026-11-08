@@ -294,3 +294,24 @@ describe('AnthropicProvider stall timeout', () => {
     await expect(collect(p.chat({ model: 'claude-opus-5-5', messages: [{ role: 'user', content: 'hi' }], stallMs: 5000, signal: ctrl.signal }))).rejects.toThrow(/aborted|stopped/)
   })
 })
+
+describe('tool call progress', () => {
+  it('reports a long tool call while its arguments stream, then the full call', async () => {
+    const script = JSON.stringify({ code: 'x'.repeat(2600) })
+    const chunks = script.match(/.{1,100}/gs)!
+    const { fetch } = fakeApi([
+      { type: 'message_start', message: { model: 'claude-opus-5-5' } },
+      { type: 'content_block_start', index: 0, content_block: { type: 'tool_use', id: 'tu', name: 'blender_run', input: {} } },
+      ...chunks.map((c) => ({ type: 'content_block_delta', index: 0, delta: { type: 'input_json_delta', partial_json: c } })),
+      { type: 'message_delta', delta: { stop_reason: 'tool_use' } },
+    ])
+    const p = new AnthropicProvider({ config, apiKey: 'k', fetch })
+    const events = await collect(p.chat({ model: 'claude-opus-5-5', messages: [{ role: 'user', content: 'go' }] }))
+    expect(events.filter((e) => e.type === 'tool_input')).toEqual([
+      { type: 'tool_input', name: 'blender_run', chars: 200 },
+      { type: 'tool_input', name: 'blender_run', chars: 1200 },
+      { type: 'tool_input', name: 'blender_run', chars: 2200 },
+    ])
+    expect(events.find((e) => e.type === 'tool_call')).toMatchObject({ call: { name: 'blender_run', arguments: script } })
+  })
+})

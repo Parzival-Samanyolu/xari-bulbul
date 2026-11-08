@@ -8,6 +8,7 @@ export default {
     other: 'Kontekstdə yer açmaq üçün {count} köhnə mesajın xülasəsi çıxarıldı.',
   },
   'chat.app.mixingAsk': { one: '{count} modeldən soruşulur…', other: '{count} modeldən soruşulur…' },
+  'chat.app.writingTool': { one: '{name} yazılır… indiyədək {count} simvol', other: '{name} yazılır… indiyədək {count} simvol' },
   'chat.app.mixingCombine': 'Cavablar birləşdirilir…',
   'chat.app.memorySaved': 'Yaddaşa yazıldı: {facts}',
   'chat.app.memoryRemoved': 'Yaddaşdan silindi: {facts}',

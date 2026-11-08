@@ -28,6 +28,8 @@ export type StreamEvent =
   /** Provider data to store on the assistant message and send back with it. */
   | { type: 'extra'; extra: Record<string, unknown> }
   | { type: 'finish'; reason: string }
+  /** A tool call's arguments are streaming in (a long script can take minutes); `chars` so far. */
+  | { type: 'tool_input'; name: string; chars: number }
   /** Progress the user should see while nothing streams (e.g. waiting for a batch). */
   | { type: 'status'; text: string }
 

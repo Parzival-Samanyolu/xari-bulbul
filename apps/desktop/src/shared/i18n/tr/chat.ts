@@ -8,6 +8,7 @@ export default {
     other: 'Bağlamda yer açmak için {count} eski mesaj özetlendi.',
   },
   'chat.app.mixingAsk': { one: '{count} modele soruluyor…', other: '{count} modele soruluyor…' },
+  'chat.app.writingTool': { one: '{name} yazılıyor… şimdiye kadar {count} karakter', other: '{name} yazılıyor… şimdiye kadar {count} karakter' },
   'chat.app.mixingCombine': 'Yanıtlar birleştiriliyor…',
   'chat.app.memorySaved': 'Belleğe kaydedildi: {facts}',
   'chat.app.memoryRemoved': 'Bellekten silindi: {facts}',

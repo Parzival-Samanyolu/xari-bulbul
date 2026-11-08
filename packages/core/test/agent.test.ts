@@ -57,6 +57,15 @@ describe('Agent loop', () => {
     expect(agent.session.messages.at(-1)).not.toHaveProperty('extra')
   })
 
+  it('passes on progress while a long tool call streams', async () => {
+    const { agent, events } = await setup([
+      [{ type: 'tool_input', name: 'read_file', chars: 1200 }, call('1', 'read_file', { path: 'app.txt' })],
+      [{ type: 'text', delta: 'Done.' }],
+    ])
+    await agent.send('read it')
+    expect(events).toContainEqual({ type: 'tool_input', name: 'read_file', chars: 1200 })
+  })
+
   it("sends the model's thinking level and fast mode from its override", async () => {
     const { agent, provider, settings } = await setup([[{ type: 'text', delta: 'a' }], [{ type: 'text', delta: 'b' }]])
     settings.models.reasoningEffort = 'low'

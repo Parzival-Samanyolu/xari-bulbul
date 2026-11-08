@@ -15,6 +15,12 @@ export default {
     many: 'Запрос к {count} моделям…',
     other: 'Запрос к {count} модели…',
   },
+  'chat.app.writingTool': {
+    one: 'Пишет {name}… пока {count} символ',
+    few: 'Пишет {name}… пока {count} символа',
+    many: 'Пишет {name}… пока {count} символов',
+    other: 'Пишет {name}… пока {count} символа',
+  },
   'chat.app.mixingCombine': 'Объединение ответов…',
   'chat.app.memorySaved': 'Сохранено в память: {facts}',
   'chat.app.memoryRemoved': 'Удалено из памяти: {facts}',

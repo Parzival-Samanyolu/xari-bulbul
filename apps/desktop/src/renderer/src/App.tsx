@@ -160,7 +160,7 @@ function reducer(m: Model, a: Action): Model {
     case 'reasoning':
       return setLive({ ...live, streamReasoning: live.streamReasoning + e.delta })
     case 'stream_reset':
-      return setLive({ ...live, streamText: '', streamReasoning: '' })
+      return setLive({ ...live, streamText: '', streamReasoning: '', status: undefined })
     case 'message': {
       const clear = e.message.role === 'assistant' ? { streamText: '', streamReasoning: '', status: undefined } : {}
       if (!shown || !app.session) return setLive({ ...live, ...clear })
@@ -203,6 +203,8 @@ function reducer(m: Model, a: Action): Model {
       return setLive(addNotice(live, e.level, e.text))
     case 'fallback':
       return setLive(addNotice(live, 'info', e.text))
+    case 'tool_input':
+      return setLive({ ...live, status: { key: 'chat.app.writingTool', vars: { name: e.name, count: e.chars } } })
     case 'mixing':
       return setLive({ ...live, status: e.phase === 'proposing' ? { key: 'chat.app.mixingAsk', vars: { count: e.models.length } } : { key: 'chat.app.mixingCombine' } })
     case 'memory': {
