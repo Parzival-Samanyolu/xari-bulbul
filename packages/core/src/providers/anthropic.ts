@@ -1,7 +1,7 @@
 import type { ChatMessage, ModelInfo, ToolCall, Usage } from '../types.js'
 import type { ProviderConfig } from '../settings/schema.js'
 import { ROTATE_STATUSES } from './accounts.js'
-import { midStreamError, requestWithRetry } from './http.js'
+import { midStreamError, requestWithRetry, withStallGuard } from './http.js'
 import { userText } from './openai-compat.js'
 import { readSseData } from './sse.js'
 import { BATCH_STATUS, findJsonl, pollBatch } from './batch.js'
@@ -137,6 +137,13 @@ export class AnthropicProvider implements Provider {
   }
 
   async *chat(req: ChatRequest): AsyncIterable<StreamEvent> {
+    // Batches wait for minutes by design; a live stream gets pings every few seconds, so silence means it's stuck.
+    const stallMs = req.speed === 'batch' ? 0 : (req.stallMs ?? 0)
+    yield* withStallGuard(this.name, req.model, stallMs, req.signal, (signal, touch) => this.stream({ ...req, signal }, touch))
+  }
+
+  /** `touch` is called whenever bytes arrive, to reset the stall timer. */
+  private async *stream(req: ChatRequest, touch: () => void): AsyncIterable<StreamEvent> {
     if (!this.apiKey && this.config.requiresKey) {
       throw new ProviderError(`No API key set for ${this.name}. Add one in Settings › Providers › API keys.`)
     }
@@ -190,7 +197,7 @@ export class AnthropicProvider implements Provider {
       return send()
     })
     if (!res.body) throw new ProviderError('Empty response body from provider')
-    yield* this.parse(req, sseEvents(res.body), () => (fast ? 2 : 1))
+    yield* this.parse(req, sseEvents(res.body, touch), () => (fast ? 2 : 1))
   }
 
   /** Sends one request through Message Batches and replays the finished message as stream events. */
@@ -319,8 +326,9 @@ export class AnthropicProvider implements Provider {
   }
 }
 
-async function* sseEvents(body: ReadableStream<Uint8Array>): AsyncIterable<RawEvent> {
+async function* sseEvents(body: ReadableStream<Uint8Array>, touch: () => void = () => {}): AsyncIterable<RawEvent> {
   for await (const data of readSseData(body)) {
+    touch()
     try {
       yield JSON.parse(data) as RawEvent
     } catch {

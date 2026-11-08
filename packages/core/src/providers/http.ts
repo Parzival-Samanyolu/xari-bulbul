@@ -33,6 +33,41 @@ export async function requestWithRetry(
   }
 }
 
+/**
+ * Runs a streamed request and gives up when nothing arrives for `stallMs` (0 = never): a dropped
+ * connection or a queued request otherwise hangs the chat forever. `run` gets the signal to send
+ * the request with and calls `touch` whenever bytes arrive. A user stop still surfaces as an abort.
+ */
+export async function* withStallGuard<T>(
+  name: string,
+  model: string,
+  stallMs: number,
+  signal: AbortSignal | undefined,
+  run: (signal: AbortSignal | undefined, touch: () => void) => AsyncIterable<T>,
+): AsyncIterable<T> {
+  if (!stallMs) return yield* run(signal, () => {})
+  const ctrl = new AbortController()
+  const onAbort = () => ctrl.abort(signal?.reason)
+  if (signal?.aborted) onAbort()
+  signal?.addEventListener('abort', onAbort, { once: true })
+  let stalled = false
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const touch = () => {
+    clearTimeout(timer)
+    timer = setTimeout(() => ((stalled = true), ctrl.abort()), stallMs)
+  }
+  try {
+    touch()
+    yield* run(ctrl.signal, touch)
+  } catch (e) {
+    if (!stalled || signal?.aborted) throw e
+    throw new ProviderError(`${name} sent nothing for ${Math.round(stallMs / 1000)}s on ${model}; it may be queued or overloaded, or the connection dropped. Try another model.`, 408)
+  } finally {
+    clearTimeout(timer)
+    signal?.removeEventListener('abort', onAbort)
+  }
+}
+
 export function backoff(attempt: number): number {
   return Math.min(1000 * 2 ** (attempt - 1), 15_000) + Math.random() * 250
 }

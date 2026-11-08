@@ -267,3 +267,30 @@ describe('toAnthropicMessages', () => {
     ])
   })
 })
+
+describe('AnthropicProvider stall timeout', () => {
+  /** Models answer at once; /messages sends `message_start`, then nothing until aborted. */
+  const stuck = (async (url: string, init: RequestInit) => {
+    if (String(url).includes('/models')) return new Response(JSON.stringify({ data: [opus], has_more: false }), { headers: { 'content-type': 'application/json' } })
+    const enc = new TextEncoder()
+    const body = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(enc.encode(`event: message_start\ndata: ${JSON.stringify({ type: 'message_start', message: { model: 'claude-opus-5-5' } })}\n\n`))
+        init.signal?.addEventListener('abort', () => c.error(new Error('aborted')))
+      },
+    })
+    return new Response(body, { headers: { 'content-type': 'text/event-stream' } })
+  }) as unknown as typeof globalThis.fetch
+
+  it('gives up on a stream that goes silent instead of hanging the chat', async () => {
+    const p = new AnthropicProvider({ config, apiKey: 'k', fetch: stuck, retries: 0 })
+    await expect(collect(p.chat({ model: 'claude-opus-5-5', messages: [{ role: 'user', content: 'hi' }], stallMs: 30 }))).rejects.toThrow(/sent nothing for 0s on claude-opus-5-5/)
+  })
+
+  it('reports a user stop as an abort, not a stall', async () => {
+    const p = new AnthropicProvider({ config, apiKey: 'k', fetch: stuck, retries: 0 })
+    const ctrl = new AbortController()
+    setTimeout(() => ctrl.abort(new Error('stopped')), 10)
+    await expect(collect(p.chat({ model: 'claude-opus-5-5', messages: [{ role: 'user', content: 'hi' }], stallMs: 5000, signal: ctrl.signal }))).rejects.toThrow(/aborted|stopped/)
+  })
+})

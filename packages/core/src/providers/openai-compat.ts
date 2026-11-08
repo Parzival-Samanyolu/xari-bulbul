@@ -1,7 +1,7 @@
 import type { ChatMessage, ImageAttachment, ModelInfo, ToolCall, Usage } from '../types.js'
 import type { ProviderConfig } from '../settings/schema.js'
 import { ROTATE_STATUSES } from './accounts.js'
-import { midStreamError, requestWithRetry } from './http.js'
+import { midStreamError, requestWithRetry, withStallGuard } from './http.js'
 import { readSseData } from './sse.js'
 import { ProviderError, type ChatRequest, type Provider, type StreamEvent } from './types.js'
 import { BATCH_STATUS, findJsonl, pollBatch } from './batch.js'
@@ -81,27 +81,7 @@ export class OpenAICompatProvider implements Provider {
     // Free tiers (NVIDIA's especially) can queue a request forever; give up when nothing arrives for a while.
     // Not for local servers, which may spend minutes loading a model, or OpenAI, whose reasoning models think silently.
     const stallMs = this.config.requiresKey && !this.isOpenAI() ? (req.stallMs ?? 0) : 0
-    if (!stallMs) return yield* this.stream(req, () => {})
-    const ctrl = new AbortController()
-    const onAbort = () => ctrl.abort(req.signal?.reason)
-    if (req.signal?.aborted) onAbort()
-    req.signal?.addEventListener('abort', onAbort, { once: true })
-    let stalled = false
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const touch = () => {
-      clearTimeout(timer)
-      timer = setTimeout(() => ((stalled = true), ctrl.abort()), stallMs)
-    }
-    try {
-      touch()
-      yield* this.stream({ ...req, signal: ctrl.signal }, touch)
-    } catch (e) {
-      if (!stalled || req.signal?.aborted) throw e
-      throw new ProviderError(`${this.name} sent nothing for ${Math.round(stallMs / 1000)}s on ${req.model}; it may be queued or overloaded. Try another model.`, 408)
-    } finally {
-      clearTimeout(timer)
-      req.signal?.removeEventListener('abort', onAbort)
-    }
+    yield* withStallGuard(this.name, req.model, stallMs, req.signal, (signal, touch) => this.stream({ ...req, signal }, touch))
   }
 
   /** `touch` is called whenever bytes arrive, to reset the stall timer. */
