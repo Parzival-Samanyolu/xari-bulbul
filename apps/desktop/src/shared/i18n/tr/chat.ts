@@ -304,4 +304,5 @@ export default {
   'chat.changes.wait': 'İsteğin bitmesini bekleyin',
   'chat.changes.restoreTitle': 'Dosyayı bu sohbetten önceki haline geri yükle',
   'chat.changes.revert': 'Geri al',
+  'chat.chatgpt.usingPlan': 'ChatGPT planı kullanılıyor',
 } satisfies Record<keyof typeof en, Message>

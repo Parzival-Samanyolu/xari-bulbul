@@ -337,4 +337,5 @@ export default {
   'chat.changes.wait': 'Дождитесь завершения запроса',
   'chat.changes.restoreTitle': 'Восстановить файл в состоянии до этого чата',
   'chat.changes.revert': 'Откатить',
+  'chat.chatgpt.usingPlan': 'Используется план ChatGPT',
 } satisfies Record<keyof typeof en, Message>

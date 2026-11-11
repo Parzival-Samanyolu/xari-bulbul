@@ -14,6 +14,7 @@ import { basename, modelLabel } from '../lib/format'
 import { SpeakButton } from './SpeakButton'
 import { speakerFor, type SpeakAs } from '../lib/speech'
 import { useFormat, useT } from '../lib/i18n'
+import { CHATGPT_USAGE_URL } from './ChatGpt'
 import { rich } from '../lib/rich'
 
 type ToolCallT = NonNullable<Extract<ChatMessage, { role: 'assistant' }>['toolCalls']>[number]
@@ -43,9 +44,9 @@ type UserMessage = Extract<ChatMessage, { role: 'user' }>
 type AssistantMessageT = Extract<ChatMessage, { role: 'assistant' }>
 type ToolMessage = Extract<ChatMessage, { role: 'tool' }>
 
-const FIX_LABEL = { providers: 'chat.notice.fixProviders', usage: 'chat.notice.fixUsage', agent: 'chat.notice.fixAgent' } as const
+const FIX_LABEL = { providers: 'chat.notice.fixProviders', usage: 'chat.notice.fixUsage', agent: 'chat.notice.fixAgent', chatgptUsage: 'settings.chatgpt.manageUsage' } as const
 /** The Settings section each fix opens. */
-const FIX_TARGET = { providers: 'providers.keys', usage: 'usage', agent: 'advanced.limits' } as const
+const FIX_TARGET = { providers: 'providers.keys', usage: 'usage', agent: 'advanced.limits', chatgptUsage: null } as const
 
 export function Chat(props: Props) {
   // A lobby is a group chat with its own view.
@@ -266,7 +267,7 @@ function OneChat({ app, live, onDismiss, onSettings, approval, question, onRetry
               </button>
             )}
             {n.fix && (
-              <button className="btn" onClick={() => onSettings(FIX_TARGET[n.fix!])}>
+              <button className={n.fix === 'chatgptUsage' ? 'btn primary' : 'btn'} onClick={() => (n.fix === 'chatgptUsage' ? api.app.openExternal(CHATGPT_USAGE_URL) : onSettings(FIX_TARGET[n.fix!]!))}>
                 {t(FIX_LABEL[n.fix])}
               </button>
             )}

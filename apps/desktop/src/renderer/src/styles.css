@@ -5355,3 +5355,46 @@ body.resizing * {
 .wa-chat:first-child {
   border-top: none;
 }
+
+/* ---------- ChatGPT plan sign-in ---------- */
+
+.chatgpt-connect {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+.key-line > .chatgpt-connect {
+  width: 320px;
+  flex: none;
+  justify-content: flex-end;
+}
+/* OpenAI asks for its approved look: a dark button with the mark and "Continue with ChatGPT". */
+.btn.chatgpt-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+.btn.chatgpt-button:hover:not(:disabled) {
+  opacity: 0.9;
+}
+.btn.chatgpt-button .provider-logo {
+  color: var(--bg);
+}
+.chatgpt-welcome {
+  width: min(440px, 92vw);
+  align-items: flex-start;
+}
+.chatgpt-welcome p {
+  margin: 0;
+  line-height: 1.5;
+}
+.chatgpt-using {
+  white-space: nowrap;
+}
+.chatgpt-using .link {
+  font-size: inherit;
+}

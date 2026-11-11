@@ -31,8 +31,10 @@ export const ProviderConfigSchema = z.object({
   requestUsageCost: z.boolean().default(false),
   /** Local servers (Ollama, LM Studio, vLLM) usually need no key. */
   requiresKey: z.boolean().default(true),
-  /** Wire protocol: OpenAI chat completions, or Anthropic's Messages API. */
-  api: z.enum(['openai', 'anthropic']).default('openai'),
+  /** Wire protocol: OpenAI chat completions, Anthropic's Messages API, or OpenAI's Responses API. */
+  api: z.enum(['openai', 'anthropic', 'openai-responses']).default('openai'),
+  /** How requests are paid for: an API key, or the user's ChatGPT plan through "Continue with ChatGPT". */
+  auth: z.enum(['key', 'chatgpt']).default('key'),
   /**
    * Named accounts, each with its own key (stored as `<providerId>#<accountId>`; the `default`
    * account uses the plain `<providerId>` id). Order is the rotation order. Unset or empty: one
@@ -44,7 +46,10 @@ export const ProviderConfigSchema = z.object({
 })
 export type ProviderConfig = z.infer<typeof ProviderConfigSchema>
 
-export const BUILTIN_PROVIDERS: ProviderConfig[] = [
+/** The built-in provider paid for by the user's ChatGPT plan. */
+export const CHATGPT_PROVIDER_ID = 'chatgpt'
+
+const BUILTINS: (Omit<ProviderConfig, 'auth'> & { auth?: ProviderConfig['auth'] })[] = [
   {
     id: 'openrouter',
     name: 'OpenRouter',
@@ -155,10 +160,33 @@ export const BUILTIN_PROVIDERS: ProviderConfig[] = [
     requiresKey: true,
     api: 'openai',
   },
+  {
+    id: 'synapse',
+    name: 'Samanyolu AI Synapse',
+    baseUrl: 'https://samanyoluai.duckdns.org/v1',
+    enabled: true,
+    headers: {},
+    requestUsageCost: false,
+    requiresKey: true,
+    api: 'openai',
+  },
+  {
+    id: CHATGPT_PROVIDER_ID,
+    name: 'ChatGPT plan',
+    baseUrl: 'https://api.openai.com/v1',
+    enabled: true,
+    headers: {},
+    requestUsageCost: false,
+    requiresKey: true,
+    api: 'openai-responses',
+    auth: 'chatgpt',
+  },
 ]
 
+export const BUILTIN_PROVIDERS: ProviderConfig[] = BUILTINS.map((p) => ({ ...p, auth: p.auth ?? 'key' }))
+
 /** One-click presets for common OpenAI-compatible servers. */
-export const PROVIDER_PRESETS: Omit<ProviderConfig, 'enabled' | 'headers' | 'requestUsageCost' | 'api'>[] = [
+export const PROVIDER_PRESETS: Omit<ProviderConfig, 'enabled' | 'headers' | 'requestUsageCost' | 'api' | 'auth'>[] = [
   { id: 'ollama-local', name: 'Ollama (local)', baseUrl: 'http://localhost:11434/v1', requiresKey: false },
   { id: 'lmstudio', name: 'LM Studio', baseUrl: 'http://localhost:1234/v1', requiresKey: false },
   { id: 'deepseek', name: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', requiresKey: true },
@@ -171,7 +199,7 @@ function fixGoogleUrl(p: ProviderConfig): ProviderConfig {
 }
 
 /** Guess the wire protocol of an endpoint from its URL: Anthropic's Messages API, else OpenAI chat completions. */
-export function guessProviderApi(baseUrl: string): ProviderConfig['api'] {
+export function guessProviderApi(baseUrl: string): 'openai' | 'anthropic' {
   return /anthropic|\/messages\/?$/i.test(baseUrl) ? 'anthropic' : 'openai'
 }
 

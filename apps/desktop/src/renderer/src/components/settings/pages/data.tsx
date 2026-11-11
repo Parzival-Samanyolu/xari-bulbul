@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CHATGPT_PROVIDER_ID, ManageUsageLink } from '../../ChatGpt'
 import type { PluginInfo, Settings, UpdateStatus } from '../../../../../shared/ipc'
 import { api } from '../../../lib/api'
 import { cost, modelLabel, tokens } from '../../../lib/format'
@@ -19,8 +20,36 @@ export function UsagePage({ app, save, onState, onError }: PageProps) {
   const u = app.settings.usage
   const sum = app.usage
   const byModel = Object.entries(sum.byModel).sort((a, b) => b[1].cost - a[1].cost || b[1].requests - a[1].requests)
+  const plan = app.chatgpt
   return (
     <>
+      {(plan.signedIn || plan.usage.totals.requests > 0) && (
+        <Section title={t('settings.chatgpt.usageTitle')} description={t('settings.chatgpt.usageIntro', { days: plan.usage.days })}>
+          <table className="usage-table">
+            <thead>
+              <tr>
+                <th scope="col">{t('settings.data.requests')}</th>
+                <th scope="col">{t('settings.data.promptTokens')}</th>
+                <th scope="col">{t('settings.data.completion')}</th>
+                <th scope="col">{t('settings.chatgpt.activeDays')}</th>
+                <th scope="col">{t('settings.chatgpt.peakDay')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{plan.usage.totals.requests}</td>
+                <td>{tokens(lang, plan.usage.totals.promptTokens)}</td>
+                <td>{tokens(lang, plan.usage.totals.completionTokens)}</td>
+                <td>{plan.usage.activeDays}</td>
+                <td>{tokens(lang, plan.usage.peakDayTokens)}</td>
+              </tr>
+            </tbody>
+          </table>
+          <p className="small">
+            {t('settings.chatgpt.manageHint')} <ManageUsageLink />
+          </p>
+        </Section>
+      )}
       <Section description={t('settings.data.usageIntro')}>
         <table className="usage-table">
           <thead>
@@ -72,7 +101,7 @@ export function UsagePage({ app, save, onState, onError }: PageProps) {
                   <td>{row.requests}</td>
                   <td>{tokens(lang, row.promptTokens)}</td>
                   <td>{tokens(lang, row.completionTokens)}</td>
-                  <td>{cost(lang, row.cost, row.costPartial)}</td>
+                  <td>{k.startsWith(`${CHATGPT_PROVIDER_ID}:`) ? t('settings.chatgpt.planCost') : cost(lang, row.cost, row.costPartial)}</td>
                 </tr>
               ))}
             </tbody>

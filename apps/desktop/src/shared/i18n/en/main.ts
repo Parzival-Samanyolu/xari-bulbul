@@ -160,4 +160,6 @@ export default {
   'main.process.process': 'Process',
   'main.process.mcp': 'MCP server: {name}',
   'main.process.terminal': 'Terminal',
+  'main.error.chatgptDenied': 'Sign-in was declined in the browser. Nothing changed.',
+  'main.error.chatgptSignIn': 'ChatGPT sign-in didn’t finish: {detail}',
 } as const satisfies Record<string, Message>

@@ -433,4 +433,6 @@ export default {
   // Settings rows (fields.tsx)
   'bots.fields.removeNamed': 'Удалить {item}',
   'bots.fields.addTo': 'Добавить в список «{list}»',
+  'bots.onboard.badge.chatgptPlan': 'Plus или Pro',
+  'bots.onboard.provider.chatgpt': 'Модели OpenAI, оплачиваемые из вашего плана ChatGPT. Войдите, API-ключ не нужен.',
 } satisfies Record<keyof typeof en, Message>

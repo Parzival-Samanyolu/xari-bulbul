@@ -25,6 +25,7 @@ import type {
   TodoItem,
   ToolDisplay,
   UsageSummary,
+  ProviderUsage,
 } from '@harness/core'
 
 export type {
@@ -51,6 +52,21 @@ export type {
   TodoItem,
   ToolDisplay,
   UsageSummary,
+  ProviderUsage,
+}
+
+/** "Continue with ChatGPT" status. No tokens ever reach the renderer. */
+export interface ChatGptState {
+  signedIn: boolean
+  email?: string
+  /** Signed in and allowed to spend the ChatGPT plan. */
+  planEnabled: boolean
+  /** A sign-in is waiting for the browser. */
+  pending: boolean
+  /** The one-time "You're using your ChatGPT plan" note was dismissed. */
+  welcomeSeen: boolean
+  /** This computer's ChatGPT-plan requests over the last 30 days. */
+  usage: ProviderUsage
 }
 
 /** One spoken chunk from an OpenAI-style provider. */
@@ -328,6 +344,7 @@ export interface AppState {
   /** Each provider's accounts in order; a single-key provider has one implicit "Default" account. */
   accounts: Record<string, AccountView[]>
   keyStorage: 'os' | 'basic'
+  chatgpt: ChatGptState
   providerPresets: { id: string; name: string; baseUrl: string; requiresKey: boolean }[]
   /** Ids of providers that ship with the app and can't be removed. */
   builtinProviders: string[]
@@ -456,6 +473,15 @@ export interface HarnessApi {
     add(providerId: string, label: string, key: string): Promise<AppState>
     setKey(providerId: string, accountId: string, key: string | null): Promise<AppState>
     remove(providerId: string, accountId: string): Promise<AppState>
+  }
+  /** Sign in with a ChatGPT plan instead of an API key. */
+  chatgpt: {
+    /** Opens the browser and resolves once signed in. `consent`: ask again to allow plan use. */
+    signIn(consent?: boolean): Promise<AppState>
+    cancel(): Promise<AppState>
+    /** `revoked: false`: the local sign-in is gone but ChatGPT couldn't confirm the session ended. */
+    signOut(): Promise<{ state: AppState; revoked: boolean }>
+    dismissWelcome(): Promise<AppState>
   }
   providers: {
     test(providerId: string): Promise<ProviderTestResult>

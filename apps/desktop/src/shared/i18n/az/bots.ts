@@ -425,4 +425,6 @@ export default {
   // Settings rows (fields.tsx)
   'bots.fields.removeNamed': 'Sil: {item}',
   'bots.fields.addTo': '{list} siyahısına əlavə et',
+  'bots.onboard.badge.chatgptPlan': 'Plus və ya Pro',
+  'bots.onboard.provider.chatgpt': 'ChatGPT planınızdan ödənilən OpenAI modelləri. Daxil olun, API açarı lazım deyil.',
 } satisfies Record<keyof typeof en, Message>

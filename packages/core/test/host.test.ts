@@ -103,6 +103,16 @@ describe('keychain', () => {
     expect(f.store.get('xari-bulbul/x')).toBe('a"b')
   })
 
+  it('never sends a value longer than the interactive line buffer through stdin', () => {
+    const f = fakeExec('mac')
+    const long = 'a'.repeat(5000)
+    new MacKeychain(f.exec).set('x', long)
+    expect(f.calls.at(-1)!.args[0]).toBe('add-generic-password')
+    expect(f.store.get('xari-bulbul/x')).toBe(long)
+    new MacKeychain(f.exec).set('y', 'a'.repeat(2500))
+    expect(f.calls.at(-1)!.args[0]).toBe('-i')
+  })
+
   it('uses secret-tool on Linux with the secret on stdin', () => {
     const f = fakeExec('linux')
     expect(LinuxSecretTool.available(f.exec)).toBe(true)
@@ -132,6 +142,9 @@ describe('keychain', () => {
     expect(keys.source('openrouter')).toBe('env')
     keys.set('mcp:gh', 'tok')
     expect(keys.get('mcp:gh')).toBe('tok')
+    const signIn = new KeyStore(new MacKeychain(f.exec), { OAUTH_CHATGPT_API_KEY: 'nope' })
+    signIn.set('oauth:chatgpt', 'parts:1')
+    expect(signIn.get('oauth:chatgpt')).toBe('parts:1')
   })
 
   it('gives separate profiles their own keychain service', () => {

@@ -425,4 +425,6 @@ export default {
   // Settings rows (fields.tsx)
   'bots.fields.removeNamed': 'Kaldır: {item}',
   'bots.fields.addTo': '{list} listesine ekle',
+  'bots.onboard.badge.chatgptPlan': 'Plus veya Pro',
+  'bots.onboard.provider.chatgpt': 'ChatGPT planınızdan ödenen OpenAI modelleri. Giriş yapın, API anahtarı gerekmez.',
 } satisfies Record<keyof typeof en, Message>

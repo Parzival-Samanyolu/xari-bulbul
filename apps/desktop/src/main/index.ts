@@ -275,6 +275,10 @@ function registerIpc() {
   handle('accounts.remove', (providerId, accountId) => c.removeAccount(providerId, accountId))
   handle('providers.test', (id) => c.testProvider(id))
   handle('providers.probe', (input) => c.probeEndpoint(input))
+  handle('chatgpt.signIn', (consent) => c.signInChatGpt((url) => shell.openExternal(url), !!consent))
+  handle('chatgpt.cancel', () => c.cancelChatGptSignIn())
+  handle('chatgpt.signOut', () => c.signOutChatGpt())
+  handle('chatgpt.dismissWelcome', () => c.dismissChatGptWelcome())
   handle('browser.clearLogins', () => c.clearBrowserLogins())
   handle('models.list', (id, refresh) => c.listModels(id, refresh))
   handle('workspace.pick', async () => {

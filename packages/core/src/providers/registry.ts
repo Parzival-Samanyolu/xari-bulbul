@@ -4,6 +4,7 @@ import { AccountCooldowns, accountKeyId, accountOrder, RotatingProvider } from '
 import { AnthropicProvider } from './anthropic.js'
 import { contextIndex, fillContext, publicContextIndex } from './context-catalog.js'
 import { OpenAICompatProvider } from './openai-compat.js'
+import { OpenAIResponsesProvider } from './openai-responses.js'
 import type { Provider } from './types.js'
 
 export type KeyLookup = (providerId: string) => string | undefined
@@ -23,11 +24,19 @@ export class ProviderRegistry {
       fillContext?: boolean
       /** Pass the same instance across rebuilds so cooled-down accounts stay remembered. */
       cooldowns?: AccountCooldowns
+      /** Access-token source for providers paid by a sign-in (`auth: 'chatgpt'`); unset or undefined: signed out. */
+      tokenFor?: (providerId: string) => (() => Promise<string>) | undefined
     } = {},
   ) {
     this.cooldowns = opts.cooldowns ?? new AccountCooldowns()
     for (const config of configs) {
       if (!config.enabled) continue
+      if (config.auth === 'chatgpt') {
+        // One signed-in account, refreshed by the host; no key rotation.
+        const token = opts.tokenFor?.(config.id)
+        if (token) this.providers.set(config.id, new OpenAIResponsesProvider({ config, token, retries: opts.retries, fetch: opts.fetch }))
+        continue
+      }
       const make = (apiKey: string | undefined): Provider => {
         const o = { config, apiKey, retries: opts.retries, fetch: opts.fetch }
         return config.api === 'anthropic' ? new AnthropicProvider(o) : new OpenAICompatProvider(o)

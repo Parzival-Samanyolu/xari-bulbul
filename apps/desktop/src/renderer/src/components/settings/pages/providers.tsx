@@ -9,6 +9,7 @@ import { KEY_LINKS, SecretInput, type PageProps } from '../common'
 import { rich } from '../../../lib/rich'
 import { StatusDot } from './parts'
 import { errorText as clean } from '../../../lib/errors'
+import { ChatGptConnect } from '../../ChatGpt'
 
 type Provider = Settings['providers'][number]
 
@@ -44,7 +45,13 @@ export function AccountsPage({ app, save, onState, onError, go }: PageProps) {
   const connected = app.settings.providers.filter((p) => app.ready[p.id])
   const counts = useModelCounts(connected.map((p) => p.id))
   const disconnect = (p: Provider) => {
-    if (p.requiresKey) {
+    if (p.auth === 'chatgpt') {
+      if (!confirm(t('settings.chatgpt.signOutConfirm'))) return
+      api.chatgpt.signOut().then((r) => {
+        onState(r.state)
+        if (!r.revoked) alert(t('settings.chatgpt.notRevoked'))
+      }, onError)
+    } else if (p.requiresKey) {
       const keyed = (app.accounts[p.id] ?? []).filter((a) => a.hasKey)
       if (!confirm(keyed.length > 1 ? t('settings.providers.disconnectMany', { name: p.name, count: keyed.length }) : t('settings.providers.disconnectOne', { name: p.name }))) return
       keyed.reduce<Promise<AppState | null>>((prev, a) => prev.then(() => api.accounts.setKey(p.id, a.id, null)), Promise.resolve(null)).then((s) => s && onState(s), onError)
@@ -76,11 +83,18 @@ export function AccountsPage({ app, save, onState, onError, go }: PageProps) {
             <div className="account-text">
               <b>{p.name}</b>
               <span className="muted small">
-                {countText(t, counts[p.id])} · {p.requiresKey ? accountsText(t, app.accounts[p.id]) : t('settings.providers.noKeyNeeded')}
+                {countText(t, counts[p.id])} ·{' '}
+                {p.auth === 'chatgpt'
+                  ? app.chatgpt.email
+                    ? t('settings.chatgpt.signedInAs', { email: app.chatgpt.email })
+                    : t('settings.chatgpt.signedIn')
+                  : p.requiresKey
+                    ? accountsText(t, app.accounts[p.id])
+                    : t('settings.providers.noKeyNeeded')}
               </span>
             </div>
             <button className="btn ghost" onClick={() => disconnect(p)}>
-              {t('settings.providers.disconnect')}
+              {p.auth === 'chatgpt' ? t('settings.chatgpt.signOut') : t('settings.providers.disconnect')}
             </button>
           </li>
         ))}
@@ -112,6 +126,7 @@ function ProviderKeyRow({ p, index, app, save, onState, onError }: { p: Provider
   const accounts = app.accounts[p.id] ?? []
   const multi = accounts.length > 1
   const first = accounts.find((a) => a.active)?.label
+  const plan = p.auth === 'chatgpt'
   return (
     <li className={`key-item ${open ? 'open' : ''}`}>
       <div className="key-line">
@@ -122,7 +137,9 @@ function ProviderKeyRow({ p, index, app, save, onState, onError }: { p: Provider
           {!builtin && <span className="badge">{t('settings.providers.custom')}</span>}
           <Icon name={open ? 'chevronDown' : 'chevronRight'} size={14} className="muted" />
         </button>
-        {p.requiresKey && multi ? (
+        {plan ? (
+          <ChatGptConnect app={app} onState={onState} onError={onError} />
+        ) : p.requiresKey && multi ? (
           <span className="muted small">
             {first ? t('settings.providers.accountsFirst', { count: accounts.length, name: first }) : t('settings.providers.accountsNoneOn', { count: accounts.length })}
           </span>
@@ -148,6 +165,7 @@ function ProviderKeyRow({ p, index, app, save, onState, onError }: { p: Provider
           {test.message}
         </p>
       )}
+      {plan && open && <p className="small muted key-test">{t('settings.chatgpt.hint')}</p>}
       {open && (
         <div className="key-details" id={detailsId}>
           <Row label={t('settings.providers.turnedOn')} hint={t('settings.providers.turnedOnHint')} search="">
@@ -158,19 +176,21 @@ function ProviderKeyRow({ p, index, app, save, onState, onError }: { p: Provider
               <button className="btn" disabled={!ready || test === 'running'} onClick={runTest}>
                 {test === 'running' ? t('settings.providers.testing') : t('settings.providers.testConnection')}
               </button>
-              {KEY_LINKS[p.id] && (
+              {!plan && KEY_LINKS[p.id] && (
                 <button className="link small" onClick={() => api.app.openExternal(KEY_LINKS[p.id])}>
                   {t('settings.providers.getKey')}
                 </button>
               )}
-              {hasKey && !multi && (
+              {hasKey && !multi && !plan && (
                 <button className="link danger small" onClick={() => api.keys.set(p.id, null).then(onState, onError)}>
                   {t('settings.providers.removeKey')}
                 </button>
               )}
             </div>
           </Row>
-          {p.requiresKey && <ProviderAccounts p={p} index={index} accounts={accounts} save={save} onState={onState} onError={onError} />}
+          {p.requiresKey && !plan && <ProviderAccounts p={p} index={index} accounts={accounts} save={save} onState={onState} onError={onError} />}
+          {!plan && (
+            <>
           <Row label={t('settings.providers.baseUrl')} labelFor={`url-${p.id}`} search="">
             <TextField id={`url-${p.id}`} mono value={p.baseUrl} onChange={(v) => /^https?:\/\/\S+$/.test(v.trim()) && save((s) => ((s.providers[index].baseUrl = v.trim()), s))} />
           </Row>
@@ -180,6 +200,8 @@ function ProviderKeyRow({ p, index, app, save, onState, onError }: { p: Provider
           <Row label={t('settings.providers.exactCost')} hint={t('settings.providers.exactCostHint')} search="">
             <Toggle label={t('settings.providers.exactCostToggle', { name: p.name })} value={p.requestUsageCost} onChange={(v) => save((s) => ((s.providers[index].requestUsageCost = v), s))} />
           </Row>
+            </>
+          )}
         </div>
       )}
     </li>
@@ -412,7 +434,7 @@ function draftFor(p: Provider, app: AppState): Draft {
     id: p.id,
     idTouched: true,
     baseUrl: p.baseUrl,
-    api: p.api,
+    api: p.api === 'openai-responses' ? 'openai' : p.api,
     model,
     context: (model && app.settings.models.overrides[`${p.id}:${model}`]?.contextLength) || null,
     key: '',
@@ -476,6 +498,7 @@ export function CustomEndpointsPage({ app, save, onState, onError }: PageProps) 
         enabled: true,
         headers: prev?.headers ?? {},
         requestUsageCost: prev?.requestUsageCost ?? false,
+        auth: prev?.auth ?? 'key',
         requiresKey: hasKey,
         api: apiMode,
       }
@@ -509,7 +532,7 @@ export function CustomEndpointsPage({ app, save, onState, onError }: PageProps) 
 
   const quick = app.providerPresets.filter((p) => !existing.has(p.id))
   const addPreset = (p: AppState['providerPresets'][number]) =>
-    api.settings.set({ ...app.settings, providers: [...app.settings.providers, { ...p, enabled: true, headers: {}, requestUsageCost: false, api: 'openai' as const }] }).then(onState, onError)
+    api.settings.set({ ...app.settings, providers: [...app.settings.providers, { ...p, enabled: true, headers: {}, requestUsageCost: false, api: 'openai' as const, auth: 'key' as const }] }).then(onState, onError)
 
   return (
     <>
@@ -530,7 +553,7 @@ export function CustomEndpointsPage({ app, save, onState, onError }: PageProps) 
                   <b>{p.name}</b>
                   <span className="muted small mono">{p.baseUrl}</span>
                 </div>
-                <span className="badge">{p.api === 'anthropic' ? 'Anthropic Messages' : 'Chat Completions'}</span>
+                <span className="badge">{p.api === 'anthropic' ? 'Anthropic Messages' : p.api === 'openai-responses' ? 'Responses' : 'Chat Completions'}</span>
                 <button className="btn ghost" onClick={() => open(draftFor(p, app))}>
                   {t('common.edit')}
                 </button>

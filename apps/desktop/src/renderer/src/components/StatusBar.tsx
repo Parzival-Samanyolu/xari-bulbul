@@ -1,4 +1,5 @@
 import type { AppState, UpdateStatus } from '../../../shared/ipc'
+import { CHATGPT_PROVIDER_ID, UsingPlanNote } from './ChatGpt'
 import type { LiveState } from '../App'
 import { api } from '../lib/api'
 import { cost, modelLabel, tokens } from '../lib/format'
@@ -38,6 +39,11 @@ export function StatusBar({ app, live, onOpenPicker, onUsage, onResources, updat
       <button className="sb-item" onClick={onOpenPicker} title={tr('chat.picker.title')}>
         {model ? modelLabel(model.modelId) : '—'}
       </button>
+      {model?.providerId === CHATGPT_PROVIDER_ID && (
+        <span className="sb-item">
+          <UsingPlanNote />
+        </span>
+      )}
       <span className="sb-sep" />
       <button className="sb-item" onClick={onUsage} title={tr('chat.statusbar.tokensTitle')}>
         <b>{tokens(lang, s.promptTokens)}</b>↑ <b>{tokens(lang, s.completionTokens)}</b>↓{s.cachedTokens > 0 && <span className="muted"> {tr('chat.statusbar.cached', { tokens: tokens(lang, s.cachedTokens) })}</span>}

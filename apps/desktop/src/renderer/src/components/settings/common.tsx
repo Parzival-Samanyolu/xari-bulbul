@@ -33,6 +33,7 @@ export const KEY_LINKS: Record<string, string> = {
   nvidia: 'https://build.nvidia.com/settings/api-keys',
   zai: 'https://z.ai/manage-apikey/apikey-list',
   deepseek: 'https://platform.deepseek.com/api_keys',
+  synapse: 'https://samanyoluai.duckdns.org/keys',
 }
 
 export const refText = (r: ModelRef) => `${modelLabel(r.modelId)} · ${r.providerId}`

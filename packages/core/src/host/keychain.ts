@@ -43,6 +43,9 @@ export interface SecretBackend {
   delete(id: string): void
 }
 
+/** Longest value written through `security -i` (its ~4 KB line buffer truncates silently). */
+export const MAX_STDIN_SECRET = 3000
+
 /** macOS Keychain via /usr/bin/security. Writes go through `security -i` on stdin so the key never appears in `ps`. */
 export class MacKeychain implements SecretBackend {
   readonly kind = 'keychain'
@@ -60,9 +63,10 @@ export class MacKeychain implements SecretBackend {
   set(id: string, value: string): void {
     const label = `Xari Bulbul (${id})`
     // `security -i` tokenizes like a shell; values with quotes or newlines go through argv instead.
+    // Its line buffer is about 4 KB and longer input is cut without an error, so long values do too.
     const safe = (s: string) => !/["\\\n\r]/.test(s)
     const r =
-      safe(value) && safe(id)
+      safe(value) && safe(id) && value.length + id.length < MAX_STDIN_SECRET
         ? this.exec('security', ['-i'], `add-generic-password -U -s ${this.service} -a "${id}" -l "${label}" -w "${value}"\n`)
         : this.exec('security', ['add-generic-password', '-U', '-s', this.service, '-a', id, '-l', label, '-w', value])
     if (r.error || r.status !== 0 || /error/i.test(r.stderr)) throw new Error(`Keychain write failed: ${(r.stderr || r.error?.message || '').trim()}`)
@@ -149,8 +153,8 @@ export function detectSecretBackend(dataDir: string, opts: { platform?: NodeJS.P
   return new FileSecrets(path.join(dataDir, FALLBACK_SECRETS_FILE))
 }
 
-/** Is `id` an MCP token (`mcp:<server>`) rather than a provider key? */
-const isMcp = (id: string) => id.startsWith('mcp:')
+/** Is `id` an MCP token (`mcp:<server>`) or a sign-in session (`oauth:<name>`) rather than a provider key? No env override for those. */
+const isMcp = (id: string) => id.startsWith('mcp:') || id.startsWith('oauth:')
 
 /**
  * Cached access to secrets. Provider keys from `<PROVIDER>_API_KEY` env vars win over stored ones,

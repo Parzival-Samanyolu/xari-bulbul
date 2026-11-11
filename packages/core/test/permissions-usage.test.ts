@@ -49,6 +49,23 @@ describe('permissions', () => {
 })
 
 describe('usage', () => {
+  it('sums one provider over the last days', () => {
+    const u = new UsageTracker(null)
+    const now = new Date(2026, 10, 11, 12).getTime()
+    const day = 86_400_000
+    const rec = (providerId: string, ts: number, tokens: number) =>
+      u.record({ ts, sessionId: 's', providerId, modelId: 'm', promptTokens: tokens, completionTokens: 0, cachedTokens: 0, cost: null })
+    rec('chatgpt', now, 100)
+    rec('chatgpt', now - 1000, 50)
+    rec('chatgpt', now - 3 * day, 400)
+    rec('chatgpt', now - 40 * day, 9999)
+    rec('openrouter', now, 7)
+    const r = u.forProvider('chatgpt', 30, now)
+    expect(r).toMatchObject({ days: 30, activeDays: 2, peakDayTokens: 400 })
+    expect(r.totals).toMatchObject({ requests: 3, promptTokens: 550 })
+    expect(u.forProvider('none', 30, now)).toMatchObject({ activeDays: 0, peakDayTokens: 0 })
+  })
+
   it('aggregates by session, day and model, and checks budgets', () => {
     const u = new UsageTracker(null)
     const rec = (sessionId: string, cost: number | null, ts = Date.now()) =>

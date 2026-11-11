@@ -5,7 +5,7 @@ import { modelMaker } from '@harness/core/catalog'
 // copies of the same gradient id break when the first copy is hidden.
 const FILES = import.meta.glob<string>('../assets/providers/*.svg', { eager: true, query: '?raw', import: 'default' })
 const LOGOS: Record<string, string> = Object.fromEntries(Object.entries(FILES).map(([path, svg]) => [path.replace(/^.*\/|\.svg$/g, ''), svg]))
-const ALIASES: Record<string, string> = { 'ollama-cloud': 'ollama', 'ollama-local': 'ollama' }
+const ALIASES: Record<string, string> = { 'ollama-cloud': 'ollama', 'ollama-local': 'ollama', chatgpt: 'openai' }
 
 /** Provider or model-maker mark, or the name's first letter when there's no logo. Decorative: a name is always shown next to it. */
 export function ProviderLogo({ id, name, size = 14, letter = true }: { id: string; name?: string; size?: number; letter?: boolean }) {

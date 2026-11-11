@@ -125,6 +125,20 @@ export class UsageTracker {
     return [...map].map(([day, totals]) => ({ day, totals })).sort((a, b) => b.day.localeCompare(a.day))
   }
 
+  /** One provider's last `days` days (today included): totals, days with any request, and the busiest day's tokens. */
+  forProvider(providerId: string, days = 30, now = Date.now()): ProviderUsage {
+    const since = startOfDay(now) - (days - 1) * 86_400_000
+    const totals = emptyTotals()
+    const perDay = new Map<number, number>()
+    for (const r of this.records) {
+      if (r.providerId !== providerId || r.ts < since) continue
+      add(totals, r)
+      const day = startOfDay(r.ts)
+      perDay.set(day, (perDay.get(day) ?? 0) + r.promptTokens + r.completionTokens)
+    }
+    return { days, totals, activeDays: perDay.size, peakDayTokens: Math.max(0, ...perDay.values()) }
+  }
+
   /** Totals for one chat, broken down by model. */
   bySession(sessionId: string): { total: UsageTotals; byModel: Record<string, UsageTotals> } {
     const total = emptyTotals()
@@ -153,6 +167,14 @@ export class UsageTracker {
     )
     return [head, ...rows].join('\n')
   }
+}
+
+export interface ProviderUsage {
+  days: number
+  totals: UsageTotals
+  activeDays: number
+  /** Prompt + completion tokens on the busiest day. */
+  peakDayTokens: number
 }
 
 export type BudgetStatus = { ok: true } | { ok: false; which: 'session' | 'daily'; limit: number; spent: number }

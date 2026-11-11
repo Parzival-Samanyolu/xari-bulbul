@@ -49,6 +49,8 @@ export class ProviderError extends Error {
     readonly retryable = false,
     /** From a Retry-After header, when the provider sent one. */
     readonly retryAfterMs?: number,
+    /** The provider's machine-readable error code, when the UI acts on it (e.g. `subscription_sharing_usage_limit_exceeded`). */
+    readonly code?: string,
   ) {
     super(message)
     this.name = 'ProviderError'

@@ -3,6 +3,9 @@ import path from 'node:path'
 import {
   Agent,
   AccountCooldowns,
+  ChatGptAuth,
+  ChatGptAuthError,
+  CHATGPT_PROVIDER_ID,
   accountKeyId,
   accountOrder,
   activeAccountKey,
@@ -166,6 +169,8 @@ const MAX_AVATAR_BYTES = 1_000_000
 export class AppController {
   private settings: Settings
   private readonly secrets: SecretStore
+  /** "Continue with ChatGPT": the user's ChatGPT plan pays for the `chatgpt` provider. */
+  private readonly chatgpt: ChatGptAuth
   /** Provider accounts resting after a rate limit, quota or key error; kept across registry rebuilds. */
   private readonly cooldowns = new AccountCooldowns()
   private registry!: ProviderRegistry
@@ -236,6 +241,8 @@ export class AppController {
     this.settings = this.loadSettings()
     this.mode = this.settings.permissions.mode
     this.secrets = new SecretStore(path.join(dataDir, 'secrets.json'))
+    // HARNESS_CHATGPT_ISSUER points sign-in at a fake server, for end-to-end tests only.
+    this.chatgpt = new ChatGptAuth({ dataDir, secrets: this.secrets, appName: 'Xari Bulbul', issuer: process.env.HARNESS_CHATGPT_ISSUER || undefined })
     this.markExistingInstallOnboarded()
     this.usage = new UsageTracker(this.paths.usage)
     // Every model request (chat steps, subagents, titles, memory review, compaction) counts toward share info's per-model totals.
@@ -485,6 +492,7 @@ export class AppController {
       retries: this.settings.agent.requestRetries,
       fillContext: true,
       cooldowns: this.cooldowns,
+      tokenFor: (id) => (id === CHATGPT_PROVIDER_ID && this.chatgpt.status().signedIn ? () => this.chatgpt.accessToken() : undefined),
     })
     if (snapshot) this.registry.restoreCache(snapshot)
     this.local?.register(this.registry)
@@ -501,7 +509,46 @@ export class AppController {
 
   /** Any enabled account of the provider has a key. */
   private hasKey(config: Settings['providers'][number]): boolean {
+    if (config.auth === 'chatgpt') {
+      const s = this.chatgpt.status()
+      return s.signedIn && s.planEnabled
+    }
     return hasAccountKey(config, (id) => this.secrets.has(id))
+  }
+
+  // ---------- ChatGPT plan sign-in ----------
+
+  /** Opens the browser for "Continue with ChatGPT"; resolves when the sign-in finishes. `consent`: ask again for plan use. */
+  async signInChatGpt(openUrl: (url: string) => void | Promise<void>, consent = false): Promise<AppState> {
+    const done = this.chatgpt.signIn(openUrl, { consent })
+    this.pushState() // shows "Waiting for the browser…"
+    try {
+      await done
+    } catch (e) {
+      if (e instanceof ChatGptAuthError && e.kind === 'cancelled') return this.state()
+      this.pushState()
+      if (e instanceof ChatGptAuthError && e.kind === 'denied') throw new AppError('main.error.chatgptDenied')
+      throw new AppError('main.error.chatgptSignIn', { detail: (e as Error).message })
+    }
+    this.buildRegistry()
+    return this.state()
+  }
+
+  cancelChatGptSignIn(): AppState {
+    this.chatgpt.cancel()
+    return this.state()
+  }
+
+  /** Signs out and revokes the session; `revoked: false` when only the local copy could be cleared. */
+  async signOutChatGpt(): Promise<{ state: AppState; revoked: boolean }> {
+    const { revoked } = await this.chatgpt.signOut()
+    this.buildRegistry()
+    return { state: this.state(), revoked }
+  }
+
+  dismissChatGptWelcome(): AppState {
+    this.chatgpt.dismissWelcome()
+    return this.state()
   }
 
   /** Key of the provider's active account, for one-off requests outside the registry (voice). */
@@ -2070,6 +2117,12 @@ export class AppController {
       ready,
       accounts,
       keyStorage: this.secrets.storage,
+      chatgpt: {
+        ...this.chatgpt.status(),
+        pending: this.chatgpt.signingIn,
+        welcomeSeen: this.chatgpt.welcomeSeen,
+        usage: this.usage.forProvider(CHATGPT_PROVIDER_ID, 30),
+      },
       providerPresets: PROVIDER_PRESETS,
       builtinProviders: BUILTIN_PROVIDERS.map((p) => p.id),
       workspace: this.workspace,

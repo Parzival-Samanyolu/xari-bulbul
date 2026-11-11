@@ -154,4 +154,6 @@ export default {
   'main.process.process': 'Proses',
   'main.process.mcp': 'MCP serveri: {name}',
   'main.process.terminal': 'Terminal',
+  'main.error.chatgptDenied': 'Giriş brauzerdə rədd edildi. Heç nə dəyişmədi.',
+  'main.error.chatgptSignIn': 'ChatGPT-yə giriş tamamlanmadı: {detail}',
 } satisfies Record<keyof typeof en, Message>

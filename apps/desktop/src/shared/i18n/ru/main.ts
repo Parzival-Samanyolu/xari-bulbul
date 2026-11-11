@@ -172,4 +172,6 @@ export default {
   'main.process.process': 'Процесс',
   'main.process.mcp': 'MCP-сервер: {name}',
   'main.process.terminal': 'Терминал',
+  'main.error.chatgptDenied': 'Вход отклонён в браузере. Ничего не изменилось.',
+  'main.error.chatgptSignIn': 'Вход в ChatGPT не завершён: {detail}',
 } satisfies Record<keyof typeof en, Message>

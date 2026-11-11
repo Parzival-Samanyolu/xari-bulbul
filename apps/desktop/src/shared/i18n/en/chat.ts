@@ -300,4 +300,5 @@ export default {
   'chat.changes.wait': 'Wait for the turn to finish',
   'chat.changes.restoreTitle': 'Restore the file as it was before this chat',
   'chat.changes.revert': 'Revert',
+  'chat.chatgpt.usingPlan': 'Using ChatGPT plan',
 } as const satisfies Record<string, Message>

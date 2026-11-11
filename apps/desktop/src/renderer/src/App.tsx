@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef, useState, type ReactNode } from 'react'
+import { ChatGptWelcome } from './components/ChatGpt'
 import type { AgentEvent, AppState, MemoryFact, PermissionAnswer, PermissionRequest, UpdateStatus } from '../../shared/ipc'
 import { api } from './lib/api'
 import { Chat } from './components/Chat'
@@ -54,7 +55,7 @@ export interface Notice {
   text: string
   msg?: Msg
   /** A settings tab that fixes the problem, shown as a button. */
-  fix?: 'providers' | 'usage' | 'agent'
+  fix?: 'providers' | 'usage' | 'agent' | 'chatgptUsage'
   /** The turn failed; offer to run the request again. */
   retry?: boolean
   /** The turn hit the step limit; offer to let the agent keep going. */
@@ -72,6 +73,8 @@ const PROVIDER_FIXES: ReadonlySet<MessageKey> = new Set<MessageKey>(['main.error
  */
 function fixFor(text: string, code?: MessageKey): Notice['fix'] {
   if (code) return PROVIDER_FIXES.has(code) ? 'providers' : undefined
+  // The plan's limit is managed on chatgpt.com, not in this app.
+  if (/ChatGPT usage limit reached/i.test(text)) return 'chatgptUsage'
   if (/api key|providers ›|unauthori[sz]ed|\b401\b|turned off/i.test(text)) return 'providers'
   if (/budget/i.test(text)) return 'usage'
   if (/max steps/i.test(text)) return 'agent'
@@ -397,7 +400,13 @@ export function App() {
   const system = app?.systemLanguages
   if (!app) return <I18nProvider setting={language} system={system}><Loading error={bootError} onRetry={boot} /></I18nProvider>
   // First run: full-window setup until it's finished or skipped.
-  if (!app.settings.app.onboarded) return <I18nProvider setting={language} system={system}><Onboarding app={app} onState={setState} onError={fail} /></I18nProvider>
+  if (!app.settings.app.onboarded)
+    return (
+      <I18nProvider setting={language} system={system}>
+        <Onboarding app={app} onState={setState} onError={fail} />
+        <ChatGptWelcome app={app} onState={setState} />
+      </I18nProvider>
+    )
 
   /** Opens Settings at a tab id ('providers', 'usage', …) or a section id ('model.aux'). */
   const openSettings = (tab?: string) => setSettingsPage(resolvePage(tab, app.settings))
@@ -464,6 +473,7 @@ export function App() {
           panels={app.workspace && panels ? { bottom: showBottom, right: showRight, onBottom: toggleBottom, onRight: toggleRight } : undefined}
         />
         {pickerOpen && <ModelPicker app={app} onClose={() => setPickerOpen(false)} onState={setState} onError={fail} />}
+        <ChatGptWelcome app={app} onState={setState} />
         {settingsPage && <SettingsOverlay app={app} page={settingsPage} onPage={setSettingsPage} onState={setState} onClose={() => setSettingsPage(null)} update={update} onEditBot={editBot} />}
         {lobbyDialog && <LobbyDialog key={lobbyDialog.lobbyId ?? 'new'} app={app} lobbyId={lobbyDialog.lobbyId} onClose={() => setLobbyDialog(null)} onState={setState} onError={fail} />}
         {botDialog && <BotDialog key={botDialog.botId ?? 'new'} app={app} botId={botDialog.botId} onClose={() => setBotDialog(null)} onState={setState} />}

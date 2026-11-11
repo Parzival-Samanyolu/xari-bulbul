@@ -12,7 +12,7 @@ export const EFFORT_LABELS: Record<ReasoningEffort, string> = {
   max: 'Max',
 }
 
-type ProviderLike = { id: string; baseUrl: string; api?: 'openai' | 'anthropic' }
+type ProviderLike = { id: string; baseUrl: string; api?: 'openai' | 'anthropic' | 'openai-responses' }
 export type ProviderKind = 'anthropic' | 'openai' | 'openrouter' | 'other'
 
 export function providerKind(p: ProviderLike): ProviderKind {
@@ -27,6 +27,7 @@ export const ANTHROPIC_FAST_MODELS = /^claude-opus-(4-8|5|5-5)(-\d{8})?$/
 
 /** Whether a fast option exists for this model, and what it does. */
 export function fastMode(p: ProviderLike, modelId: string): { supported: boolean; hint: string } {
+  if (p.api === 'openai-responses') return { supported: false, hint: 'Not available with a ChatGPT plan' }
   switch (providerKind(p)) {
     case 'anthropic':
       return ANTHROPIC_FAST_MODELS.test(modelId)
@@ -43,6 +44,7 @@ export function fastMode(p: ProviderLike, modelId: string): { supported: boolean
 
 /** Whether the provider has a Batch API this app can use. */
 export function batchMode(p: ProviderLike): { supported: boolean; hint: string } {
+  if (p.api === 'openai-responses') return { supported: false, hint: 'Not available with a ChatGPT plan' }
   const kind = providerKind(p)
   return kind === 'anthropic' || kind === 'openai'
     ? { supported: true, hint: 'About half price; each step can take minutes' }

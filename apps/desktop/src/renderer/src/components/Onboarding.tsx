@@ -7,6 +7,7 @@ import { Toggle } from './fields'
 import { LayoutPicker, withLayout } from './LayoutPicker'
 import { PROFILE_EXPERIENCE, PROFILE_ROLES, PROFILE_USES, ShareInfoText, experienceLabels, languageOptions, purposeLabels, roleLabels } from './profile'
 import { ProviderLogo } from './ProviderLogo'
+import { ChatGptConnect } from './ChatGpt'
 import { KEY_LINKS, ModelChoice, SecretInput, refText } from './settings/common'
 import { errorText as clean } from '../lib/errors'
 
@@ -39,9 +40,10 @@ const modeChoices = (t: T): { id: PermissionMode; label: string; text: string }[
 ]
 
 /** Where models come from: free and local options first. Other providers are in the list below them. */
-const PROVIDER_IDS = ['openrouter', 'ollama-cloud', 'ollama-local', 'lmstudio']
+const PROVIDER_IDS = ['openrouter', 'chatgpt', 'ollama-cloud', 'ollama-local', 'lmstudio']
 const providerChoices = (t: T): { id: string; badge: string; local: boolean; text: string }[] => [
   { id: 'openrouter', badge: t('bots.onboard.badge.freeModels'), local: false, text: t('bots.onboard.provider.openrouter') },
+  { id: 'chatgpt', badge: t('bots.onboard.badge.chatgptPlan'), local: false, text: t('bots.onboard.provider.chatgpt') },
   { id: 'ollama-cloud', badge: t('bots.onboard.badge.freeTier'), local: false, text: t('bots.onboard.provider.ollamaCloud') },
   { id: 'ollama-local', badge: t('bots.onboard.badge.local'), local: true, text: t('bots.onboard.provider.ollamaLocal') },
   { id: 'lmstudio', badge: t('bots.onboard.badge.local'), local: true, text: t('bots.onboard.provider.lmstudio') },
@@ -276,7 +278,7 @@ function ProviderStep({ app, save, heading, onState, onError }: StepProps & Pick
     // A local server is added (turned on) when chosen, so it can be tested.
     const p = presets.find((x) => x.id === id)
     if (p && !app.settings.providers.some((x) => x.id === id))
-      void save((s) => (s.providers = [...s.providers, { ...p, enabled: true, headers: {}, requestUsageCost: false, api: 'openai' as const }]))
+      void save((s) => (s.providers = [...s.providers, { ...p, enabled: true, headers: {}, requestUsageCost: false, api: 'openai' as const, auth: 'key' as const }]))
   }
 
   const otherValue = PROVIDER_IDS.includes(chosen) ? '' : chosen
@@ -322,7 +324,19 @@ function ProviderStep({ app, save, heading, onState, onError }: StepProps & Pick
       </fieldset>
 
       <section className="onboard-connect" aria-label={t('bots.onboard.connectNamed', { name })}>
-        {config?.requiresKey ? (
+        {config?.auth === 'chatgpt' ? (
+          <>
+            <ChatGptConnect
+              app={app}
+              onState={(s) => {
+                onState(s)
+                if (s.chatgpt.signedIn && s.chatgpt.planEnabled && !app.ready[chosen]) runTest(chosen)
+              }}
+              onError={onError}
+            />
+            <p className="muted small">{t('settings.chatgpt.hint')}</p>
+          </>
+        ) : config?.requiresKey ? (
           <>
             <label htmlFor={`ob-key-${chosen}`}>{t('bots.onboard.keyLabel', { name })}</label>
             <SecretInput

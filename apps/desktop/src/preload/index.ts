@@ -19,6 +19,7 @@ const api: HarnessApi = {
   keys: { set: call('keys.set') as any },
   accounts: { add: call('accounts.add') as any, setKey: call('accounts.setKey') as any, remove: call('accounts.remove') as any },
   providers: { test: call('providers.test') as any, probe: call('providers.probe') as any },
+  chatgpt: { signIn: call('chatgpt.signIn') as any, cancel: call('chatgpt.cancel') as any, signOut: call('chatgpt.signOut') as any, dismissWelcome: call('chatgpt.dismissWelcome') as any },
   browser: { clearLogins: call('browser.clearLogins') as any },
   models: { list: call('models.list') as any },
   workspace: { pick: call('workspace.pick') as any, set: call('workspace.set') as any, close: call('workspace.close') as any, reorder: call('workspace.reorder') as any },

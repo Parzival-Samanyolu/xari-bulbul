@@ -425,4 +425,6 @@ export default {
   // Settings rows (fields.tsx)
   'bots.fields.removeNamed': 'Remove {item}',
   'bots.fields.addTo': 'Add to {list}',
+  'bots.onboard.badge.chatgptPlan': 'Plus or Pro',
+  'bots.onboard.provider.chatgpt': 'OpenAI models paid from your ChatGPT plan. Sign in, no API key.',
 } as const satisfies Record<string, Message>
