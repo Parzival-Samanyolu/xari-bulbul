@@ -59,7 +59,7 @@ export class OpenAIResponsesProvider implements Provider {
     if (json.models) {
       return json.models
         .filter((m) => m.slug && (m.visibility ?? 'list') === 'list')
-        .map((m) => toModelInfo(this.id, m.slug, m.display_name, m.context_window))
+        .map((m) => toModelInfo(this.id, m.slug, m.display_name, m.max_context_window ?? m.context_window))
     }
     return (json.data ?? []).map((m) => toModelInfo(this.id, m.id))
   }
@@ -305,7 +305,9 @@ interface RawModel {
   slug: string
   display_name?: string
   visibility?: string
+  /** The default window; the model accepts up to `max_context_window`. */
   context_window?: number
+  max_context_window?: number
 }
 
 function toModelInfo(providerId: string, id: string, name?: string, contextLength?: number): ModelInfo {

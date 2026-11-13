@@ -144,6 +144,19 @@ describe('OpenAIResponsesProvider', () => {
     expect(models.every((m) => !m.pricing && !m.free && m.supportsTools)).toBe(true)
   })
 
+  it('uses the model’s maximum context, not the smaller default', async () => {
+    const { p } = provider(() =>
+      Response.json({
+        models: [
+          { slug: 'big', context_window: 272_000, max_context_window: 872_000 },
+          { slug: 'plain', context_window: 500_000 },
+        ],
+      }),
+    )
+    const models = await p.listModels()
+    expect(models.map((m) => m.contextLength)).toEqual([872_000, 500_000])
+  })
+
   it('is built by the registry only while signed in', () => {
     const signedOut = new ProviderRegistry([config], () => undefined, {})
     expect(signedOut.has(CHATGPT_PROVIDER_ID)).toBe(false)
