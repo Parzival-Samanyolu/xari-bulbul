@@ -21,7 +21,21 @@ const median = (xs: number[]) => {
 }
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0)
 const pct = (n: number, d: number) => (d ? Math.round((100 * n) / d) : 0)
-const CATS = ['coding', 'tools', 'github-mcp', 'speed'] as const
+const CATS = ['coding', 'tools', 'github-mcp', 'speed', 'hard'] as const
+
+/**
+ * ChatGPT plan runs cost nothing per token, so they're shown at what the same tokens would cost on
+ * OpenAI's API: USD per million input / output tokens, list prices (2026-11). The bench doesn't
+ * record cached tokens, so this is an upper bound.
+ */
+const API_PRICES: Record<string, [input: number, output: number]> = {
+  'gpt-6-astra': [10, 50],
+  'gpt-6.1-terra': [1, 5],
+}
+const apiEquivalent = (model: string, rs: typeof runs) => {
+  const p = API_PRICES[model.slice(model.indexOf(':') + 1)]
+  return p ? +sum(rs.map((r) => (r.promptTokens * p[0] + r.completionTokens * p[1]) / 1e6)).toFixed(4) : null
+}
 
 const models = [...new Set(runs.map((r) => r.model))]
 const summary = models.map((model) => {
@@ -48,6 +62,7 @@ const summary = models.map((model) => {
     toolCallErrorRate: pct(sum(rs.map((r) => r.toolErrors)), sum(rs.map((r) => r.toolCalls))),
     providerErrors: rs.filter((r) => r.reason !== 'done').length,
     costUsd: rs.some((r) => r.cost === null) ? null : +sum(rs.map((r) => r.cost ?? 0)).toFixed(4),
+    apiEquivalentUsd: model.startsWith('chatgpt:') ? apiEquivalent(model, rs) : null,
   }
 })
 summary.sort((a, b) => b.passRate - a.passRate || (a.medianWallSec ?? 1e9) - (b.medianWallSec ?? 1e9))
@@ -87,8 +102,8 @@ fs.writeFileSync(path.join(dir, 'summary.json'), JSON.stringify({ date: started,
 const n = (v: number | null, unit = '') => (v === null ? '–' : `${v}${unit}`)
 const short = (m: string) => m.replace(/:free$/, '')
 const md = [
-  `| Model | Pass | Coding | Tools | GitHub MCP | Speed | Median time | First token | Output tok/s | Tokens/run | Tool errors | Cost |`,
-  `|---|---|---|---|---|---|---|---|---|---|---|---|`,
+  `| Model | Pass | Coding | Tools | GitHub MCP | Speed | Hard | Median time | First token | Output tok/s | Tokens/run | Tool errors | Cost |`,
+  `|---|---|---|---|---|---|---|---|---|---|---|---|---|`,
   ...summary.map((s) =>
     [
       `\`${short(s.model)}\``,
@@ -99,7 +114,11 @@ const md = [
       n(s.outputTokensPerSec),
       n(s.tokensPerRun),
       `${s.toolCallErrorRate}%`,
-      s.costUsd === null ? 'free tier' : `$${s.costUsd}`,
+      s.costUsd !== null
+        ? `$${s.costUsd}`
+        : s.model.startsWith('chatgpt:')
+          ? s.apiEquivalentUsd === null ? 'ChatGPT plan' : `ChatGPT plan (≈$${s.apiEquivalentUsd} at API prices)`
+          : 'free tier',
     ].join(' | ').replace(/^/, '| ').replace(/$/, ' |'),
   ),
   ...(hasSpeed
@@ -113,7 +132,7 @@ const md = [
       ]
     : []),
   '',
-  `| Task | ${models.map((m) => `\`${short(m).split(':')[0]}\``).join(' | ')} |`,
+  `| Task | ${models.map((m) => `\`${short(m).slice(short(m).indexOf(':') + 1)}\``).join(' | ')} |`,
   `|---|${models.map(() => '---').join('|')}|`,
   ...perTask.map((t) => `| ${t.title} (\`${t.task}\`) | ${models.map((m) => t.results[m].map((p) => (p ? '✓' : '✗')).join(' ')).join(' | ')} |`),
 ].join('\n')

@@ -45,6 +45,11 @@ export interface ChatGptAuthOptions {
   jwks?: JSONWebKeySet
   /** For tests: listen on this port instead of 1455 (0 = any free port). */
   port?: number
+  /**
+   * Borrow the stored access token and never refresh it. For tools that run beside the app (the
+   * bench): refresh tokens rotate, so a refresh here would end the app's sign-in.
+   */
+  readOnly?: boolean
 }
 
 /** What the UI needs; no tokens. */
@@ -233,6 +238,10 @@ export class ChatGptAuth {
     if (!c) throw new ChatGptAuthError('Sign in to ChatGPT in Settings › Providers.', 'sign_in_again')
     if (!c.scopes.includes(PLAN_SCOPE)) throw new ChatGptAuthError('ChatGPT plan use isn’t turned on. Turn it on in Settings › Providers.', 'sign_in_again')
     if (c.expires_at - this.now() > REFRESH_EARLY_MS) return c.access_token
+    if (this.o.readOnly) {
+      if (c.expires_at > this.now()) return c.access_token
+      throw new ChatGptAuthError('The ChatGPT access token expired (they last an hour). Send one message with a ChatGPT model in the app to renew it, or close the app, then try again.', 'sign_in_again')
+    }
     // Refresh tokens rotate: two refreshes at once would invalidate each other.
     this.refreshing ??= this.refresh(c).finally(() => (this.refreshing = undefined))
     return this.refreshing

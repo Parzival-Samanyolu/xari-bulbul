@@ -2,10 +2,13 @@
 //
 //   pnpm bench                                   # your favorite models, every task, once
 //   pnpm bench -- --reps 3 --tasks gh-find-file,json-edit --models groq:openai/gpt-oss-120b
+//   pnpm bench -- --parallel                     # paid keys: start every run at once
+//   pnpm bench -- --category hard                # only the hard tier (comma-separate several)
 //
 // Uses your settings, keys and MCP servers (HARNESS_DATA_DIR picks another profile). Each run gets
 // an empty temp folder, auto mode, no memory, no web tools and no subagents. GitHub MCP tools
 // are limited to the ones the server marks read-only, so a run can't change anything on GitHub.
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -13,6 +16,7 @@ import { parseArgs } from 'node:util'
 import {
   Agent,
   assembleTools,
+  ChatGptAuth,
   detectSecretBackend,
   KeyStore,
   loadSettingsFile,
@@ -32,11 +36,14 @@ const { values: argv } = parseArgs({
   options: {
     models: { type: 'string' },
     tasks: { type: 'string' },
+    category: { type: 'string' },
     reps: { type: 'string', default: '1' },
     out: { type: 'string' },
     'timeout-sec': { type: 'string', default: '420' },
-    /** Stop starting runs, and stop the ones in flight, once total spend reaches this. */
-    'max-usd': { type: 'string' },
+    /** Stop starting runs, and stop the ones in flight, once total spend reaches this. `--max-usd 0` turns it off. */
+    'max-usd': { type: 'string', default: '5' },
+    /** Start every run at once instead of one task at a time per model (for paid, unthrottled keys). */
+    parallel: { type: 'boolean', default: false },
   },
 })
 
@@ -75,13 +82,34 @@ export interface RunResult {
 const dataDir = resolveDataDir()
 const settings = loadSettingsFile(dataDir)
 const keys = new KeyStore(detectSecretBackend(dataDir))
-const registry = new ProviderRegistry(settings.providers, (id) => keys.get(id), { retries: settings.agent.requestRetries })
+// ChatGPT plan models use the app's sign-in. Refresh tokens rotate and the app keeps its copy in
+// memory, so while the app is open the bench only borrows the access token (sending a ChatGPT
+// message in the app renews it). With the app closed the bench renews it; the app reads it at launch.
+const appOpen = (() => {
+  try {
+    return execFileSync('pgrep', ['-f', 'Xari Bulbul'], { stdio: 'pipe' }).toString().trim() !== ''
+  } catch {
+    return false
+  }
+})()
+const chatgpt = new ChatGptAuth({
+  dataDir,
+  secrets: { get: (id) => keys.get(id), set: (id, v) => (appOpen ? undefined : keys.set(id, v)) },
+  appName: 'Xari Bulbul',
+  readOnly: appOpen,
+})
+const registry = new ProviderRegistry(settings.providers, (id) => keys.get(id), {
+  retries: settings.agent.requestRetries,
+  tokenFor: (id) => (id === 'chatgpt' && chatgpt.status().signedIn ? () => chatgpt.accessToken() : undefined),
+})
 const ref = (s: string): ModelRef => {
   const i = s.indexOf(':')
   return { providerId: s.slice(0, i), modelId: s.slice(i + 1) }
 }
 const models: ModelRef[] = argv.models ? argv.models.split(',').map(ref) : settings.models.favorites
-const tasks = argv.tasks ? TASKS.filter((t) => argv.tasks!.split(',').includes(t.id)) : TASKS
+const tasks = TASKS.filter(
+  (t) => (!argv.tasks || argv.tasks.split(',').includes(t.id)) && (!argv.category || argv.category.split(',').includes(t.category)),
+)
 const reps = Number(argv.reps)
 const timeoutMs = Number(argv['timeout-sec']) * 1000
 if (!models.length) throw new Error('No models: add favorites in the app or pass --models provider:model,…')
@@ -104,7 +132,7 @@ console.log(`tools: ${baseTools.length} built-in, ${mcpTools.length} read-only M
 if (tasks.some((t) => t.category === 'github-mcp') && !mcpTools.some((t) => t.name.startsWith('mcp__github__')))
   console.warn('warning: GitHub MCP is not connected; github-mcp tasks will fail')
 
-const maxUsd = argv['max-usd'] ? Number(argv['max-usd']) : Infinity
+const maxUsd = Number(argv['max-usd']) || Infinity
 let spent = 0
 const agents = new Set<Agent>()
 
@@ -114,7 +142,12 @@ async function runOne(model: ModelRef, task: Task, rep: number): Promise<RunResu
     fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true })
     fs.writeFileSync(path.join(dir, f), body)
   }
-  const runSettings = { ...settings, agent: { ...settings.agent, maxStepsPerTurn: MAX_STEPS, customInstructions: '' } }
+  // No fallbacks: a run must measure the model it names, not whichever one rescued it.
+  const runSettings = {
+    ...settings,
+    agent: { ...settings.agent, maxStepsPerTurn: MAX_STEPS, customInstructions: '' },
+    models: { ...settings.models, fallbacks: [] },
+  }
   const trace: Trace = { text: '', tools: [] }
   const r = {
     model: `${model.providerId}:${model.modelId}`,
@@ -169,6 +202,7 @@ async function runOne(model: ModelRef, task: Task, rep: number): Promise<RunResu
         if (spent >= maxUsd) for (const a of agents) a.stop()
       }
       // Provider errors can name your account (e.g. Groq's org id); results are meant to be shared.
+      if (e.type === 'fallback') error = `fell back: ${e.text}`
       if (e.type === 'error') error = e.message.replace(/\borg_[A-Za-z0-9]+/g, 'org_[redacted]')
     },
   })
@@ -201,20 +235,22 @@ async function runOne(model: ModelRef, task: Task, rep: number): Promise<RunResu
   return { ...r, ...verdict, answer: trace.text.trim().slice(-500), reason, error, wallMs, modelMs: Math.max(0, wallMs - toolMs) }
 }
 
-// Providers rate-limit per key, so each model runs its tasks one at a time; models run side by side.
+// Providers rate-limit per key, so by default each model runs its tasks one at a time; models run
+// side by side. --parallel starts every run at once.
 const results: RunResult[] = []
-await Promise.all(
-  models.map(async (m) => {
-    for (let rep = 1; rep <= reps; rep++)
-      for (const t of tasks) {
-        if (spent >= maxUsd) return
-        const res = await runOne(m, t, rep)
-        results.push(res)
-        fs.appendFileSync(runsFile, JSON.stringify(res) + '\n')
-        console.log(`${res.pass ? 'PASS' : 'FAIL'}  ${res.model}  ${t.id}#${rep}  ${(res.wallMs / 1000).toFixed(1)}s  ${res.pass ? '' : res.detail}`)
-      }
-  }),
-)
+const record = (res: RunResult) => {
+  results.push(res)
+  fs.appendFileSync(runsFile, JSON.stringify(res) + '\n')
+  console.log(`${res.pass ? 'PASS' : 'FAIL'}  ${res.model}  ${res.task}#${res.rep}  ${(res.wallMs / 1000).toFixed(1)}s  ${res.pass ? '' : res.detail}`)
+}
+const jobs = models.map((m) => Array.from({ length: reps }, (_, i) => tasks.map((t) => ({ m, t, rep: i + 1 }))).flat())
+const runJobs = async (list: typeof jobs[number]) => {
+  for (const { m, t, rep } of list) {
+    if (spent >= maxUsd) return
+    record(await runOne(m, t, rep))
+  }
+}
+await Promise.all(argv.parallel ? jobs.flat().map((j) => runJobs([j])) : jobs.map(runJobs))
 await mcp.close()
 if (spent >= maxUsd) console.log(`\nstopped at the $${maxUsd} limit`)
 console.log(`spent $${spent.toFixed(2)}`)

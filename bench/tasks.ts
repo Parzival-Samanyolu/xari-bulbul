@@ -1,6 +1,8 @@
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
+import { HARD_TASKS } from './hard-tasks.js'
+import { nodeTest, read } from './task-utils.js'
 
 export interface Trace {
   text: string
@@ -10,31 +12,12 @@ export interface Trace {
 
 export interface Task {
   id: string
-  category: 'coding' | 'tools' | 'github-mcp' | 'speed'
+  category: 'coding' | 'tools' | 'github-mcp' | 'speed' | 'hard'
   title: string
   prompt: string
   /** Files written into an empty folder before the run. */
   files?: Record<string, string>
   check: (dir: string, t: Trace) => { pass: boolean; detail: string }
-}
-
-/** Runs `node test.js` in the task folder; passing means exit code 0. */
-function nodeTest(dir: string, file = 'test.js'): { pass: boolean; detail: string } {
-  try {
-    execFileSync(process.execPath, [file], { cwd: dir, stdio: 'pipe', timeout: 20_000 })
-    return { pass: true, detail: 'tests pass' }
-  } catch (e) {
-    const err = e as { stderr?: Buffer; message: string }
-    return { pass: false, detail: (err.stderr?.toString() || err.message).trim().split('\n').slice(0, 3).join(' ').slice(0, 200) }
-  }
-}
-
-const read = (dir: string, f: string) => {
-  try {
-    return fs.readFileSync(path.join(dir, f), 'utf8')
-  } catch {
-    return null
-  }
 }
 
 const usedGithub = (t: Trace) => t.tools.some((c) => c.name.startsWith('mcp__github__') && c.ok)
@@ -462,8 +445,9 @@ setInterval(() => {}, 1000)
     id: 'gh-repo-facts',
     category: 'github-mcp',
     title: 'Look up a repo on GitHub',
-    prompt: 'Use the GitHub tools to find the latest release tag of Parzival-Samanyolu/xari-bulbul and the SPDX id of its license. Answer on the last line as: TAG=<tag> LICENSE=<spdx>',
-    check: (_dir, t) => githubAnswer(t, /TAG=v?0\.2\.6\b/.test(t.text) && /LICENSE=MIT\b/.test(t.text), 'TAG=v0.2.6 LICENSE=MIT'),
+    // A fixed release, so the answer doesn't change with every new one.
+    prompt: 'Use the GitHub tools to find the date (UTC) release v0.2.6 of Parzival-Samanyolu/xari-bulbul was published, and the SPDX id of the repo\'s license. Answer on the last line as: DATE=<YYYY-MM-DD> LICENSE=<spdx>',
+    check: (_dir, t) => githubAnswer(t, /DATE=2026-10-11\b/.test(t.text) && /LICENSE=MIT\b/.test(t.text), 'DATE=2026-10-11 LICENSE=MIT'),
   },
   {
     id: 'gh-find-file',
@@ -511,4 +495,5 @@ setInterval(() => {}, 1000)
       return { pass: ok, detail: ok ? 'correct' : `reply: ${t.text.trim().slice(0, 80)}` }
     },
   },
+  ...HARD_TASKS,
 ]

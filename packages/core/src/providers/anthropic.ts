@@ -28,9 +28,11 @@ type Block = Record<string, unknown> & { type: string }
 /**
  * USD per million tokens: input, output, cache read. Cache writes cost 1.25x input.
  * Anthropic's model list has no prices, so without this the spend and budget limits can't see these requests.
- * Snapshot of the published prices (2026-10); unknown models report no cost.
+ * Snapshot of the published prices (2026-11); unknown models report no cost.
  */
 const PRICES: Record<string, [input: number, output: number, cacheRead: number]> = {
+  'claude-fable-5-2': [8, 40, 0.2],
+  'claude-mythos-5-2': [8, 40, 0.2],
   'claude-fable-5-1': [10, 50, 0.25],
   'claude-mythos-5-1': [10, 50, 0.25],
   'claude-fable-5': [10, 50, 1],
@@ -39,7 +41,7 @@ const PRICES: Record<string, [input: number, output: number, cacheRead: number]>
   'claude-opus-4-8': [5, 25, 0.5],
   'claude-opus-4-7': [5, 25, 0.5],
   'claude-opus-4-6': [5, 25, 0.5],
-  'claude-sonnet-5-5': [2, 10, 0.2],
+  'claude-sonnet-5-5': [2, 10, 0.1],
   'claude-sonnet-5': [2, 10, 0.2],
   'claude-sonnet-4-6': [3, 15, 0.3],
   'claude-haiku-5-5': [0.1, 0.5, 0.01],

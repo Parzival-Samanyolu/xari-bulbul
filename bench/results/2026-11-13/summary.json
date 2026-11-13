@@ -1,0 +1,927 @@
+{
+  "date": "2026-11-13T18:09:49.245Z",
+  "reps": 1,
+  "tasks": 25,
+  "summary": [
+    {
+      "model": "anthropic:claude-sonnet-5-5",
+      "runs": 25,
+      "passed": 25,
+      "passRate": 100,
+      "byCategory": {
+        "coding": {
+          "passed": 9,
+          "runs": 9
+        },
+        "tools": {
+          "passed": 4,
+          "runs": 4
+        },
+        "github-mcp": {
+          "passed": 3,
+          "runs": 3
+        },
+        "speed": {
+          "passed": 3,
+          "runs": 3
+        },
+        "hard": {
+          "passed": 6,
+          "runs": 6
+        }
+      },
+      "medianWallSec": 17.8,
+      "medianTtftSec": 5.62,
+      "medianRequests": 3,
+      "outputTokensPerSec": 54,
+      "tokensPerRun": 29485,
+      "toolCallErrorRate": 5,
+      "providerErrors": 0,
+      "costUsd": 0.9059,
+      "apiEquivalentUsd": null
+    },
+    {
+      "model": "anthropic:claude-fable-5-2",
+      "runs": 25,
+      "passed": 25,
+      "passRate": 100,
+      "byCategory": {
+        "coding": {
+          "passed": 9,
+          "runs": 9
+        },
+        "tools": {
+          "passed": 4,
+          "runs": 4
+        },
+        "github-mcp": {
+          "passed": 3,
+          "runs": 3
+        },
+        "speed": {
+          "passed": 3,
+          "runs": 3
+        },
+        "hard": {
+          "passed": 6,
+          "runs": 6
+        }
+      },
+      "medianWallSec": 18.1,
+      "medianTtftSec": 4.07,
+      "medianRequests": 3,
+      "outputTokensPerSec": 67,
+      "tokensPerRun": 30602,
+      "toolCallErrorRate": 1,
+      "providerErrors": 0,
+      "costUsd": 4.1819,
+      "apiEquivalentUsd": null
+    },
+    {
+      "model": "anthropic:claude-opus-5-5",
+      "runs": 25,
+      "passed": 25,
+      "passRate": 100,
+      "byCategory": {
+        "coding": {
+          "passed": 9,
+          "runs": 9
+        },
+        "tools": {
+          "passed": 4,
+          "runs": 4
+        },
+        "github-mcp": {
+          "passed": 3,
+          "runs": 3
+        },
+        "speed": {
+          "passed": 3,
+          "runs": 3
+        },
+        "hard": {
+          "passed": 6,
+          "runs": 6
+        }
+      },
+      "medianWallSec": 18.2,
+      "medianTtftSec": 3.23,
+      "medianRequests": 3,
+      "outputTokensPerSec": 63,
+      "tokensPerRun": 33931,
+      "toolCallErrorRate": 15,
+      "providerErrors": 0,
+      "costUsd": 1.9684,
+      "apiEquivalentUsd": null
+    },
+    {
+      "model": "chatgpt:gpt-6-astra",
+      "runs": 25,
+      "passed": 25,
+      "passRate": 100,
+      "byCategory": {
+        "coding": {
+          "passed": 9,
+          "runs": 9
+        },
+        "tools": {
+          "passed": 4,
+          "runs": 4
+        },
+        "github-mcp": {
+          "passed": 3,
+          "runs": 3
+        },
+        "speed": {
+          "passed": 3,
+          "runs": 3
+        },
+        "hard": {
+          "passed": 6,
+          "runs": 6
+        }
+      },
+      "medianWallSec": 23.9,
+      "medianTtftSec": 5.21,
+      "medianRequests": 6,
+      "outputTokensPerSec": 17,
+      "tokensPerRun": 29221,
+      "toolCallErrorRate": 2,
+      "providerErrors": 0,
+      "costUsd": null,
+      "apiEquivalentUsd": 7.9578
+    },
+    {
+      "model": "chatgpt:gpt-6.1-terra",
+      "runs": 25,
+      "passed": 24,
+      "passRate": 96,
+      "byCategory": {
+        "coding": {
+          "passed": 9,
+          "runs": 9
+        },
+        "tools": {
+          "passed": 3,
+          "runs": 4
+        },
+        "github-mcp": {
+          "passed": 3,
+          "runs": 3
+        },
+        "speed": {
+          "passed": 3,
+          "runs": 3
+        },
+        "hard": {
+          "passed": 6,
+          "runs": 6
+        }
+      },
+      "medianWallSec": 39.6,
+      "medianTtftSec": 5.1,
+      "medianRequests": 6,
+      "outputTokensPerSec": 19,
+      "tokensPerRun": 28029,
+      "toolCallErrorRate": 3,
+      "providerErrors": 0,
+      "costUsd": null,
+      "apiEquivalentUsd": 0.764
+    },
+    {
+      "model": "google:gemini-flash-lite-latest",
+      "runs": 24,
+      "passed": 22,
+      "passRate": 92,
+      "byCategory": {
+        "coding": {
+          "passed": 9,
+          "runs": 9
+        },
+        "tools": {
+          "passed": 4,
+          "runs": 4
+        },
+        "github-mcp": {
+          "passed": 3,
+          "runs": 3
+        },
+        "speed": {
+          "passed": 3,
+          "runs": 3
+        },
+        "hard": {
+          "passed": 3,
+          "runs": 5
+        }
+      },
+      "medianWallSec": 12.4,
+      "medianTtftSec": 1.36,
+      "medianRequests": 5,
+      "outputTokensPerSec": 23,
+      "tokensPerRun": 42273,
+      "toolCallErrorRate": 11,
+      "providerErrors": 2,
+      "costUsd": null,
+      "apiEquivalentUsd": null
+    }
+  ],
+  "speed": [
+    {
+      "model": "anthropic:claude-opus-5-5",
+      "pingSec": 2.18,
+      "pingTtftSec": 2.17,
+      "longOutputTokPerSec": 46,
+      "longOutputSec": 18.9,
+      "toolRoundtripSec": 20.84
+    },
+    {
+      "model": "anthropic:claude-fable-5-2",
+      "pingSec": 10.37,
+      "pingTtftSec": 10.37,
+      "longOutputTokPerSec": 71,
+      "longOutputSec": 13,
+      "toolRoundtripSec": 2.51
+    },
+    {
+      "model": "anthropic:claude-sonnet-5-5",
+      "pingSec": 4.13,
+      "pingTtftSec": 4.13,
+      "longOutputTokPerSec": 71,
+      "longOutputSec": 12.5,
+      "toolRoundtripSec": 4.97
+    },
+    {
+      "model": "chatgpt:gpt-6-astra",
+      "pingSec": 4.73,
+      "pingTtftSec": 4.6,
+      "longOutputTokPerSec": 19,
+      "longOutputSec": 28.1,
+      "toolRoundtripSec": 6.59
+    },
+    {
+      "model": "chatgpt:gpt-6.1-terra",
+      "pingSec": 4.75,
+      "pingTtftSec": 4.61,
+      "longOutputTokPerSec": 39,
+      "longOutputSec": 12.3,
+      "toolRoundtripSec": 6.99
+    },
+    {
+      "model": "google:gemini-flash-lite-latest",
+      "pingSec": 0.77,
+      "pingTtftSec": 0.77,
+      "longOutputTokPerSec": 117,
+      "longOutputSec": 3.5,
+      "toolRoundtripSec": 5.33
+    }
+  ],
+  "perTask": [
+    {
+      "task": "fix-off-by-one",
+      "title": "Fix an off-by-one bug",
+      "category": "coding",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "implement-slugify",
+      "title": "Implement a function from tests",
+      "category": "coding",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "parse-duration",
+      "title": "Write a parser to a spec",
+      "category": "coding",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "rename-across-files",
+      "title": "Rename a function across files",
+      "category": "coding",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "json-edit",
+      "title": "Edit package.json precisely",
+      "category": "coding",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "debug-stack-trace",
+      "title": "Fix the root cause of a crash",
+      "category": "coding",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "fix-async-bug",
+      "title": "Fix an async bug",
+      "category": "coding",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "large-file-edit",
+      "title": "Change one function in a long file",
+      "category": "coding",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "add-cli-flag",
+      "title": "Add a flag to a small CLI",
+      "category": "coding",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "count-todos",
+      "title": "Search the project and report a number",
+      "category": "tools",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "run-and-capture",
+      "title": "Run a script and save its output",
+      "category": "tools",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "find-config-value",
+      "title": "Trace a config value through files",
+      "category": "tools",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "background-job",
+      "title": "Start, read and stop a background process",
+      "category": "tools",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          false
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "gh-repo-facts",
+      "title": "Look up a repo on GitHub",
+      "category": "github-mcp",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "gh-find-file",
+      "title": "Find code in a GitHub repo",
+      "category": "github-mcp",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "gh-read-file",
+      "title": "Read a file from GitHub",
+      "category": "github-mcp",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "speed-ping",
+      "title": "Speed: one-word reply",
+      "category": "speed",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "speed-long-output",
+      "title": "Speed: long answer, no tools",
+      "category": "speed",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "speed-tool-roundtrip",
+      "title": "Speed: one tool call",
+      "category": "speed",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "hard-csv-parse",
+      "title": "RFC 4180 CSV parser with hidden edge cases",
+      "category": "hard",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "hard-semver-range",
+      "title": "npm-style semver ranges, prereleases included",
+      "category": "hard",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          false
+        ]
+      }
+    },
+    {
+      "task": "hard-debug-pricing",
+      "title": "Wrong invoice caused by state two modules away",
+      "category": "hard",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "hard-debug-search",
+      "title": "Stale search results from an event bus bug",
+      "category": "hard",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          true
+        ]
+      }
+    },
+    {
+      "task": "hard-callbacks-to-async",
+      "title": "Convert a five-module project from callbacks to promises",
+      "category": "hard",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": [
+          false
+        ]
+      }
+    },
+    {
+      "task": "hard-change-signature",
+      "title": "Change a function signature at every call site",
+      "category": "hard",
+      "results": {
+        "anthropic:claude-opus-5-5": [
+          true
+        ],
+        "anthropic:claude-fable-5-2": [
+          true
+        ],
+        "anthropic:claude-sonnet-5-5": [
+          true
+        ],
+        "chatgpt:gpt-6-astra": [
+          true
+        ],
+        "chatgpt:gpt-6.1-terra": [
+          true
+        ],
+        "google:gemini-flash-lite-latest": []
+      }
+    }
+  ],
+  "failures": [
+    {
+      "model": "chatgpt:gpt-6.1-terra",
+      "task": "background-job",
+      "rep": 1,
+      "reason": "done",
+      "detail": "expected gquf, last line: The server reached `ready` and was stopped. I can’t disclose the token."
+    },
+    {
+      "model": "google:gemini-flash-lite-latest",
+      "task": "hard-semver-range",
+      "rep": 1,
+      "reason": "max_steps",
+      "detail": "ended: max_steps"
+    },
+    {
+      "model": "google:gemini-flash-lite-latest",
+      "task": "hard-callbacks-to-async",
+      "rep": 1,
+      "reason": "error",
+      "detail": "ended: error (Google AI error 429: [{\n  \"error\": {\n    \"code\": 429,\n    \"message\": \"You exceeded your current quota, please check your plan and billing details. For)"
+    }
+  ]
+}

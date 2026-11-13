@@ -178,6 +178,28 @@ describe('ChatGptAuth', () => {
     expect(await restarted.accessToken()).toBe('at2')
   })
 
+  it('read-only mode borrows the access token and never refreshes it', async () => {
+    let now = Date.now()
+    let nonce = ''
+    let refreshes = 0
+    const s = await setup(
+      async (form) => {
+        if (form.get('grant_type') === 'refresh_token') return (refreshes++, Response.json({ access_token: 'at2', refresh_token: 'rt2' }))
+        return Response.json({ access_token: 'at1', refresh_token: 'rt1', id_token: await s.sign({ sub: 'u', nonce }, 'oaiapp_1'), expires_in: 3600, scope: PLAN })
+      },
+      { now: () => now },
+    )
+    await s.auth.signIn(browser((q) => ((nonce = q.get('nonce')!), { code: 'c', state: q.get('state')!, client_id: 'oaiapp_1' })).open)
+    const saved = s.secrets.store.get(`${CHATGPT_SECRET_ID}#1`)
+    const ro = new ChatGptAuth({ dataDir: s.dir, secrets: s.secrets, appName: 'x', issuer: ISSUER, fetch: s.net.fetch, now: () => now, readOnly: true })
+    now += 3600_000 - 60_000 // inside the refresh window, not yet expired
+    expect(await ro.accessToken()).toBe('at1')
+    now += 120_000 // expired
+    await expect(ro.accessToken()).rejects.toThrow(/expired/)
+    expect(refreshes).toBe(0)
+    expect(s.secrets.store.get(`${CHATGPT_SECRET_ID}#1`)).toBe(saved)
+  })
+
   it('clears the session when the refresh token is rejected, keeps it on a 5xx', async () => {
     let now = Date.now()
     let nonce = ''
