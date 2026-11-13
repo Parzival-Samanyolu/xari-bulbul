@@ -393,6 +393,7 @@ export class LobbyChat {
       completionTokens: usage.completionTokens,
       cachedTokens: usage.cachedTokens ?? 0,
       cost: computeCost(usage, this.registry.cachedModel(ref.providerId, ref.modelId)?.pricing),
+      ...(usage.apiCost != null && { apiCost: usage.apiCost }),
     }
     this.o.usage.record(record)
     this.session.lastPromptTokens = usage.promptTokens + usage.completionTokens

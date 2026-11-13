@@ -101,7 +101,13 @@ export function UsagePage({ app, save, onState, onError }: PageProps) {
                   <td>{row.requests}</td>
                   <td>{tokens(lang, row.promptTokens)}</td>
                   <td>{tokens(lang, row.completionTokens)}</td>
-                  <td>{k.startsWith(`${CHATGPT_PROVIDER_ID}:`) ? t('settings.chatgpt.planCost') : cost(lang, row.cost, row.costPartial)}</td>
+                  <td>
+                    {!k.startsWith(`${CHATGPT_PROVIDER_ID}:`)
+                      ? cost(lang, row.cost, row.costPartial)
+                      : row.apiCost > 0
+                        ? t('settings.chatgpt.planApiCost', { value: cost(lang, row.apiCost) })
+                        : t('settings.chatgpt.planCost')}
+                  </td>
                 </tr>
               ))}
             </tbody>

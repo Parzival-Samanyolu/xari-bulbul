@@ -33,6 +33,8 @@ const SORTS = [
 
 function price(m: ModelInfo, free: string): string {
   if (m.free) return free
+  // Plan models bill nothing per token; their API price is shown for comparison.
+  if (!m.pricing && m.apiPricing) return `≈ ${perMillion(m.apiPricing.prompt, free)} / ${perMillion(m.apiPricing.completion, free)}`
   if (!m.pricing) return '—'
   return `${perMillion(m.pricing.prompt, free)} / ${perMillion(m.pricing.completion, free)}`
 }
@@ -274,7 +276,9 @@ export function ModelPicker({ app, onClose, onState, onError, onPick, title }: P
                   )}
                 </span>
                 <span className="muted">{m.contextLength ? tokens(lang, m.contextLength) : '—'}</span>
-                <span className={m.free ? 'okc' : 'muted'}>{price(m, t('chat.picker.free'))}</span>
+                <span className={m.free ? 'okc' : 'muted'} title={!m.pricing && m.apiPricing ? t('chat.picker.apiPriceHint') : undefined}>
+                  {price(m, t('chat.picker.free'))}
+                </span>
               </div>
             )
           })}

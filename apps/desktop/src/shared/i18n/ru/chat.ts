@@ -204,6 +204,7 @@ export default {
   'chat.picker.sortContext': 'Контекст',
   'chat.picker.sortPrice': 'Цена',
   'chat.picker.free': 'бесплатно',
+  'chat.picker.apiPriceHint': 'План не берёт плату за токены. Это цена в API OpenAI для сравнения.',
   'chat.picker.currentMark': 'текущая',
   'chat.picker.current': 'Текущая',
   'chat.picker.favorites': 'Избранное',

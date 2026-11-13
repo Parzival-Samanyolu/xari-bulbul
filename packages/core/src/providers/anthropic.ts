@@ -1,4 +1,4 @@
-import type { ChatMessage, ModelInfo, ToolCall, Usage } from '../types.js'
+import type { ChatMessage, ModelInfo, ModelPricing, ToolCall, Usage } from '../types.js'
 import type { ProviderConfig } from '../settings/schema.js'
 import { ROTATE_STATUSES } from './accounts.js'
 import { inputProgress, midStreamError, requestWithRetry, withStallGuard } from './http.js'
@@ -46,6 +46,12 @@ const PRICES: Record<string, [input: number, output: number, cacheRead: number]>
   'claude-sonnet-4-6': [3, 15, 0.3],
   'claude-haiku-5-5': [0.1, 0.5, 0.01],
   'claude-haiku-4-5': [1, 5, 0.1],
+}
+
+/** Per-token list pricing for the model picker, or undefined for a model without a known price. */
+export function anthropicPricing(model: string): ModelPricing | undefined {
+  const p = PRICES[model.replace(/-\d{8}$/, '')]
+  return p && { prompt: p[0] / 1e6, completion: p[1] / 1e6 }
 }
 
 /** Request cost in USD, or undefined for a model without a known price. */
@@ -120,6 +126,7 @@ export class AnthropicProvider implements Provider {
           name: m.display_name ?? m.id,
           providerId: this.id,
           contextLength: m.max_input_tokens,
+          pricing: anthropicPricing(m.id),
           free: false,
           created: Number.isFinite(created) ? created : undefined,
           supportsTools: true,

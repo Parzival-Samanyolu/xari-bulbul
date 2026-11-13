@@ -470,6 +470,7 @@ export class Agent {
       completionTokens: usage.completionTokens,
       cachedTokens: usage.cachedTokens ?? 0,
       cost: computeCost(usage, info?.pricing),
+      ...(usage.apiCost != null && { apiCost: usage.apiCost }),
     }
     this.o.usage.record(record)
     return record

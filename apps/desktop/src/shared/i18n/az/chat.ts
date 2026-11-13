@@ -176,6 +176,7 @@ export default {
   'chat.picker.sortContext': 'Kontekst',
   'chat.picker.sortPrice': 'Qiymət',
   'chat.picker.free': 'pulsuz',
+  'chat.picker.apiPriceHint': 'Planınız token başına ödəniş almır. Bu, müqayisə üçün OpenAI API-dəki qiymətdir.',
   'chat.picker.currentMark': 'cari',
   'chat.picker.current': 'Cari',
   'chat.picker.favorites': 'Seçilmişlər',

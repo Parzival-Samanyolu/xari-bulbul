@@ -570,4 +570,5 @@ export default {
   'settings.chatgpt.peakDay': 'Busiest day',
   'settings.chatgpt.manageHint': 'Your plan’s limits and this app’s share are in ChatGPT settings.',
   'settings.chatgpt.planCost': 'Plan',
+  'settings.chatgpt.planApiCost': 'Plan · ≈{value} at API prices',
 } as const satisfies Record<string, Message>

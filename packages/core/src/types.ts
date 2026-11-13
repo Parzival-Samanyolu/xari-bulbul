@@ -94,6 +94,11 @@ export interface ModelInfo {
   providerId: string
   contextLength?: number
   pricing?: ModelPricing
+  /**
+   * What the same tokens would cost on the provider's API, for plan models that bill nothing per
+   * token (ChatGPT plan). Shown for comparison; never counted as spend.
+   */
+  apiPricing?: ModelPricing
   /** True when the provider reports zero prompt and completion price. */
   free: boolean
   /** Unix seconds, when the provider reports it (used to sort newest first). */
@@ -111,6 +116,8 @@ export interface Usage {
   cost?: number
   /** Multiplier on list prices when cost isn't reported (batch requests: 0.5). */
   priceFactor?: number
+  /** USD at API prices for plan usage that bills nothing per token. Shown, never counted as spend. */
+  apiCost?: number
 }
 
 export interface JsonSchema {

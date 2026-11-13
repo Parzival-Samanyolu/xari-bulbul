@@ -569,4 +569,5 @@ export default {
   'settings.chatgpt.peakDay': 'Ən yüklü gün',
   'settings.chatgpt.manageHint': 'Planınızın limitləri və bu tətbiqin payı ChatGPT ayarlarındadır.',
   'settings.chatgpt.planCost': 'Plan',
+  'settings.chatgpt.planApiCost': 'Plan · API qiymətləri ilə ≈{value}',
 } satisfies Record<keyof typeof en, Message>

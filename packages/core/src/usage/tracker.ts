@@ -1,5 +1,6 @@
 import fs from 'node:fs'
 import path from 'node:path'
+import { openaiCost } from '../providers/prices.js'
 import type { ModelPricing, Usage } from '../types.js'
 
 export interface UsageRecord {
@@ -12,6 +13,8 @@ export interface UsageRecord {
   cachedTokens: number
   /** USD; null when unknown (e.g. subscription providers with no pricing). */
   cost: number | null
+  /** USD at API prices for plan usage (ChatGPT plan); not spend. */
+  apiCost?: number
 }
 
 export interface UsageTotals {
@@ -22,6 +25,8 @@ export interface UsageTotals {
   cost: number
   /** True if any request in this bucket had unknown cost. */
   costPartial: boolean
+  /** Plan usage at API prices (USD); not part of `cost`. */
+  apiCost: number
 }
 
 export interface UsageSummary {
@@ -33,7 +38,7 @@ export interface UsageSummary {
 }
 
 export function emptyTotals(): UsageTotals {
-  return { requests: 0, promptTokens: 0, completionTokens: 0, cachedTokens: 0, cost: 0, costPartial: false }
+  return { requests: 0, promptTokens: 0, completionTokens: 0, cachedTokens: 0, cost: 0, costPartial: false, apiCost: 0 }
 }
 
 function add(t: UsageTotals, r: UsageRecord) {
@@ -43,6 +48,8 @@ function add(t: UsageTotals, r: UsageRecord) {
   t.cachedTokens += r.cachedTokens
   if (r.cost == null) t.costPartial = true
   else t.cost += r.cost
+  // Plan records written before apiCost existed are priced from their tokens.
+  t.apiCost += r.apiCost ?? (r.providerId === 'chatgpt' ? (openaiCost(r.modelId, { promptTokens: r.promptTokens, completionTokens: r.completionTokens, cachedTokens: r.cachedTokens }) ?? 0) : 0)
 }
 
 export function computeCost(usage: Usage, pricing?: ModelPricing): number | null {

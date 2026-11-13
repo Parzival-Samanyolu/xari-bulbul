@@ -172,6 +172,7 @@ export default {
   'chat.picker.sortContext': 'Context',
   'chat.picker.sortPrice': 'Price',
   'chat.picker.free': 'free',
+  'chat.picker.apiPriceHint': 'Your plan bills nothing per token. This is the price on OpenAI’s API, for comparison.',
   'chat.picker.currentMark': 'current',
   'chat.picker.current': 'Current',
   'chat.picker.favorites': 'Favorites',

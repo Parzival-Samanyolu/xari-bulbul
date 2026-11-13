@@ -590,4 +590,5 @@ export default {
   'settings.chatgpt.peakDay': 'Самый загруженный день',
   'settings.chatgpt.manageHint': 'Лимиты плана и доля этого приложения — в настройках ChatGPT.',
   'settings.chatgpt.planCost': 'План',
+  'settings.chatgpt.planApiCost': 'План · ≈{value} по ценам API',
 } satisfies Record<keyof typeof en, Message>

@@ -1,6 +1,7 @@
 import type { ChatMessage, ImageAttachment, ModelInfo, ToolCall, Usage } from '../types.js'
 import type { ProviderConfig } from '../settings/schema.js'
 import { ROTATE_STATUSES } from './accounts.js'
+import { isOpenAiApi, openaiCost, openaiPricing } from './prices.js'
 import { inputProgress, midStreamError, requestWithRetry, withStallGuard } from './http.js'
 import { readSseData } from './sse.js'
 import { ProviderError, type ChatRequest, type Provider, type StreamEvent } from './types.js'
@@ -73,7 +74,7 @@ export class OpenAICompatProvider implements Provider {
         return NON_CHAT_GOOGLE.test(id) || RETIRED_GOOGLE.test(id) ? [] : [{ ...m, id, name: m.name ?? id }]
       })
       .filter((m) => !this.unavailable(m.id))
-      .map((m) => toModelInfo(this.id, m))
+      .map((m) => withOpenAiPrice(toModelInfo(this.id, m), this.config.baseUrl))
       .sort((a, b) => a.id.localeCompare(b.id))
   }
 
@@ -131,7 +132,11 @@ export class OpenAICompatProvider implements Provider {
       // Mid-reply failures arrive as an error chunk because the HTTP status (200) is already sent.
       // OpenRouter's wording is "JSON error injected into SSE stream".
       if (chunk.error) throw midStreamError(this.name, chunk.error.message, chunk.error.code)
-      if (chunk.usage) usage = { ...toUsage(chunk.usage), ...(batch ? { priceFactor: 0.5 } : {}) }
+      if (chunk.usage) {
+        usage = { ...toUsage(chunk.usage), ...(batch ? { priceFactor: 0.5 } : {}) }
+        // OpenAI reports no cost; price it here so cached input gets its discount.
+        if (usage.cost === undefined && isOpenAiApi(this.config.baseUrl)) usage.cost = openaiCost(req.model, usage)
+      }
       const choice = chunk.choices?.[0]
       if (!choice) continue
       const d = choice.delta ?? {}
@@ -356,6 +361,13 @@ interface RawModel {
   max_input_tokens?: number
   pricing?: { prompt?: string; completion?: string }
   supported_parameters?: string[]
+}
+
+/** OpenAI's model list has no prices; fill them in from the price table. */
+function withOpenAiPrice(m: ModelInfo, baseUrl: string): ModelInfo {
+  if (m.pricing || !isOpenAiApi(baseUrl)) return m
+  const pricing = openaiPricing(m.id)
+  return pricing ? { ...m, pricing } : m
 }
 
 function toModelInfo(providerId: string, m: RawModel): ModelInfo {

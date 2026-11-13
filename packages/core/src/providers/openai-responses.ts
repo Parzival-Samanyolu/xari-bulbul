@@ -5,6 +5,7 @@ import { readSseData } from './sse.js'
 import { userText } from './openai-compat.js'
 import { ProviderError, type ChatRequest, type Provider, type StreamEvent } from './types.js'
 import { openAIEffort, providerKind } from './effort.js'
+import { openaiCost, openaiPricing } from './prices.js'
 
 /** Where users review and limit what apps spend from their ChatGPT plan. */
 export const CHATGPT_USAGE_URL = 'https://chatgpt.com/settings/usage'
@@ -149,7 +150,10 @@ export class OpenAIResponsesProvider implements Provider {
 
     for (const call of calls) yield { type: 'tool_call', call }
     if (reasoning.length) yield { type: 'extra', extra: { openaiResponses: { reasoning } } }
-    if (usage) yield { type: 'usage', usage }
+    if (usage) {
+      const apiCost = openaiCost(req.model, usage)
+      yield { type: 'usage', usage: apiCost === undefined ? usage : { ...usage, apiCost } }
+    }
     yield { type: 'finish', reason: finish }
   }
 
@@ -311,8 +315,9 @@ interface RawModel {
 }
 
 function toModelInfo(providerId: string, id: string, name?: string, contextLength?: number): ModelInfo {
-  // Plan usage has no per-token price: nothing here is free, and nothing is priced.
-  return { id, name: name || id, providerId, contextLength, free: false, supportsTools: true }
+  // Plan usage has no per-token price: nothing here is free or priced. The API price is shown for comparison.
+  const apiPricing = openaiPricing(id)
+  return { id, name: name || id, providerId, contextLength, free: false, supportsTools: true, ...(apiPricing && { apiPricing }) }
 }
 
 interface RawUsage {
