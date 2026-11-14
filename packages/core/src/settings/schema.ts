@@ -524,6 +524,8 @@ export const SettingsSchema = z.object({
   tools: z
     .object({
       disabled: z.array(z.string()).default([]),
+      /** Skill names turned off: not listed in the prompt and not loadable, but kept on disk. */
+      disabledSkills: z.array(z.string()).default([]),
       /** Project tool code runs on open, so it's opt-in (a cloned repo could contain anything). */
       loadProjectExtensions: z.boolean().default(false),
       loadUserExtensions: z.boolean().default(true),

@@ -57,7 +57,7 @@ const api: HarnessApi = {
   plugins: { list: call('plugins.list') as any, install: call('plugins.install') as any, remove: call('plugins.remove') as any, setEnabled: call('plugins.setEnabled') as any },
   memory: { remove: call('memory.remove') as any, clear: call('memory.clear') as any, undo: call('memory.undo') as any },
   extensions: { reload: call('extensions.reload') as any, openDir: call('extensions.openDir') as any },
-  skills: { remove: call('skills.remove') as any },
+  skills: { remove: call('skills.remove') as any, install: call('skills.install') as any, search: call('skills.search') as any, browse: call('skills.browse') as any, installFound: call('skills.installFound') as any },
   schedules: { runNow: call('schedules.runNow') as any, pickFolder: call('schedules.pickFolder') as any },
   whatsapp: { retry: call('whatsapp.retry') as any, pair: call('whatsapp.pair') as any, unlink: call('whatsapp.unlink') as any, test: call('whatsapp.test') as any, newChat: call('whatsapp.newChat') as any, pickFolder: call('whatsapp.pickFolder') as any },
   imessage: { test: call('imessage.test') as any, check: call('imessage.check') as any, openPrivacy: call('imessage.openPrivacy') as any, pickFolder: call('imessage.pickFolder') as any },

@@ -152,7 +152,7 @@ describe('installing plugins', () => {
 
     const servers = pluginMcpServers(dir, 'demo')
     expect(servers).toEqual([
-      { id: 'demo-demo-srv', name: 'demo-srv', enabled: true, plugin: 'demo', transport: 'stdio', command: 'node', args: [`${dir}/server.mjs`], env: {} },
+      { id: 'demo-demo-srv', name: 'demo-srv', enabled: false, plugin: 'demo', transport: 'stdio', command: 'node', args: [`${dir}/server.mjs`], env: {} },
     ])
     const mine: McpServerConfig = { id: 'gh', name: 'gh', enabled: true, transport: 'http', url: 'https://example.com/mcp', headers: {} }
     expect(mergePluginServers([mine], 'demo', servers).map((s) => s.id)).toEqual(['gh', 'demo-demo-srv'])

@@ -315,9 +315,11 @@ export class Agent {
     return this.o.subagent ? undefined : activeBot(this.settings, this.session.meta.botId)
   }
 
-  /** The skills this chat may load: the bot's list, if it has one. */
+  /** The skills this chat may load: the turned-on ones, and of those the bot's list if it has one. */
   private get allowedSkills(): Skill[] | undefined {
-    return this.skills && filterBotSkills(this.skills, this.bot)
+    if (!this.skills) return undefined
+    const off = new Set(this.settings.tools.disabledSkills)
+    return filterBotSkills(off.size ? this.skills.filter((s) => !off.has(s.name)) : this.skills, this.bot)
   }
 
   /** The memory tools and prompt see: the folder's, plus the bot's own when it keeps one. */

@@ -16,7 +16,7 @@ export const MCP_PRESETS: McpPreset[] = [
     id: 'github',
     label: 'GitHub',
     description: "GitHub's hosted server: repositories, issues, pull requests, Actions and code search.",
-    server: { id: 'github', name: 'github', enabled: true, transport: 'http', url: 'https://api.githubcopilot.com/mcp/', headers: {} },
+    server: { id: 'github', name: 'github', enabled: false, transport: 'http', url: 'https://api.githubcopilot.com/mcp/', headers: {} },
     token: {
       hint: 'A personal access token (or the output of `gh auth token`)',
       url: 'https://github.com/settings/personal-access-tokens/new',
@@ -24,9 +24,9 @@ export const MCP_PRESETS: McpPreset[] = [
   },
 ]
 
-/** The server config for a preset, with an id that doesn't clash with existing servers. */
+/** The server config for a preset, with an id that doesn't clash with existing servers. It starts turned off. */
 export function presetServer(preset: McpPreset, existing: McpServerConfig[]): McpServerConfig {
   let id = preset.server.id
   for (let n = 2; existing.some((s) => s.id === id); n++) id = `${preset.server.id}-${n}`
-  return { ...preset.server, id }
+  return { ...preset.server, id, enabled: false }
 }

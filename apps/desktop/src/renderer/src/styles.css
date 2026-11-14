@@ -5403,3 +5403,15 @@ body.resizing * {
 .chatgpt-using .link {
   font-size: inherit;
 }
+
+/* Skills found in a searched repo, under the repo's row. */
+.skill-found {
+  margin: 4px 0 10px 16px;
+  padding-left: 12px;
+  border-left: 2px solid var(--border);
+}
+
+/* A skill that's turned off: name in the muted tone (still AA), so the switch reads at a glance. */
+.tool-item.is-off code {
+  color: var(--muted);
+}

@@ -11,5 +11,6 @@ describe('MCP presets', () => {
     const github = MCP_PRESETS.find((p) => p.id === 'github')!
     expect(presetServer(github, []).id).toBe('github')
     expect(presetServer(github, [{ ...github.server }]).id).toBe('github-2')
+    expect(presetServer(github, []).enabled).toBe(false)
   })
 })

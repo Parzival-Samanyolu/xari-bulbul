@@ -115,3 +115,24 @@ export * from './gateways/imessage-gateway.js'
 export * from './gateways/whatsapp.js'
 export * from './gateways/whatsapp-install.js'
 export * from './gateways/whatsapp-gateway.js'
+export {
+  hasScripts,
+  installSkill,
+  listRepoSkills,
+  parseRepoRef,
+  readInstalledSkills,
+  searchSkillRepos,
+  skillFileUrl,
+  skillTokens,
+  skillTreeUrl,
+  skillsFile,
+  writeInstalledSkills,
+  type CatalogSkill,
+  type FoundSkill,
+  type InstalledSkill,
+  type RepoHit,
+  type SkillFile,
+  type SkillSource,
+  type SkillTokens,
+} from './skills/hub.js'
+export { SKILL_CATALOG } from './skills/catalog.js'

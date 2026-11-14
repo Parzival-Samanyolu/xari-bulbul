@@ -103,12 +103,64 @@ export interface ToolInfo {
   plugin?: string
 }
 
+/** Rough token cost: `listed` is sent with every request, `loaded` added when the agent loads the skill. */
+export interface SkillTokensInfo {
+  listed: number
+  loaded: number
+}
+
 export interface SkillInfo {
   name: string
   description: string
   source: 'user' | 'project' | 'claude'
   dir: string
   plugin?: string
+  tokens: SkillTokensInfo
+}
+
+/** A skill from the reviewed catalog, with whether it's installed. */
+export interface CatalogSkillInfo {
+  id: string
+  name: string
+  description: string
+  repo: string
+  license: string
+  /** Has files the agent might run. */
+  scripts: boolean
+  tokens: SkillTokensInfo
+  /** The skill folder on GitHub at the reviewed commit. */
+  treeUrl: string
+  installed: boolean
+  /** Installed from an older reviewed commit. */
+  update: boolean
+  busy: boolean
+}
+
+/** A public GitHub repo that looks like a skills repo. */
+export interface SkillRepoHit {
+  repo: string
+  description: string
+  stars: number
+  license: string
+  url: string
+}
+
+/** A skill found in a repo; not reviewed. `key` installs it. */
+export interface FoundSkillInfo {
+  key: string
+  id: string
+  name: string
+  description: string
+  repo: string
+  path: string
+  license: string
+  scripts: boolean
+  tokens: SkillTokensInfo
+  files: number
+  bytes: number
+  treeUrl: string
+  /** A skill folder with this name is already there. */
+  installed: boolean
 }
 
 /** A plugin from the built-in catalog, with its install state on this computer. */
@@ -368,10 +420,13 @@ export interface AppState {
   extensions: ExtensionsInfo
   /** Skills for the folder on screen: yours, the project's and Claude Code's. */
   skills: SkillInfo[]
+  /** Reviewed skills from public repos, one click to install. */
+  skillCatalog: CatalogSkillInfo[]
   /** The plugin catalog, with what's installed and which apps were found. */
   plugins: PluginInfo[]
   /** Connection state of each configured MCP server, and which have a stored token. */
-  mcp: { servers: McpServerStatus[]; tokens: Record<string, boolean> }
+  /** `tokens`: which servers have a stored bearer token. `toolTokens`: rough size of each ready server's tool definitions, sent with every request. */
+  mcp: { servers: McpServerStatus[]; tokens: Record<string, boolean>; toolTokens: Record<string, number> }
   /** Saved memories for the open folder and for every folder. */
   memory: MemoryInfo
   /** Run times of each schedule in settings. */
@@ -585,6 +640,14 @@ export interface HarnessApi {
   skills: {
     /** Deletes the skill's folder. */
     remove(dir: string): Promise<AppState>
+    /** Installs (or updates) a skill from the reviewed catalog into ~/.harness/skills. */
+    install(id: string): Promise<AppState>
+    /** Public GitHub repos tagged as agent/Claude skills that match `query`. */
+    search(query: string): Promise<SkillRepoHit[]>
+    /** The skills in a repo (`owner/name` or a github.com URL, also to a folder). */
+    browse(repo: string): Promise<FoundSkillInfo[]>
+    /** Installs a skill `browse` returned, pinned to the commit it was found at. */
+    installFound(key: string): Promise<AppState>
   }
   schedules: {
     /** Starts the schedule in a new chat now, unless its last run is still going. */

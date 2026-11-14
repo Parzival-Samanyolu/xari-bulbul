@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { MCP_PRESETS, presetServer } from '@harness/core/mcp-presets'
-import type { McpServerStatus, Settings } from '../../../../../shared/ipc'
+import type { AppState, FoundSkillInfo, McpServerStatus, Settings, SkillRepoHit } from '../../../../../shared/ipc'
 import { api } from '../../../lib/api'
 import { useT } from '../../../lib/i18n'
 import { ListField, Row, Section, Select, TextField, Toggle } from '../../fields'
@@ -157,7 +157,8 @@ export function McpPage({ app, save, onState, onError }: PageProps) {
   const parts = splitCommand(draft.target)
   const valid = draft.name.trim() && !nameTaken && (draft.transport === 'stdio' ? parts.length > 0 : /^https?:\/\/\S+$/.test(draft.target.trim()))
   const add = () => {
-    const base = { id: idFor(draft.name), name: draft.name.trim(), enabled: true }
+    // New servers start off: their tools are sent with every request, so the user turns them on.
+    const base = { id: idFor(draft.name), name: draft.name.trim(), enabled: false }
     const server: McpServer = draft.transport === 'stdio' ? { ...base, transport: 'stdio', command: parts[0], args: parts.slice(1), env: {} } : { ...base, transport: 'http', url: draft.target.trim(), headers: {} }
     save((st) => ((st.mcp.servers = [...st.mcp.servers, server]), st))
     setDraft({ name: '', transport: draft.transport, target: '' })
@@ -185,6 +186,11 @@ export function McpPage({ app, save, onState, onError }: PageProps) {
                   {stateText(t, state)}
                   {state === 'ready' ? ` · ${t('settings.tools.toolCount', { count: st?.toolCount ?? 0 })}` : ''}
                 </span>
+                {state === 'ready' && app.mcp.toolTokens[srv.id] ? (
+                  <span className="badge" title={t('settings.tools.mcpTokensHint', { tokens: app.mcp.toolTokens[srv.id] })}>
+                    {t('settings.tools.mcpTokens', { tokens: tokensText(app.mcp.toolTokens[srv.id]) })}
+                  </span>
+                ) : null}
                 <span className="muted small mono mcp-target" title={srv.transport === 'stdio' ? [srv.command, ...srv.args].join(' ') : srv.url}>
                   {srv.transport === 'stdio' ? [srv.command, ...srv.args].map(quote).join(' ') : srv.url}
                 </span>
@@ -325,9 +331,12 @@ export function McpPage({ app, save, onState, onError }: PageProps) {
 
 // ---------------------------------------------------------------- Skills & commands
 
-export function SkillsPage({ app, onState, onError }: PageProps) {
+export function SkillsPage({ app, save, onState, onError }: PageProps) {
   const { t } = useT()
   const ext = app.extensions
+  const off = new Set(app.settings.tools.disabledSkills)
+  const setOn = (name: string, on: boolean) =>
+    save((st) => ((st.tools.disabledSkills = on ? st.tools.disabledSkills.filter((n) => n !== name) : [...new Set([...st.tools.disabledSkills, name])]), st))
   return (
     <>
       <Section
@@ -345,9 +354,11 @@ export function SkillsPage({ app, onState, onError }: PageProps) {
         ) : (
           <div className="tool-list">
             {app.skills.map((s) => (
-              <div key={s.dir} className="tool-item">
+              <div key={s.dir} className={`tool-item${off.has(s.name) ? ' is-off' : ''}`}>
+                <Toggle label={t('settings.tools.enableSkill', { name: s.name })} value={!off.has(s.name)} onChange={(v) => setOn(s.name, v)} />
                 <code>{s.name}</code>
                 <span className="badge">{sourceText(t, s.source, s.plugin)}</span>
+                <SkillTokensBadge tokens={s.tokens} />
                 <span className="muted small tool-desc" title={s.description}>
                   {s.description}
                 </span>
@@ -364,6 +375,8 @@ export function SkillsPage({ app, onState, onError }: PageProps) {
           </div>
         )}
       </Section>
+      <SkillCatalog app={app} onState={onState} onError={onError} />
+      <SkillSearch onState={onState} onError={onError} />
       <Section title={t('settings.tools.slashCommands')} search="Slash commands" description={t('settings.tools.slashCommandsHint')}>
         <div className="tool-list">
           {ext.commands.map((c) => (
@@ -438,6 +451,172 @@ description: Review changes for bugs
 ---
 Review the uncommitted changes (git diff) for bugs and risky code. Focus on: $ARGUMENTS`}</pre>
       </details>
+    </Section>
+  )
+}
+
+// ---------------------------------------------------------------- Skill catalog and search
+
+/** `1.2K` style token count. */
+const tokensText = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10_000 ? 0 : 1)}K` : String(n))
+
+/** "~45 tokens · ~3.2K when used", with the details on hover. */
+function SkillTokensBadge({ tokens }: { tokens: { listed: number; loaded: number } }) {
+  const { t } = useT()
+  return (
+    <span className="badge" title={t('settings.tools.skillTokensHint', { listed: tokens.listed, loaded: tokens.loaded })}>
+      {t('settings.tools.skillTokens', { listed: tokensText(tokens.listed), loaded: tokensText(tokens.loaded) })}
+    </span>
+  )
+}
+
+const kb = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`)
+
+/** Reviewed skills from public repos, installed into ~/.harness/skills in one click. */
+function SkillCatalog({ app, onState, onError }: { app: AppState; onState: PageProps['onState']; onError: PageProps['onError'] }) {
+  const { t } = useT()
+  if (!app.skillCatalog.length) return null
+  const busy = app.skillCatalog.some((s) => s.busy)
+  return (
+    <Section title={t('settings.tools.skillCatalog')} search="Get skills catalog" description={t('settings.tools.skillCatalogHint')}>
+      <div className="tool-list">
+        {app.skillCatalog.map((s) => (
+          <div key={s.id} className="tool-item">
+            <code>{s.name}</code>
+            <span className="badge">{s.repo}</span>
+            <span className="badge">{s.license}</span>
+            {s.scripts && <span className="badge" title={t('settings.tools.skillScriptsHint')}>{t('settings.tools.skillScripts')}</span>}
+            <SkillTokensBadge tokens={s.tokens} />
+            <span className="muted small tool-desc" title={s.description}>
+              {s.description}
+            </span>
+            <button className="btn ghost" aria-label={t('settings.tools.viewSkillLabel', { name: s.name })} onClick={() => api.app.openExternal(s.treeUrl)}>
+              {t('settings.tools.viewSkill')}
+            </button>
+            {s.installed && !s.update ? (
+              <span className="muted small">{t('settings.tools.skillInstalled')}</span>
+            ) : (
+              <button className="btn" disabled={busy} aria-label={t(s.update ? 'settings.tools.updateSkillLabel' : 'settings.tools.installSkillLabel', { name: s.name })} onClick={() => api.skills.install(s.id).then(onState, onError)}>
+                {s.busy ? t('settings.tools.skillInstalling') : t(s.update ? 'settings.tools.updateSkill' : 'settings.tools.installSkill')}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </Section>
+  )
+}
+
+/** Any public skill on GitHub: search tagged repos, or paste a repo or folder link. Not reviewed. */
+function SkillSearch({ onState, onError }: { onState: PageProps['onState']; onError: PageProps['onError'] }) {
+  const { t } = useT()
+  const [query, setQuery] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [repos, setRepos] = useState<SkillRepoHit[] | null>(null)
+  const [open, setOpen] = useState<{ repo: string; skills: FoundSkillInfo[] | null } | null>(null)
+  const [installing, setInstalling] = useState<string | null>(null)
+  const fail = (e: unknown) => {
+    setLoading(false)
+    onError(e)
+  }
+  const browse = (repo: string) => {
+    setOpen({ repo, skills: null })
+    api.skills.browse(repo).then((skills) => setOpen({ repo, skills }), (e) => (setOpen(null), onError(e)))
+  }
+  const run = () => {
+    const q = query.trim()
+    if (!q) return
+    // A pasted repo or link goes straight to its skills.
+    if (/^(https?:\/\/)?github\.com\//.test(q) || /^[\w.-]+\/[\w.-]+$/.test(q)) {
+      setRepos(null)
+      browse(q)
+      return
+    }
+    setLoading(true)
+    setOpen(null)
+    api.skills.search(q).then((r) => (setLoading(false), setRepos(r)), fail)
+  }
+  const install = (s: FoundSkillInfo) => {
+    if (!confirm(t(s.scripts ? 'settings.tools.unreviewedScriptsConfirm' : 'settings.tools.unreviewedConfirm', { name: s.name, repo: s.repo }))) return
+    setInstalling(s.key)
+    api.skills.installFound(s.key).then(
+      (st) => {
+        setInstalling(null)
+        setOpen((o) => o && { ...o, skills: o.skills?.map((x) => (x.key === s.key ? { ...x, installed: true } : x)) ?? null })
+        onState(st)
+      },
+      (e) => (setInstalling(null), onError(e)),
+    )
+  }
+  const skillList = (skills: FoundSkillInfo[] | null) =>
+    skills === null ? (
+      <p className="muted small">{t('settings.tools.skillsLoading')}</p>
+    ) : skills.length === 0 ? (
+      <p className="muted small">{t('settings.tools.noSkillsInRepo')}</p>
+    ) : (
+      <div className="tool-list">
+        {skills.map((s) => (
+          <div key={s.key} className="tool-item">
+            <code>{s.name}</code>
+            <span className="badge">{t('settings.tools.notReviewed')}</span>
+            {s.license ? <span className="badge">{s.license}</span> : <span className="badge">{t('settings.tools.noLicense')}</span>}
+            {s.scripts && <span className="badge" title={t('settings.tools.skillScriptsHint')}>{t('settings.tools.skillScripts')}</span>}
+            <SkillTokensBadge tokens={s.tokens} />
+            <span className="muted small tool-desc" title={s.description}>
+              {s.description} · {t('settings.tools.skillFiles', { count: s.files })}, {kb(s.bytes)}
+            </span>
+            <button className="btn ghost" aria-label={t('settings.tools.viewSkillLabel', { name: s.name })} onClick={() => api.app.openExternal(s.treeUrl)}>
+              {t('settings.tools.viewSkill')}
+            </button>
+            {s.installed ? (
+              <span className="muted small">{t('settings.tools.skillInstalled')}</span>
+            ) : (
+              <button className="btn" disabled={!!installing} aria-label={t('settings.tools.installSkillLabel', { name: s.name })} onClick={() => install(s)}>
+                {installing === s.key ? t('settings.tools.skillInstalling') : t('settings.tools.installSkill')}
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    )
+
+  return (
+    <Section title={t('settings.tools.findSkills')} search="Find skills GitHub search" description={t('settings.tools.findSkillsHint')}>
+      <div className="inline">
+        <input
+          className="grow"
+          aria-label={t('settings.tools.findSkills')}
+          placeholder={t('settings.tools.findSkillsPlaceholder')}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && run()}
+        />
+        <button className="btn" disabled={loading || !query.trim()} onClick={run}>
+          {loading ? t('settings.tools.searching') : t('settings.tools.searchSkills')}
+        </button>
+      </div>
+      {repos && repos.length === 0 && <p className="muted small">{t('settings.tools.noSkillRepos')}</p>}
+      {repos && repos.length > 0 && (
+        <div className="tool-list">
+          {repos.map((r) => (
+            <div key={r.repo}>
+              <div className="tool-item">
+                <code>{r.repo}</code>
+                <span className="badge">★ {r.stars.toLocaleString()}</span>
+                {r.license && <span className="badge">{r.license}</span>}
+                <span className="muted small tool-desc" title={r.description}>
+                  {r.description}
+                </span>
+                <button className="btn ghost" onClick={() => (open?.repo === r.repo ? setOpen(null) : browse(r.repo))} aria-expanded={open?.repo === r.repo}>
+                  {open?.repo === r.repo ? t('settings.tools.hideSkills') : t('settings.tools.showSkills')}
+                </button>
+              </div>
+              {open?.repo === r.repo && <div className="skill-found">{skillList(open.skills)}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+      {open && !repos && skillList(open.skills)}
     </Section>
   )
 }

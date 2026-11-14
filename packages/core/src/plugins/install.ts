@@ -73,7 +73,7 @@ export function checkPluginPath(p: string): string {
 }
 
 /** Throws if `target` or any folder between `base` (itself trusted) and it is a symbolic link. */
-function refuseSymlinks(base: string, target: string) {
+export function refuseSymlinks(base: string, target: string) {
   const rel = path.relative(base, target)
   if (rel.startsWith('..') || path.isAbsolute(rel)) throw new Error(`${target} is outside ${base}.`)
   let cur = base
@@ -211,7 +211,8 @@ export function pluginMcpServers(dir: string, pluginId: string): McpServerConfig
   for (const s of Array.isArray(raw.servers) ? raw.servers : []) {
     const name = String((s as { name?: unknown })?.name ?? '').replace(/[^A-Za-z0-9_-]/g, '')
     if (!name) continue
-    const parsed = McpServerSchema.safeParse({ ...(s as object), id: `${pluginId}-${name}`, name, plugin: pluginId })
+    // Plugin servers start off like any new server; the user turns them on in Settings.
+    const parsed = McpServerSchema.safeParse({ ...(s as object), id: `${pluginId}-${name}`, name, plugin: pluginId, enabled: false })
     if (!parsed.success) continue
     const server = parsed.data
     out.push(server.transport === 'stdio' ? { ...server, command: sub(server.command), args: server.args.map(sub) } : server)

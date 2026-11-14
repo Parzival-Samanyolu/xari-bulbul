@@ -247,6 +247,16 @@ describe('bots in the agent', () => {
     expect(system(provider.requests[0])).not.toContain('- release:')
   })
 
+  it('leaves out skills turned off in settings, for bots and plain chats', async () => {
+    const s = botSettings({ tools: 'all', skills: [] })
+    s.tools.disabledSkills = ['release']
+    const plain = system((await run(s, { skills: true })).provider.requests[0])
+    expect(plain).toContain('- deploy: Deploy the app')
+    expect(plain).not.toContain('- release:')
+    s.tools.disabledSkills = ['release', 'deploy']
+    expect(system((await run(s, { skills: true })).provider.requests[0])).not.toContain('- deploy:')
+  })
+
   it("keeps a bot's own memory in memory/bots/<id>.md", async () => {
     const memDir = tmpDir()
     const memory = new MemoryStore(memDir)

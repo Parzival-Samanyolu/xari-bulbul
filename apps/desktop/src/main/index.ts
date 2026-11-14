@@ -340,6 +340,10 @@ function registerIpc() {
     if (dir) await shell.openPath(dir)
   })
   handle('skills.remove', (dir: string) => c.removeSkill(dir))
+  handle('skills.install', (id: string) => c.installCatalogSkill(id))
+  handle('skills.search', (query: string) => c.searchSkills(query))
+  handle('skills.browse', (repo: string) => c.browseSkills(repo))
+  handle('skills.installFound', (key: string) => c.installFoundSkill(key))
   handle('schedules.runNow', (id: string) => c.runScheduleNow(id))
   handle('schedules.pickFolder', async () => {
     const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: tm('main.dialog.scheduleFolder'), defaultPath: c.state().workspace ?? undefined })

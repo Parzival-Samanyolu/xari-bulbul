@@ -83,6 +83,18 @@ import {
   ProviderConfigSchema,
   projectExtDir,
   PLUGIN_CATALOG,
+  SKILL_CATALOG,
+  mcpToolName,
+  skillTokens,
+  installSkill,
+  listRepoSkills,
+  parseRepoRef,
+  readInstalledSkills,
+  searchSkillRepos,
+  skillTreeUrl,
+  writeInstalledSkills,
+  type FoundSkill,
+  type InstalledSkill,
   activePlugins,
   detectPlugins,
   installPlugin,
@@ -123,7 +135,7 @@ import {
   settingsPath,
 } from '@harness/core'
 import { fetchSynapseAccount, SYNAPSE_PROVIDER_ID, type SynapseAccount } from '@harness/core/synapse'
-import type { AccountView, AppState, AttachmentInput, BotAvatarRequest, BotRow, LobbyRow, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
+import type { AccountView, AppState, AttachmentInput, BotAvatarRequest, CatalogSkillInfo, FoundSkillInfo, SkillRepoHit, BotRow, LobbyRow, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
 import { LocalModels } from './local-models'
 import { AppError, systemLanguages, tm } from './i18n'
 import { log } from './logger'
@@ -194,6 +206,10 @@ export class AppController {
   private readonly detected: Record<string, string>
   /** The plugin being installed or removed. */
   private pluginBusy: string | null = null
+  private installedSkills: InstalledSkill[] = []
+  private skillBusy: string | null = null
+  /** Skills `browseSkills` returned, by key, so an install uses exactly what was shown. */
+  private foundSkills = new Map<string, FoundSkill>()
   private readonly terminals: Terminals
   private tools: Tool[] = builtinTools()
   private workspace: string | null = null
@@ -254,6 +270,7 @@ export class AppController {
     this.memory = new MemoryStore(path.join(dataDir, 'memory'), this.settings.memory.maxChars)
     this.terminals = new Terminals(send)
     this.plugins = readInstalled(dataDir)
+    this.installedSkills = readInstalledSkills(dataDir)
     // Stat only: nothing is started to look for apps.
     this.detected = detectPlugins(PLUGIN_CATALOG)
     this.mcp = new McpManager({
@@ -1193,8 +1210,113 @@ export class AppController {
   /** Deletes a skill folder, if it is one the loader found (Claude Code's own skills are left alone). */
   async removeSkill(dir: string): Promise<AppState> {
     const skill = this.ext.skills.find((s) => s.dir === dir)
-    if (skill && skill.source !== 'claude' && !skill.plugin) fs.rmSync(skill.dir, { recursive: true, force: true })
+    if (skill && skill.source !== 'claude' && !skill.plugin) {
+      fs.rmSync(skill.dir, { recursive: true, force: true })
+      const kept = this.installedSkills.filter((r) => path.join(this.skillsDir, r.id) !== skill.dir)
+      if (kept.length !== this.installedSkills.length) writeInstalledSkills(this.dataDir, (this.installedSkills = kept))
+    }
     return this.reloadExtensions()
+  }
+
+  // ---------- skill catalog ----------
+
+  private get skillsDir(): string {
+    return path.join(USER_EXT_DIR, 'skills')
+  }
+
+  /** Per server id: about how many tokens its tool definitions add to every request (3.5 characters a token for JSON). */
+  private mcpToolTokens(): Record<string, number> {
+    const out: Record<string, number> = {}
+    const tools = this.mcp.tools()
+    for (const srv of this.settings.mcp.servers) {
+      const prefix = mcpToolName(srv.name, '')
+      const chars = tools.filter((t) => t.name.startsWith(prefix)).reduce((n, t) => n + JSON.stringify({ name: t.name, description: t.description, parameters: t.parameters }).length, 0)
+      if (chars) out[srv.id] = Math.ceil(chars / 3.5)
+    }
+    return out
+  }
+
+  private skillCatalogInfo(): CatalogSkillInfo[] {
+    return SKILL_CATALOG.map((s) => {
+      const rec = this.installedSkills.find((r) => r.id === s.id)
+      const here = rec ? fs.existsSync(path.join(this.skillsDir, s.id)) : false
+      return {
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        repo: s.repo,
+        license: s.license,
+        scripts: s.scripts,
+        tokens: s.tokens,
+        treeUrl: skillTreeUrl(s),
+        installed: here,
+        update: here && rec!.reviewed && rec!.repo === s.repo && rec!.pin !== s.pin,
+        busy: this.skillBusy === s.id,
+      }
+    })
+  }
+
+  /** Installs a skill into ~/.harness/skills and records where it came from. */
+  private async putSkill(s: FoundSkill | (typeof SKILL_CATALOG)[number], reviewed: boolean): Promise<AppState> {
+    if (this.skillBusy) throw new AppError('main.error.skillBusy')
+    const ours = this.installedSkills.find((r) => r.id === s.id)
+    // A folder the user made (or one from another source) is never overwritten.
+    if (!ours && fs.existsSync(path.join(this.skillsDir, s.id))) throw new AppError('main.error.skillExists', { name: s.id })
+    this.skillBusy = s.id
+    this.pushState()
+    try {
+      const files = await installSkill(s, { skillsDir: this.skillsDir, replace: !!ours, signal: AbortSignal.timeout(120_000) })
+      const rec: InstalledSkill = { id: s.id, repo: s.repo, path: s.path, pin: s.pin, reviewed, license: s.license, installedAt: Date.now(), files }
+      writeInstalledSkills(this.dataDir, (this.installedSkills = [...this.installedSkills.filter((r) => r.id !== s.id), rec]))
+      this.count('feature.skill_installed', { reviewed: String(reviewed) })
+    } finally {
+      this.skillBusy = null
+    }
+    return this.reloadExtensions()
+  }
+
+  async installCatalogSkill(id: string): Promise<AppState> {
+    const entry = SKILL_CATALOG.find((s) => s.id === id)
+    if (!entry) throw new AppError('main.error.unknownSkill', { id })
+    return this.putSkill(entry, true)
+  }
+
+  async searchSkills(query: string): Promise<SkillRepoHit[]> {
+    if (typeof query !== 'string' || !query.trim()) return []
+    return searchSkillRepos(query, { signal: AbortSignal.timeout(20_000) })
+  }
+
+  async browseSkills(repo: string): Promise<FoundSkillInfo[]> {
+    const ref = typeof repo === 'string' ? parseRepoRef(repo) : null
+    if (!ref) throw new AppError('main.error.notARepo', { repo: String(repo).slice(0, 100) })
+    const found = await listRepoSkills(ref.repo, { under: ref.path, signal: AbortSignal.timeout(30_000) })
+    return found.map((s) => {
+      const key = `${s.repo}@${s.pin}:${s.path}`
+      this.foundSkills.set(key, s)
+      return {
+        key,
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        repo: s.repo,
+        path: s.path,
+        license: s.license,
+        scripts: s.scripts,
+        tokens: s.tokens,
+        files: s.files.length,
+        bytes: s.bytes,
+        treeUrl: skillTreeUrl(s),
+        installed: fs.existsSync(path.join(this.skillsDir, s.id)),
+      }
+    })
+  }
+
+  async installFoundSkill(key: string): Promise<AppState> {
+    const s = this.foundSkills.get(key)
+    if (!s) throw new AppError('main.error.unknownSkill', { id: String(key).slice(0, 100) })
+    // A catalog skill found by search still installs as the reviewed copy.
+    const reviewed = SKILL_CATALOG.find((c) => c.repo === s.repo && c.path === s.path)
+    return reviewed ? this.putSkill(reviewed, true) : this.putSkill(s, false)
   }
 
   extensionDir(which: 'user' | 'project'): string | null {
@@ -2150,7 +2272,8 @@ export class AppController {
       awaitingSessions: [...new Set([...this.pending.values(), ...this.questions.values()].map((p) => p.sessionId))],
       questions: [...this.questions.values()].map(({ sessionId, request }) => ({ sessionId, request })),
       extensions: this.extensionsInfo(),
-      skills: this.ext.skills.map((s) => ({ name: s.name, description: s.description, source: s.source, dir: s.dir, plugin: s.plugin })),
+      skills: this.ext.skills.map((s) => ({ name: s.name, description: s.description, source: s.source, dir: s.dir, plugin: s.plugin, tokens: skillTokens(s.name, s.description, fileSize(s.file)) })),
+      skillCatalog: this.skillCatalogInfo(),
       plugins: this.pluginInfo(),
       memory: this.memoryInfo(),
       schedules: this.scheduler.status(),
@@ -2160,6 +2283,7 @@ export class AppController {
       mcp: {
         servers: this.mcp.status(),
         tokens: Object.fromEntries(this.settings.mcp.servers.map((s) => [s.id, this.secrets.has(mcpSecretId(s.id))])),
+        toolTokens: this.mcpToolTokens(),
       },
       botAvatars: this.botAvatars(),
       bots: this.botRows(),
@@ -2190,4 +2314,13 @@ export class AppController {
 /** Which gateway a chat's `meta.gateway` tag belongs to. */
 function gatewayKind(tag: string): 'imessage' | 'whatsapp' {
   return tag.startsWith('whatsapp:') ? 'whatsapp' : 'imessage'
+}
+
+/** Bytes in a file, or 0 if it can't be read. */
+function fileSize(file: string): number {
+  try {
+    return fs.statSync(file).size
+  } catch {
+    return 0
+  }
 }
