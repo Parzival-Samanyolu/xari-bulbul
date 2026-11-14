@@ -55,7 +55,9 @@ function add(t: UsageTotals, r: UsageRecord) {
 export function computeCost(usage: Usage, pricing?: ModelPricing): number | null {
   if (typeof usage.cost === 'number') return usage.cost
   if (!pricing) return null
-  return (usage.priceFactor ?? 1) * (usage.promptTokens * pricing.prompt + usage.completionTokens * pricing.completion)
+  const cached = pricing.cacheRead != null ? Math.min(usage.cachedTokens ?? 0, usage.promptTokens) : 0
+  const prompt = (usage.promptTokens - cached) * pricing.prompt + cached * (pricing.cacheRead ?? 0)
+  return (usage.priceFactor ?? 1) * (prompt + usage.completionTokens * pricing.completion)
 }
 
 function startOfDay(ts: number): number {

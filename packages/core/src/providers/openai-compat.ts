@@ -361,7 +361,7 @@ interface RawModel {
   /** vLLM */
   max_model_len?: number
   max_input_tokens?: number
-  pricing?: { prompt?: string; completion?: string }
+  pricing?: { prompt?: string; completion?: string; input_cache_read?: string }
   supported_parameters?: string[]
 }
 
@@ -375,13 +375,14 @@ function withOpenAiPrice(m: ModelInfo, baseUrl: string): ModelInfo {
 function toModelInfo(providerId: string, m: RawModel): ModelInfo {
   const prompt = Number(m.pricing?.prompt)
   const completion = Number(m.pricing?.completion)
+  const cacheRead = Number(m.pricing?.input_cache_read)
   const priced = Number.isFinite(prompt) && Number.isFinite(completion) && prompt >= 0
   return {
     id: m.id,
     name: m.name ?? m.id,
     providerId,
     contextLength: m.context_length ?? m.context_window ?? m.max_context_length ?? m.max_model_len ?? m.max_input_tokens,
-    pricing: priced ? { prompt, completion } : undefined,
+    pricing: priced ? { prompt, completion, ...(Number.isFinite(cacheRead) && cacheRead >= 0 && m.pricing?.input_cache_read ? { cacheRead } : {}) } : undefined,
     free: (priced && prompt === 0 && completion === 0) || m.id.endsWith(':free'),
     created: typeof m.created === 'number' ? m.created : undefined,
     // Providers that don't advertise parameters (Ollama) are assumed to support tools.

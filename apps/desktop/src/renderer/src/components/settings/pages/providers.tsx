@@ -111,6 +111,7 @@ function SynapsePlanRow({ ready }: { ready: boolean }) {
   const { t } = useT()
   const f = useFormat()
   const [acct, setAcct] = useState<SynapseAccount | null | undefined>(undefined)
+  const money = (n: number) => f.num(n, { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: n > 0 && n < 1 ? 4 : 2 })
   useEffect(() => {
     if (!ready) return setAcct(undefined)
     let live = true
@@ -123,12 +124,17 @@ function SynapsePlanRow({ ready }: { ready: boolean }) {
   const hint = acct
     ? `${t('settings.providers.synapseUsage', {
         plan: acct.planLabel,
-        used: f.num(acct.tokensToday),
-        total: f.num(acct.limits.tokensPerDay),
-        time: f.date(acct.resetsAt, { hour: '2-digit', minute: '2-digit' }),
-      })} ${t('settings.providers.synapseLimits', { context: f.num(acct.limits.maxContextTokens), concurrent: f.num(acct.limits.maxConcurrent) })}`
+        used: money(acct.usdThisWeek),
+        total: money(acct.limits.usdPerWeek),
+        time: f.date(acct.resetsAt, { weekday: 'long', hour: '2-digit', minute: '2-digit' }),
+      })} ${t('settings.providers.synapseLimits', {
+        price: money(acct.limits.pricePerMillion),
+        cache: money(acct.limits.cachePricePerMillion),
+        context: f.num(acct.limits.maxContextTokens),
+        concurrent: f.num(acct.limits.maxConcurrent),
+      })}`
     : t('settings.providers.synapseUnknown')
-  const share = acct && acct.limits.tokensPerDay > 0 ? Math.min(1, acct.tokensToday / acct.limits.tokensPerDay) : null
+  const share = acct && acct.limits.usdPerWeek > 0 ? Math.min(1, acct.usdThisWeek / acct.limits.usdPerWeek) : null
   return (
     <Row label={t('settings.providers.synapsePlan')} hint={hint} search="">
       <div className="inline">

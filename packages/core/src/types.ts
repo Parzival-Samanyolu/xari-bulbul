@@ -86,6 +86,8 @@ export interface ModelPricing {
   prompt: number
   /** USD per completion token */
   completion: number
+  /** USD per cached prompt token, when the provider prices them lower (OpenRouter-style `input_cache_read`). */
+  cacheRead?: number
 }
 
 export interface ModelInfo {

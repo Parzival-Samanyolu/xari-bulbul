@@ -13,7 +13,11 @@ export function isSynapse(baseUrl: string): boolean {
   return /^https:\/\/samanyoluai\.duckdns\.org\//.test(baseUrl)
 }
 
-/** Fills what an older Synapse server leaves out, so compaction and parallel subagents stay inside the free plan. */
+/**
+ * Fills what an older Synapse server leaves out, so compaction and parallel subagents stay inside the free plan.
+ * Newer servers price tokens (measured against the plan's weekly allowance, never billed per token), so the
+ * Usage page shows how much of the allowance went where.
+ */
 export function withSynapseDefaults(m: ModelInfo, baseUrl: string): ModelInfo {
   if (!isSynapse(baseUrl)) return m
   return {
@@ -21,22 +25,28 @@ export function withSynapseDefaults(m: ModelInfo, baseUrl: string): ModelInfo {
     name: m.name === m.id && m.id === 'synapse-2' ? 'Synapse 2' : m.name,
     contextLength: m.contextLength ?? SYNAPSE_FREE_CONTEXT,
     maxConcurrent: m.maxConcurrent ?? SYNAPSE_FREE_CONCURRENT,
-    free: true,
+    free: m.pricing ? m.free : true,
   }
 }
 
 export interface SynapseAccount {
+  /** Internal plan id ("free" = Neuron, "pro" = Myelin). */
   plan: string
+  /** What people see: "Neuron", "Myelin". */
   planLabel: string
   limits: {
     requestsPerMinute: number
-    tokensPerDay: number
+    /** Weekly allowance in USD, measured at the prices below. */
+    usdPerWeek: number
+    pricePerMillion: number
+    cachePricePerMillion: number
     maxOutputTokens: number
     maxConcurrent: number
     maxContextTokens: number
   }
+  usdThisWeek: number
   tokensToday: number
-  /** Epoch ms when the daily tokens reset (00:00 UTC). */
+  /** Epoch ms when the weekly allowance resets (Monday 00:00 UTC). */
   resetsAt: number
 }
 
@@ -45,7 +55,7 @@ interface RawKey {
     plan?: string
     plan_label?: string
     limits?: Record<string, number>
-    usage?: { tokens_today?: number; resets_at?: number }
+    usage?: { usd_this_week?: number; tokens_today?: number; resets_at?: number }
   }
 }
 
@@ -62,11 +72,14 @@ export async function fetchSynapseAccount(baseUrl: string, apiKey: string, fetch
     planLabel: d.plan_label ?? d.plan,
     limits: {
       requestsPerMinute: n('requests_per_minute'),
-      tokensPerDay: n('tokens_per_day'),
+      usdPerWeek: n('usd_per_week'),
+      pricePerMillion: n('price_per_million_usd'),
+      cachePricePerMillion: n('cache_price_per_million_usd'),
       maxOutputTokens: n('max_output_tokens'),
       maxConcurrent: n('max_concurrent'),
       maxContextTokens: n('max_context_tokens'),
     },
+    usdThisWeek: Number(d.usage?.usd_this_week ?? 0),
     tokensToday: Number(d.usage?.tokens_today ?? 0),
     resetsAt: Number(d.usage?.resets_at ?? 0) * 1000,
   }
