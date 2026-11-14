@@ -4986,6 +4986,11 @@ body.resizing * {
   }
 }
 
+.synapse-bar {
+  width: 140px;
+  flex: none;
+}
+
 /* ---------- Settings › Logs & performance ---------- */
 
 .res-meter {

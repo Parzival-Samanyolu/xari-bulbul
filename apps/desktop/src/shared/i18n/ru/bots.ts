@@ -378,6 +378,7 @@ export default {
   'bots.onboard.badge.local': 'Локально',
   'bots.onboard.provider.openrouter': 'Сотни моделей, многие бесплатные. Нужен бесплатный ключ.',
   'bots.onboard.provider.ollamaCloud': 'Открытые модели в облаке. Нужен бесплатный ключ.',
+  'bots.onboard.provider.synapse': 'synapse-2 от Samanyolu AI, которая делает и это приложение. Нужен бесплатный ключ с сайта Synapse.',
   'bots.onboard.provider.ollamaLocal': 'Запускает модели на этом компьютере через Ollama. Без ключа.',
   'bots.onboard.provider.lmstudio': 'Запускает модели на этом компьютере через LM Studio. Без ключа.',
   'bots.onboard.connected': 'подключён',

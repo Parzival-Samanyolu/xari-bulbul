@@ -1042,12 +1042,19 @@ export class Agent {
     return !!this.activeTools().find((t) => t.name === call.name)?.readOnly
   }
 
+  /** Subagents at once: the setting, but no more than the subagent model's provider serves at once for this key. */
+  private subagentSlots(): number {
+    const ref = this.settings.agent.subagents.model ?? this.model
+    const cap = this.registry.has(ref.providerId) ? this.registry.cachedModel(ref.providerId, ref.modelId)?.maxConcurrent : undefined
+    return Math.max(1, Math.min(this.settings.agent.subagents.maxParallel, cap ?? Infinity))
+  }
+
   /**
    * Runs calls concurrently (at most 8 at once, subagents limited to `subagents.maxParallel`),
    * but adds their results to history in the order the model asked for them.
    */
   private async runParallel(calls: ToolCall[], signal: AbortSignal) {
-    const taskSlots = semaphore(this.settings.agent.subagents.maxParallel)
+    const taskSlots = semaphore(this.subagentSlots())
     const anySlots = semaphore(8)
     let prev: Promise<void> = Promise.resolve()
     await Promise.all(

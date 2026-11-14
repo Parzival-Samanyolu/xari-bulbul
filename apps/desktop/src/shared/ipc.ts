@@ -454,6 +454,9 @@ export interface ProviderTestResult {
   models?: number
 }
 
+export type { SynapseAccount } from '@harness/core/synapse'
+
+
 export interface HarnessApi {
   getState(): Promise<AppState>
   settings: {
@@ -487,6 +490,8 @@ export interface HarnessApi {
     test(providerId: string): Promise<ProviderTestResult>
     /** Tries an endpoint that isn't saved yet. */
     probe(input: EndpointProbeInput): Promise<EndpointProbe>
+    /** The Synapse key's plan and today's tokens; null without a key or on an older server. */
+    synapseAccount(): Promise<import('@harness/core/synapse').SynapseAccount | null>
   }
   browser: {
     /** Closes running browsers and deletes the kept profile with its site logins. */

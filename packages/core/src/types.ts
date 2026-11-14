@@ -106,6 +106,8 @@ export interface ModelInfo {
   supportsTools: boolean
   /** Whether the model accepts image input; undefined when the provider doesn't say. */
   supportsImages?: boolean
+  /** Requests the provider serves at once for this key (Synapse plans); caps parallel subagents. */
+  maxConcurrent?: number
 }
 
 export interface Usage {

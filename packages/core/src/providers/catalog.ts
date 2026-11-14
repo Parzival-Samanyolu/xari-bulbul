@@ -27,7 +27,7 @@ const ORGS: Record<string, string> = {
   stepfun: 'stepfun', 'stepfun-ai': 'stepfun', bytedance: 'bytedance', 'bytedance-seed': 'bytedance', baidu: 'baidu',
   tencent: 'tencent', amazon: 'amazon', ai21: 'ai21', ai21labs: 'ai21', perplexity: 'perplexity', liquid: 'liquid',
   nousresearch: 'nousresearch', 'arcee-ai': 'arcee', allenai: 'allenai', poolside: 'poolside', inception: 'inception',
-  openrouter: 'openrouter',
+  openrouter: 'openrouter', 'samanyolu-ai': 'synapse', samanyolu: 'synapse',
 }
 
 /** For ids without an org prefix (Groq, Ollama, Cerebras): the model family names its maker. */
@@ -49,6 +49,7 @@ const FAMILIES: [RegExp, string][] = [
   [/^command/, 'cohere'],
   [/hermes/, 'nousresearch'],
   [/olmo/, 'allenai'],
+  [/^synapse-/, 'synapse'],
 ]
 
 /** The company that made a model, e.g. "meta" for NVIDIA's "meta/llama-3.2-11b-vision-instruct"; undefined if unknown. */

@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./catalog": "./src/providers/catalog.ts",
+    "./synapse": "./src/providers/synapse.ts",
     "./bots": "./src/bots/bots.ts",
     "./moa": "./src/moa/config.ts",
     "./gateway-senders": "./src/gateways/senders.ts",

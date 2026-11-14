@@ -274,6 +274,7 @@ function registerIpc() {
   handle('accounts.setKey', (providerId, accountId, key) => c.setAccountKey(providerId, accountId, key))
   handle('accounts.remove', (providerId, accountId) => c.removeAccount(providerId, accountId))
   handle('providers.test', (id) => c.testProvider(id))
+  handle('providers.synapseAccount', () => c.synapseAccount())
   handle('providers.probe', (input) => c.probeEndpoint(input))
   handle('chatgpt.signIn', (consent) => c.signInChatGpt((url) => shell.openExternal(url), !!consent))
   handle('chatgpt.cancel', () => c.cancelChatGptSignIn())
@@ -427,6 +428,9 @@ function registerIpc() {
 app.setName('Xarı Bülbül')
 // Windows attributes notifications and taskbar grouping to this id (the installer's appId).
 if (process.platform === 'win32') app.setAppUserModelId('dev.xaribulbul.app')
+// Separate profile for development/testing: HARNESS_DATA_DIR=/tmp/harness pnpm dev. Set before the
+// single-instance lock, which is per profile, so a test copy can run next to the installed app.
+if (process.env.HARNESS_DATA_DIR) app.setPath('userData', path.resolve(process.env.HARNESS_DATA_DIR))
 // One copy at a time: a second launch focuses the open window instead.
 if (!app.requestSingleInstanceLock()) app.quit()
 app.on('second-instance', () => {
@@ -435,8 +439,6 @@ app.on('second-instance', () => {
   win.show()
   win.focus()
 })
-// Separate profile for development/testing: HARNESS_DATA_DIR=/tmp/harness pnpm dev
-if (process.env.HARNESS_DATA_DIR) app.setPath('userData', path.resolve(process.env.HARNESS_DATA_DIR))
 
 // Uncaught errors in main, for share info. The monitor leaves Electron's own handling as it is.
 process.on('uncaughtExceptionMonitor', (err) => {

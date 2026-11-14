@@ -41,7 +41,7 @@ async function setup(script: ConstructorParameters<typeof MockProvider>[0], opts
     },
     onEvent: (e) => events.push(e),
   })
-  return { dir, agent, provider, events, asked, askedIds, usageTracker, settings }
+  return { dir, agent, provider, events, asked, askedIds, usageTracker, settings, registry }
 }
 
 describe('Agent loop', () => {
@@ -207,6 +207,31 @@ describe('Subagents', () => {
     expect(await agent.send('two things')).toBe('done')
     const results = agent.session.messages.filter((m) => m.role === 'tool').map((m) => m.role === 'tool' && m.toolCallId)
     expect(results.sort()).toEqual(['A', 'B'])
+  })
+
+  it('runs no more subagents at once than the provider serves for this key', async () => {
+    const { agent, provider, registry } = await setup([
+      [call('A', 'task', { description: 'a', prompt: 'a' }), call('B', 'task', { description: 'b', prompt: 'b' })],
+      [text('report')],
+      [text('report')],
+      [text('Both done.')],
+    ])
+    registry.seedCache('mock', (await provider.listModels()).map((m) => ({ ...m, maxConcurrent: 1 })))
+    let active = 0
+    let peak = 0
+    const chat = provider.chat.bind(provider)
+    provider.chat = async function* (req) {
+      active++
+      peak = Math.max(peak, active)
+      try {
+        await new Promise((r) => setTimeout(r, 5))
+        yield* chat(req)
+      } finally {
+        active--
+      }
+    }
+    expect(await agent.send('two things')).toBe('done')
+    expect(peak).toBe(1)
   })
 
   it('can be turned off', async () => {

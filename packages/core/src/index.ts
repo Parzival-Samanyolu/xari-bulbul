@@ -7,6 +7,7 @@ export { OpenAIResponsesProvider, responsesBody, responsesInput, CHATGPT_USAGE_U
 export { ChatGptAuth, ChatGptAuthError, CHATGPT_ISSUER, CHATGPT_SECRET_ID, type ChatGptStatus } from './auth/chatgpt.js'
 export { ProviderRegistry, type KeyLookup } from './providers/registry.js'
 export * from './providers/accounts.js'
+export * from './providers/synapse.js'
 export * from './tools/index.js'
 export * from './permissions/permissions.js'
 export * from './usage/tracker.js'

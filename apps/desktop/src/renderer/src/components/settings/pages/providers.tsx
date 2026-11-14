@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { AccountView, AppState, EndpointProbe, ProviderTestResult, Settings } from '../../../../../shared/ipc'
+import type { AccountView, AppState, EndpointProbe, ProviderTestResult, Settings, SynapseAccount } from '../../../../../shared/ipc'
 import { api } from '../../../lib/api'
 import { useFormat, useT } from '../../../lib/i18n'
 import { NumberField, Row, Section, TextField, Toggle } from '../../fields'
@@ -10,6 +10,7 @@ import { rich } from '../../../lib/rich'
 import { StatusDot } from './parts'
 import { errorText as clean } from '../../../lib/errors'
 import { ChatGptConnect } from '../../ChatGpt'
+import { SYNAPSE_PROVIDER_ID, SYNAPSE_SITE } from '@harness/core/synapse'
 
 type Provider = Settings['providers'][number]
 
@@ -105,6 +106,45 @@ export function AccountsPage({ app, save, onState, onError, go }: PageProps) {
 
 // ---------------------------------------------------------------- API keys
 
+/** Synapse's plan, today's tokens and limits, from the key's `/v1/key`. */
+function SynapsePlanRow({ ready }: { ready: boolean }) {
+  const { t } = useT()
+  const f = useFormat()
+  const [acct, setAcct] = useState<SynapseAccount | null | undefined>(undefined)
+  useEffect(() => {
+    if (!ready) return setAcct(undefined)
+    let live = true
+    api.providers.synapseAccount().then((a) => live && setAcct(a), () => live && setAcct(null))
+    return () => {
+      live = false
+    }
+  }, [ready])
+  if (!ready || acct === undefined) return null
+  const hint = acct
+    ? `${t('settings.providers.synapseUsage', {
+        plan: acct.planLabel,
+        used: f.num(acct.tokensToday),
+        total: f.num(acct.limits.tokensPerDay),
+        time: f.date(acct.resetsAt, { hour: '2-digit', minute: '2-digit' }),
+      })} ${t('settings.providers.synapseLimits', { context: f.num(acct.limits.maxContextTokens), concurrent: f.num(acct.limits.maxConcurrent) })}`
+    : t('settings.providers.synapseUnknown')
+  const share = acct && acct.limits.tokensPerDay > 0 ? Math.min(1, acct.tokensToday / acct.limits.tokensPerDay) : null
+  return (
+    <Row label={t('settings.providers.synapsePlan')} hint={hint} search="">
+      <div className="inline">
+        {share !== null && (
+          <span className="res-bar synapse-bar" aria-hidden="true">
+            <span className={share > 0.9 ? 'hot' : ''} style={{ width: `${Math.round(share * 100)}%` }} />
+          </span>
+        )}
+        <button className="link small" onClick={() => api.app.openExternal(`${SYNAPSE_SITE}/pricing`)}>
+          {t('settings.providers.synapsePlans')}
+        </button>
+      </div>
+    </Row>
+  )
+}
+
 function ProviderKeyRow({ p, index, app, save, onState, onError }: { p: Provider; index: number } & Pick<PageProps, 'app' | 'save' | 'onState' | 'onError'>) {
   const { t } = useT()
   const [open, setOpen] = useState(false)
@@ -188,6 +228,7 @@ function ProviderKeyRow({ p, index, app, save, onState, onError }: { p: Provider
               )}
             </div>
           </Row>
+          {p.id === SYNAPSE_PROVIDER_ID && <SynapsePlanRow ready={ready} />}
           {p.requiresKey && !plan && <ProviderAccounts p={p} index={index} accounts={accounts} save={save} onState={onState} onError={onError} />}
           {!plan && (
             <>

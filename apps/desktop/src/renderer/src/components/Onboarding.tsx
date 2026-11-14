@@ -40,10 +40,11 @@ const modeChoices = (t: T): { id: PermissionMode; label: string; text: string }[
 ]
 
 /** Where models come from: free and local options first. Other providers are in the list below them. */
-const PROVIDER_IDS = ['openrouter', 'chatgpt', 'ollama-cloud', 'ollama-local', 'lmstudio']
+const PROVIDER_IDS = ['openrouter', 'chatgpt', 'synapse', 'ollama-cloud', 'ollama-local', 'lmstudio']
 const providerChoices = (t: T): { id: string; badge: string; local: boolean; text: string }[] => [
   { id: 'openrouter', badge: t('bots.onboard.badge.freeModels'), local: false, text: t('bots.onboard.provider.openrouter') },
   { id: 'chatgpt', badge: t('bots.onboard.badge.chatgptPlan'), local: false, text: t('bots.onboard.provider.chatgpt') },
+  { id: 'synapse', badge: t('bots.onboard.badge.freeTier'), local: false, text: t('bots.onboard.provider.synapse') },
   { id: 'ollama-cloud', badge: t('bots.onboard.badge.freeTier'), local: false, text: t('bots.onboard.provider.ollamaCloud') },
   { id: 'ollama-local', badge: t('bots.onboard.badge.local'), local: true, text: t('bots.onboard.provider.ollamaLocal') },
   { id: 'lmstudio', badge: t('bots.onboard.badge.local'), local: true, text: t('bots.onboard.provider.lmstudio') },

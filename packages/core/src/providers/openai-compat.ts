@@ -7,6 +7,7 @@ import { readSseData } from './sse.js'
 import { ProviderError, type ChatRequest, type Provider, type StreamEvent } from './types.js'
 import { BATCH_STATUS, findJsonl, pollBatch } from './batch.js'
 import { openAIEffort, providerKind } from './effort.js'
+import { withSynapseDefaults } from './synapse.js'
 
 export interface OpenAICompatOptions {
   config: ProviderConfig
@@ -74,7 +75,7 @@ export class OpenAICompatProvider implements Provider {
         return NON_CHAT_GOOGLE.test(id) || RETIRED_GOOGLE.test(id) ? [] : [{ ...m, id, name: m.name ?? id }]
       })
       .filter((m) => !this.unavailable(m.id))
-      .map((m) => withOpenAiPrice(toModelInfo(this.id, m), this.config.baseUrl))
+      .map((m) => withSynapseDefaults(withOpenAiPrice(toModelInfo(this.id, m), this.config.baseUrl), this.config.baseUrl))
       .sort((a, b) => a.id.localeCompare(b.id))
   }
 
@@ -348,6 +349,7 @@ const UNAVAILABLE = new Map<string, Set<string>>()
 
 interface RawModel {
   id: string
+  max_concurrent?: number
   architecture?: { input_modalities?: string[] }
   created?: number
   name?: string
@@ -385,6 +387,7 @@ function toModelInfo(providerId: string, m: RawModel): ModelInfo {
     // Providers that don't advertise parameters (Ollama) are assumed to support tools.
     supportsTools: m.supported_parameters ? m.supported_parameters.includes('tools') : true,
     supportsImages: m.architecture?.input_modalities ? m.architecture.input_modalities.includes('image') : undefined,
+    ...(typeof m.max_concurrent === 'number' && m.max_concurrent > 0 ? { maxConcurrent: m.max_concurrent } : {}),
   }
 }
 

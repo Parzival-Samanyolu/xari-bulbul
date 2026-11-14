@@ -370,6 +370,7 @@ export default {
   'bots.onboard.badge.local': 'Yerel',
   'bots.onboard.provider.openrouter': 'Yüzlerce model, çoğu ücretsiz. Ücretsiz bir anahtar gerekir.',
   'bots.onboard.provider.ollamaCloud': 'Bulutta açık modeller. Ücretsiz bir anahtar gerekir.',
+  'bots.onboard.provider.synapse': "Bu uygulamayı da yapan Samanyolu AI'dan synapse-2. Synapse sitesinden ücretsiz bir anahtar gerekir.",
   'bots.onboard.provider.ollamaLocal': 'Modelleri bu bilgisayarda Ollama ile çalıştırır. Anahtar gerekmez.',
   'bots.onboard.provider.lmstudio': 'Modelleri bu bilgisayarda LM Studio ile çalıştırır. Anahtar gerekmez.',
   'bots.onboard.connected': 'bağlı',

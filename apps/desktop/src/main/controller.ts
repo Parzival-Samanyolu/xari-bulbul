@@ -122,6 +122,7 @@ import {
   type WhisperModelId,
   settingsPath,
 } from '@harness/core'
+import { fetchSynapseAccount, SYNAPSE_PROVIDER_ID, type SynapseAccount } from '@harness/core/synapse'
 import type { AccountView, AppState, AttachmentInput, BotAvatarRequest, BotRow, LobbyRow, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
 import { LocalModels } from './local-models'
 import { AppError, systemLanguages, tm } from './i18n'
@@ -549,6 +550,19 @@ export class AppController {
   dismissChatGptWelcome(): AppState {
     this.chatgpt.dismissWelcome()
     return this.state()
+  }
+
+  /** The Synapse key's plan and today's tokens, for Settings; null without a key or on an older server. */
+  async synapseAccount(): Promise<SynapseAccount | null> {
+    const config = this.settings.providers.find((p) => p.id === SYNAPSE_PROVIDER_ID)
+    const key = this.activeKey(SYNAPSE_PROVIDER_ID)
+    if (!config?.enabled || !key) return null
+    try {
+      return await fetchSynapseAccount(config.baseUrl, key, fetch, AbortSignal.timeout(10_000))
+    } catch (e) {
+      log.warn('synapse', `account: ${e instanceof Error ? e.message : String(e)}`)
+      return null
+    }
   }
 
   /** Key of the provider's active account, for one-off requests outside the registry (voice). */
