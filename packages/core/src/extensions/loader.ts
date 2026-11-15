@@ -48,6 +48,8 @@ export interface SlashCommand {
   file: string
   /** Id of the plugin it came with. */
   plugin?: string
+  /** Set for a command that runs a skill (`skillCommands`): the skill's name. */
+  skill?: string
 }
 
 /**
@@ -257,6 +259,30 @@ export async function loadExtensions(
 }
 
 /** `/review src/app.ts` → the command template with $ARGUMENTS filled in. Returns null if not a command. */
+/**
+ * One `/name` command per skill, so a skill can be started on purpose: `/humanizer this text`
+ * asks the agent to load the skill and follow it. Names that aren't a valid command, or that
+ * `taken` (commands and built-ins) already uses, get none; commands win.
+ */
+export function skillCommands(skills: Skill[], taken: Iterable<string>): SlashCommand[] {
+  const used = new Set(taken)
+  const out: SlashCommand[] = []
+  for (const s of skills) {
+    if (!/^[\w-]+$/.test(s.name) || used.has(s.name)) continue
+    used.add(s.name)
+    out.push({
+      name: s.name,
+      description: s.description,
+      template: `Use the "${s.name}" skill for this: load it with the skill tool first, then follow it.`,
+      source: s.source === 'project' ? 'project' : 'user',
+      file: s.file,
+      plugin: s.plugin,
+      skill: s.name,
+    })
+  }
+  return out
+}
+
 export function expandSlashCommand(input: string, commands: SlashCommand[]): string | null {
   const m = /^\/([\w-]+)(?:\s+([\s\S]*))?$/.exec(input.trim())
   if (!m) return null

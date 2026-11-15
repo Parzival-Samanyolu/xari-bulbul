@@ -18,7 +18,7 @@ import { AccountsPage, ApiKeysPage, CustomEndpointsPage } from './pages/provider
 import { HooksPage, SafetyPage } from './pages/safety'
 import { BrowserPage, ContextPage, MemoryPage, PasswordsPage, SpeechToTextPage, VoiceConversationPage } from './pages/system'
 import { TextToSpeechPage } from './pages/speech'
-import { ExtensionsPage, McpPage, SkillsPage, ToolsListPage, WebSearchPage } from './pages/tools'
+import { ExtensionsPage, FindSkillsPage, InstalledSkillsPage, McpPage, SkillCatalogPage, SlashCommandsPage, ToolsListPage, WebSearchPage } from './pages/tools'
 
 // The Settings tabs: one flat list. A tab shows one or more sections, each an existing page
 // component; a tab with several stacks them under their own headings. To add settings: write a
@@ -291,7 +291,6 @@ export const TABS: TabDef[] = [
         page: WebSearchPage,
         rows: [['settings.tools.searchWith', 'settings.kw.searchWith'], ['settings.tools.braveKey', 'settings.kw.searchKey'], ['settings.tools.tavilyKey', 'settings.kw.searchKey'], ['settings.tools.searxngUrl']],
       },
-      { id: 'tools.skills', label: 'settings.section.tools.skills', description: 'settings.section.tools.skills.desc', page: SkillsPage, rows: [['settings.tools.skills', 'settings.kw.skills'], ['settings.tools.slashCommands', 'settings.kw.slash']] },
       {
         id: 'tools.extensions',
         label: 'settings.section.tools.extensions',
@@ -309,11 +308,17 @@ export const TABS: TabDef[] = [
     sections: [{ id: 'tools.mcp', label: 'settings.section.tools.mcp', page: McpPage, rows: [['settings.tools.addServer', 'settings.kw.mcpAdd']] }],
   },
   {
-    id: 'plugins',
-    label: 'settings.tab.plugins',
+    id: 'skills',
+    label: 'settings.tab.skills',
     icon: 'plugins',
-    description: 'settings.tab.plugins.desc',
-    sections: [{ id: 'plugins', label: 'settings.section.plugins', page: PluginsPage, rows: [] }],
+    description: 'settings.tab.skills.desc',
+    sections: [
+      { id: 'skills.installed', label: 'settings.section.skills.installed', page: InstalledSkillsPage, rows: [['settings.tools.skills', 'settings.kw.skills']] },
+      { id: 'plugins', label: 'settings.section.plugins', description: 'settings.section.plugins.desc', page: PluginsPage, rows: [] },
+      { id: 'skills.catalog', label: 'settings.tools.skillCatalog', description: 'settings.tools.skillCatalogHint', page: SkillCatalogPage, rows: [] },
+      { id: 'skills.find', label: 'settings.tools.findSkills', description: 'settings.tools.findSkillsHint', page: FindSkillsPage, rows: [] },
+      { id: 'skills.commands', label: 'settings.tools.slashCommands', description: 'settings.tools.slashCommandsHint', page: SlashCommandsPage, rows: [['settings.tools.slashCommands', 'settings.kw.slash']] },
+    ],
   },
   {
     id: 'schedules',

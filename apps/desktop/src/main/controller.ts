@@ -45,6 +45,7 @@ import {
   assembleTools,
   builtinTools,
   expandSlashCommand,
+  skillCommands,
   imageFromData,
   loadAttachment,
   loadExtensions,
@@ -115,6 +116,7 @@ import {
   type FilePreview,
   type ImageAttachment,
   type LoadedExtensions,
+  type SlashCommand,
   type ModelRef,
   type PermissionAnswer,
   type PermissionMode,
@@ -1028,7 +1030,7 @@ export class AppController {
     this.agents.set(session.meta.id, running)
     this.registry.models(session.meta.model.providerId).catch(() => {})
     this.count('feature.schedule_run')
-    await running.agent.send(expandSlashCommand(s.prompt, ext.commands) ?? s.prompt)
+    await running.agent.send(expandSlashCommand(s.prompt, this.commandsOf(ext)) ?? s.prompt)
   }
 
   // ---------- gateways ----------
@@ -1183,6 +1185,13 @@ export class AppController {
     return out.sort((a, b) => b.updatedAt - a.updatedAt)
   }
 
+  /** A folder's slash commands, plus one per turned-on skill whose name is free. */
+  private commandsOf(ext: LoadedExtensions): SlashCommand[] {
+    const off = new Set(this.settings.tools.disabledSkills)
+    const taken = [...BUILTIN_COMMANDS.map((c) => c.name), ...ext.commands.map((c) => c.name)]
+    return [...ext.commands, ...skillCommands(ext.skills.filter((sk) => !off.has(sk.name)), taken)]
+  }
+
   /** The tools and skills a chat in `cwd` gets: that folder's extensions plus MCP tools. */
   private async toolsFor(cwd: string): Promise<{ tools: Tool[]; skills: LoadedExtensions['skills'] }> {
     if (cwd === this.workspace) return { tools: this.tools, skills: this.ext.skills }
@@ -1200,7 +1209,7 @@ export class AppController {
   private extensionsInfo(): ExtensionsInfo {
     return {
       tools: this.tools.map((t) => ({ name: t.name, description: t.description, source: t.source ?? 'builtin', readOnly: t.readOnly, kind: t.kind, plugin: t.plugin })),
-      commands: [...BUILTIN_COMMANDS, ...this.ext.commands.map((c) => ({ name: c.name, description: c.description, source: c.source, plugin: c.plugin }))],
+      commands: [...BUILTIN_COMMANDS, ...this.commandsOf(this.ext).map((c) => ({ name: c.name, description: c.description, source: c.source, plugin: c.plugin, skill: c.skill }))],
       errors: this.ext.errors,
       userDir: USER_EXT_DIR,
       projectDir: this.workspace ? projectExtDir(this.workspace) : null,
@@ -1244,6 +1253,7 @@ export class AppController {
         id: s.id,
         name: s.name,
         description: s.description,
+        category: s.category,
         repo: s.repo,
         license: s.license,
         scripts: s.scripts,
@@ -1874,7 +1884,7 @@ export class AppController {
     const agent = this.readyAgent()
     if (revert) this.count('feature.checkpoint_revert', { scope: 'edit' })
     this.chatsSentIn.add(agent.session.meta.id)
-    await agent.editAndResend(index, expandSlashCommand(text, this.ext.commands) ?? text, { revert })
+    await agent.editAndResend(index, expandSlashCommand(text, this.commandsOf(this.ext)) ?? text, { revert })
   }
 
   revert(at: number, file?: string): AppState {
@@ -1906,7 +1916,7 @@ export class AppController {
         else files.push(loaded.file)
       }
     }
-    const expanded = expandSlashCommand(text, this.ext.commands) ?? text
+    const expanded = expandSlashCommand(text, this.commandsOf(this.ext)) ?? text
     this.count('feature.chat_sent', { bot: !!activeBot(this.settings, this.agent!.session.meta.botId) })
     this.chatsSentIn.add(this.agent!.session.meta.id)
     await this.agent!.send(expanded, { files, images })

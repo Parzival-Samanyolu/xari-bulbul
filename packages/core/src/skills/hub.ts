@@ -24,11 +24,16 @@ export interface SkillSource {
   pin: string
 }
 
+/** Groups for the reviewed catalog, in the order Settings shows them. */
+export const SKILL_CATEGORIES = ['workflow', 'quality', 'design', 'frameworks', 'ai', 'writing', 'documents', 'skills'] as const
+export type SkillCategory = (typeof SKILL_CATEGORIES)[number]
+
 export interface CatalogSkill extends SkillSource {
   /** Also the folder name it installs under. */
   id: string
   name: string
   description: string
+  category: SkillCategory
   /** SPDX id. */
   license: string
   files: SkillFile[]

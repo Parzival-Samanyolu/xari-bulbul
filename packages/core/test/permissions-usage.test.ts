@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { compactionSplit } from '../src/context/compact.js'
 import { newSession, SessionStore } from '../src/sessions/store.js'
-import { expandSlashCommand } from '../src/extensions/loader.js'
+import { expandSlashCommand, skillCommands } from '../src/extensions/loader.js'
 import { Permissions, ruleFor, ruleMatches } from '../src/permissions/permissions.js'
 import { bashTool } from '../src/tools/bash.js'
 import { editFileTool } from '../src/tools/edit-file.js'
@@ -106,6 +106,14 @@ describe('slash commands', () => {
     expect(expandSlashCommand('/review src/a.ts', cmds)).toBe('Review src/a.ts carefully')
     expect(expandSlashCommand('/nope', cmds)).toBeNull()
     expect(expandSlashCommand('hello', cmds)).toBeNull()
+  })
+
+  it('adds a command per skill, leaving names commands already use', () => {
+    const skill = (name: string) => ({ name, description: `${name} skill`, dir: '/s', file: '/s/SKILL.md', source: 'user' as const })
+    const cmds = skillCommands([skill('humanizer'), skill('review'), skill('bad name')], ['review', 'clear'])
+    expect(cmds.map((c) => c.name)).toEqual(['humanizer'])
+    expect(cmds[0].skill).toBe('humanizer')
+    expect(expandSlashCommand('/humanizer fix this text', cmds)).toBe('Use the "humanizer" skill for this: load it with the skill tool first, then follow it.\n\nfix this text')
   })
 })
 

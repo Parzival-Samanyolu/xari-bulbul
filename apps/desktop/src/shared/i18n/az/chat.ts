@@ -99,6 +99,7 @@ export default {
   'chat.slash.clear': 'Yeni söhbət başlat',
   'chat.slash.model': 'Model seçimini aç',
   'chat.slash.mode': 'Növbəti icazə rejiminə keç',
+  'chat.slash.skillBadge': 'bacarıq',
   'chat.composer.message': 'Mesaj',
   'chat.composer.lobbyRunning': 'Söhbətə qoşulun və ya onları dayandırmaq üçün Esc basın',
   'chat.composer.lobbyIdle': '{name} üçün mesaj. Bir bota əvvəlcə müraciət etmək üçün @ad yazın',

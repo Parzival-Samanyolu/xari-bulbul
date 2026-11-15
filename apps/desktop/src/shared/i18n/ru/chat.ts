@@ -125,6 +125,7 @@ export default {
   'chat.slash.clear': 'Начать новый чат',
   'chat.slash.model': 'Открыть выбор модели',
   'chat.slash.mode': 'Переключить режим разрешений',
+  'chat.slash.skillBadge': 'навык',
   'chat.composer.message': 'Сообщение',
   'chat.composer.lobbyRunning': 'Вмешайтесь или нажмите Esc, чтобы остановить их',
   'chat.composer.lobbyIdle': 'Сообщение в {name}. Напишите @имя, чтобы сначала спросить конкретного бота',

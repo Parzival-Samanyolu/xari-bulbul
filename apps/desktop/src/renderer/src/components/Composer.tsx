@@ -271,7 +271,7 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
             <button key={c.name} className={i === sel ? 'sel' : ''} onMouseEnter={() => setSel(i)} onClick={() => (c.source === 'builtin' ? submit(`/${c.name}`) : setText(`/${c.name} `))}>
               <span className="slash-name">/{c.name}</span>
               <span className="muted">{c.source === 'builtin' && c.name in BUILTIN_DESCRIPTIONS ? t(BUILTIN_DESCRIPTIONS[c.name as keyof typeof BUILTIN_DESCRIPTIONS]) : c.description}</span>
-              {c.source !== 'builtin' && <span className="badge">{c.source}</span>}
+              {c.source !== 'builtin' && <span className="badge">{c.skill ? t('chat.slash.skillBadge') : c.source}</span>}
             </button>
           ))}
         </div>

@@ -95,6 +95,7 @@ export default {
   'chat.slash.clear': 'Start a new chat',
   'chat.slash.model': 'Open the model switcher',
   'chat.slash.mode': 'Cycle the permission mode',
+  'chat.slash.skillBadge': 'skill',
   'chat.composer.message': 'Message',
   'chat.composer.lobbyRunning': 'Jump in, or press Esc to stop them',
   'chat.composer.lobbyIdle': 'Message {name}. @name a bot to ask it first',

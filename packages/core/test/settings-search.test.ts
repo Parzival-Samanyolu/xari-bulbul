@@ -48,7 +48,7 @@ describe('settings search', () => {
   })
 
   it('finds a translated section by its English name', () => {
-    const hit = tree.searchSettings('slash commands', 'ru', 50).find((h) => h.sectionId === 'tools.skills' && h.rows.length)
+    const hit = tree.searchSettings('slash commands', 'ru', 50).find((h) => h.sectionId === 'skills.commands' && h.rows.length)
     expect(hit?.label).toBe('Слэш-команды')
     // The page's Section sets data-row to the English title, which search tries after the translated one.
     expect(hit?.rows).toContain('Slash commands')

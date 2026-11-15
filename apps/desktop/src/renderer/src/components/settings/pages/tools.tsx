@@ -331,66 +331,79 @@ export function McpPage({ app, save, onState, onError }: PageProps) {
 
 // ---------------------------------------------------------------- Skills & commands
 
-export function SkillsPage({ app, save, onState, onError }: PageProps) {
+/** Skills found on disk, each with an on/off switch. */
+export function InstalledSkillsPage({ app, save, onState, onError }: PageProps) {
   const { t } = useT()
-  const ext = app.extensions
   const off = new Set(app.settings.tools.disabledSkills)
   const setOn = (name: string, on: boolean) =>
     save((st) => ((st.tools.disabledSkills = on ? st.tools.disabledSkills.filter((n) => n !== name) : [...new Set([...st.tools.disabledSkills, name])]), st))
+  // A skill takes the category of the catalog skill with its name; the rest go under Other, last.
+  const categoryOf = new Map(app.skillCatalog.map((c) => [c.name, c.category]))
+  const commands = new Set(app.extensions.commands.filter((c) => c.skill).map((c) => c.skill))
+  const order = [...new Set(app.skillCatalog.map((c) => c.category)), 'other' as const]
+  const groups = order.map((id) => ({ id, skills: app.skills.filter((s) => (categoryOf.get(s.name) ?? 'other') === id) })).filter((g) => g.skills.length)
   return (
-    <>
-      <Section
-        title={t('settings.tools.skills')}
-        search="Skills"
-        description={rich(t('settings.tools.skillsIntro'), {
-          file: <code>SKILL.md</code>,
-          skillsDir: <code>skills/</code>,
-          projectDir: <code>.harness/</code>,
-          claudeDir: <code>~/.claude/skills</code>,
-        })}
-      >
-        {app.skills.length === 0 ? (
-          <p className="muted small">{t('settings.tools.noSkills')}</p>
-        ) : (
-          <div className="tool-list">
-            {app.skills.map((s) => (
-              <div key={s.dir} className={`tool-item${off.has(s.name) ? ' is-off' : ''}`}>
-                <Toggle label={t('settings.tools.enableSkill', { name: s.name })} value={!off.has(s.name)} onChange={(v) => setOn(s.name, v)} />
-                <code>{s.name}</code>
-                <span className="badge">{sourceText(t, s.source, s.plugin)}</span>
-                <SkillTokensBadge tokens={s.tokens} />
-                <span className="muted small tool-desc" title={s.description}>
-                  {s.description}
-                </span>
-                <button className="btn ghost" aria-label={t('settings.tools.openSkillFolder', { name: s.name })} onClick={() => api.app.openPath(s.dir)}>
-                  {t('settings.parts.openFolder')}
-                </button>
-                {s.source !== 'claude' && !s.plugin && (
-                  <button className="btn ghost danger" aria-label={t('settings.tools.deleteSkillLabel', { name: s.name })} onClick={() => confirm(t('settings.tools.deleteSkillConfirm', { name: s.name })) && api.skills.remove(s.dir).then(onState, onError)}>
-                    {t('common.delete')}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </Section>
-      <SkillCatalog app={app} onState={onState} onError={onError} />
-      <SkillSearch onState={onState} onError={onError} />
-      <Section title={t('settings.tools.slashCommands')} search="Slash commands" description={t('settings.tools.slashCommandsHint')}>
-        <div className="tool-list">
-          {ext.commands.map((c) => (
-            <div key={c.name} className="tool-item">
-              <code>/{c.name}</code>
-              <span className="badge">{sourceText(t, c.source, c.plugin)}</span>
-              <span className="muted small tool-desc" title={c.description}>
-                {c.description}
-              </span>
+    <Section
+      search="Skills"
+      description={rich(t('settings.tools.skillsIntro'), {
+        file: <code>SKILL.md</code>,
+        skillsDir: <code>skills/</code>,
+        projectDir: <code>.harness/</code>,
+        claudeDir: <code>~/.claude/skills</code>,
+      })}
+    >
+      {app.skills.length === 0 ? (
+        <p className="muted small">{t('settings.tools.noSkills')}</p>
+      ) : (
+        groups.map((g) => (
+          <div key={g.id} className="skill-group">
+            <div className="skill-group-head">
+              <h4>{t(`settings.skills.cat.${g.id}`)}</h4>
             </div>
-          ))}
-        </div>
-      </Section>
-    </>
+            <div className="tool-list">
+              {g.skills.map((s) => (
+                <div key={s.dir} className={`tool-item${off.has(s.name) ? ' is-off' : ''}`}>
+                  <Toggle label={t('settings.tools.enableSkill', { name: s.name })} value={!off.has(s.name)} onChange={(v) => setOn(s.name, v)} />
+                  <code title={commands.has(s.name) ? t('settings.tools.skillCommandHint', { name: s.name }) : undefined}>{commands.has(s.name) ? `/${s.name}` : s.name}</code>
+                  <span className="badge">{sourceText(t, s.source, s.plugin)}</span>
+                  <SkillTokensBadge tokens={s.tokens} />
+                  <span className="muted small tool-desc" title={s.description}>
+                    {s.description}
+                  </span>
+                  <button className="btn ghost" aria-label={t('settings.tools.openSkillFolder', { name: s.name })} onClick={() => api.app.openPath(s.dir)}>
+                    {t('settings.parts.openFolder')}
+                  </button>
+                  {s.source !== 'claude' && !s.plugin && (
+                    <button className="btn ghost danger" aria-label={t('settings.tools.deleteSkillLabel', { name: s.name })} onClick={() => confirm(t('settings.tools.deleteSkillConfirm', { name: s.name })) && api.skills.remove(s.dir).then(onState, onError)}>
+                      {t('common.delete')}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))
+      )}
+    </Section>
+  )
+}
+
+export function SlashCommandsPage({ app }: PageProps) {
+  const { t } = useT()
+  return (
+    <Section search="Slash commands">
+      <div className="tool-list">
+        {app.extensions.commands.filter((c) => !c.skill).map((c) => (
+          <div key={c.name} className="tool-item">
+            <code>/{c.name}</code>
+            <span className="badge">{sourceText(t, c.source, c.plugin)}</span>
+            <span className="muted small tool-desc" title={c.description}>
+              {c.description}
+            </span>
+          </div>
+        ))}
+      </div>
+    </Section>
   )
 }
 
@@ -472,43 +485,52 @@ function SkillTokensBadge({ tokens }: { tokens: { listed: number; loaded: number
 
 const kb = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`)
 
-/** Reviewed skills from public repos, installed into ~/.harness/skills in one click. */
-function SkillCatalog({ app, onState, onError }: { app: AppState; onState: PageProps['onState']; onError: PageProps['onError'] }) {
+/** Reviewed skills from public repos, grouped by category, installed into ~/.harness/skills in one click. */
+export function SkillCatalogPage({ app, onState, onError }: PageProps) {
   const { t } = useT()
-  if (!app.skillCatalog.length) return null
   const busy = app.skillCatalog.some((s) => s.busy)
+  // The catalog comes sorted by category.
+  const groups = [...new Set(app.skillCatalog.map((s) => s.category))].map((c) => ({ id: c, skills: app.skillCatalog.filter((s) => s.category === c) }))
   return (
-    <Section title={t('settings.tools.skillCatalog')} search="Get skills catalog" description={t('settings.tools.skillCatalogHint')}>
-      <div className="tool-list">
-        {app.skillCatalog.map((s) => (
-          <div key={s.id} className="tool-item">
-            <code>{s.name}</code>
-            <span className="badge">{s.repo}</span>
-            <span className="badge">{s.license}</span>
-            {s.scripts && <span className="badge" title={t('settings.tools.skillScriptsHint')}>{t('settings.tools.skillScripts')}</span>}
-            <SkillTokensBadge tokens={s.tokens} />
-            <span className="muted small tool-desc" title={s.description}>
-              {s.description}
-            </span>
-            <button className="btn ghost" aria-label={t('settings.tools.viewSkillLabel', { name: s.name })} onClick={() => api.app.openExternal(s.treeUrl)}>
-              {t('settings.tools.viewSkill')}
-            </button>
-            {s.installed && !s.update ? (
-              <span className="muted small">{t('settings.tools.skillInstalled')}</span>
-            ) : (
-              <button className="btn" disabled={busy} aria-label={t(s.update ? 'settings.tools.updateSkillLabel' : 'settings.tools.installSkillLabel', { name: s.name })} onClick={() => api.skills.install(s.id).then(onState, onError)}>
-                {s.busy ? t('settings.tools.skillInstalling') : t(s.update ? 'settings.tools.updateSkill' : 'settings.tools.installSkill')}
-              </button>
-            )}
+    <>
+      {groups.map((g) => (
+        <Section key={g.id}>
+          <div className="skill-group-head">
+            <h4>{t(`settings.skills.cat.${g.id}`)}</h4>
+            <span className="muted small">{t('settings.skills.catCount', { installed: g.skills.filter((s) => s.installed).length, total: g.skills.length })}</span>
           </div>
-        ))}
-      </div>
-    </Section>
+          <div className="tool-list">
+            {g.skills.map((s) => (
+              <div key={s.id} className="tool-item">
+                <code>{s.name}</code>
+                <span className="badge">{s.repo}</span>
+                <span className="badge">{s.license}</span>
+                {s.scripts && <span className="badge" title={t('settings.tools.skillScriptsHint')}>{t('settings.tools.skillScripts')}</span>}
+                <SkillTokensBadge tokens={s.tokens} />
+                <span className="muted small tool-desc" title={s.description}>
+                  {s.description}
+                </span>
+                <button className="btn ghost" aria-label={t('settings.tools.viewSkillLabel', { name: s.name })} onClick={() => api.app.openExternal(s.treeUrl)}>
+                  {t('settings.tools.viewSkill')}
+                </button>
+                {s.installed && !s.update ? (
+                  <span className="muted small">{t('settings.tools.skillInstalled')}</span>
+                ) : (
+                  <button className="btn" disabled={busy} aria-label={t(s.update ? 'settings.tools.updateSkillLabel' : 'settings.tools.installSkillLabel', { name: s.name })} onClick={() => api.skills.install(s.id).then(onState, onError)}>
+                    {s.busy ? t('settings.tools.skillInstalling') : t(s.update ? 'settings.tools.updateSkill' : 'settings.tools.installSkill')}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </Section>
+      ))}
+    </>
   )
 }
 
 /** Any public skill on GitHub: search tagged repos, or paste a repo or folder link. Not reviewed. */
-function SkillSearch({ onState, onError }: { onState: PageProps['onState']; onError: PageProps['onError'] }) {
+export function FindSkillsPage({ onState, onError }: PageProps) {
   const { t } = useT()
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(false)
@@ -581,7 +603,7 @@ function SkillSearch({ onState, onError }: { onState: PageProps['onState']; onEr
     )
 
   return (
-    <Section title={t('settings.tools.findSkills')} search="Find skills GitHub search" description={t('settings.tools.findSkillsHint')}>
+    <Section search="Find skills GitHub search">
       <div className="inline">
         <input
           className="grow"

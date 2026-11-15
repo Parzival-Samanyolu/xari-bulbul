@@ -8,74 +8,102 @@
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import { installSkill, listRepoSkills, skillTokens, type CatalogSkill } from '../src/skills/hub.js'
+import { SKILL_CATALOG as PREVIOUS } from '../src/skills/catalog.js'
+import { installSkill, listRepoSkills, skillTokens, type CatalogSkill, type SkillCategory, SKILL_CATEGORIES } from '../src/skills/hub.js'
 
-/** Repo, the folders to take (each a skill folder, or a folder of skills), and the license to show. */
+/** Repo, the folders to take (each a skill folder, or a folder of skills), their group, and the license to show. A repo may appear under several groups. */
 interface Pick {
   repo: string
+  category: SkillCategory
   skills: string[]
   /** SPDX id; required, because GitHub's guess can be wrong or missing for skill repos. */
   license: string
 }
 
+// anthropics/skills: the Office skills moved to Apache-2.0 on 2026-11-06 (commit 2c5958ec); pin
+// after that. Skills there without their own LICENSE.txt (doc-coauthoring) are left out: the repo
+// has no root license. vercel-labs/agent-skills: MIT as declared in the README and each SKILL.md
+// (the repo has no LICENSE file).
 export const PICKS: Pick[] = [
-  {
-    repo: 'anthropics/skills',
-    // The Office skills moved to Apache-2.0 on 2026-11-06 (commit 2c5958ec); pin after that.
-    skills: ['skills/docx', 'skills/pdf', 'skills/pptx', 'skills/xlsx', 'skills/frontend-design', 'skills/mcp-builder', 'skills/skill-creator', 'skills/webapp-testing', 'skills/theme-factory'],
-    license: 'Apache-2.0',
-  },
+  // Plan and ship
   {
     repo: 'obra/superpowers',
-    skills: [
-      'skills/systematic-debugging',
-      'skills/test-driven-development',
-      'skills/brainstorming',
-      'skills/writing-plans',
-      'skills/executing-plans',
-      'skills/verification-before-completion',
-      'skills/requesting-code-review',
-      'skills/receiving-code-review',
-      'skills/using-git-worktrees',
-      'skills/writing-skills',
-      'skills/finishing-a-development-branch',
-    ],
+    category: 'workflow',
+    skills: ['skills/brainstorming', 'skills/writing-plans', 'skills/executing-plans', 'skills/using-git-worktrees', 'skills/finishing-a-development-branch'],
+    license: 'MIT',
+  },
+  { repo: 'addyosmani/agent-skills', category: 'workflow', skills: ['skills/spec-driven-development', 'skills/git-workflow-and-versioning'], license: 'MIT' },
+  { repo: 'mattpocock/skills', category: 'workflow', skills: ['skills/engineering/pr', 'skills/misc/setup-pre-commit', 'skills/productivity/grill-me', 'skills/productivity/handoff'], license: 'MIT' },
+  // Test, debug and review
+  {
+    repo: 'obra/superpowers',
+    category: 'quality',
+    skills: ['skills/systematic-debugging', 'skills/test-driven-development', 'skills/verification-before-completion', 'skills/requesting-code-review', 'skills/receiving-code-review'],
     license: 'MIT',
   },
   {
     repo: 'addyosmani/agent-skills',
+    category: 'quality',
     skills: [
       'skills/code-review-and-quality',
       'skills/debugging-and-error-recovery',
-      'skills/git-workflow-and-versioning',
       'skills/security-and-hardening',
       'skills/api-and-interface-design',
       'skills/performance-optimization',
-      'skills/spec-driven-development',
-      'skills/documentation-and-adrs',
       'skills/code-simplification',
     ],
     license: 'MIT',
   },
+  { repo: 'mattpocock/skills', category: 'quality', skills: ['skills/engineering/tdd', 'skills/engineering/code-review', 'skills/engineering/improve-codebase-architecture'], license: 'MIT' },
+  { repo: 'anthropics/skills', category: 'quality', skills: ['skills/webapp-testing'], license: 'Apache-2.0' },
+  // Design and UI
+  { repo: 'anthropics/skills', category: 'design', skills: ['skills/frontend-design', 'skills/theme-factory', 'skills/canvas-design', 'skills/algorithmic-art', 'skills/web-artifacts-builder'], license: 'Apache-2.0' },
+  { repo: 'vercel-labs/agent-skills', category: 'design', skills: ['skills/web-design-guidelines'], license: 'MIT' },
   {
-    repo: 'mattpocock/skills',
-    skills: ['skills/engineering/tdd', 'skills/engineering/code-review', 'skills/engineering/improve-codebase-architecture', 'skills/engineering/pr', 'skills/misc/setup-pre-commit', 'skills/productivity/grill-me', 'skills/productivity/handoff'],
+    repo: 'emilkowalski/skills',
+    category: 'design',
+    skills: ['skills/emil-design-eng', 'skills/animate', 'skills/improve-animations', 'skills/review-animations', 'skills/animation-performance', 'skills/apple-design'],
     license: 'MIT',
   },
+  // Frameworks and platforms
   {
     repo: 'vercel-labs/agent-skills',
-    // MIT as declared in the README and each SKILL.md (the repo has no LICENSE file).
-    skills: ['skills/react-best-practices', 'skills/composition-patterns', 'skills/web-design-guidelines', 'skills/react-native-skills', 'skills/react-view-transitions'],
+    category: 'frameworks',
+    skills: ['skills/react-best-practices', 'skills/composition-patterns', 'skills/react-native-skills', 'skills/react-view-transitions', 'skills/deploy-to-vercel'],
     license: 'MIT',
   },
-  { repo: 'supabase/agent-skills', skills: ['skills/supabase-postgres-best-practices'], license: 'MIT' },
+  { repo: 'supabase/agent-skills', category: 'frameworks', skills: ['skills/supabase', 'skills/supabase-postgres-best-practices'], license: 'MIT' },
+  // AI and machine learning
+  { repo: 'anthropics/skills', category: 'ai', skills: ['skills/claude-api', 'skills/mcp-builder'], license: 'Apache-2.0' },
   {
     repo: 'huggingface/skills',
-    skills: ['skills/hf-cli', 'skills/huggingface-datasets', 'skills/huggingface-gradio', 'skills/transformers-js', 'skills/huggingface-papers', 'skills/huggingface-tool-builder'],
+    category: 'ai',
+    skills: [
+      'skills/hf-cli',
+      'skills/huggingface-datasets',
+      'skills/huggingface-gradio',
+      'skills/huggingface-spaces',
+      'skills/huggingface-local-models',
+      'skills/huggingface-llm-trainer',
+      'skills/trl-training',
+      'skills/transformers-js',
+      'skills/huggingface-papers',
+      'skills/huggingface-tool-builder',
+    ],
     license: 'Apache-2.0',
   },
-  { repo: 'emilkowalski/skills', skills: ['skills/emil-design-eng', 'skills/animation-performance'], license: 'MIT' },
-  { repo: 'blader/humanizer', skills: [''], license: 'MIT' },
+  // Writing
+  { repo: 'blader/humanizer', category: 'writing', skills: [''], license: 'MIT' },
+  { repo: 'anthropics/skills', category: 'writing', skills: ['skills/internal-comms', 'skills/brand-guidelines'], license: 'Apache-2.0' },
+  { repo: 'vercel-labs/agent-skills', category: 'writing', skills: ['skills/writing-guidelines'], license: 'MIT' },
+  { repo: 'addyosmani/agent-skills', category: 'writing', skills: ['skills/documentation-and-adrs'], license: 'MIT' },
+  { repo: 'mattpocock/skills', category: 'writing', skills: ['skills/productivity/teach'], license: 'MIT' },
+  // Office documents
+  { repo: 'anthropics/skills', category: 'documents', skills: ['skills/docx', 'skills/pdf', 'skills/pptx', 'skills/xlsx'], license: 'Apache-2.0' },
+  // Making skills
+  { repo: 'anthropics/skills', category: 'skills', skills: ['skills/skill-creator'], license: 'Apache-2.0' },
+  { repo: 'obra/superpowers', category: 'skills', skills: ['skills/writing-skills'], license: 'MIT' },
+  { repo: 'mattpocock/skills', category: 'skills', skills: ['skills/productivity/writing-for-agents'], license: 'MIT' },
 ]
 
 const token = process.env.GITHUB_TOKEN
@@ -97,7 +125,7 @@ try {
         const files = await installSkill(s, { skillsDir: tmp, fetch: authed })
         const description = s.description.replace(/\s+/g, ' ').trim()
         const md = files.find((f) => f.path === 'SKILL.md')?.size ?? 0
-        out.push({ id: s.id, name: s.name, description, repo: s.repo, path: s.path, pin: s.pin, license: pick.license, files: files.map(({ path, sha256 }) => ({ path, sha256 })), scripts: s.scripts, tokens: skillTokens(s.name, description, md) })
+        out.push({ id: s.id, name: s.name, description, category: pick.category, repo: s.repo, path: s.path, pin: s.pin, license: pick.license, files: files.map(({ path, sha256 }) => ({ path, sha256 })), scripts: s.scripts, tokens: skillTokens(s.name, description, md) })
         console.log(`${s.id.padEnd(32)} ${pick.repo}/${s.path} (${files.length} files)`)
       }
     }
@@ -105,6 +133,15 @@ try {
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true })
 }
+
+// A skill whose files didn't change keeps its old pin, so installed copies don't show an update.
+for (const s of out) {
+  const was = PREVIOUS.find((p) => p.id === s.id && p.repo === s.repo && p.path === s.path)
+  if (was && JSON.stringify(was.files) === JSON.stringify(s.files)) s.pin = was.pin
+}
+
+// Group order in Settings, keeping the order of PICKS within a group.
+out.sort((a, b) => SKILL_CATEGORIES.indexOf(a.category) - SKILL_CATEGORIES.indexOf(b.category))
 
 const target = path.join(import.meta.dirname, '../src/skills/catalog.ts')
 const head = fs.readFileSync(target, 'utf8').split('export const SKILL_CATALOG')[0]

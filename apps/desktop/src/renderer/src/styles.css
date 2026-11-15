@@ -5415,3 +5415,18 @@ body.resizing * {
 .tool-item.is-off code {
   color: var(--muted);
 }
+
+/* A category of the reviewed skill catalog: its name and how many of its skills are installed. */
+.skill-group-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.skill-group-head h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.skill-group + .skill-group {
+  margin-top: 14px;
+}

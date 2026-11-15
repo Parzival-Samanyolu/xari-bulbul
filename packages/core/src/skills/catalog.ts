@@ -5,981 +5,651 @@ import type { CatalogSkill } from './hub.js'
 
 export const SKILL_CATALOG: CatalogSkill[] = [
   {
-    "id": "docx",
-    "name": "docx",
-    "description": "Use this skill whenever the user wants to create, read, edit, or manipulate Word documents (.docx files) or Word templates (.dotx files). Triggers include: any mention of 'Word doc', 'word document', '.docx', '.dotx', or requests to produce professional documents with formatting like tables of contents, headings, page numbers, or letterheads. Also use when extracting or reorganizing content from .docx or .dotx files, inserting or replacing images in documents, performing find-and-replace in Word files, working with tracked changes or comments, or converting content into a polished Word document. If the user asks for a 'report', 'memo', 'letter', 'template', or similar deliverable as a Word or .docx file, use this skill. Do NOT use for PDFs, spreadsheets, Google Docs, or general coding tasks unrelated to document generation.",
-    "repo": "anthropics/skills",
-    "path": "skills/docx",
-    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
-    "license": "Apache-2.0",
+    "id": "brainstorming",
+    "name": "brainstorming",
+    "description": "You MUST use this before any creative work - creating features, building components, adding functionality, modifying behavior, or planning anything new, in software or out of it (a talk, a business, a renovation).",
+    "category": "workflow",
+    "repo": "obra/superpowers",
+    "path": "skills/brainstorming",
+    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "license": "MIT",
     "files": [
       {
-        "path": "LICENSE.txt",
-        "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
-      },
-      {
         "path": "SKILL.md",
-        "sha256": "e094096faf2861e4dbed2dd4ba1960dbc1a137f8a71403b22bf1e4df41b31051"
+        "sha256": "2c9ca71f94886f9ca9f4aef055f7cafb3e1a9bdf3aeebf8f4cb547c69405d207"
       },
       {
-        "path": "scripts/__init__.py",
-        "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+        "path": "builder-check-prompt.md",
+        "sha256": "36d51a4723d6f0a3ce5811a0ea3b3a8424f07533947e1355f5d8cb8cce40c55e"
       },
       {
-        "path": "scripts/accept_changes.py",
-        "sha256": "0c991d2bc7304a1248e9f3bf9b1498f0b6e76641fc457e7cbd73c99b4eef3a74"
+        "path": "scripts/frame-template.html",
+        "sha256": "6a8a4e58bd6a44b904e2e3c57de774481d909204597e1498de53f1b2fecc4c4e"
       },
       {
-        "path": "scripts/comment.py",
-        "sha256": "37d116e5f56bb142b208c6c6a4bbcf960495abf470ddb7c6675ccfac864ba3d7"
+        "path": "scripts/helper.js",
+        "sha256": "43c6d69954a46ec34a2a262bcc62a9a7e83e839c739f199cb72646d397c686e3"
       },
       {
-        "path": "scripts/merge_runs.py",
-        "sha256": "3ab367fd7fba4647943d0aa5e65203b15458551410f5ffc821d902616a4b9f40"
+        "path": "scripts/server.cjs",
+        "sha256": "763abf96510e0b892a1141397b31aa82ef900cf87ed34dde94bc8782baf4a7ca"
       },
       {
-        "path": "scripts/office/helpers/__init__.py",
-        "sha256": "5c456ffc522900399b5f9402f92d66aaf2d9f87655d236c69f60bf07f4fd7c9b"
+        "path": "scripts/start-server.sh",
+        "sha256": "314dd68dc00e8dd94c7491aca8a5f004c7fddffc161e2b07482f29f48d13659a"
       },
       {
-        "path": "scripts/office/helpers/pptx_chart.py",
-        "sha256": "aed734e9a6c743ae712fc228c868bf0f6abcfb6a53549eefb19081b15d240fda"
+        "path": "scripts/stop-server.sh",
+        "sha256": "0b5ccbbd57f62d3ed88993f7940b5ee0e5c0fc9b21c550c623da4f6292e47daf"
       },
       {
-        "path": "scripts/office/helpers/pptx_slide.py",
-        "sha256": "06fe06953bf038826b85ecc142f4dc9299a37fa0c4e4dd9b00b10486df33524d"
-      },
-      {
-        "path": "scripts/office/helpers/pptx_theme.py",
-        "sha256": "ebb54c56e9c13807f5f98f0cae22d47cdd0162da8525eaa664e3f2c8c8d6bb03"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-chart.xsd",
-        "sha256": "41b93bd8857cc68b1e43be2806a872d736a9bdd6566900062d8fdb57d7bbb354"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-chartDrawing.xsd",
-        "sha256": "3fd0586f2637b98bb9886f0e0b67d89e1cc987c2d158cc7deb5f5b9890ced412"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-diagram.xsd",
-        "sha256": "29b254ee0d10414a8504b5a08149c7baec35a60d5ff607d6b3f492aa36815f40"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-lockedCanvas.xsd",
-        "sha256": "5cb76dabd8b97d1e9308a1700b90c20139be4d50792d21a7f09789f5cccd6026"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-main.xsd",
-        "sha256": "5375417f0f5394b8dd1a7035b9679151f19a6b65df309dec10cfb4a420cb00e9"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-picture.xsd",
-        "sha256": "5d389d42befbebd91945d620242347caecd3367f9a3a7cf8d97949507ae1f53c"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-spreadsheetDrawing.xsd",
-        "sha256": "b4532b6d258832953fbb3ee4c711f4fe25d3faf46a10644b2505f17010d01e88"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-wordprocessingDrawing.xsd",
-        "sha256": "bdad416b096b61d37b71603b2c949484f9070c830bdaeba93bf35e15c8900614"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/pml.xsd",
-        "sha256": "d173c3e5d61e42e2e3a97226c632fd2ab7cc481fc4e492365b87024ab546daff"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-additionalCharacteristics.xsd",
-        "sha256": "3c6709101c6aaa82888df5d8795c33f9e857196790eb320d9194e64be2b6bdd8"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-bibliography.xsd",
-        "sha256": "0b364451dc36a48dd6dae0f3b6ada05fd9b71e5208211f8ee5537d7e51a587e2"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-commonSimpleTypes.xsd",
-        "sha256": "e2abacbb9a55ce1365f8961bc1b1395bbc811e512b111000d8c333f98458dece"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlDataProperties.xsd",
-        "sha256": "0ef4bb354ff44b923564c4ddbdda5987919d220225129ec94614a618ceafc281"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlSchemaProperties.xsd",
-        "sha256": "0d103b99a4a8652f8871552a69d42d2a3760ac6a5e3ef02d979c4273257ff6a4"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesCustom.xsd",
-        "sha256": "9c085407751b9061c1f996f6c39ce58451be22a8d334f09175f0e89e42736285"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesExtended.xsd",
-        "sha256": "bc92e36ccd233722d4c5869bec71ddc7b12e2df56059942cce5a39065cc9c368"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesVariantTypes.xsd",
-        "sha256": "7b5b7413e2c895b1e148e82e292a117d53c7ec65b0696c992edca57b61b4a74b"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-math.xsd",
-        "sha256": "3213ef1631606250f5010b42cad7ef716f7c59426367798e33c374c0ec391d3a"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-relationshipReference.xsd",
-        "sha256": "12264f3c03d738311cd9237d212f1c07479e70f0cbe1ae725d29b36539aef637"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/sml.xsd",
-        "sha256": "beffeed56945c22a77440122c8bdc426f3fcbe7f3b12ea0976c770d1f8d54578"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-main.xsd",
-        "sha256": "f5ee623b08b6a66935e5aced2f5d8ad0fc71bf9e8e833cd490150c0fa94b8763"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-officeDrawing.xsd",
-        "sha256": "585bedc1313b40888dcc544cb74cd939a105ee674f3b1d3aa1cc6d34f70ff155"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-presentationDrawing.xsd",
-        "sha256": "133c9f64a5c5d573b78d0a474122b22506d8eadb5e063f67cdbbb8fa2f161d0e"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-spreadsheetDrawing.xsd",
-        "sha256": "6bdeb169c3717eb01108853bd9fc5a3750fb1fa5b82abbdd854d49855a40f519"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-wordprocessingDrawing.xsd",
-        "sha256": "475dcae1e7d1ea46232db6f8481040c15e53a52a3c256831d3df204212b0e831"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/wml.xsd",
-        "sha256": "c2dd9f61f892deae6acd8d20771ea79b12018af25f3bf8d06639c8542d218cfd"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/xml.xsd",
-        "sha256": "a539aa2fb154fa50e0f5cc97e6ad7cbc66f8ec3e3746f61ec6a8b0d5d15ecdf2"
-      },
-      {
-        "path": "scripts/office/schemas/ecma/fouth-edition/opc-contentTypes.xsd",
-        "sha256": "9e0b7209fc69ab11987900404540969976000c5ebe4d4f58c43dc3842886bf3a"
-      },
-      {
-        "path": "scripts/office/schemas/ecma/fouth-edition/opc-coreProperties.xsd",
-        "sha256": "451958454e8588dfc7cd945981ada142ca06ff3307937f5700df059c2b307fa8"
-      },
-      {
-        "path": "scripts/office/schemas/ecma/fouth-edition/opc-digSig.xsd",
-        "sha256": "6de111e11403f7cd49027400755bae0ea1cabef2815f09bd40a24f0017613b24"
-      },
-      {
-        "path": "scripts/office/schemas/ecma/fouth-edition/opc-relationships.xsd",
-        "sha256": "f565adfef5a502044abc3a9153e157edc25af78304d335994afb958874b15e26"
-      },
-      {
-        "path": "scripts/office/schemas/mce/mc.xsd",
-        "sha256": "3a37e461ecf5a8670fdec34029703401f8728ab9c96ec1739a6ae58d55212413"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-2010.xsd",
-        "sha256": "568b26ee156cb9549aa439ca2158965f77b7c1602b7e0316f40ac6cf586e35f2"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-2012.xsd",
-        "sha256": "0fa75578a000439a7988ba0c59fdc69f774bbd416cbacc14d07125b3f686cb74"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-2018.xsd",
-        "sha256": "be0ff793a22dd31384650c3a4da14c2fa8062751c2e97b0e5ee852bda13c60ad"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-cex-2018.xsd",
-        "sha256": "fddc2b880cabb9005aebbc7e783e53c19fec1c03df7d0e2f2076a33a0fdfd081"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-cid-2016.xsd",
-        "sha256": "127ca209fa73d7cb708449cb355c871867948a96e4a74f7bf5811ef62d17991d"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-sdtdatahash-2020.xsd",
-        "sha256": "842e7163409c8d74f4d7088a8bc99500d80bc75332681a0980055b08f374a604"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-symex-2015.xsd",
-        "sha256": "16f6f8072249f431370723c2cd8974672e0d9c897e00e97dd918079df934871b"
-      },
-      {
-        "path": "scripts/office/soffice.py",
-        "sha256": "c1b83a67bf7e784ce6255d7b3a58999445f3dad19809845821f1293ab4cbf43e"
-      },
-      {
-        "path": "scripts/office/validate.py",
-        "sha256": "21d48e4e86df93e889a01e7d03e7ca63816da3278c9cc4353b89d43246e02364"
-      },
-      {
-        "path": "scripts/office/validators/__init__.py",
-        "sha256": "83e0f035c5abea238d3f2c3968afbd511ed022b527b7c9cb60a9434cc34ff987"
-      },
-      {
-        "path": "scripts/office/validators/base.py",
-        "sha256": "6129ec6a4fc0a4aa78af1434f9baa73994cc24d3261afda4e680e00f215cbf3b"
-      },
-      {
-        "path": "scripts/office/validators/docx.py",
-        "sha256": "7b0f1a23c9cd9ff07187d9d7d359f62317f94a5e389d63fd19766e1688a195a2"
-      },
-      {
-        "path": "scripts/office/validators/pptx.py",
-        "sha256": "3a100ec5f00ae183bca67f4aaa8e3e902caee60254e141b8120f32c53d85cee7"
-      },
-      {
-        "path": "scripts/office/validators/redlining.py",
-        "sha256": "f9c4455adc32b3890d5203d6c25d868d98d7e970bbad76b686f502950737599a"
-      },
-      {
-        "path": "scripts/templates/comments.xml",
-        "sha256": "a08ba83ee8790ac9e3dc61921f4988f19edd7e06ac09d6f1897a877c1581818d"
-      },
-      {
-        "path": "scripts/templates/commentsExtended.xml",
-        "sha256": "544eeecfeceed4b468fff163cd9c366d33641c8b8ab691ce002576197846afe8"
-      },
-      {
-        "path": "scripts/templates/commentsExtensible.xml",
-        "sha256": "bad10b3283e6ad6e7ef6d1ca5169683721ed690ee331282c65df04017e080631"
-      },
-      {
-        "path": "scripts/templates/commentsIds.xml",
-        "sha256": "db20f9616e004ec42ef736e80c2384e45db0f8d1194d31dc8b37c7d6ecdd6420"
-      },
-      {
-        "path": "scripts/templates/people.xml",
-        "sha256": "056f63aa1197fd8c9dda980c9f1b9ff016fd5fa4a462df8aec5f384f39d23e37"
+        "path": "visual-companion.md",
+        "sha256": "6ffcb038b53254bd31debaa15e12dcd4ff24bd63d690e0b644ac6396701cf2e2"
       }
     ],
     "scripts": true,
     "tokens": {
-      "listed": 211,
-      "loaded": 1861
+      "listed": 58,
+      "loaded": 3798
     }
   },
   {
-    "id": "pdf",
-    "name": "pdf",
-    "description": "Use this skill whenever the user wants to do anything with PDF files. This includes reading or extracting text/tables from PDFs, combining or merging multiple PDFs into one, splitting PDFs apart, rotating pages, adding watermarks, creating new PDFs, filling PDF forms, encrypting/decrypting PDFs, extracting images, and OCR on scanned PDFs to make them searchable. If the user mentions a .pdf file or asks to produce one, use this skill.",
-    "repo": "anthropics/skills",
-    "path": "skills/pdf",
-    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
-    "license": "Apache-2.0",
+    "id": "writing-plans",
+    "name": "writing-plans",
+    "description": "Use when you have a spec or requirements for a multi-step task, before touching code",
+    "category": "workflow",
+    "repo": "obra/superpowers",
+    "path": "skills/writing-plans",
+    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "license": "MIT",
     "files": [
       {
-        "path": "FORMS.md",
-        "sha256": "d5df5757e23634cd8a1a37e092af6c3b3b63afb3fd3ce86337fce9017cc3ee9f"
-      },
-      {
-        "path": "LICENSE.txt",
-        "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
-      },
-      {
-        "path": "REFERENCE.md",
-        "sha256": "07af9a8f59e77e88fe9b238a403348244f38a4771c54911c412716d8f88f0ea9"
-      },
-      {
         "path": "SKILL.md",
-        "sha256": "d1c7caf5f35eb7d37877dd7fc33a095037be2b34fb5d2f7f4d43bde3165bb4ee"
-      },
-      {
-        "path": "scripts/check_bounding_boxes.py",
-        "sha256": "0ced522402dd7b3c82a0be9518cf4e485fa9cc0467d7beab6ddb04cb36fcc3e1"
-      },
-      {
-        "path": "scripts/check_fillable_fields.py",
-        "sha256": "1fe10b9980a5493c9bbec8c20630c603eaa475b45403751c08f26738736647b8"
-      },
-      {
-        "path": "scripts/convert_pdf_to_images.py",
-        "sha256": "7f58e292a67e18a8ff000d30bad2469389546731f7e8a698cc1d0aed001ea15d"
-      },
-      {
-        "path": "scripts/create_validation_image.py",
-        "sha256": "8fa9fd7962c9f940045b81cf6b991e7c1057c1838e3f9cc6d305007a222ffebf"
-      },
-      {
-        "path": "scripts/extract_form_field_info.py",
-        "sha256": "bb235b36f497bbb1c7c6821cecf527bbba7213520de11219da99f7b13a38c109"
-      },
-      {
-        "path": "scripts/extract_form_structure.py",
-        "sha256": "6814e3fe8f78c2b16d766c132b5a727ff7a31b71d76a7d46bd6e40fe50bc97c5"
-      },
-      {
-        "path": "scripts/fill_fillable_fields.py",
-        "sha256": "d140872c2e92e41b1e05370ae8d270c5b7f5ebdf55d9905f03bc974a9c708ff5"
-      },
-      {
-        "path": "scripts/fill_pdf_form_with_annotations.py",
-        "sha256": "8a56e063a49ed53c0b0e1d312ecf8023af76816ed139486ec3b539873de202fd"
-      }
-    ],
-    "scripts": true,
-    "tokens": {
-      "listed": 112,
-      "loaded": 2015
-    }
-  },
-  {
-    "id": "pptx",
-    "name": "pptx",
-    "description": "Use this skill any time a .pptx or .potx file is involved in any way — as input, output, or both. This includes: creating slide decks, pitch decks, or presentations; reading, parsing, or extracting text from any .pptx or .potx file (even if the extracted content will be used elsewhere, like in an email or summary); editing, modifying, or updating existing presentations; combining or splitting slide files; working with templates (.potx), layouts, speaker notes, or comments. Trigger whenever the user mentions \"deck,\" \"slides,\" \"presentation,\" or references a .pptx or .potx filename, regardless of what they plan to do with the content afterward. If a .pptx or .potx file needs to be opened, created, or touched, use this skill.",
-    "repo": "anthropics/skills",
-    "path": "skills/pptx",
-    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
-    "license": "Apache-2.0",
-    "files": [
-      {
-        "path": "LICENSE.txt",
-        "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
-      },
-      {
-        "path": "SKILL.md",
-        "sha256": "1b54d26d78bcb35e3c6a2c723615c4a33c29732de2e5b29c9ecf10b34fb1a2e5"
-      },
-      {
-        "path": "scripts/__init__.py",
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "path": "scripts/add_slide.py",
-        "sha256": "23a4c66a9f43e651189cbc9f82ba0a8271d19dc8d44cf0c426dda66f7eb6a93a"
-      },
-      {
-        "path": "scripts/apply_theme.js",
-        "sha256": "e440b33c43f2e707076cb64b57ca926ce886564b115c19ee23ac487bdb1a6259"
-      },
-      {
-        "path": "scripts/clean.py",
-        "sha256": "5c808cd4dff7e02661ef3c68b5917f4e25097cc6610c92a3a7df4a6366a5c3c1"
-      },
-      {
-        "path": "scripts/office/helpers/__init__.py",
-        "sha256": "5c456ffc522900399b5f9402f92d66aaf2d9f87655d236c69f60bf07f4fd7c9b"
-      },
-      {
-        "path": "scripts/office/helpers/pptx_chart.py",
-        "sha256": "aed734e9a6c743ae712fc228c868bf0f6abcfb6a53549eefb19081b15d240fda"
-      },
-      {
-        "path": "scripts/office/helpers/pptx_slide.py",
-        "sha256": "06fe06953bf038826b85ecc142f4dc9299a37fa0c4e4dd9b00b10486df33524d"
-      },
-      {
-        "path": "scripts/office/helpers/pptx_theme.py",
-        "sha256": "ebb54c56e9c13807f5f98f0cae22d47cdd0162da8525eaa664e3f2c8c8d6bb03"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-chart.xsd",
-        "sha256": "41b93bd8857cc68b1e43be2806a872d736a9bdd6566900062d8fdb57d7bbb354"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-chartDrawing.xsd",
-        "sha256": "3fd0586f2637b98bb9886f0e0b67d89e1cc987c2d158cc7deb5f5b9890ced412"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-diagram.xsd",
-        "sha256": "29b254ee0d10414a8504b5a08149c7baec35a60d5ff607d6b3f492aa36815f40"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-lockedCanvas.xsd",
-        "sha256": "5cb76dabd8b97d1e9308a1700b90c20139be4d50792d21a7f09789f5cccd6026"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-main.xsd",
-        "sha256": "5375417f0f5394b8dd1a7035b9679151f19a6b65df309dec10cfb4a420cb00e9"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-picture.xsd",
-        "sha256": "5d389d42befbebd91945d620242347caecd3367f9a3a7cf8d97949507ae1f53c"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-spreadsheetDrawing.xsd",
-        "sha256": "b4532b6d258832953fbb3ee4c711f4fe25d3faf46a10644b2505f17010d01e88"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-wordprocessingDrawing.xsd",
-        "sha256": "bdad416b096b61d37b71603b2c949484f9070c830bdaeba93bf35e15c8900614"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/pml.xsd",
-        "sha256": "d173c3e5d61e42e2e3a97226c632fd2ab7cc481fc4e492365b87024ab546daff"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-additionalCharacteristics.xsd",
-        "sha256": "3c6709101c6aaa82888df5d8795c33f9e857196790eb320d9194e64be2b6bdd8"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-bibliography.xsd",
-        "sha256": "0b364451dc36a48dd6dae0f3b6ada05fd9b71e5208211f8ee5537d7e51a587e2"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-commonSimpleTypes.xsd",
-        "sha256": "e2abacbb9a55ce1365f8961bc1b1395bbc811e512b111000d8c333f98458dece"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlDataProperties.xsd",
-        "sha256": "0ef4bb354ff44b923564c4ddbdda5987919d220225129ec94614a618ceafc281"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlSchemaProperties.xsd",
-        "sha256": "0d103b99a4a8652f8871552a69d42d2a3760ac6a5e3ef02d979c4273257ff6a4"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesCustom.xsd",
-        "sha256": "9c085407751b9061c1f996f6c39ce58451be22a8d334f09175f0e89e42736285"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesExtended.xsd",
-        "sha256": "bc92e36ccd233722d4c5869bec71ddc7b12e2df56059942cce5a39065cc9c368"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesVariantTypes.xsd",
-        "sha256": "7b5b7413e2c895b1e148e82e292a117d53c7ec65b0696c992edca57b61b4a74b"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-math.xsd",
-        "sha256": "3213ef1631606250f5010b42cad7ef716f7c59426367798e33c374c0ec391d3a"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-relationshipReference.xsd",
-        "sha256": "12264f3c03d738311cd9237d212f1c07479e70f0cbe1ae725d29b36539aef637"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/sml.xsd",
-        "sha256": "beffeed56945c22a77440122c8bdc426f3fcbe7f3b12ea0976c770d1f8d54578"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-main.xsd",
-        "sha256": "f5ee623b08b6a66935e5aced2f5d8ad0fc71bf9e8e833cd490150c0fa94b8763"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-officeDrawing.xsd",
-        "sha256": "585bedc1313b40888dcc544cb74cd939a105ee674f3b1d3aa1cc6d34f70ff155"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-presentationDrawing.xsd",
-        "sha256": "133c9f64a5c5d573b78d0a474122b22506d8eadb5e063f67cdbbb8fa2f161d0e"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-spreadsheetDrawing.xsd",
-        "sha256": "6bdeb169c3717eb01108853bd9fc5a3750fb1fa5b82abbdd854d49855a40f519"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-wordprocessingDrawing.xsd",
-        "sha256": "475dcae1e7d1ea46232db6f8481040c15e53a52a3c256831d3df204212b0e831"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/wml.xsd",
-        "sha256": "c2dd9f61f892deae6acd8d20771ea79b12018af25f3bf8d06639c8542d218cfd"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/xml.xsd",
-        "sha256": "a539aa2fb154fa50e0f5cc97e6ad7cbc66f8ec3e3746f61ec6a8b0d5d15ecdf2"
-      },
-      {
-        "path": "scripts/office/schemas/ecma/fouth-edition/opc-contentTypes.xsd",
-        "sha256": "9e0b7209fc69ab11987900404540969976000c5ebe4d4f58c43dc3842886bf3a"
-      },
-      {
-        "path": "scripts/office/schemas/ecma/fouth-edition/opc-coreProperties.xsd",
-        "sha256": "451958454e8588dfc7cd945981ada142ca06ff3307937f5700df059c2b307fa8"
-      },
-      {
-        "path": "scripts/office/schemas/ecma/fouth-edition/opc-digSig.xsd",
-        "sha256": "6de111e11403f7cd49027400755bae0ea1cabef2815f09bd40a24f0017613b24"
-      },
-      {
-        "path": "scripts/office/schemas/ecma/fouth-edition/opc-relationships.xsd",
-        "sha256": "f565adfef5a502044abc3a9153e157edc25af78304d335994afb958874b15e26"
-      },
-      {
-        "path": "scripts/office/schemas/mce/mc.xsd",
-        "sha256": "3a37e461ecf5a8670fdec34029703401f8728ab9c96ec1739a6ae58d55212413"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-2010.xsd",
-        "sha256": "568b26ee156cb9549aa439ca2158965f77b7c1602b7e0316f40ac6cf586e35f2"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-2012.xsd",
-        "sha256": "0fa75578a000439a7988ba0c59fdc69f774bbd416cbacc14d07125b3f686cb74"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-2018.xsd",
-        "sha256": "be0ff793a22dd31384650c3a4da14c2fa8062751c2e97b0e5ee852bda13c60ad"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-cex-2018.xsd",
-        "sha256": "fddc2b880cabb9005aebbc7e783e53c19fec1c03df7d0e2f2076a33a0fdfd081"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-cid-2016.xsd",
-        "sha256": "127ca209fa73d7cb708449cb355c871867948a96e4a74f7bf5811ef62d17991d"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-sdtdatahash-2020.xsd",
-        "sha256": "842e7163409c8d74f4d7088a8bc99500d80bc75332681a0980055b08f374a604"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-symex-2015.xsd",
-        "sha256": "16f6f8072249f431370723c2cd8974672e0d9c897e00e97dd918079df934871b"
-      },
-      {
-        "path": "scripts/office/soffice.py",
-        "sha256": "c1b83a67bf7e784ce6255d7b3a58999445f3dad19809845821f1293ab4cbf43e"
-      },
-      {
-        "path": "scripts/office/validate.py",
-        "sha256": "21d48e4e86df93e889a01e7d03e7ca63816da3278c9cc4353b89d43246e02364"
-      },
-      {
-        "path": "scripts/office/validators/__init__.py",
-        "sha256": "83e0f035c5abea238d3f2c3968afbd511ed022b527b7c9cb60a9434cc34ff987"
-      },
-      {
-        "path": "scripts/office/validators/base.py",
-        "sha256": "6129ec6a4fc0a4aa78af1434f9baa73994cc24d3261afda4e680e00f215cbf3b"
-      },
-      {
-        "path": "scripts/office/validators/docx.py",
-        "sha256": "7b0f1a23c9cd9ff07187d9d7d359f62317f94a5e389d63fd19766e1688a195a2"
-      },
-      {
-        "path": "scripts/office/validators/pptx.py",
-        "sha256": "3a100ec5f00ae183bca67f4aaa8e3e902caee60254e141b8120f32c53d85cee7"
-      },
-      {
-        "path": "scripts/office/validators/redlining.py",
-        "sha256": "f9c4455adc32b3890d5203d6c25d868d98d7e970bbad76b686f502950737599a"
-      },
-      {
-        "path": "scripts/slide_text.py",
-        "sha256": "0deab09d4ae494411ee893f9c69fffc19fe264a6053990a2f066334c0d88d422"
-      },
-      {
-        "path": "scripts/thumbnail.py",
-        "sha256": "94ef83a84346aa2d63913de0d42bb2fe902ccdc17bfac6130096ca758381793c"
-      }
-    ],
-    "scripts": true,
-    "tokens": {
-      "listed": 186,
-      "loaded": 7091
-    }
-  },
-  {
-    "id": "xlsx",
-    "name": "xlsx",
-    "description": "Use this skill any time a spreadsheet file is the primary input or output. This means any task where the user wants to: open, read, edit, or fix an existing .xlsx, .xlsm, .xltx, .csv, or .tsv file (e.g., adding columns, computing formulas, formatting, charting, cleaning messy data); create a new spreadsheet from scratch or from other data sources; or convert between tabular file formats. Trigger especially when the user references a spreadsheet file by name or path — even casually (like \"the xlsx in my downloads\") — and wants something done to it or produced from it. Also trigger for cleaning or restructuring messy tabular data files (malformed rows, misplaced headers, junk data) into proper spreadsheets. The deliverable must be a spreadsheet file. Do NOT trigger when the primary deliverable is a Word document, HTML report, standalone Python script, database pipeline, or Google Sheets API integration, even if tabular data is involved.",
-    "repo": "anthropics/skills",
-    "path": "skills/xlsx",
-    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
-    "license": "Apache-2.0",
-    "files": [
-      {
-        "path": "LICENSE.txt",
-        "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
-      },
-      {
-        "path": "SKILL.md",
-        "sha256": "f32b1c2b5d5d31e02964df110d6489613d9345f86830c118cfe24159d8448ce6"
-      },
-      {
-        "path": "scripts/office/helpers/__init__.py",
-        "sha256": "5c456ffc522900399b5f9402f92d66aaf2d9f87655d236c69f60bf07f4fd7c9b"
-      },
-      {
-        "path": "scripts/office/helpers/pptx_chart.py",
-        "sha256": "aed734e9a6c743ae712fc228c868bf0f6abcfb6a53549eefb19081b15d240fda"
-      },
-      {
-        "path": "scripts/office/helpers/pptx_slide.py",
-        "sha256": "06fe06953bf038826b85ecc142f4dc9299a37fa0c4e4dd9b00b10486df33524d"
-      },
-      {
-        "path": "scripts/office/helpers/pptx_theme.py",
-        "sha256": "ebb54c56e9c13807f5f98f0cae22d47cdd0162da8525eaa664e3f2c8c8d6bb03"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-chart.xsd",
-        "sha256": "41b93bd8857cc68b1e43be2806a872d736a9bdd6566900062d8fdb57d7bbb354"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-chartDrawing.xsd",
-        "sha256": "3fd0586f2637b98bb9886f0e0b67d89e1cc987c2d158cc7deb5f5b9890ced412"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-diagram.xsd",
-        "sha256": "29b254ee0d10414a8504b5a08149c7baec35a60d5ff607d6b3f492aa36815f40"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-lockedCanvas.xsd",
-        "sha256": "5cb76dabd8b97d1e9308a1700b90c20139be4d50792d21a7f09789f5cccd6026"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-main.xsd",
-        "sha256": "5375417f0f5394b8dd1a7035b9679151f19a6b65df309dec10cfb4a420cb00e9"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-picture.xsd",
-        "sha256": "5d389d42befbebd91945d620242347caecd3367f9a3a7cf8d97949507ae1f53c"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-spreadsheetDrawing.xsd",
-        "sha256": "b4532b6d258832953fbb3ee4c711f4fe25d3faf46a10644b2505f17010d01e88"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-wordprocessingDrawing.xsd",
-        "sha256": "bdad416b096b61d37b71603b2c949484f9070c830bdaeba93bf35e15c8900614"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/pml.xsd",
-        "sha256": "d173c3e5d61e42e2e3a97226c632fd2ab7cc481fc4e492365b87024ab546daff"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-additionalCharacteristics.xsd",
-        "sha256": "3c6709101c6aaa82888df5d8795c33f9e857196790eb320d9194e64be2b6bdd8"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-bibliography.xsd",
-        "sha256": "0b364451dc36a48dd6dae0f3b6ada05fd9b71e5208211f8ee5537d7e51a587e2"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-commonSimpleTypes.xsd",
-        "sha256": "e2abacbb9a55ce1365f8961bc1b1395bbc811e512b111000d8c333f98458dece"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlDataProperties.xsd",
-        "sha256": "0ef4bb354ff44b923564c4ddbdda5987919d220225129ec94614a618ceafc281"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlSchemaProperties.xsd",
-        "sha256": "0d103b99a4a8652f8871552a69d42d2a3760ac6a5e3ef02d979c4273257ff6a4"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesCustom.xsd",
-        "sha256": "9c085407751b9061c1f996f6c39ce58451be22a8d334f09175f0e89e42736285"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesExtended.xsd",
-        "sha256": "bc92e36ccd233722d4c5869bec71ddc7b12e2df56059942cce5a39065cc9c368"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesVariantTypes.xsd",
-        "sha256": "7b5b7413e2c895b1e148e82e292a117d53c7ec65b0696c992edca57b61b4a74b"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-math.xsd",
-        "sha256": "3213ef1631606250f5010b42cad7ef716f7c59426367798e33c374c0ec391d3a"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-relationshipReference.xsd",
-        "sha256": "12264f3c03d738311cd9237d212f1c07479e70f0cbe1ae725d29b36539aef637"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/sml.xsd",
-        "sha256": "beffeed56945c22a77440122c8bdc426f3fcbe7f3b12ea0976c770d1f8d54578"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-main.xsd",
-        "sha256": "f5ee623b08b6a66935e5aced2f5d8ad0fc71bf9e8e833cd490150c0fa94b8763"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-officeDrawing.xsd",
-        "sha256": "585bedc1313b40888dcc544cb74cd939a105ee674f3b1d3aa1cc6d34f70ff155"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-presentationDrawing.xsd",
-        "sha256": "133c9f64a5c5d573b78d0a474122b22506d8eadb5e063f67cdbbb8fa2f161d0e"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-spreadsheetDrawing.xsd",
-        "sha256": "6bdeb169c3717eb01108853bd9fc5a3750fb1fa5b82abbdd854d49855a40f519"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-wordprocessingDrawing.xsd",
-        "sha256": "475dcae1e7d1ea46232db6f8481040c15e53a52a3c256831d3df204212b0e831"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/wml.xsd",
-        "sha256": "c2dd9f61f892deae6acd8d20771ea79b12018af25f3bf8d06639c8542d218cfd"
-      },
-      {
-        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/xml.xsd",
-        "sha256": "a539aa2fb154fa50e0f5cc97e6ad7cbc66f8ec3e3746f61ec6a8b0d5d15ecdf2"
-      },
-      {
-        "path": "scripts/office/schemas/ecma/fouth-edition/opc-contentTypes.xsd",
-        "sha256": "9e0b7209fc69ab11987900404540969976000c5ebe4d4f58c43dc3842886bf3a"
-      },
-      {
-        "path": "scripts/office/schemas/ecma/fouth-edition/opc-coreProperties.xsd",
-        "sha256": "451958454e8588dfc7cd945981ada142ca06ff3307937f5700df059c2b307fa8"
-      },
-      {
-        "path": "scripts/office/schemas/ecma/fouth-edition/opc-digSig.xsd",
-        "sha256": "6de111e11403f7cd49027400755bae0ea1cabef2815f09bd40a24f0017613b24"
-      },
-      {
-        "path": "scripts/office/schemas/ecma/fouth-edition/opc-relationships.xsd",
-        "sha256": "f565adfef5a502044abc3a9153e157edc25af78304d335994afb958874b15e26"
-      },
-      {
-        "path": "scripts/office/schemas/mce/mc.xsd",
-        "sha256": "3a37e461ecf5a8670fdec34029703401f8728ab9c96ec1739a6ae58d55212413"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-2010.xsd",
-        "sha256": "568b26ee156cb9549aa439ca2158965f77b7c1602b7e0316f40ac6cf586e35f2"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-2012.xsd",
-        "sha256": "0fa75578a000439a7988ba0c59fdc69f774bbd416cbacc14d07125b3f686cb74"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-2018.xsd",
-        "sha256": "be0ff793a22dd31384650c3a4da14c2fa8062751c2e97b0e5ee852bda13c60ad"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-cex-2018.xsd",
-        "sha256": "fddc2b880cabb9005aebbc7e783e53c19fec1c03df7d0e2f2076a33a0fdfd081"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-cid-2016.xsd",
-        "sha256": "127ca209fa73d7cb708449cb355c871867948a96e4a74f7bf5811ef62d17991d"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-sdtdatahash-2020.xsd",
-        "sha256": "842e7163409c8d74f4d7088a8bc99500d80bc75332681a0980055b08f374a604"
-      },
-      {
-        "path": "scripts/office/schemas/microsoft/wml-symex-2015.xsd",
-        "sha256": "16f6f8072249f431370723c2cd8974672e0d9c897e00e97dd918079df934871b"
-      },
-      {
-        "path": "scripts/office/soffice.py",
-        "sha256": "c1b83a67bf7e784ce6255d7b3a58999445f3dad19809845821f1293ab4cbf43e"
-      },
-      {
-        "path": "scripts/office/validate.py",
-        "sha256": "21d48e4e86df93e889a01e7d03e7ca63816da3278c9cc4353b89d43246e02364"
-      },
-      {
-        "path": "scripts/office/validators/__init__.py",
-        "sha256": "83e0f035c5abea238d3f2c3968afbd511ed022b527b7c9cb60a9434cc34ff987"
-      },
-      {
-        "path": "scripts/office/validators/base.py",
-        "sha256": "6129ec6a4fc0a4aa78af1434f9baa73994cc24d3261afda4e680e00f215cbf3b"
-      },
-      {
-        "path": "scripts/office/validators/docx.py",
-        "sha256": "7b0f1a23c9cd9ff07187d9d7d359f62317f94a5e389d63fd19766e1688a195a2"
-      },
-      {
-        "path": "scripts/office/validators/pptx.py",
-        "sha256": "3a100ec5f00ae183bca67f4aaa8e3e902caee60254e141b8120f32c53d85cee7"
-      },
-      {
-        "path": "scripts/office/validators/redlining.py",
-        "sha256": "f9c4455adc32b3890d5203d6c25d868d98d7e970bbad76b686f502950737599a"
-      },
-      {
-        "path": "scripts/recalc.py",
-        "sha256": "7265aa4a41f5273596ee5694ce8a4d881c18adafb6203fece769107d08403263"
-      }
-    ],
-    "scripts": true,
-    "tokens": {
-      "listed": 240,
-      "loaded": 2443
-    }
-  },
-  {
-    "id": "frontend-design",
-    "name": "frontend-design",
-    "description": "Guidance for distinctive, intentional visual design when building new UI or reshaping an existing one. Helps with aesthetic direction, typography, and making choices that don't read as templated defaults.",
-    "repo": "anthropics/skills",
-    "path": "skills/frontend-design",
-    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
-    "license": "Apache-2.0",
-    "files": [
-      {
-        "path": "LICENSE.txt",
-        "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
-      },
-      {
-        "path": "SKILL.md",
-        "sha256": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3"
+        "sha256": "a6c67c1900064347c2a329990dd3c555657c51c3ec53b259a08aa01a2c26139a"
       }
     ],
     "scripts": false,
     "tokens": {
-      "listed": 56,
-      "loaded": 2348
+      "listed": 26,
+      "loaded": 2584
     }
   },
   {
-    "id": "mcp-builder",
-    "name": "mcp-builder",
-    "description": "Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools. Use when building MCP servers to integrate external APIs or services, whether in Python (FastMCP) or Node/TypeScript (MCP SDK).",
-    "repo": "anthropics/skills",
-    "path": "skills/mcp-builder",
-    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
-    "license": "Apache-2.0",
+    "id": "executing-plans",
+    "name": "executing-plans",
+    "description": "Use when executing an implementation plan in the current session as the implementer yourself — your human partner chose inline execution, or no subagent tool is available",
+    "category": "workflow",
+    "repo": "obra/superpowers",
+    "path": "skills/executing-plans",
+    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "license": "MIT",
     "files": [
       {
-        "path": "LICENSE.txt",
-        "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+        "path": "SKILL.md",
+        "sha256": "deaf176fa179827e80f2ea3101db3ea90fdf562ebef340eba761e4687940f5f5"
+      },
+      {
+        "path": "scripts/task-done",
+        "sha256": "ac0b5ebafc7d471507b7e94d88da77a11f187ba277c8d48fefaf8ff3e4fee50e"
+      },
+      {
+        "path": "scripts/task-start",
+        "sha256": "4ae7ce3b6777c3240af786197836a6b4bbf3b0ee831c25f147c149ea8db54a21"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 48,
+      "loaded": 4591
+    }
+  },
+  {
+    "id": "using-git-worktrees",
+    "name": "using-git-worktrees",
+    "description": "Use when starting feature work that needs isolation from current workspace or before executing implementation plans - ensures an isolated workspace exists via native tools or git worktree fallback",
+    "category": "workflow",
+    "repo": "obra/superpowers",
+    "path": "skills/using-git-worktrees",
+    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "8cfb86f121269e8f7f12361e6795c4f6738828340e28964c9229d365666c9edd"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 55,
+      "loaded": 1704
+    }
+  },
+  {
+    "id": "finishing-a-development-branch",
+    "name": "finishing-a-development-branch",
+    "description": "Use when implementation is complete, all tests pass, and you need to decide how to integrate the work",
+    "category": "workflow",
+    "repo": "obra/superpowers",
+    "path": "skills/finishing-a-development-branch",
+    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "8db5a922b242dd4e1bf824cb91c13b3e8d8e8a86d6ceaf7f0774eb9cce909d65"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 34,
+      "loaded": 1946
+    }
+  },
+  {
+    "id": "spec-driven-development",
+    "name": "spec-driven-development",
+    "description": "Creates specs before coding. Use when starting a new project, feature, or significant change and no specification exists yet. Use when drafting a PRD or requirements document with objectives and scope, or when requirements are unclear, ambiguous, or only exist as a vague idea. Use when a single requirement spans several independently testable capabilities and needs decomposing into a capability map of modules before specifying. Use when evolving a shipped spec — scoping a V1, deferring ideas to a V2 backlog, or writing a follow-up spec for a change to an existing feature.",
+    "category": "workflow",
+    "repo": "addyosmani/agent-skills",
+    "path": "skills/spec-driven-development",
+    "pin": "39b723ceebf81474d0557c1fecd01eddab585563",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "58dd9f5f2e53830c0c0dd9651998bd6ee4e2a1cc520c9dcf855dfb2fbb3f5059"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 152,
+      "loaded": 4224
+    }
+  },
+  {
+    "id": "git-workflow-and-versioning",
+    "name": "git-workflow-and-versioning",
+    "description": "Structures git workflow practices. Use when making any code change. Use when committing, branching, resolving conflicts, splitting uncommitted work in a messy working tree into clean atomic commits, opening or reviewing a pull request (PR), pushing to a remote, or when you need to organize work across multiple parallel streams. Use when cutting a release, choosing a semantic version bump, tagging, or writing a changelog. Use when asked to write a commit message or a changelog entry for a change, or to split a change into commits, even when the diff is pasted inline and the message seems easy to write from it.",
+    "category": "workflow",
+    "repo": "addyosmani/agent-skills",
+    "path": "skills/git-workflow-and-versioning",
+    "pin": "39b723ceebf81474d0557c1fecd01eddab585563",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "d77c955f57cfafde73efb7641ed9a478ffaa0f61c0f31bd9fe87317702f1b60d"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 162,
+      "loaded": 3601
+    }
+  },
+  {
+    "id": "pr",
+    "name": "pr",
+    "description": "Use when writing a PR body.",
+    "category": "workflow",
+    "repo": "mattpocock/skills",
+    "path": "skills/engineering/pr",
+    "pin": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "CREDITS.md",
+        "sha256": "a7a087127665d7298a72280ef6e19c41ad8404523712a788c8dc3ab414bc2497"
       },
       {
         "path": "SKILL.md",
-        "sha256": "b483b56d6673134497e45489c317f26ae0f1429c194db0297e43073e17e6748c"
+        "sha256": "ab63f1cf78647389edcd386c9427c5dfca27ed2836930c24773ffee834c19bcd"
       },
       {
-        "path": "reference/evaluation.md",
-        "sha256": "8c99479f8a2d22a636c38e274537aac3610879e26f34e0709825077c4576f427"
+        "path": "agents/openai.yaml",
+        "sha256": "2295b586624db4ef546f3fd4695492f039d941a46d8a1593a702ce3ca511b8ad"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 9,
+      "loaded": 1043
+    }
+  },
+  {
+    "id": "setup-pre-commit",
+    "name": "setup-pre-commit",
+    "description": "Set up Husky pre-commit hooks with lint-staged (Prettier), type checking, and tests in the current repo. Use when user wants to add pre-commit hooks, set up Husky, configure lint-staged, or add commit-time formatting/typechecking/testing.",
+    "category": "workflow",
+    "repo": "mattpocock/skills",
+    "path": "skills/misc/setup-pre-commit",
+    "pin": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "c9819d7f1e3b198064edc1faa3154224ed67395e9f07f5d3cea4b67cf0a11a98"
       },
       {
-        "path": "reference/mcp_best_practices.md",
-        "sha256": "80fb4369a349447cf18ecdd7494fe7938b6065377e9f08c077cec411093a3007"
+        "path": "agents/openai.yaml",
+        "sha256": "acf41db398c5c43afe504008bb7d615a97b6498b0f1f6c5b2395254c0bfb57d1"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 65,
+      "loaded": 565
+    }
+  },
+  {
+    "id": "grill-me",
+    "name": "grill-me",
+    "description": "A relentless interview to sharpen a plan or design.",
+    "category": "workflow",
+    "repo": "mattpocock/skills",
+    "path": "skills/productivity/grill-me",
+    "pin": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "caaf8b8de1684f96e26b28f3c29189db5c89cce4b73e1c93d86164f66ef88637"
       },
       {
-        "path": "reference/node_mcp_server.md",
-        "sha256": "ee3c95d812e450f6168b734390d0c9ef6f8ebeef041d73a122c972dfbd4d476a"
+        "path": "agents/openai.yaml",
+        "sha256": "c061e39c3e0f9d865fb1b97556d485704af2a8a58f4b8221a8917a5c2074a32b"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 16,
+      "loaded": 40
+    }
+  },
+  {
+    "id": "handoff",
+    "name": "handoff",
+    "description": "Compact the current conversation into a handoff document for another agent to pick up.",
+    "category": "workflow",
+    "repo": "mattpocock/skills",
+    "path": "skills/productivity/handoff",
+    "pin": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "4cbb043950dad2ffd3662ff1a5a0b51ae676004b5cae10e3787e8ee7a4ee69d3"
       },
       {
-        "path": "reference/node_mcp_server_v2.md",
-        "sha256": "49b2fe48f33910b743ae3a56353fffa5d5f252f531053f24f2da4e5914c0d3aa"
+        "path": "agents/openai.yaml",
+        "sha256": "5c479fd562c691851690e8b18c8501045bef0943c10743d636b2fae26add1d28"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 25,
+      "loaded": 235
+    }
+  },
+  {
+    "id": "systematic-debugging",
+    "name": "systematic-debugging",
+    "description": "Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes",
+    "category": "quality",
+    "repo": "obra/superpowers",
+    "path": "skills/systematic-debugging",
+    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "51c6435d98c83c42c96ba7c35725a0b2c376cd487fb1a4e6bd0ddbe7e33ef202"
       },
       {
-        "path": "reference/python_mcp_server.md",
-        "sha256": "2da52f77e675191014ca2e146a4b95aa04d0ca7dd7e2b100322df15ade685e80"
+        "path": "condition-based-waiting-example.ts",
+        "sha256": "40ae5ebe497fdf310200e43fe986552546d0a22837c0d39e855db1cfd33eb88e"
       },
       {
-        "path": "scripts/connections.py",
-        "sha256": "9403668a2041568772082a8b334122c1f88daf0541fb393af4522d0094a47a6e"
+        "path": "condition-based-waiting.md",
+        "sha256": "e89fec8400d6cd50f43407cec9fab50976ba4d55d0ec2eb51c0bd68036b54c26"
       },
       {
-        "path": "scripts/evaluation.py",
-        "sha256": "49ed1d17cdce5da101b210197740713f49b935c29d4f339542a14b132658e6f7"
+        "path": "defense-in-depth.md",
+        "sha256": "1e175fb86fc357e58c6aebf5441e481e1b7868b4380c0456b63a17eefbd18ba7"
       },
       {
-        "path": "scripts/example_evaluation.xml",
-        "sha256": "9272b348ddcc4b06ba562367ccd0770e018158c0068ac5116d5e34aaeff8777a"
+        "path": "find-polluter.sh",
+        "sha256": "dd7b8f13c4cc2a24b33ff87b18da9248f3e1c80a085c3316224f69ff0fa5c43c"
       },
       {
-        "path": "scripts/requirements.txt",
-        "sha256": "d5d7558b2368ecea9dfeed7d1fbc71ee9e0750bebd1282faa527d528a344c3c7"
+        "path": "root-cause-tracing.md",
+        "sha256": "75b933b6a8c40bdb2031b10f21654395b56ec6ab6bc7b018c18d3fe57aeb7fb8"
       }
     ],
     "scripts": true,
     "tokens": {
-      "listed": 74,
-      "loaded": 2783
+      "listed": 29,
+      "loaded": 2383
     }
   },
   {
-    "id": "skill-creator",
-    "name": "skill-creator",
-    "description": "Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, edit, or optimize an existing skill, run evals to test a skill, benchmark skill performance with variance analysis, or optimize a skill's description for better triggering accuracy.",
-    "repo": "anthropics/skills",
-    "path": "skills/skill-creator",
-    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
-    "license": "Apache-2.0",
+    "id": "test-driven-development",
+    "name": "test-driven-development",
+    "description": "Use when implementing any feature or bugfix, before writing implementation code",
+    "category": "quality",
+    "repo": "obra/superpowers",
+    "path": "skills/test-driven-development",
+    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "license": "MIT",
     "files": [
       {
-        "path": "LICENSE.txt",
-        "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+        "path": "SKILL.md",
+        "sha256": "64b03fce4aee5a97a93160cea8111f3ba13a17b7c001db4bd5836d67fd10705d"
+      },
+      {
+        "path": "writing-good-tests.md",
+        "sha256": "51471c853306ff92ca8bb41dcaea05f31c0e46b03651f8f3c99754b7172f4ae1"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 27,
+      "loaded": 2395
+    }
+  },
+  {
+    "id": "verification-before-completion",
+    "name": "verification-before-completion",
+    "description": "Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always",
+    "category": "quality",
+    "repo": "obra/superpowers",
+    "path": "skills/verification-before-completion",
+    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "2befe7fc55bcadaa3d97dd9e8efeb633d2561c0ebe74c5a8b17c4d9e7e4520b3"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 65,
+      "loaded": 912
+    }
+  },
+  {
+    "id": "requesting-code-review",
+    "name": "requesting-code-review",
+    "description": "Use when completing tasks, implementing major features, or before merging to verify work meets requirements",
+    "category": "quality",
+    "repo": "obra/superpowers",
+    "path": "skills/requesting-code-review",
+    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "2180e14a448e9410bec88e6646a2d1f0ce7fdd58de27388c1e052e929679d2bc"
+      },
+      {
+        "path": "code-reviewer.md",
+        "sha256": "82e370be6b3447523816286195571e4216ba56ba1ad6ad0e87862294c4c78dcb"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 34,
+      "loaded": 744
+    }
+  },
+  {
+    "id": "receiving-code-review",
+    "name": "receiving-code-review",
+    "description": "Use when receiving code review feedback, before implementing suggestions, especially if feedback seems unclear or technically questionable - requires technical rigor and verification, not performative agreement or blind implementation",
+    "category": "quality",
+    "repo": "obra/superpowers",
+    "path": "skills/receiving-code-review",
+    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "091df1629510af1b92fc4abd6f96732ebedb4cb2c0f3457e8f2740b0504a2438"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 65,
+      "loaded": 1551
+    }
+  },
+  {
+    "id": "code-review-and-quality",
+    "name": "code-review-and-quality",
+    "description": "Conducts multi-axis code review. Use before merging any change. Use when reviewing code written by yourself, another agent, or a human. Use when you need to assess code quality across multiple dimensions before it enters the main branch. Use when asked to review a diff or a pull request, even when the diff is pasted inline and the review looks quick to do from reading it.",
+    "category": "quality",
+    "repo": "addyosmani/agent-skills",
+    "path": "skills/code-review-and-quality",
+    "pin": "39b723ceebf81474d0557c1fecd01eddab585563",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "5dc8f98d9d23e74676091a945b2649bb52456e34f293238ee2511281104a94c0"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 101,
+      "loaded": 5328
+    }
+  },
+  {
+    "id": "debugging-and-error-recovery",
+    "name": "debugging-and-error-recovery",
+    "description": "Guides systematic root-cause debugging. Use when tests fail, builds break, something that worked yesterday broke, behavior doesn't match expectations, or you encounter any unexpected error. Use when you need to figure out what broke and why — a systematic approach to finding and fixing the root cause rather than guessing. Use when asked what broke, why a test started failing, or why code throws, even when the diff, the function, or the stack trace is pasted inline and the cause looks obvious from reading it, so that the cause is named, the fix is minimal, and the reply says how to confirm it.",
+    "category": "quality",
+    "repo": "addyosmani/agent-skills",
+    "path": "skills/debugging-and-error-recovery",
+    "pin": "39b723ceebf81474d0557c1fecd01eddab585563",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "95e393819043b50b3ba6f4d89f0fea620d03e560eb52b592b3eb7a41836aaea1"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 158,
+      "loaded": 2793
+    }
+  },
+  {
+    "id": "security-and-hardening",
+    "name": "security-and-hardening",
+    "description": "Hardens code against vulnerabilities. Use when auditing an input handler for vulnerabilities, when handling user input, authentication, data storage, or external integrations, or when checking a login flow is safe against the OWASP Top Ten. Use when building any feature that accepts untrusted data, manages user sessions or session cookies, or interacts with third-party services. Use when auditing dependencies for known vulnerabilities, triaging package-manager audit findings, or assessing supply-chain risk in a new package. Use when personal data or privacy compliance (GDPR, CCPA) is involved.",
+    "category": "quality",
+    "repo": "addyosmani/agent-skills",
+    "path": "skills/security-and-hardening",
+    "pin": "39b723ceebf81474d0557c1fecd01eddab585563",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "f78655c64329b53ee216c9bc1b8c01f6cd40d2e9caad35944f4b0dbed8fd16b7"
+      },
+      {
+        "path": "references/hardening-patterns.md",
+        "sha256": "451abdcef110e61470d8969151986f397b84c6eb2770d7788787b2b857c31e33"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 157,
+      "loaded": 4398
+    }
+  },
+  {
+    "id": "api-and-interface-design",
+    "name": "api-and-interface-design",
+    "description": "Guides stable API and interface design. Use when designing APIs, module boundaries, or any public interface. Use when creating REST or GraphQL endpoints, defining type contracts between modules, or establishing boundaries between frontend and backend.",
+    "category": "quality",
+    "repo": "addyosmani/agent-skills",
+    "path": "skills/api-and-interface-design",
+    "pin": "39b723ceebf81474d0557c1fecd01eddab585563",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "cc5e2166c484b2c297e8253f56e7525e5031f81d66101ca4e760ef378ea6bad0"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 70,
+      "loaded": 3735
+    }
+  },
+  {
+    "id": "performance-optimization",
+    "name": "performance-optimization",
+    "description": "Optimizes application performance across frontend, backend, queries, and databases. Use when performance requirements exist, when you suspect performance regressions, when Core Web Vitals or load times need improvement, when N+1 query patterns need fixing, or when profiling reveals bottlenecks.",
+    "category": "quality",
+    "repo": "addyosmani/agent-skills",
+    "path": "skills/performance-optimization",
+    "pin": "39b723ceebf81474d0557c1fecd01eddab585563",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "82af71540457cf853893685211f64509cd1e781c0de09d0186f16960f2d6eeba"
+      },
+      {
+        "path": "references/optimization-patterns.md",
+        "sha256": "fbf724076ffb8ac1a28e1a2773c0b550f5361090024b2dd32e5a682c69b7945f"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 81,
+      "loaded": 4196
+    }
+  },
+  {
+    "id": "code-simplification",
+    "name": "code-simplification",
+    "description": "Simplifies code for clarity. Use when refactoring code for clarity without changing behavior. Use when code works but is harder to read, maintain, or extend than it should be. Use when reviewing code that has accumulated unnecessary complexity. Use when asked to simplify, clean up, or reduce the nesting of a function or module that already works, even when the code is pasted inline and nothing else needs to change.",
+    "category": "quality",
+    "repo": "addyosmani/agent-skills",
+    "path": "skills/code-simplification",
+    "pin": "39b723ceebf81474d0557c1fecd01eddab585563",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "e13b433345e6bf425c3625442ac1b3507b371c18d7ea3e3db822da7a7f742a29"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 111,
+      "loaded": 3430
+    }
+  },
+  {
+    "id": "tdd",
+    "name": "tdd",
+    "description": "Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions \"red-green-refactor\", or wants integration tests.",
+    "category": "quality",
+    "repo": "mattpocock/skills",
+    "path": "skills/engineering/tdd",
+    "pin": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "5505d25bbaa8fc14a79e4d20163936958992a2995b7f1dd1d6197edc9ed722e0"
+      },
+      {
+        "path": "agents/openai.yaml",
+        "sha256": "ea6f01cf1b8c06a4b0f5b649d74b1b8ce8685e72af1b38d70d877693e092af0b"
+      },
+      {
+        "path": "mocking.md",
+        "sha256": "3ceb807fdf4a47d6a93d4d9a891e5ba6d362a6247bd08adc451feebfc17361ef"
+      },
+      {
+        "path": "tests.md",
+        "sha256": "859f9e592c188fda4fc7277dd180e4ce9c7a2e13f6efe1f6f29eccc9d28c106a"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 40,
+      "loaded": 908
+    }
+  },
+  {
+    "id": "code-review",
+    "name": "code-review",
+    "description": "Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes: Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/spec asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to \"review since X\".",
+    "category": "quality",
+    "repo": "mattpocock/skills",
+    "path": "skills/engineering/code-review",
+    "pin": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "9c921a8d88138a41401d8897ca1bb852088ab1b7b605cdd04edc13e3e8aab6dd"
+      },
+      {
+        "path": "agents/openai.yaml",
+        "sha256": "8229ca854e11dc8e6aef2131ee03f31fb1561cf905fab9ccc325180cf3331352"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 109,
+      "loaded": 1681
+    }
+  },
+  {
+    "id": "improve-codebase-architecture",
+    "name": "improve-codebase-architecture",
+    "description": "Scan a codebase for deepening opportunities, present them as a visual HTML report, then grill through whichever one you pick.",
+    "category": "quality",
+    "repo": "mattpocock/skills",
+    "path": "skills/engineering/improve-codebase-architecture",
+    "pin": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "HTML-REPORT.md",
+        "sha256": "581e8bb5a521e46bbda8ca7e19b15948bed882187108092ebb90c62513b77528"
       },
       {
         "path": "SKILL.md",
-        "sha256": "dcd4803e61e913e6fc27294184cd3a71f09f5e924ff20c8a9a20173e7b3c2bcf"
+        "sha256": "35b03a3db61e0f5aa333ea59b54963e45a3d2ace6649b2ef4f9576603e2582a6"
       },
       {
-        "path": "agents/analyzer.md",
-        "sha256": "bf68f4cac5a56c673a928c2e6d619586c5b93ea364026ab37547772cb45a663a"
-      },
-      {
-        "path": "agents/comparator.md",
-        "sha256": "fe1fc9787c495d864c5d6eada47396478572325fde1b33a96d78bf4b849b7a3e"
-      },
-      {
-        "path": "agents/grader.md",
-        "sha256": "57134da0c1a4eea33fbd74a1c9c44aa814f07d6bc64de303edb586f941e5d21a"
-      },
-      {
-        "path": "assets/eval_review.html",
-        "sha256": "ce477dcc74dc1c0d1d3352646a79167b5a63634e936b1019160025065974e452"
-      },
-      {
-        "path": "eval-viewer/generate_review.py",
-        "sha256": "fc9d1b9243fe5ab6012ebd579bd76d0035de1b79fd3b969de114defab26478fb"
-      },
-      {
-        "path": "eval-viewer/viewer.html",
-        "sha256": "a53213426ee1100441d701a3a0d49cda7a842f992d2c36463f4d3cc0258575fa"
-      },
-      {
-        "path": "references/schemas.md",
-        "sha256": "8e8876180a8989b406a4d3edddf875b04cdfd5805cc8616686d552b11ce4455f"
-      },
-      {
-        "path": "scripts/__init__.py",
-        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-      },
-      {
-        "path": "scripts/aggregate_benchmark.py",
-        "sha256": "123ef128ea5ccc01a4b1ac212ef5567f21e9c13d3d240609780beeb3200c49aa"
-      },
-      {
-        "path": "scripts/generate_report.py",
-        "sha256": "13df7118a3c50c83c4c3250a606d5f2b20b25a3d44cbc392b3d669ec75281453"
-      },
-      {
-        "path": "scripts/improve_description.py",
-        "sha256": "87d864570220b699fac52da309d2d6efdb060647bfebc74f768128e646accf80"
-      },
-      {
-        "path": "scripts/package_skill.py",
-        "sha256": "1a33059b0db1ef73375d46d513e5ea81369d2e8838c970597b0d52ddef8d1c0f"
-      },
-      {
-        "path": "scripts/quick_validate.py",
-        "sha256": "67cf5703402013936c8fb75ad6a1afecd8841d45cc5e606b634eb05825fde365"
-      },
-      {
-        "path": "scripts/run_eval.py",
-        "sha256": "43e3b8f80dbf69c343967ba77e268fae991d9fa3ed68b32a0ff02532cd48657f"
-      },
-      {
-        "path": "scripts/run_loop.py",
-        "sha256": "7bd6f674203168520517eec94c55f493c0d154339b061b4d7c0f0dad187d0f21"
-      },
-      {
-        "path": "scripts/utils.py",
-        "sha256": "3af8ae62c40c73ab712207436a0d9a981e845f25c5a7040229eb189cc8e45bb1"
+        "path": "agents/openai.yaml",
+        "sha256": "c8cb20f68ebf0edb4e497bc11ae5fcaa196004e661cd189015b04f4109ced7f1"
       }
     ],
-    "scripts": true,
+    "scripts": false,
     "tokens": {
-      "listed": 85,
-      "loaded": 8292
+      "listed": 40,
+      "loaded": 1507
     }
   },
   {
     "id": "webapp-testing",
     "name": "webapp-testing",
     "description": "Toolkit for interacting with and testing local web applications using Playwright. Supports verifying frontend functionality, debugging UI behavior, capturing browser screenshots, and viewing browser logs.",
+    "category": "quality",
     "repo": "anthropics/skills",
     "path": "skills/webapp-testing",
     "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
@@ -1017,9 +687,35 @@ export const SKILL_CATALOG: CatalogSkill[] = [
     }
   },
   {
+    "id": "frontend-design",
+    "name": "frontend-design",
+    "description": "Guidance for distinctive, intentional visual design when building new UI or reshaping an existing one. Helps with aesthetic direction, typography, and making choices that don't read as templated defaults.",
+    "category": "design",
+    "repo": "anthropics/skills",
+    "path": "skills/frontend-design",
+    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "path": "LICENSE.txt",
+        "sha256": "0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594"
+      },
+      {
+        "path": "SKILL.md",
+        "sha256": "d91970639e9f5c37682ac7ab60094d35f1c7c1f38d731bd56396563aee10c1d3"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 56,
+      "loaded": 2348
+    }
+  },
+  {
     "id": "theme-factory",
     "name": "theme-factory",
     "description": "Toolkit for styling artifacts with a theme. These artifacts can be slides, docs, reportings, HTML landing pages, etc. There are 10 pre-set themes with colors/fonts that you can apply to any artifact that has been creating, or can generate a new theme on-the-fly.",
+    "category": "design",
     "repo": "anthropics/skills",
     "path": "skills/theme-factory",
     "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
@@ -1085,701 +781,592 @@ export const SKILL_CATALOG: CatalogSkill[] = [
     }
   },
   {
-    "id": "systematic-debugging",
-    "name": "systematic-debugging",
-    "description": "Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes",
-    "repo": "obra/superpowers",
-    "path": "skills/systematic-debugging",
-    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
-    "license": "MIT",
+    "id": "canvas-design",
+    "name": "canvas-design",
+    "description": "Create beautiful visual art in .png and .pdf documents using design philosophy. You should use this skill when the user asks to create a poster, piece of art, design, or other static piece. Create original visual designs, never copying existing artists' work to avoid copyright violations.",
+    "category": "design",
+    "repo": "anthropics/skills",
+    "path": "skills/canvas-design",
+    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
+    "license": "Apache-2.0",
     "files": [
       {
+        "path": "LICENSE.txt",
+        "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      {
         "path": "SKILL.md",
-        "sha256": "51c6435d98c83c42c96ba7c35725a0b2c376cd487fb1a4e6bd0ddbe7e33ef202"
+        "sha256": "a1f288079624402f30682753c1d43920b6664785698d21d3e7aa197450a6448b"
       },
       {
-        "path": "condition-based-waiting-example.ts",
-        "sha256": "40ae5ebe497fdf310200e43fe986552546d0a22837c0d39e855db1cfd33eb88e"
+        "path": "canvas-fonts/ArsenalSC-OFL.txt",
+        "sha256": "8ddd61b18ba2c0d0dbe4a691cf5f1a0673f473d02fa0546e67ee88c006aeff6e"
       },
       {
-        "path": "condition-based-waiting.md",
-        "sha256": "e89fec8400d6cd50f43407cec9fab50976ba4d55d0ec2eb51c0bd68036b54c26"
+        "path": "canvas-fonts/ArsenalSC-Regular.ttf",
+        "sha256": "65e6f89df58f68fd905b3add34a79dd6106aa3b3044df0dad9676fff53d504b9"
       },
       {
-        "path": "defense-in-depth.md",
-        "sha256": "1e175fb86fc357e58c6aebf5441e481e1b7868b4380c0456b63a17eefbd18ba7"
+        "path": "canvas-fonts/BigShoulders-Bold.ttf",
+        "sha256": "b43bcd198b9fdf717dd42aa61a34dba32e01aceaeae659d689afd0ca52c37ea2"
       },
       {
-        "path": "find-polluter.sh",
-        "sha256": "dd7b8f13c4cc2a24b33ff87b18da9248f3e1c80a085c3316224f69ff0fa5c43c"
+        "path": "canvas-fonts/BigShoulders-OFL.txt",
+        "sha256": "fbc746aabf0eb1847dfd92e2efc4596d79fa897d60b8e64062a22f585508fb3f"
       },
       {
-        "path": "root-cause-tracing.md",
-        "sha256": "75b933b6a8c40bdb2031b10f21654395b56ec6ab6bc7b018c18d3fe57aeb7fb8"
+        "path": "canvas-fonts/BigShoulders-Regular.ttf",
+        "sha256": "18a879fc71978a4447150705caf880a9da3860083c259fd29e6dc03057b6842a"
+      },
+      {
+        "path": "canvas-fonts/Boldonse-OFL.txt",
+        "sha256": "45cc82ab4032273c0924025ffcf8f0665a68e1a5955e3f7247e5daf1deeb1326"
+      },
+      {
+        "path": "canvas-fonts/Boldonse-Regular.ttf",
+        "sha256": "cc2e540604565c0f90a7d8d46194a2f42fc9c45512cd2e39bf03b50eb68c35a4"
+      },
+      {
+        "path": "canvas-fonts/BricolageGrotesque-Bold.ttf",
+        "sha256": "a737b146fe0d77ffe8a86e3cd16700dd431d3b1e420d4fd80e142cd68a1cb50d"
+      },
+      {
+        "path": "canvas-fonts/BricolageGrotesque-OFL.txt",
+        "sha256": "0e4f4eb8534bc66a76aca13dd19c1f9731b2008866b29ccff182b764649df9b4"
+      },
+      {
+        "path": "canvas-fonts/BricolageGrotesque-Regular.ttf",
+        "sha256": "972a6d098c9867ae131d0ea99e221e63976b11a19d4b931c2c7ace525674e4f6"
+      },
+      {
+        "path": "canvas-fonts/CrimsonPro-Bold.ttf",
+        "sha256": "48f191e38355c8db100eb3ce157c20f9302a3b9a37b44a660f77ecfce3986609"
+      },
+      {
+        "path": "canvas-fonts/CrimsonPro-Italic.ttf",
+        "sha256": "52318db3526b644e6efa60be0b3ca5a50e40fbe8bd026c261e0aa206f0772267"
+      },
+      {
+        "path": "canvas-fonts/CrimsonPro-OFL.txt",
+        "sha256": "35680d14547b6748b6f362a052a46d22764ce5eccf96e18b74f567bb2ee58114"
+      },
+      {
+        "path": "canvas-fonts/CrimsonPro-Regular.ttf",
+        "sha256": "48fad08cb1917a7b2f2c6fe5135d6c07743a6663cf7631ec4481108aaf081422"
+      },
+      {
+        "path": "canvas-fonts/DMMono-OFL.txt",
+        "sha256": "bfe7842fcb88323e2981e24710c25202677385a8c75fb6a87217b275a0247ae3"
+      },
+      {
+        "path": "canvas-fonts/DMMono-Regular.ttf",
+        "sha256": "f98ada968dc3b6b2c08d3f5caaf266977df0bfe0929372b93df5a06cf2ace450"
+      },
+      {
+        "path": "canvas-fonts/EricaOne-OFL.txt",
+        "sha256": "e0de629968b52255548d5fafcf30b24ff9edae0eda362380755a75816404d0fa"
+      },
+      {
+        "path": "canvas-fonts/EricaOne-Regular.ttf",
+        "sha256": "db1d89e80e33a8a01beaaac7a85df582857d24a43f1e181461aa7ff5d701476a"
+      },
+      {
+        "path": "canvas-fonts/GeistMono-Bold.ttf",
+        "sha256": "75c0828d5c1ee44b9ef9f4df577bf41595ec362e2ea3f1e558590c9e92c7949d"
+      },
+      {
+        "path": "canvas-fonts/GeistMono-OFL.txt",
+        "sha256": "6a873c900f584109b13ae0aaf81d6e3cf0a68751a216b03f7b6c68d547057bb4"
+      },
+      {
+        "path": "canvas-fonts/GeistMono-Regular.ttf",
+        "sha256": "a55c1b51cda4afeab9e471e7947b85a20f7c8831d7e6b1470c1b7fbdc0f0f15e"
+      },
+      {
+        "path": "canvas-fonts/Gloock-OFL.txt",
+        "sha256": "c0a3f3125ac491ef3d1f09f401be4834c646562f647e44f2bcbc49f0466c656d"
+      },
+      {
+        "path": "canvas-fonts/Gloock-Regular.ttf",
+        "sha256": "e86b4ce66dbd3f1f83eee8db99ec96e0da1128c3f53df0e9b3b7472025dfe960"
+      },
+      {
+        "path": "canvas-fonts/IBMPlexMono-Bold.ttf",
+        "sha256": "dbd2a2fb024579438d6400a84e57579bfd2dbe67c306c8fd9fde92a61e4f2eea"
+      },
+      {
+        "path": "canvas-fonts/IBMPlexMono-OFL.txt",
+        "sha256": "5294ce778857e1eb02e830b6ab06435537d38f43055327e73d03a2d4d57d5123"
+      },
+      {
+        "path": "canvas-fonts/IBMPlexMono-Regular.ttf",
+        "sha256": "ab08018ccd276b79fb2c636bb95b9c543598f9d50505fe92506fcb4dae7810cd"
+      },
+      {
+        "path": "canvas-fonts/IBMPlexSerif-Bold.ttf",
+        "sha256": "b8d294e9b5c5a0940f167c3ced0f7ef2e3f57082ca3ff096ef30e86e26c1c159"
+      },
+      {
+        "path": "canvas-fonts/IBMPlexSerif-BoldItalic.ttf",
+        "sha256": "da64b75f4284f53e7b5c71fa190a35b8bf3494fe19f1804c81c3a53340bca570"
+      },
+      {
+        "path": "canvas-fonts/IBMPlexSerif-Italic.ttf",
+        "sha256": "b11f1048745e715a55c9d837b3f10226ca3d78867b7db7251ddad8f98dcf0f38"
+      },
+      {
+        "path": "canvas-fonts/IBMPlexSerif-Regular.ttf",
+        "sha256": "77cd233a2af8dc6b1022faea3bb3b01f3c75af68bcf530cb6aeb15982ff3dbb7"
+      },
+      {
+        "path": "canvas-fonts/InstrumentSans-Bold.ttf",
+        "sha256": "444f85bf1c4b0e1ce1ca624f6be54bcd832207714ccaf4ea99ee531341683bdf"
+      },
+      {
+        "path": "canvas-fonts/InstrumentSans-BoldItalic.ttf",
+        "sha256": "3762f6cef95d6039489ad5ba5787d4c30f17a1ad01e9ac3c816ed69692722a68"
+      },
+      {
+        "path": "canvas-fonts/InstrumentSans-Italic.ttf",
+        "sha256": "78e85858e371b2cb4e18f617c10f0f937c0e12a0887ffee98555b24ed305b3a7"
+      },
+      {
+        "path": "canvas-fonts/InstrumentSans-OFL.txt",
+        "sha256": "bf4dc6d13a8cccd4807133c77a1ee9619a16b92cb23322258725ab6731c2f6e5"
+      },
+      {
+        "path": "canvas-fonts/InstrumentSans-Regular.ttf",
+        "sha256": "a22cb26e48fd79bcb01bf2fc92d36785474dce36d9c544ab0a8868c2657c4a87"
+      },
+      {
+        "path": "canvas-fonts/InstrumentSerif-Italic.ttf",
+        "sha256": "9c86e4d5a47b50224a2463a9eca8535835257c8e85c470c2c6b454b1af6f046e"
+      },
+      {
+        "path": "canvas-fonts/InstrumentSerif-Regular.ttf",
+        "sha256": "56ac3be03ac3ba283196b3e77850ab2ffcf56cfb6fd3212c5620109a972f8c99"
+      },
+      {
+        "path": "canvas-fonts/Italiana-OFL.txt",
+        "sha256": "8373b11312ace78c4cec2e8f9f6aa9f2330601107dac7bcf899c6f2dbd40c5a5"
+      },
+      {
+        "path": "canvas-fonts/Italiana-Regular.ttf",
+        "sha256": "15c4dd6ab8cf4a29ba8826f65edcbe2f6c266c557d34d081f25072dfd5605fd2"
+      },
+      {
+        "path": "canvas-fonts/JetBrainsMono-Bold.ttf",
+        "sha256": "a2349098b9e45419e7bf0e2958d6c4937a049dded37387b08be725be4c7615f3"
+      },
+      {
+        "path": "canvas-fonts/JetBrainsMono-OFL.txt",
+        "sha256": "a76abf002c49097d146e86740a3105a5d00450b1592e820a1109a8c5680cd697"
+      },
+      {
+        "path": "canvas-fonts/JetBrainsMono-Regular.ttf",
+        "sha256": "b6b1ff4ddefe36d7f2a6174e1d001cab374e594519ee9049af028d577b64c5f5"
+      },
+      {
+        "path": "canvas-fonts/Jura-Light.ttf",
+        "sha256": "c891a381df056b2c4dfe85841e911bf45da0890fa21a7b2692cbe5ea1f505e1e"
+      },
+      {
+        "path": "canvas-fonts/Jura-Medium.ttf",
+        "sha256": "c72965cb732a92872643819fd1734128238583cc36b116313859137a51d3368a"
+      },
+      {
+        "path": "canvas-fonts/Jura-OFL.txt",
+        "sha256": "eaf9bdb675f6d87e5feb88199ab3ea581d3bd2082f426e384fa9c394576d7260"
+      },
+      {
+        "path": "canvas-fonts/LibreBaskerville-OFL.txt",
+        "sha256": "55959eef5b0c3b2e3c1c7631b8ff0f9447d75de20f29cfa7db5bcfb026763343"
+      },
+      {
+        "path": "canvas-fonts/LibreBaskerville-Regular.ttf",
+        "sha256": "2101302538d9e88adb679031c04623e4578b5745e89566284fd2c508d79acae0"
+      },
+      {
+        "path": "canvas-fonts/Lora-Bold.ttf",
+        "sha256": "7d74015e950c2fb66519c7295b8155621d22200ae2ca2a4c6b43ce3c490cac87"
+      },
+      {
+        "path": "canvas-fonts/Lora-BoldItalic.ttf",
+        "sha256": "152f87e71f5ddb60d5c57ecd9132807c947e65c42977193c9164e7c5a6690081"
+      },
+      {
+        "path": "canvas-fonts/Lora-Italic.ttf",
+        "sha256": "be627e595184e8afe521f08da0607eee613f1997d423bc8dadc5798995581377"
+      },
+      {
+        "path": "canvas-fonts/Lora-OFL.txt",
+        "sha256": "62e37a82d3f1ef2a70712885fa8b3144b65fd144d8e748d6196b690a354d792c"
+      },
+      {
+        "path": "canvas-fonts/Lora-Regular.ttf",
+        "sha256": "7ed00e7c9cdf16ab7e2fd2361fe45d4f0b61263cd60aae398b27b7ee08108827"
+      },
+      {
+        "path": "canvas-fonts/NationalPark-Bold.ttf",
+        "sha256": "69ac4c301c4a7233c6e602d12a92c54d7967b575f4449951c45ce773f7acff53"
+      },
+      {
+        "path": "canvas-fonts/NationalPark-OFL.txt",
+        "sha256": "81c6c71d83b5b45d7344f96df12bb4a2477a5b092a9144757ee1d0f50f855175"
+      },
+      {
+        "path": "canvas-fonts/NationalPark-Regular.ttf",
+        "sha256": "a477338b7e18308d476650dfe31235ef86a883572665e56ffb5fb80f82009b58"
+      },
+      {
+        "path": "canvas-fonts/NothingYouCouldDo-OFL.txt",
+        "sha256": "7c2a6970584ddad04919816163746f83b378078015899b18468b40f05e9ce128"
+      },
+      {
+        "path": "canvas-fonts/NothingYouCouldDo-Regular.ttf",
+        "sha256": "d866f985896d3280f4fce72db7e17302c24a0c1fdb0699b6b5ed3af14f944d57"
+      },
+      {
+        "path": "canvas-fonts/Outfit-Bold.ttf",
+        "sha256": "6654b93d21301ec61887d3cedd6c11d9df1b1dfb63f9cf45ac7995f6e2235ab1"
+      },
+      {
+        "path": "canvas-fonts/Outfit-OFL.txt",
+        "sha256": "1945b62cd76da9a3051a1660dde72afaa64ffc2666d30e7a78356d651653ba2f"
+      },
+      {
+        "path": "canvas-fonts/Outfit-Regular.ttf",
+        "sha256": "f24945365147c9e783e91d8649959b59be6b00c9ee4ecd2f6b33afbb2dd871fe"
+      },
+      {
+        "path": "canvas-fonts/PixelifySans-Medium.ttf",
+        "sha256": "38397504f71c122b03d234ea6f55118e3d5bdbddffd82bedddbd7755d3b3be82"
+      },
+      {
+        "path": "canvas-fonts/PixelifySans-OFL.txt",
+        "sha256": "7f54d1d9f1ae1ba9f2722f978145f90324fea34ca3c2304b3a29cfa96ac6037e"
+      },
+      {
+        "path": "canvas-fonts/PoiretOne-OFL.txt",
+        "sha256": "2eaf541f7eb8b512e4c757a5212060abf5b6edfef230e9d7640bf736b315c33a"
+      },
+      {
+        "path": "canvas-fonts/PoiretOne-Regular.ttf",
+        "sha256": "9cf265b139648b36b6c0afdfeb0bf27f7e66db9a16094bc40f644d8da05bc318"
+      },
+      {
+        "path": "canvas-fonts/RedHatMono-Bold.ttf",
+        "sha256": "7ef48353f4be5ddb90f000f6fad48f2b62b3e8c27d9818d8d45ff46c201065e0"
+      },
+      {
+        "path": "canvas-fonts/RedHatMono-OFL.txt",
+        "sha256": "435fbfb7e66988b2a06686a4cb966faec733f35d8fe100a1601573c27f3e0bb8"
+      },
+      {
+        "path": "canvas-fonts/RedHatMono-Regular.ttf",
+        "sha256": "452fe826871b37539f5212b20c87cf30f82f58dd2741f1c96edd1dcbdc0db6b4"
+      },
+      {
+        "path": "canvas-fonts/Silkscreen-OFL.txt",
+        "sha256": "6b849745119bbe85ec01fd080c9cd50234da9f52ac6e48b55d1a424a0c4d7ca9"
+      },
+      {
+        "path": "canvas-fonts/Silkscreen-Regular.ttf",
+        "sha256": "49567408600809e25147e9225ac4f37f410e2df45a750696c45027531fb65f1b"
+      },
+      {
+        "path": "canvas-fonts/SmoochSans-Medium.ttf",
+        "sha256": "dd76e6e77cce82f827a8654cd906e9ce58f3aaf78adda63c4a7f655b8ecb41f0"
+      },
+      {
+        "path": "canvas-fonts/SmoochSans-OFL.txt",
+        "sha256": "74c9c4eb88e891483e1b7bc54780b452cbf4f4df66d4e71881d7569aa2130749"
+      },
+      {
+        "path": "canvas-fonts/Tektur-Medium.ttf",
+        "sha256": "52bbe8c9b057b3d2da4eeace31a524b1ea26a1375ae34319cf6900ccc57a4c82"
+      },
+      {
+        "path": "canvas-fonts/Tektur-OFL.txt",
+        "sha256": "3f1466cb5438f31782eeb6e895f3a655bc4d090e24263e331f555357d1cb734e"
+      },
+      {
+        "path": "canvas-fonts/Tektur-Regular.ttf",
+        "sha256": "162e1b36c4718c5b051b36c971ad7e50d341944f35618f480422ebbe72988f98"
+      },
+      {
+        "path": "canvas-fonts/WorkSans-Bold.ttf",
+        "sha256": "240d125fc9f8561363dc1ea3f513501253bd70942f41468f48f0b0cafb0c82e2"
+      },
+      {
+        "path": "canvas-fonts/WorkSans-BoldItalic.ttf",
+        "sha256": "a5b2cad813df0aaa7d16621f2e93b5117c25e9bc788bc9a3ad218e9d6348ce34"
+      },
+      {
+        "path": "canvas-fonts/WorkSans-Italic.ttf",
+        "sha256": "6b7f7002e0b0c8b261fe878658ef5551e3e59d9f6b609b04efb90dde1e2c1ada"
+      },
+      {
+        "path": "canvas-fonts/WorkSans-OFL.txt",
+        "sha256": "ace8c22a3326318b54e67c3691857929634205533f454a70ef5a3473ddb2e2ba"
+      },
+      {
+        "path": "canvas-fonts/WorkSans-Regular.ttf",
+        "sha256": "e67985a843df0d3cdee51a3d0f329eb1774a344ad9ff0c9ab923751f1577e2a4"
+      },
+      {
+        "path": "canvas-fonts/YoungSerif-OFL.txt",
+        "sha256": "cdcb8039606b40a027a6d24586ec62d5fe29c701343d82a048c829cb28a3dd28"
+      },
+      {
+        "path": "canvas-fonts/YoungSerif-Regular.ttf",
+        "sha256": "f8dc08f77abad753a00670af70756a8ace938e5c3f0b770f4f4c2071c4bd8fc6"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 77,
+      "loaded": 2985
+    }
+  },
+  {
+    "id": "algorithmic-art",
+    "name": "algorithmic-art",
+    "description": "Creating algorithmic art using p5.js with seeded randomness and interactive parameter exploration. Use this when users request creating art using code, generative art, algorithmic art, flow fields, or particle systems. Create original algorithmic art rather than copying existing artists' work to avoid copyright violations.",
+    "category": "design",
+    "repo": "anthropics/skills",
+    "path": "skills/algorithmic-art",
+    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "path": "LICENSE.txt",
+        "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      {
+        "path": "SKILL.md",
+        "sha256": "3bc4092c09804853186524c826bc0621b940bb6122c05b84496dff95388e6eef"
+      },
+      {
+        "path": "templates/generator_template.js",
+        "sha256": "9ee0f1da52ef8f7bbfde1917123654880890d43f2d388642d71eab6dd78f94c4"
+      },
+      {
+        "path": "templates/viewer.html",
+        "sha256": "86c79d7ce97d2599ebe4bd9b97fdeb7295c9d3ed61ceeb513cbe1b2bb5d1ce29"
       }
     ],
     "scripts": true,
     "tokens": {
-      "listed": 29,
-      "loaded": 2383
+      "listed": 86,
+      "loaded": 4943
     }
   },
   {
-    "id": "test-driven-development",
-    "name": "test-driven-development",
-    "description": "Use when implementing any feature or bugfix, before writing implementation code",
-    "repo": "obra/superpowers",
-    "path": "skills/test-driven-development",
-    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
-    "license": "MIT",
+    "id": "web-artifacts-builder",
+    "name": "web-artifacts-builder",
+    "description": "Suite of tools for creating elaborate, multi-component claude.ai HTML artifacts using modern frontend web technologies (React, Tailwind CSS, shadcn/ui). Use for complex artifacts requiring state management, routing, or shadcn/ui components - not for simple single-file HTML/JSX artifacts.",
+    "category": "design",
+    "repo": "anthropics/skills",
+    "path": "skills/web-artifacts-builder",
+    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
+    "license": "Apache-2.0",
     "files": [
       {
-        "path": "SKILL.md",
-        "sha256": "64b03fce4aee5a97a93160cea8111f3ba13a17b7c001db4bd5836d67fd10705d"
+        "path": "LICENSE.txt",
+        "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
       },
-      {
-        "path": "writing-good-tests.md",
-        "sha256": "51471c853306ff92ca8bb41dcaea05f31c0e46b03651f8f3c99754b7172f4ae1"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 27,
-      "loaded": 2395
-    }
-  },
-  {
-    "id": "brainstorming",
-    "name": "brainstorming",
-    "description": "You MUST use this before any creative work - creating features, building components, adding functionality, modifying behavior, or planning anything new, in software or out of it (a talk, a business, a renovation).",
-    "repo": "obra/superpowers",
-    "path": "skills/brainstorming",
-    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
-    "license": "MIT",
-    "files": [
       {
         "path": "SKILL.md",
-        "sha256": "2c9ca71f94886f9ca9f4aef055f7cafb3e1a9bdf3aeebf8f4cb547c69405d207"
+        "sha256": "81c5002c6643b0de7b8710b00e7a9038daa6fb9b68d59870ee6adb12da8d10f8"
       },
       {
-        "path": "builder-check-prompt.md",
-        "sha256": "36d51a4723d6f0a3ce5811a0ea3b3a8424f07533947e1355f5d8cb8cce40c55e"
+        "path": "scripts/bundle-artifact.sh",
+        "sha256": "abf0e480bf6585b56fab8526a407dfb7dc740812bddd70c636e1e8f3df5f9618"
       },
       {
-        "path": "scripts/frame-template.html",
-        "sha256": "6a8a4e58bd6a44b904e2e3c57de774481d909204597e1498de53f1b2fecc4c4e"
+        "path": "scripts/init-artifact.sh",
+        "sha256": "355e5dd4382aaaee91f01f1627eaeab30b2676ffa8d9b3ec328a1ae450ebccaa"
       },
       {
-        "path": "scripts/helper.js",
-        "sha256": "43c6d69954a46ec34a2a262bcc62a9a7e83e839c739f199cb72646d397c686e3"
-      },
-      {
-        "path": "scripts/server.cjs",
-        "sha256": "763abf96510e0b892a1141397b31aa82ef900cf87ed34dde94bc8782baf4a7ca"
-      },
-      {
-        "path": "scripts/start-server.sh",
-        "sha256": "314dd68dc00e8dd94c7491aca8a5f004c7fddffc161e2b07482f29f48d13659a"
-      },
-      {
-        "path": "scripts/stop-server.sh",
-        "sha256": "0b5ccbbd57f62d3ed88993f7940b5ee0e5c0fc9b21c550c623da4f6292e47daf"
-      },
-      {
-        "path": "visual-companion.md",
-        "sha256": "6ffcb038b53254bd31debaa15e12dcd4ff24bd63d690e0b644ac6396701cf2e2"
+        "path": "scripts/shadcn-components.tar.gz",
+        "sha256": "1296f069e825de7933de7e8ac63672495cacce3f88f2dc45554dbcddbcbca60f"
       }
     ],
     "scripts": true,
     "tokens": {
-      "listed": 58,
-      "loaded": 3798
+      "listed": 79,
+      "loaded": 772
     }
   },
   {
-    "id": "writing-plans",
-    "name": "writing-plans",
-    "description": "Use when you have a spec or requirements for a multi-step task, before touching code",
-    "repo": "obra/superpowers",
-    "path": "skills/writing-plans",
-    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "id": "web-design-guidelines",
+    "name": "web-design-guidelines",
+    "description": "Review UI code for Web Interface Guidelines compliance. Use when asked to \"review my UI\", \"check accessibility\", \"audit design\", \"review UX\", or \"check my site against best practices\".",
+    "category": "design",
+    "repo": "vercel-labs/agent-skills",
+    "path": "skills/web-design-guidelines",
+    "pin": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
     "license": "MIT",
     "files": [
       {
         "path": "SKILL.md",
-        "sha256": "a6c67c1900064347c2a329990dd3c555657c51c3ec53b259a08aa01a2c26139a"
+        "sha256": "f4647ca866a3accf763777f83e7682954f0187cd6bea7eea0399796652414e8f"
       }
     ],
     "scripts": false,
     "tokens": {
-      "listed": 26,
-      "loaded": 2584
+      "listed": 53,
+      "loaded": 308
     }
   },
   {
-    "id": "executing-plans",
-    "name": "executing-plans",
-    "description": "Use when executing an implementation plan in the current session as the implementer yourself — your human partner chose inline execution, or no subagent tool is available",
-    "repo": "obra/superpowers",
-    "path": "skills/executing-plans",
-    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "id": "emil-design-eng",
+    "name": "emil-design-eng",
+    "description": "Emil Kowalski's design-engineering philosophy for UI polish, component design, animation decisions, and the invisible details that make software feel great. Use when building or reviewing a UI component's interactions and polish (press and hover states, popover origin, tooltip timing, transitions vs keyframes, clip-path techniques, drag details) and no narrower skill fits.",
+    "category": "design",
+    "repo": "emilkowalski/skills",
+    "path": "skills/emil-design-eng",
+    "pin": "0f2e23b32bb1265e84cff8d3e75785fec953fb1b",
     "license": "MIT",
     "files": [
       {
         "path": "SKILL.md",
-        "sha256": "deaf176fa179827e80f2ea3101db3ea90fdf562ebef340eba761e4687940f5f5"
+        "sha256": "cdbfe467e6c9a4940c3a19e795cecf1ba659378d7412e06c245c6ae49da47da6"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 99,
+      "loaded": 7065
+    }
+  },
+  {
+    "id": "animate",
+    "name": "animate",
+    "description": "Build an animation from scratch, making the decisions in the order that determines whether it feels right — should it animate at all, what purpose, which tool, which properties, which curve and duration, how it interrupts, how it exits. Writes the implementation. Use when asked to animate something, add motion, make a component feel alive, or build a transition. For critiquing existing motion use review-animations; for auditing a whole codebase use improve-animations.",
+    "category": "design",
+    "repo": "emilkowalski/skills",
+    "path": "skills/animate",
+    "pin": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "RECIPES.md",
+        "sha256": "129cddcba35dedacd307ef2de7f2c71e6d23efd9c1756dde44168241207581f9"
       },
       {
-        "path": "scripts/task-done",
-        "sha256": "ac0b5ebafc7d471507b7e94d88da77a11f187ba277c8d48fefaf8ff3e4fee50e"
+        "path": "SKILL.md",
+        "sha256": "4ce49ea635ec175b45552bae070ea07b2d6aa5367047994250c1c095b71c8585"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 121,
+      "loaded": 3031
+    }
+  },
+  {
+    "id": "improve-animations",
+    "name": "improve-animations",
+    "description": "Survey a codebase's animation and motion code as a senior motion advisor, then produce a prioritized audit and self-contained implementation plans for other agents (or cheaper models) to execute. Read-only on source code — it plans improvements, it does not apply them. Use when the user asks to \"improve the animations\", \"audit the motion\", \"make this app feel better\", or wants a roadmap of animation fixes rather than a review of a single diff.",
+    "category": "design",
+    "repo": "emilkowalski/skills",
+    "path": "skills/improve-animations",
+    "pin": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "AUDIT.md",
+        "sha256": "90312d201cd8ce7dc8add4147570cd47cdb6c901e9980951d9f7b4851b738524"
       },
       {
-        "path": "scripts/task-start",
-        "sha256": "4ae7ce3b6777c3240af786197836a6b4bbf3b0ee831c25f147c149ea8db54a21"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 48,
-      "loaded": 4591
-    }
-  },
-  {
-    "id": "verification-before-completion",
-    "name": "verification-before-completion",
-    "description": "Use when about to claim work is complete, fixed, or passing, before committing or creating PRs - requires running verification commands and confirming output before making any success claims; evidence before assertions always",
-    "repo": "obra/superpowers",
-    "path": "skills/verification-before-completion",
-    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "2befe7fc55bcadaa3d97dd9e8efeb633d2561c0ebe74c5a8b17c4d9e7e4520b3"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 65,
-      "loaded": 912
-    }
-  },
-  {
-    "id": "requesting-code-review",
-    "name": "requesting-code-review",
-    "description": "Use when completing tasks, implementing major features, or before merging to verify work meets requirements",
-    "repo": "obra/superpowers",
-    "path": "skills/requesting-code-review",
-    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "2180e14a448e9410bec88e6646a2d1f0ce7fdd58de27388c1e052e929679d2bc"
+        "path": "PLAN-TEMPLATE.md",
+        "sha256": "e25250c49937e183cca5bc42a057d9f5407a0cacd30d0aad1a4b6d59d7b2a844"
       },
       {
-        "path": "code-reviewer.md",
-        "sha256": "82e370be6b3447523816286195571e4216ba56ba1ad6ad0e87862294c4c78dcb"
+        "path": "SKILL.md",
+        "sha256": "632be90e04261192112571b05abd5708fbb846808a4a7780717ee206daa6c6f6"
       }
     ],
     "scripts": false,
     "tokens": {
-      "listed": 34,
-      "loaded": 744
+      "listed": 118,
+      "loaded": 2167
     }
   },
   {
-    "id": "receiving-code-review",
-    "name": "receiving-code-review",
-    "description": "Use when receiving code review feedback, before implementing suggestions, especially if feedback seems unclear or technically questionable - requires technical rigor and verification, not performative agreement or blind implementation",
-    "repo": "obra/superpowers",
-    "path": "skills/receiving-code-review",
-    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "id": "review-animations",
+    "name": "review-animations",
+    "description": "Reviews animation and motion code against a high craft bar derived from Emil Kowalski's design engineering philosophy. Default to flagging; approval is earned.",
+    "category": "design",
+    "repo": "emilkowalski/skills",
+    "path": "skills/review-animations",
+    "pin": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
     "license": "MIT",
     "files": [
       {
         "path": "SKILL.md",
-        "sha256": "091df1629510af1b92fc4abd6f96732ebedb4cb2c0f3457e8f2740b0504a2438"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 65,
-      "loaded": 1551
-    }
-  },
-  {
-    "id": "using-git-worktrees",
-    "name": "using-git-worktrees",
-    "description": "Use when starting feature work that needs isolation from current workspace or before executing implementation plans - ensures an isolated workspace exists via native tools or git worktree fallback",
-    "repo": "obra/superpowers",
-    "path": "skills/using-git-worktrees",
-    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "8cfb86f121269e8f7f12361e6795c4f6738828340e28964c9229d365666c9edd"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 55,
-      "loaded": 1704
-    }
-  },
-  {
-    "id": "writing-skills",
-    "name": "writing-skills",
-    "description": "Use when creating new skills, editing existing skills, or verifying skills work before deployment",
-    "repo": "obra/superpowers",
-    "path": "skills/writing-skills",
-    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "8cb3ac68c6d8c4bb46886b998b09af7989643cab8bd0e46ee86dd62e64546bbe"
+        "sha256": "9ceb5072ce5d5e51b07efa60817c66d06fc6492b7900b44dff5ff0f8f7bcf188"
       },
       {
-        "path": "references/CLAUDE_MD_TESTING.md",
-        "sha256": "0b379a3415e185d3c434b3ad283d8aa132f3022c2a4f210f168865b5986bcef0"
-      },
-      {
-        "path": "references/anthropic-best-practices.md",
-        "sha256": "217629b356c09c9bd11017c9788e8fc654ca1b32c92d4a51cd490e16dd65e59a"
-      },
-      {
-        "path": "references/bulletproofing.md",
-        "sha256": "9397023e6bc85b556a57f3097371363bf03e28e755c57f403f470bcda90e0a23"
-      },
-      {
-        "path": "references/discovery.md",
-        "sha256": "c6bbc74af3be90f693f7cbc986af6fa94e8df75f65109b52e96032587f5b92af"
-      },
-      {
-        "path": "references/flowcharts.md",
-        "sha256": "8b1f542391f274f0d33f3457ac099a3d317d6877eaa3b8d3b1ebef151b55fda7"
-      },
-      {
-        "path": "references/graphviz-conventions.dot",
-        "sha256": "e2890a593c91370e384b42f2f67b1a6232c9e69dddea7891a0c1c46d7b20b694"
-      },
-      {
-        "path": "references/persuasion-principles.md",
-        "sha256": "a51bc9bf75189ea73a27b3fb504a2fdfdb966fb1f7f1cdf03203230a216ccc03"
-      },
-      {
-        "path": "references/testing-skills-with-subagents.md",
-        "sha256": "ed8a6862c085900135962390530d9dc7637ad6d650b4324ce3b051287a5c3f22"
-      },
-      {
-        "path": "render-graphs.js",
-        "sha256": "c7f412cc629461c4d10287e668731874c0497707023e3e3f74a5355eb2cee196"
-      }
-    ],
-    "scripts": true,
-    "tokens": {
-      "listed": 29,
-      "loaded": 4185
-    }
-  },
-  {
-    "id": "finishing-a-development-branch",
-    "name": "finishing-a-development-branch",
-    "description": "Use when implementation is complete, all tests pass, and you need to decide how to integrate the work",
-    "repo": "obra/superpowers",
-    "path": "skills/finishing-a-development-branch",
-    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "8db5a922b242dd4e1bf824cb91c13b3e8d8e8a86d6ceaf7f0774eb9cce909d65"
+        "path": "STANDARDS.md",
+        "sha256": "2d2c28e9fe98dd55a879bafa1684827c812eb31f6b63fe578141d3978ddc664e"
       }
     ],
     "scripts": false,
     "tokens": {
-      "listed": 34,
-      "loaded": 1946
+      "listed": 46,
+      "loaded": 2078
     }
   },
   {
-    "id": "code-review-and-quality",
-    "name": "code-review-and-quality",
-    "description": "Conducts multi-axis code review. Use before merging any change. Use when reviewing code written by yourself, another agent, or a human. Use when you need to assess code quality across multiple dimensions before it enters the main branch. Use when asked to review a diff or a pull request, even when the diff is pasted inline and the review looks quick to do from reading it.",
-    "repo": "addyosmani/agent-skills",
-    "path": "skills/code-review-and-quality",
-    "pin": "39b723ceebf81474d0557c1fecd01eddab585563",
+    "id": "animation-performance",
+    "name": "animation-performance",
+    "description": "Keep web animations inside the frame budget — animate composite-only properties, keep motion off the main thread when the page is busy, and find the cause when an animation drops frames. Use when an animation is janky, choppy, stutters, or drops frames; when choosing which property to animate; when deciding between CSS and JS animation on performance grounds; or when reaching for `will-change` or GPU layers. For choosing easing, duration, or whether to animate at all use animate; for reviewing motion as a whole use review-animations.",
+    "category": "design",
+    "repo": "emilkowalski/skills",
+    "path": "skills/animation-performance",
+    "pin": "0f2e23b32bb1265e84cff8d3e75785fec953fb1b",
     "license": "MIT",
     "files": [
       {
         "path": "SKILL.md",
-        "sha256": "5dc8f98d9d23e74676091a945b2649bb52456e34f293238ee2511281104a94c0"
+        "sha256": "6481e7a611b54c0d1d229ac3ac516c05648e63aa79de88c0a1bdc5ae2666ab80"
       }
     ],
     "scripts": false,
     "tokens": {
-      "listed": 101,
-      "loaded": 5328
+      "listed": 142,
+      "loaded": 3501
     }
   },
   {
-    "id": "debugging-and-error-recovery",
-    "name": "debugging-and-error-recovery",
-    "description": "Guides systematic root-cause debugging. Use when tests fail, builds break, something that worked yesterday broke, behavior doesn't match expectations, or you encounter any unexpected error. Use when you need to figure out what broke and why — a systematic approach to finding and fixing the root cause rather than guessing. Use when asked what broke, why a test started failing, or why code throws, even when the diff, the function, or the stack trace is pasted inline and the cause looks obvious from reading it, so that the cause is named, the fix is minimal, and the reply says how to confirm it.",
-    "repo": "addyosmani/agent-skills",
-    "path": "skills/debugging-and-error-recovery",
-    "pin": "39b723ceebf81474d0557c1fecd01eddab585563",
+    "id": "apple-design",
+    "name": "apple-design",
+    "description": "Apple's approach to interface design and fluid, physical motion, translated for the web. Use when building or reviewing gesture-driven UI, spring animations, drag/swipe/sheet interactions, momentum and interruptible transitions, translucent materials and depth, typography (optical sizing, tracking, leading), reduced-motion, or the design foundations (feedback, spatial consistency, restraint) behind Apple-style interfaces.",
+    "category": "design",
+    "repo": "emilkowalski/skills",
+    "path": "skills/apple-design",
+    "pin": "64eb3deb9a5fbfa041faf783e0bc3fd635872e9c",
     "license": "MIT",
     "files": [
       {
         "path": "SKILL.md",
-        "sha256": "95e393819043b50b3ba6f4d89f0fea620d03e560eb52b592b3eb7a41836aaea1"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 158,
-      "loaded": 2793
-    }
-  },
-  {
-    "id": "git-workflow-and-versioning",
-    "name": "git-workflow-and-versioning",
-    "description": "Structures git workflow practices. Use when making any code change. Use when committing, branching, resolving conflicts, splitting uncommitted work in a messy working tree into clean atomic commits, opening or reviewing a pull request (PR), pushing to a remote, or when you need to organize work across multiple parallel streams. Use when cutting a release, choosing a semantic version bump, tagging, or writing a changelog. Use when asked to write a commit message or a changelog entry for a change, or to split a change into commits, even when the diff is pasted inline and the message seems easy to write from it.",
-    "repo": "addyosmani/agent-skills",
-    "path": "skills/git-workflow-and-versioning",
-    "pin": "39b723ceebf81474d0557c1fecd01eddab585563",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "d77c955f57cfafde73efb7641ed9a478ffaa0f61c0f31bd9fe87317702f1b60d"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 162,
-      "loaded": 3601
-    }
-  },
-  {
-    "id": "security-and-hardening",
-    "name": "security-and-hardening",
-    "description": "Hardens code against vulnerabilities. Use when auditing an input handler for vulnerabilities, when handling user input, authentication, data storage, or external integrations, or when checking a login flow is safe against the OWASP Top Ten. Use when building any feature that accepts untrusted data, manages user sessions or session cookies, or interacts with third-party services. Use when auditing dependencies for known vulnerabilities, triaging package-manager audit findings, or assessing supply-chain risk in a new package. Use when personal data or privacy compliance (GDPR, CCPA) is involved.",
-    "repo": "addyosmani/agent-skills",
-    "path": "skills/security-and-hardening",
-    "pin": "39b723ceebf81474d0557c1fecd01eddab585563",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "f78655c64329b53ee216c9bc1b8c01f6cd40d2e9caad35944f4b0dbed8fd16b7"
-      },
-      {
-        "path": "references/hardening-patterns.md",
-        "sha256": "451abdcef110e61470d8969151986f397b84c6eb2770d7788787b2b857c31e33"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 157,
-      "loaded": 4398
-    }
-  },
-  {
-    "id": "api-and-interface-design",
-    "name": "api-and-interface-design",
-    "description": "Guides stable API and interface design. Use when designing APIs, module boundaries, or any public interface. Use when creating REST or GraphQL endpoints, defining type contracts between modules, or establishing boundaries between frontend and backend.",
-    "repo": "addyosmani/agent-skills",
-    "path": "skills/api-and-interface-design",
-    "pin": "39b723ceebf81474d0557c1fecd01eddab585563",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "cc5e2166c484b2c297e8253f56e7525e5031f81d66101ca4e760ef378ea6bad0"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 70,
-      "loaded": 3735
-    }
-  },
-  {
-    "id": "performance-optimization",
-    "name": "performance-optimization",
-    "description": "Optimizes application performance across frontend, backend, queries, and databases. Use when performance requirements exist, when you suspect performance regressions, when Core Web Vitals or load times need improvement, when N+1 query patterns need fixing, or when profiling reveals bottlenecks.",
-    "repo": "addyosmani/agent-skills",
-    "path": "skills/performance-optimization",
-    "pin": "39b723ceebf81474d0557c1fecd01eddab585563",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "82af71540457cf853893685211f64509cd1e781c0de09d0186f16960f2d6eeba"
-      },
-      {
-        "path": "references/optimization-patterns.md",
-        "sha256": "fbf724076ffb8ac1a28e1a2773c0b550f5361090024b2dd32e5a682c69b7945f"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 81,
-      "loaded": 4196
-    }
-  },
-  {
-    "id": "spec-driven-development",
-    "name": "spec-driven-development",
-    "description": "Creates specs before coding. Use when starting a new project, feature, or significant change and no specification exists yet. Use when drafting a PRD or requirements document with objectives and scope, or when requirements are unclear, ambiguous, or only exist as a vague idea. Use when a single requirement spans several independently testable capabilities and needs decomposing into a capability map of modules before specifying. Use when evolving a shipped spec — scoping a V1, deferring ideas to a V2 backlog, or writing a follow-up spec for a change to an existing feature.",
-    "repo": "addyosmani/agent-skills",
-    "path": "skills/spec-driven-development",
-    "pin": "39b723ceebf81474d0557c1fecd01eddab585563",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "58dd9f5f2e53830c0c0dd9651998bd6ee4e2a1cc520c9dcf855dfb2fbb3f5059"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 152,
-      "loaded": 4224
-    }
-  },
-  {
-    "id": "documentation-and-adrs",
-    "name": "documentation-and-adrs",
-    "description": "Records decisions and documentation, and detects when documentation has drifted from the code it describes. Use when you need to document an architecture decision (ADR) or the reasoning behind a design choice, when changing public APIs, shipping features, when docs may be stale or out of sync with the code they describe, when working out which module docs are still accurate, or when setting up a check so docs cannot silently go out of date again.",
-    "repo": "addyosmani/agent-skills",
-    "path": "skills/documentation-and-adrs",
-    "pin": "39b723ceebf81474d0557c1fecd01eddab585563",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "a55e540b4544237c2d76873965869e2e6add1e7eee935324f194411eee11e096"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 120,
-      "loaded": 3149
-    }
-  },
-  {
-    "id": "code-simplification",
-    "name": "code-simplification",
-    "description": "Simplifies code for clarity. Use when refactoring code for clarity without changing behavior. Use when code works but is harder to read, maintain, or extend than it should be. Use when reviewing code that has accumulated unnecessary complexity. Use when asked to simplify, clean up, or reduce the nesting of a function or module that already works, even when the code is pasted inline and nothing else needs to change.",
-    "repo": "addyosmani/agent-skills",
-    "path": "skills/code-simplification",
-    "pin": "39b723ceebf81474d0557c1fecd01eddab585563",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "e13b433345e6bf425c3625442ac1b3507b371c18d7ea3e3db822da7a7f742a29"
+        "sha256": "7fbacf928637e136da6d475358d0639667a3637ba772f03f8e815bb4c0b86946"
       }
     ],
     "scripts": false,
     "tokens": {
       "listed": 111,
-      "loaded": 3430
-    }
-  },
-  {
-    "id": "tdd",
-    "name": "tdd",
-    "description": "Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions \"red-green-refactor\", or wants integration tests.",
-    "repo": "mattpocock/skills",
-    "path": "skills/engineering/tdd",
-    "pin": "5863806dd4e15c63174bee4e7515a4256792ecfa",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "5505d25bbaa8fc14a79e4d20163936958992a2995b7f1dd1d6197edc9ed722e0"
-      },
-      {
-        "path": "agents/openai.yaml",
-        "sha256": "ea6f01cf1b8c06a4b0f5b649d74b1b8ce8685e72af1b38d70d877693e092af0b"
-      },
-      {
-        "path": "mocking.md",
-        "sha256": "3ceb807fdf4a47d6a93d4d9a891e5ba6d362a6247bd08adc451feebfc17361ef"
-      },
-      {
-        "path": "tests.md",
-        "sha256": "859f9e592c188fda4fc7277dd180e4ce9c7a2e13f6efe1f6f29eccc9d28c106a"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 40,
-      "loaded": 908
-    }
-  },
-  {
-    "id": "code-review",
-    "name": "code-review",
-    "description": "Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes: Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/spec asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to \"review since X\".",
-    "repo": "mattpocock/skills",
-    "path": "skills/engineering/code-review",
-    "pin": "5863806dd4e15c63174bee4e7515a4256792ecfa",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "9c921a8d88138a41401d8897ca1bb852088ab1b7b605cdd04edc13e3e8aab6dd"
-      },
-      {
-        "path": "agents/openai.yaml",
-        "sha256": "8229ca854e11dc8e6aef2131ee03f31fb1561cf905fab9ccc325180cf3331352"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 109,
-      "loaded": 1681
-    }
-  },
-  {
-    "id": "improve-codebase-architecture",
-    "name": "improve-codebase-architecture",
-    "description": "Scan a codebase for deepening opportunities, present them as a visual HTML report, then grill through whichever one you pick.",
-    "repo": "mattpocock/skills",
-    "path": "skills/engineering/improve-codebase-architecture",
-    "pin": "5863806dd4e15c63174bee4e7515a4256792ecfa",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "HTML-REPORT.md",
-        "sha256": "581e8bb5a521e46bbda8ca7e19b15948bed882187108092ebb90c62513b77528"
-      },
-      {
-        "path": "SKILL.md",
-        "sha256": "35b03a3db61e0f5aa333ea59b54963e45a3d2ace6649b2ef4f9576603e2582a6"
-      },
-      {
-        "path": "agents/openai.yaml",
-        "sha256": "c8cb20f68ebf0edb4e497bc11ae5fcaa196004e661cd189015b04f4109ced7f1"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 40,
-      "loaded": 1507
-    }
-  },
-  {
-    "id": "pr",
-    "name": "pr",
-    "description": "Use when writing a PR body.",
-    "repo": "mattpocock/skills",
-    "path": "skills/engineering/pr",
-    "pin": "5863806dd4e15c63174bee4e7515a4256792ecfa",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "CREDITS.md",
-        "sha256": "a7a087127665d7298a72280ef6e19c41ad8404523712a788c8dc3ab414bc2497"
-      },
-      {
-        "path": "SKILL.md",
-        "sha256": "ab63f1cf78647389edcd386c9427c5dfca27ed2836930c24773ffee834c19bcd"
-      },
-      {
-        "path": "agents/openai.yaml",
-        "sha256": "2295b586624db4ef546f3fd4695492f039d941a46d8a1593a702ce3ca511b8ad"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 9,
-      "loaded": 1043
-    }
-  },
-  {
-    "id": "setup-pre-commit",
-    "name": "setup-pre-commit",
-    "description": "Set up Husky pre-commit hooks with lint-staged (Prettier), type checking, and tests in the current repo. Use when user wants to add pre-commit hooks, set up Husky, configure lint-staged, or add commit-time formatting/typechecking/testing.",
-    "repo": "mattpocock/skills",
-    "path": "skills/misc/setup-pre-commit",
-    "pin": "5863806dd4e15c63174bee4e7515a4256792ecfa",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "c9819d7f1e3b198064edc1faa3154224ed67395e9f07f5d3cea4b67cf0a11a98"
-      },
-      {
-        "path": "agents/openai.yaml",
-        "sha256": "acf41db398c5c43afe504008bb7d615a97b6498b0f1f6c5b2395254c0bfb57d1"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 65,
-      "loaded": 565
-    }
-  },
-  {
-    "id": "grill-me",
-    "name": "grill-me",
-    "description": "A relentless interview to sharpen a plan or design.",
-    "repo": "mattpocock/skills",
-    "path": "skills/productivity/grill-me",
-    "pin": "5863806dd4e15c63174bee4e7515a4256792ecfa",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "caaf8b8de1684f96e26b28f3c29189db5c89cce4b73e1c93d86164f66ef88637"
-      },
-      {
-        "path": "agents/openai.yaml",
-        "sha256": "c061e39c3e0f9d865fb1b97556d485704af2a8a58f4b8221a8917a5c2074a32b"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 16,
-      "loaded": 40
-    }
-  },
-  {
-    "id": "handoff",
-    "name": "handoff",
-    "description": "Compact the current conversation into a handoff document for another agent to pick up.",
-    "repo": "mattpocock/skills",
-    "path": "skills/productivity/handoff",
-    "pin": "5863806dd4e15c63174bee4e7515a4256792ecfa",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "4cbb043950dad2ffd3662ff1a5a0b51ae676004b5cae10e3787e8ee7a4ee69d3"
-      },
-      {
-        "path": "agents/openai.yaml",
-        "sha256": "5c479fd562c691851690e8b18c8501045bef0943c10743d636b2fae26add1d28"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 25,
-      "loaded": 235
+      "loaded": 5713
     }
   },
   {
     "id": "vercel-react-best-practices",
     "name": "vercel-react-best-practices",
     "description": "React and Next.js performance optimization guidelines from Vercel Engineering. This skill should be used when writing, reviewing, or refactoring React/Next.js code to ensure optimal performance patterns. Triggers on tasks involving React components, Next.js pages, data fetching, bundle optimization, or performance improvements.",
+    "category": "frameworks",
     "repo": "vercel-labs/agent-skills",
     "path": "skills/react-best-practices",
     "pin": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
@@ -2100,6 +1687,7 @@ export const SKILL_CATALOG: CatalogSkill[] = [
     "id": "vercel-composition-patterns",
     "name": "vercel-composition-patterns",
     "description": "React composition patterns that scale. Use when refactoring components with boolean prop proliferation, building flexible component libraries, or designing reusable APIs. Triggers on tasks involving compound components, render props, context providers, or component architecture. Includes React 19 API changes.",
+    "category": "frameworks",
     "repo": "vercel-labs/agent-skills",
     "path": "skills/composition-patterns",
     "pin": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
@@ -2169,29 +1757,10 @@ export const SKILL_CATALOG: CatalogSkill[] = [
     }
   },
   {
-    "id": "web-design-guidelines",
-    "name": "web-design-guidelines",
-    "description": "Review UI code for Web Interface Guidelines compliance. Use when asked to \"review my UI\", \"check accessibility\", \"audit design\", \"review UX\", or \"check my site against best practices\".",
-    "repo": "vercel-labs/agent-skills",
-    "path": "skills/web-design-guidelines",
-    "pin": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "f4647ca866a3accf763777f83e7682954f0187cd6bea7eea0399796652414e8f"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 53,
-      "loaded": 308
-    }
-  },
-  {
     "id": "vercel-react-native-skills",
     "name": "vercel-react-native-skills",
     "description": "React Native and Expo best practices for building performant mobile apps. Use when building React Native components, optimizing list performance, implementing animations, or working with native modules. Triggers on tasks involving React Native, Expo, mobile performance, or native platform APIs.",
+    "category": "frameworks",
     "repo": "vercel-labs/agent-skills",
     "path": "skills/react-native-skills",
     "pin": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
@@ -2376,6 +1945,7 @@ export const SKILL_CATALOG: CatalogSkill[] = [
     "id": "vercel-react-view-transitions",
     "name": "vercel-react-view-transitions",
     "description": "Guide for implementing smooth, native-feeling animations using React's View Transition API (`<ViewTransition>` component, `addTransitionType`, and CSS view transition pseudo-elements). Use this skill whenever the user wants to add page transitions, animate route changes, create shared element animations, animate enter/exit of components, animate list reorder, implement directional (forward/back) navigation animations, or integrate view transitions in Next.js. Also use when the user mentions view transitions, `startViewTransition`, `ViewTransition`, transition types, or asks about animating between UI states in React without third-party animation libraries.",
+    "category": "frameworks",
     "repo": "vercel-labs/agent-skills",
     "path": "skills/react-view-transitions",
     "pin": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
@@ -2425,9 +1995,64 @@ export const SKILL_CATALOG: CatalogSkill[] = [
     }
   },
   {
+    "id": "deploy-to-vercel",
+    "name": "deploy-to-vercel",
+    "description": "Deploy applications and websites to Vercel. Use when the user requests deployment actions like \"deploy my app\", \"deploy and give me the link\", \"push this live\", or \"create a preview deployment\".",
+    "category": "frameworks",
+    "repo": "vercel-labs/agent-skills",
+    "path": "skills/deploy-to-vercel",
+    "pin": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "418ca2a60d35c551e6cb645f4e82c1b704a8335486ffe74b1b3d0617a17504e5"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 54,
+      "loaded": 2431
+    }
+  },
+  {
+    "id": "supabase",
+    "name": "supabase",
+    "description": "Use when doing ANY task involving Supabase. Triggers: Supabase products (Database, Auth, Edge Functions, Realtime, Storage, Vectors, Cron, Queues); client libraries and SSR integrations (supabase-js, @supabase/ssr) in Next.js, React, SvelteKit, Astro, Remix; auth issues (login, logout, sessions, JWT, cookies, getSession, getUser, getClaims, RLS); Supabase CLI or MCP server; schema changes, migrations, declarative schemas, security audits, Postgres extensions (pg_graphql, pg_cron, pg_vector); debugging and troubleshooting errors or unexpected behavior on Supabase projects (HTTP errors, Postgres errors, RLS surprises, permission denied, schema cache issues, timeouts, Edge Function crashes, Realtime drops, Storage failures) and reading or querying logs (Logs Explorer, ClickHouse).",
+    "category": "frameworks",
+    "repo": "supabase/agent-skills",
+    "path": "skills/supabase",
+    "pin": "c9be0e931b7930f7d02126d04774d904c381e7d7",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "CHANGELOG.md",
+        "sha256": "4b9c9387871d7888f18e9c97a7d5691ea38e333401ccdcb0161d2140cb16b2d8"
+      },
+      {
+        "path": "SKILL.md",
+        "sha256": "697e0e949f97621c6fc1784169eb3ccbf673747d6bb8299a52962d3d84d93dc6"
+      },
+      {
+        "path": "assets/feedback-issue-template.md",
+        "sha256": "ea211aa174c5a096fe76461f25143b8bc23f3bde3adc9e727cda38218cc8c282"
+      },
+      {
+        "path": "references/skill-feedback.md",
+        "sha256": "09ad94c0291735dfc04c92557c8734fa259ec39e1d56bf2bd5c6a6529d838717"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 201,
+      "loaded": 3577
+    }
+  },
+  {
     "id": "supabase-postgres-best-practices",
     "name": "supabase-postgres-best-practices",
     "description": "Postgres best practices maintained by Supabase, for Postgres running anywhere. Load this skill BEFORE writing or changing anything that lives in a Postgres database: creating or altering tables and columns (including choosing column types), schema design, migrations and declarative schema files, RLS policies and the tests that verify them, indexes, triggers, database functions, queues and scheduled jobs (pg_cron, pgmq), vector/semantic search (pgvector), and restoring dumps (pg_restore) or importing data. Also load it when diagnosing slow queries, high CPU, timeouts, EXPLAIN plans, connection exhaustion, locking, bloat, or rows visible to the wrong user or tenant. This is not just a performance guide — schema, migration, security, and SQL authoring tasks need these rules too, even for a one-column change or a single query.",
+    "category": "frameworks",
     "repo": "supabase/agent-skills",
     "path": "skills/supabase-postgres-best-practices",
     "pin": "c9be0e931b7930f7d02126d04774d904c381e7d7",
@@ -2585,9 +2210,472 @@ export const SKILL_CATALOG: CatalogSkill[] = [
     }
   },
   {
+    "id": "claude-api",
+    "name": "claude-api",
+    "description": "Reference for the Claude API / Anthropic SDK — model ids, pricing, params, streaming, tool use, MCP, agents, caching, token counting, model migration. TRIGGER — read BEFORE opening the target file; don't skip because it \"looks like a one-liner\" — whenever: the prompt names Claude/Anthropic in any form (Claude, Anthropic, Fable, Opus, Sonnet, Haiku, `anthropic`, `@anthropic-ai`, `claude-*`, `us.anthropic.*`, `[1m]`); the user asks about an LLM (pricing/model choice/limits/caching) — never answer from memory; OR the task is LLM-shaped with provider unstated (agent/MCP/tool-definition/multi-agent/RAG/LLM-judge/computer-use; generate/summarize/extract/classify/rewrite/converse over NL; debugging refusals/cutoffs/streaming/tool-calls/tokens). SKIP only when another provider is being worked on (overrides all triggers): OpenAI/GPT/Gemini/Llama/Mistral/Cohere/Ollama named in the query; OR `grep -rE 'openai|langchain_openai|google.generativeai|genai|mistralai|cohere|ollama'` over the project hits (run this grep FIRST if no provider named — don't Read the file).",
+    "category": "ai",
+    "repo": "anthropics/skills",
+    "path": "skills/claude-api",
+    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "path": "LICENSE.txt",
+        "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      {
+        "path": "SKILL.md",
+        "sha256": "40537cca17c4aa86e4ce83ced39efcbfb1204905e3cf4c4ff98f2eab011e4b7f"
+      },
+      {
+        "path": "csharp/claude-api/README.md",
+        "sha256": "87a2cc5c6e670e0bf34120f9a592d321567eea57c716c06791f6d2dcaba08b00"
+      },
+      {
+        "path": "csharp/claude-api/batches.md",
+        "sha256": "ec276fccf21757ed00803dfa4bc35f14f334138629fa53c77a025d718eda96a1"
+      },
+      {
+        "path": "csharp/claude-api/files-api.md",
+        "sha256": "766ccf5dca9ef3caba8cefeddde10f6d171a7bd2ff4c97689462fad2d0d18e4b"
+      },
+      {
+        "path": "csharp/claude-api/streaming.md",
+        "sha256": "bc0100e50b3495e869901bcfb231870cb3483b936534af5fd3dddb5d07e4531e"
+      },
+      {
+        "path": "csharp/claude-api/tool-use.md",
+        "sha256": "18aa857c41e39eedb35815bfd8d50868a1bbc1f1a657f5e7233a3879baebc764"
+      },
+      {
+        "path": "curl/examples.md",
+        "sha256": "4520e447d37924e62fe982923f3eceea5338dbf3b3a0d25d0f914272c16b90a0"
+      },
+      {
+        "path": "curl/managed-agents.md",
+        "sha256": "faa7dd3d83cfd32d1faabb13fee5902e041285579b00256f17fd21681ed3ff2a"
+      },
+      {
+        "path": "go/claude-api/README.md",
+        "sha256": "c73ac644d8efe65a8d149e800267f98b0aa9d1e716ca38a22fd8803d5c35bfae"
+      },
+      {
+        "path": "go/claude-api/files-api.md",
+        "sha256": "7bf67ece5e4d18b1fb07085a55b680420cc7bd4de94a1fb2bb73cb23f39c20f0"
+      },
+      {
+        "path": "go/claude-api/streaming.md",
+        "sha256": "a523e992e438309ca1bbc075ded2b652eb257242fd0ce521afd3b8ea024ed94d"
+      },
+      {
+        "path": "go/claude-api/tool-use.md",
+        "sha256": "18c6dc0cec151293b44697c340e0e0759f6081ad711ca34b06570c2450f243e9"
+      },
+      {
+        "path": "go/managed-agents/README.md",
+        "sha256": "0343be8d49f94687fe5e068ad69d9e05253b408e7bcd0e230b39924f6404facc"
+      },
+      {
+        "path": "java/claude-api/README.md",
+        "sha256": "cb6d395dc1d930371f828290132681541eff7f1a7e2739bb4c6655ebbb3b8c7f"
+      },
+      {
+        "path": "java/claude-api/files-api.md",
+        "sha256": "1c792f3421de32f42a56235327f87807a5579340726bba677ec13e05f9b493c7"
+      },
+      {
+        "path": "java/claude-api/streaming.md",
+        "sha256": "de13bc9573b37edb5af69606853c4fde3d494ee10ff47d1a030ecef9cc17463b"
+      },
+      {
+        "path": "java/claude-api/tool-use.md",
+        "sha256": "1916b8d4e49b5d319a2d0c7e21b5a3d7a0f225e4a94d82139e769f66eb66f6d1"
+      },
+      {
+        "path": "java/managed-agents/README.md",
+        "sha256": "ba2a845898b302dc78b5354aa8f34ae4fc2c2ea41d12aa7d0440db59ee004e0c"
+      },
+      {
+        "path": "php/claude-api/README.md",
+        "sha256": "00e2e88f3ea9a6cce812d3e6ae9e035bc36f88828a09e518bb73af91097a9d66"
+      },
+      {
+        "path": "php/claude-api/batches.md",
+        "sha256": "6f82a29f718ff6e6b02aaaee3cfd6cda2feb82aca57d945f11a2c021214a699d"
+      },
+      {
+        "path": "php/claude-api/files-api.md",
+        "sha256": "0715a0d4cce88fd885f57bd33b4654071a9068d5f8a892143b062c78fe51afc9"
+      },
+      {
+        "path": "php/claude-api/streaming.md",
+        "sha256": "3b8ac667b21f17750eb3c1fc7dc166fd7b1f57a1d8b11e74489de4432e21d31d"
+      },
+      {
+        "path": "php/claude-api/tool-use.md",
+        "sha256": "1d79c316ef608d8327da1ae7495ecc4a0c517bdd761037c886d8fc61a0eca7d0"
+      },
+      {
+        "path": "php/managed-agents/README.md",
+        "sha256": "2f9ada8a85098a7a4a7265c29fadb74d695a33bf19bc6d5df3a2c275b4a535b2"
+      },
+      {
+        "path": "python/claude-api/README.md",
+        "sha256": "284fbc6408809afd27288da95c5fb32daa48bd77518cd5fd4e973cc05363eaa8"
+      },
+      {
+        "path": "python/claude-api/batches.md",
+        "sha256": "7e4d07173845836617be3db70482c182311ad2d6d5ddf786482ca57c7c45776c"
+      },
+      {
+        "path": "python/claude-api/files-api.md",
+        "sha256": "2aa142978660d9ae3200d21a4d333531ca101898706f620834304e8a7d534580"
+      },
+      {
+        "path": "python/claude-api/sdk-upgrade.md",
+        "sha256": "f7c5651b21dd6fd5651935415d907fa0a369736f3055d50edb3d236ea016527c"
+      },
+      {
+        "path": "python/claude-api/streaming.md",
+        "sha256": "8f73a54dbbb5e82c2c7690d7d866f17ad8c72f662a2be6dd788b5c0956714026"
+      },
+      {
+        "path": "python/claude-api/tool-use.md",
+        "sha256": "548dcc4bd2a36e8b90cec446f9b0b7917d2d75a085c7c2603b28c840bd621621"
+      },
+      {
+        "path": "python/managed-agents/README.md",
+        "sha256": "82b6e5847027b0ffe5976116e5c249a58e9e2781eb09e914a81ee2f9eb970245"
+      },
+      {
+        "path": "ruby/claude-api/README.md",
+        "sha256": "c7de89d236f22bc0b44a091a45ee186ec057caa021a71acd4d3849599cbf3b36"
+      },
+      {
+        "path": "ruby/claude-api/streaming.md",
+        "sha256": "09b784f2ab0a5fd17e0589225408c618d26c6dd3cd601364ff92f409d5b104a0"
+      },
+      {
+        "path": "ruby/claude-api/tool-use.md",
+        "sha256": "80cbb7c7fd4a01b816524eb54e0f8f4e5b4cc7643d393dfce6b9682e0f4d61b6"
+      },
+      {
+        "path": "ruby/managed-agents/README.md",
+        "sha256": "729ba22b8711a09192006d169098f16b933dd124ff36421772e4334d862306ab"
+      },
+      {
+        "path": "shared/admin-api.md",
+        "sha256": "a69c53817391fca50c0a1848f46de9debf71fa3681298fccb0a6435b760bac2d"
+      },
+      {
+        "path": "shared/agent-design.md",
+        "sha256": "9960728faf6976a2ddfceed02ed72af122d3b2558af573a9a0ea207b3adec2bc"
+      },
+      {
+        "path": "shared/anthropic-cli.md",
+        "sha256": "2baa725ea0248ab7d98dcb218f09e5eb22f768006ad28f4d5011b4975b4d500e"
+      },
+      {
+        "path": "shared/claude-platform-on-aws.md",
+        "sha256": "dec03193c61909167846c0526a4feacf011578b5e7ee29f76378141315cf97f5"
+      },
+      {
+        "path": "shared/cost-optimization.md",
+        "sha256": "d0107a954e9059f43c0aaac07ac1f8a9f5aa0a898834d3d983d623e5976e051b"
+      },
+      {
+        "path": "shared/error-codes.md",
+        "sha256": "1abf8dcc262732f7ee5e4c58d1909fbb0722ac12e1b957bffdf64f28fde9e4d2"
+      },
+      {
+        "path": "shared/evals/build-eval.md",
+        "sha256": "c8f6ae960867f6b3b35557aec75361553888ae7168f268365444bf6a4e09a5d7"
+      },
+      {
+        "path": "shared/evals/cost-hillclimb.md",
+        "sha256": "dd46a354fed24d96c7f9acf42f9da64f5cceaa797949662d82374fd2cf7a3515"
+      },
+      {
+        "path": "shared/evals/eval-audit.md",
+        "sha256": "a013f8eb0452c51c5a31860df0fb47219dcdb4da507092fc98867225095026ba"
+      },
+      {
+        "path": "shared/evals/eval-hillclimb.md",
+        "sha256": "315ae8540ebaeb9f1d7de5efa49625e6137ead255dc3a545b63393df89375588"
+      },
+      {
+        "path": "shared/evals/report/SCHEMA.md",
+        "sha256": "9a83404a9b3c413113df39d9bdf08e003ff4d6a75386f4010887da3298766687"
+      },
+      {
+        "path": "shared/evals/report/build-report-lite.mjs",
+        "sha256": "af79ca5fa5f06747dbcaa1d40017c8c8e81e0aa11cb8e32b848043893cdb03c7"
+      },
+      {
+        "path": "shared/evals/report/runner-scaffold.mjs",
+        "sha256": "c3a87ba4b94b3018b83c075d5148ba7760580aa447699d513d45ab55b82a531a"
+      },
+      {
+        "path": "shared/live-sources.md",
+        "sha256": "cc82c88587c861919557598df0421ea7e8cec683f63adead997a0170dc78732b"
+      },
+      {
+        "path": "shared/managed-agents-api-reference.md",
+        "sha256": "efd84dc8a17a2842965c775a905b17fa94cf762cc544df81e708f3aa7a89ae7b"
+      },
+      {
+        "path": "shared/managed-agents-client-patterns.md",
+        "sha256": "e9cf54ca98a9cdd7dba0f51acfedfc1b0f160bad243e39f338ff39d4bf5bf823"
+      },
+      {
+        "path": "shared/managed-agents-core.md",
+        "sha256": "b1e7f90f644ef3333bc2c8407ba17410cf672314868474c73242ac969e22007f"
+      },
+      {
+        "path": "shared/managed-agents-environments.md",
+        "sha256": "227e52e6a3d1c967c68912738ff184a97d1f4cd019c6a7bc7cd90c9b9857e5a5"
+      },
+      {
+        "path": "shared/managed-agents-events.md",
+        "sha256": "3c5edc1428bc4b9cff1ebf01cecffaff3ef1650c19afa48c616fcd05b9586e03"
+      },
+      {
+        "path": "shared/managed-agents-memory.md",
+        "sha256": "0dec5641630f97629ea75bbbe5c2bced861f9c16b0572a68c901849ea4d00bcb"
+      },
+      {
+        "path": "shared/managed-agents-multiagent.md",
+        "sha256": "f3d03cc910064cf419c80ce79c5fe62abde127467deea55491b447a07953a06b"
+      },
+      {
+        "path": "shared/managed-agents-onboarding-from-quickstart.md",
+        "sha256": "e37628c5639786a7868acfed4be0e25678b69b7d13a9aced03d74deebe042342"
+      },
+      {
+        "path": "shared/managed-agents-onboarding-from-url.md",
+        "sha256": "b6c49289186d7cc521c995ba88fa916b65433101b2b3e9bf3c9add94ad87fa34"
+      },
+      {
+        "path": "shared/managed-agents-onboarding.md",
+        "sha256": "025683a9ee3db081d8a6978980349ce68d1df316d0c5aea31ae12438907208c9"
+      },
+      {
+        "path": "shared/managed-agents-outcomes.md",
+        "sha256": "a516c6bf6a6a76f7f5ef83ec80895efd5de718e8f9418b57c705ce151afc5afe"
+      },
+      {
+        "path": "shared/managed-agents-overview.md",
+        "sha256": "abcbdc29435c07be4749e21f005ed51f45942af03fa0bdcdeb18ebfa38c6a6f8"
+      },
+      {
+        "path": "shared/managed-agents-quickstarts/bug-hunter.md",
+        "sha256": "9afd40ef3e1bca9e1cc4c6655d314127cec0b4dcff0e12f6016508c134954248"
+      },
+      {
+        "path": "shared/managed-agents-quickstarts/contract-tracker.md",
+        "sha256": "312ee5f886de59b6db4603d2df9766d66285db36973656c5b9ff0bcc1ed02279"
+      },
+      {
+        "path": "shared/managed-agents-quickstarts/data-analyst.md",
+        "sha256": "c2116bac43972f2b40311104bd7cd4e084cca806dd40a1ddf8462845d785bd57"
+      },
+      {
+        "path": "shared/managed-agents-quickstarts/deep-researcher.md",
+        "sha256": "a680856d874dff23cd3f016e36d0a58bc4db36c56d790d216743f236ee37a48c"
+      },
+      {
+        "path": "shared/managed-agents-quickstarts/explainer-video-maker.md",
+        "sha256": "c2570c5e14d51c5caa77646ac417d18619d34a27cc94dc72cf020c698f2803f3"
+      },
+      {
+        "path": "shared/managed-agents-quickstarts/field-monitor.md",
+        "sha256": "f17f26eee0109f4172134c5bea5761c52b8459e44ae03608c701cd3492f4a3af"
+      },
+      {
+        "path": "shared/managed-agents-quickstarts/incident-commander.md",
+        "sha256": "badd3622ffab0798ab44a55189f47e95c107107ce57eda9fa5357b1aded8fb2a"
+      },
+      {
+        "path": "shared/managed-agents-quickstarts/performance-tuner.md",
+        "sha256": "922396e14b569bc98a7bdde34d10890cc81c5184e81971e6c9be108d191dd639"
+      },
+      {
+        "path": "shared/managed-agents-quickstarts/sprint-retro-facilitator.md",
+        "sha256": "8b5ed9895feb1ade54578a270493c63d0f57b3bb0fbc2eafcfa2e87d3130fa75"
+      },
+      {
+        "path": "shared/managed-agents-quickstarts/structured-extractor.md",
+        "sha256": "c278074c8c48d35fc6c68ed32eaa8704cae73a8e74035fd1d4a6abdcb9bd0fbd"
+      },
+      {
+        "path": "shared/managed-agents-quickstarts/support-agent.md",
+        "sha256": "da75c50edf207f5ef468fbbbfc2e77d56e7d906a6c2cda28756f896195e171c5"
+      },
+      {
+        "path": "shared/managed-agents-quickstarts/support-to-eng-escalator.md",
+        "sha256": "46720e5341808a9938825be44f936c91f83739ebdef9e1d17d9f0ec22738346b"
+      },
+      {
+        "path": "shared/managed-agents-quickstarts/watchlist-scanner.md",
+        "sha256": "e67861c63b9d46b01c8d2784998b7f0de9a87aa6012b77127def1253c5ac13db"
+      },
+      {
+        "path": "shared/managed-agents-scheduled-deployments.md",
+        "sha256": "3fdf7bd691b4f798149d7ebdb933dcee7d14d5d47dd6bf8196c41b819223175e"
+      },
+      {
+        "path": "shared/managed-agents-self-hosted-sandboxes.md",
+        "sha256": "a0c0d98ee1921ee5856a9fd1c02931d724c7b7ffffe17f72c85bc90190399085"
+      },
+      {
+        "path": "shared/managed-agents-tools.md",
+        "sha256": "9a9fd54ebb5e81eb0c6b7505f1cadc420fed5696cdab3e0080dd00ccf2e37b6f"
+      },
+      {
+        "path": "shared/managed-agents-webhooks.md",
+        "sha256": "38746f77a3ee971f9b1f7d47cec9e753131bf271fd795aed5c3da1764c9a6ac1"
+      },
+      {
+        "path": "shared/model-migration.md",
+        "sha256": "b4fe96362b865a28726ab877c966624d5bfc2f86ff9b34940a34e3f8b6fc034e"
+      },
+      {
+        "path": "shared/models.md",
+        "sha256": "c1af1f093d46fd58e50ef3e8e28d339650f333059bfc49a63d01d0175675161b"
+      },
+      {
+        "path": "shared/platform-availability.md",
+        "sha256": "607997bc16de403970cb32c1dc1fa63e68f7f02328728be59397e7cefb2efed4"
+      },
+      {
+        "path": "shared/preserved-thinking-migration.md",
+        "sha256": "29921d69fa8dc7e450e7bb793c9f59ae755262ccc933a52eb7116c207defb34c"
+      },
+      {
+        "path": "shared/preserved-thinking-migration/causes.md",
+        "sha256": "c2dbadb0439806863723e5ef7279d626d731d8179fd39293ff26d226b94d3694"
+      },
+      {
+        "path": "shared/preserved-thinking-migration/drop_block_probe.py",
+        "sha256": "f23abb75bc079d835f57da7598ac5a1bee4318214ab803185feb94d8db8c4b88"
+      },
+      {
+        "path": "shared/preserved-thinking-migration/prefix_diff.py",
+        "sha256": "734934b81b5f26e9ed2f8f51f44fed6554233de4f37b22a8845ae4ffcb622ac0"
+      },
+      {
+        "path": "shared/prompt-audit.md",
+        "sha256": "1a50ec950f9c11bb4ad1a5032a26bb20cd52c9d358adf6add2cb1ceb1aaf6cc9"
+      },
+      {
+        "path": "shared/prompt-caching.md",
+        "sha256": "5800f883ff1babe24105e7e0e3fc7e9b03dfcce25bb2ccded4bb40d8c81d8464"
+      },
+      {
+        "path": "shared/token-counting.md",
+        "sha256": "8674e246c165decdc13106a4861a254ededb0421caf7fa4015ed0fb36e6c60dc"
+      },
+      {
+        "path": "shared/tool-use-concepts.md",
+        "sha256": "62293e7bb7763f7ae487d3b98ead6b733689b2fd7089784ad5859dd869a153f5"
+      },
+      {
+        "path": "typescript/claude-api/README.md",
+        "sha256": "b2a01ccbaa0d4406e400bcd8efc033759af5d646a97aab744aee55bf07d6ab16"
+      },
+      {
+        "path": "typescript/claude-api/batches.md",
+        "sha256": "acc33bb981acd48b6ee9a6b2c2afeef9487c42ef2b117225da3949dc61efb464"
+      },
+      {
+        "path": "typescript/claude-api/files-api.md",
+        "sha256": "df8e4e433a4ded6d4c3eb40de9bc0782cf77aaa8e3e331a539aec1cff55d1316"
+      },
+      {
+        "path": "typescript/claude-api/streaming.md",
+        "sha256": "09db982effb0b7d14e29eddd5425b00040debfedccf3dd0db9af73f7d2da3e79"
+      },
+      {
+        "path": "typescript/claude-api/tool-use.md",
+        "sha256": "d0c3e5da146c6da8a85ced14f964dc33de4c0153aa2748dee35c319752e8b725"
+      },
+      {
+        "path": "typescript/managed-agents/README.md",
+        "sha256": "5daf6b0c6a443e1ae720b0a7343e061ebdbaeb751dd674f37f9abf9d12efc66f"
+      }
+    ],
+    "scripts": true,
+    "tokens": {
+      "listed": 271,
+      "loaded": 26287
+    }
+  },
+  {
+    "id": "mcp-builder",
+    "name": "mcp-builder",
+    "description": "Guide for creating high-quality MCP (Model Context Protocol) servers that enable LLMs to interact with external services through well-designed tools. Use when building MCP servers to integrate external APIs or services, whether in Python (FastMCP) or Node/TypeScript (MCP SDK).",
+    "category": "ai",
+    "repo": "anthropics/skills",
+    "path": "skills/mcp-builder",
+    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "path": "LICENSE.txt",
+        "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      {
+        "path": "SKILL.md",
+        "sha256": "b483b56d6673134497e45489c317f26ae0f1429c194db0297e43073e17e6748c"
+      },
+      {
+        "path": "reference/evaluation.md",
+        "sha256": "8c99479f8a2d22a636c38e274537aac3610879e26f34e0709825077c4576f427"
+      },
+      {
+        "path": "reference/mcp_best_practices.md",
+        "sha256": "80fb4369a349447cf18ecdd7494fe7938b6065377e9f08c077cec411093a3007"
+      },
+      {
+        "path": "reference/node_mcp_server.md",
+        "sha256": "ee3c95d812e450f6168b734390d0c9ef6f8ebeef041d73a122c972dfbd4d476a"
+      },
+      {
+        "path": "reference/node_mcp_server_v2.md",
+        "sha256": "49b2fe48f33910b743ae3a56353fffa5d5f252f531053f24f2da4e5914c0d3aa"
+      },
+      {
+        "path": "reference/python_mcp_server.md",
+        "sha256": "2da52f77e675191014ca2e146a4b95aa04d0ca7dd7e2b100322df15ade685e80"
+      },
+      {
+        "path": "scripts/connections.py",
+        "sha256": "9403668a2041568772082a8b334122c1f88daf0541fb393af4522d0094a47a6e"
+      },
+      {
+        "path": "scripts/evaluation.py",
+        "sha256": "49ed1d17cdce5da101b210197740713f49b935c29d4f339542a14b132658e6f7"
+      },
+      {
+        "path": "scripts/example_evaluation.xml",
+        "sha256": "9272b348ddcc4b06ba562367ccd0770e018158c0068ac5116d5e34aaeff8777a"
+      },
+      {
+        "path": "scripts/requirements.txt",
+        "sha256": "d5d7558b2368ecea9dfeed7d1fbc71ee9e0750bebd1282faa527d528a344c3c7"
+      }
+    ],
+    "scripts": true,
+    "tokens": {
+      "listed": 74,
+      "loaded": 2783
+    }
+  },
+  {
     "id": "hf-cli",
     "name": "hf-cli",
     "description": "Hugging Face Hub CLI (`hf`) for downloading, uploading, and managing models, datasets, spaces, buckets, repos, papers, jobs, and more on the Hugging Face Hub. Use when: handling authentication; managing local cache; managing Hugging Face Buckets; running or scheduling jobs on Hugging Face infrastructure; managing Hugging Face repos; discussions and pull requests; browsing models, datasets and spaces; reading, searching, or browsing academic papers; managing collections; querying datasets; configuring spaces; setting up webhooks; or deploying and managing HF Inference Endpoints. Make sure to use this skill whenever the user mentions 'hf', 'huggingface', 'Hugging Face', 'huggingface-cli', or 'hugging face cli', or wants to do anything related to the Hugging Face ecosystem and to AI and ML in general. Also use for cloud storage needs like training checkpoints, data pipelines, or agent traces. Use even if the user doesn't explicitly ask for a CLI command. Replaces the deprecated `huggingface-cli`.",
+    "category": "ai",
     "repo": "huggingface/skills",
     "path": "skills/hf-cli",
     "pin": "25910b3d0ba31a2ba102f901cdc9e008c278a69c",
@@ -2608,6 +2696,7 @@ export const SKILL_CATALOG: CatalogSkill[] = [
     "id": "huggingface-datasets",
     "name": "huggingface-datasets",
     "description": "Use this skill for Hugging Face Dataset Viewer API workflows that fetch subset/split metadata, paginate rows, search text, apply filters, download parquet URLs, and read size or statistics.",
+    "category": "ai",
     "repo": "huggingface/skills",
     "path": "skills/huggingface-datasets",
     "pin": "25910b3d0ba31a2ba102f901cdc9e008c278a69c",
@@ -2628,6 +2717,7 @@ export const SKILL_CATALOG: CatalogSkill[] = [
     "id": "huggingface-gradio",
     "name": "huggingface-gradio",
     "description": "Build Gradio web UIs and demos in Python. Use when creating or editing Gradio apps, components, event listeners, layouts, or chatbots.",
+    "category": "ai",
     "repo": "huggingface/skills",
     "path": "skills/huggingface-gradio",
     "pin": "25910b3d0ba31a2ba102f901cdc9e008c278a69c",
@@ -2649,9 +2739,234 @@ export const SKILL_CATALOG: CatalogSkill[] = [
     }
   },
   {
+    "id": "huggingface-spaces",
+    "name": "huggingface-spaces",
+    "description": "Build, deploy, and maintain applications on Hugging Face Spaces — Gradio / Docker / Static SDKs, ZeroGPU and dedicated hardware, model loading, debugging, buckets, inference providers, community grants. Use whenever the user asks to create or host an app on Hugging Face, port code onto ZeroGPU, fix a Space that won't build or run, or otherwise work with `hf spaces …`, `@spaces.GPU`, Space README frontmatter, or the `spaces` Python package.",
+    "category": "ai",
+    "repo": "huggingface/skills",
+    "path": "skills/huggingface-spaces",
+    "pin": "25910b3d0ba31a2ba102f901cdc9e008c278a69c",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "path": "README.md",
+        "sha256": "7d478e2dee162aadab87d57969b25f9fb16166324e727b73bf7c8e23f80bfb42"
+      },
+      {
+        "path": "SKILL.md",
+        "sha256": "efa6506be823aaea03c31ef6cd06734485f7c451065aab43cfa5b5053c0df82b"
+      },
+      {
+        "path": "references/3d-cuda-extensions.md",
+        "sha256": "9024bd891770d34c38c215e322bae1003859832e4edfb94a4d8acdfada327476"
+      },
+      {
+        "path": "references/3d-generation.md",
+        "sha256": "884fd62a915bcd654959bc3ca1301fb5155826ddc8d45be9fa97518028bb843e"
+      },
+      {
+        "path": "references/3d-gsplat.md",
+        "sha256": "323eb8dd108fb0bc2189f760194fca990dd8d7025e05b41f8a33f81c18ac218b"
+      },
+      {
+        "path": "references/3d-models.md",
+        "sha256": "f472d6cac304ec903730ac3edc0ed921f396419b1e23cb7f9ffb0a5c406bcbe9"
+      },
+      {
+        "path": "references/3d-outputs.md",
+        "sha256": "37d26a20e91c512d3061295c5671a8a890f017a42b6d0694c9ae7c40f7ac5334"
+      },
+      {
+        "path": "references/buckets.md",
+        "sha256": "45a4faa48d5e04fe2255792da4d9c8b1f460eed1065605c56a3389d0a62dfe90"
+      },
+      {
+        "path": "references/debugging.md",
+        "sha256": "98befd8ca23b178fefe93212888c9e1c0cf0399745a43e742a6d01919b37d95b"
+      },
+      {
+        "path": "references/gradio.md",
+        "sha256": "ec341392222a05e903cf5c8a1419a64558e16c877af76646cd67d9abc525afe6"
+      },
+      {
+        "path": "references/grants.md",
+        "sha256": "f87c6b70c075088fa3821c31bd658ef6530c92816ff183c97b543077d064e400"
+      },
+      {
+        "path": "references/inference-providers.md",
+        "sha256": "c11c02f2c2679c1dccec684b9d5803493e912d45e44f11164c6cb8623ed73051"
+      },
+      {
+        "path": "references/known-errors.md",
+        "sha256": "638cb9ea501c36695de31973b92674b5c97e40d1c0c02ca9373bb05a7de6229c"
+      },
+      {
+        "path": "references/requirements.md",
+        "sha256": "556b834b6d31ed37fa2249e0bef34344ada98b75fe77078281846acc4f7b2385"
+      },
+      {
+        "path": "references/zerogpu.md",
+        "sha256": "9364442337690bbf0d6f51276e57bed99e9ff12d51e79e0efd632a1de0abeb09"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 117,
+      "loaded": 4476
+    }
+  },
+  {
+    "id": "huggingface-local-models",
+    "name": "huggingface-local-models",
+    "description": "Use to select models to run locally with llama.cpp and GGUF on CPU, Mac Metal, CUDA, or ROCm. Covers finding GGUFs, quant selection, running servers, exact GGUF file lookup, conversion, and OpenAI-compatible local serving.",
+    "category": "ai",
+    "repo": "huggingface/skills",
+    "path": "skills/huggingface-local-models",
+    "pin": "25910b3d0ba31a2ba102f901cdc9e008c278a69c",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "814640db1d5f2f274aec09d66b3589ed5a0fdcfaf536afd508b1d757dcae1534"
+      },
+      {
+        "path": "references/hardware.md",
+        "sha256": "c708d7436bb654edf18b1f4cdc577d6c9c4edcf76896c97d510d35bbb7fb7f52"
+      },
+      {
+        "path": "references/hub-discovery.md",
+        "sha256": "fb7d1d19dcf428d07b6fc8643d58396c180b2921eb0a9496955cfe9743da6b47"
+      },
+      {
+        "path": "references/quantization.md",
+        "sha256": "8c388a37ba947023070c03b54b97d918166530d4cd0b26ede460b2435402fc55"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 63,
+      "loaded": 945
+    }
+  },
+  {
+    "id": "huggingface-llm-trainer",
+    "name": "huggingface-llm-trainer",
+    "description": "Train or fine-tune language and vision models using TRL (Transformer Reinforcement Learning) or Unsloth with Hugging Face Jobs infrastructure. Covers SFT, DPO, GRPO and reward modeling training methods, plus GGUF conversion for local deployment. Includes guidance on the TRL Jobs package, UV scripts with PEP 723 format, dataset preparation and validation, hardware selection, cost estimation, Trackio monitoring, Hub authentication, model selection/leaderboards and model persistence. Use for tasks involving cloud GPU training, GGUF conversion, or when users mention training on Hugging Face Jobs without local GPU setup.",
+    "category": "ai",
+    "repo": "huggingface/skills",
+    "path": "skills/huggingface-llm-trainer",
+    "pin": "25910b3d0ba31a2ba102f901cdc9e008c278a69c",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "fb5c5e25103e38226e4d8ae28db84a01de42a11da4be1918fa72f833699f9d0d"
+      },
+      {
+        "path": "references/gguf_conversion.md",
+        "sha256": "d341b8720e91a64e715cc76095b28a44d31319eb7d63df5bd7f93340804f89e0"
+      },
+      {
+        "path": "references/hardware_guide.md",
+        "sha256": "01b3ba873c5a45214746a25111131a5d27cd484722bc00cbe9f43dcaebc6a28c"
+      },
+      {
+        "path": "references/hub_saving.md",
+        "sha256": "ca3aacd6bad68ab149c007089c00cf4c72fd39b5c150c4fb7d192fda94ac838f"
+      },
+      {
+        "path": "references/local_training_macos.md",
+        "sha256": "864619b791239093d33e2627bc9e61428dcbb15cb3e947e3f9b278b73f0c871b"
+      },
+      {
+        "path": "references/reliability_principles.md",
+        "sha256": "189b40920184a64124a834ab4a0e3e99756a850b124add3e6cc5049036cd824f"
+      },
+      {
+        "path": "references/trackio_guide.md",
+        "sha256": "8ea2d3128dd2b927eca477c9349ead33da080add2edeb00f3089e22a5e4a916e"
+      },
+      {
+        "path": "references/training_methods.md",
+        "sha256": "10849c3f258ef571c576d3ec4779e7d01b625aec62891ecbc66be5356a7bf69d"
+      },
+      {
+        "path": "references/training_patterns.md",
+        "sha256": "cae8248d52454a5a93f20c0da6d64017f32d36e3b2cbbe298762affc083f3923"
+      },
+      {
+        "path": "references/troubleshooting.md",
+        "sha256": "1149767feca1e301197fcd8b7a91b75ec7ac101edb01c766770e687d6d02f6d7"
+      },
+      {
+        "path": "references/unsloth.md",
+        "sha256": "ff6255c21bde78a3120e40b5d620758a4f910ce7b5e1f9f05eb07214da83dff2"
+      },
+      {
+        "path": "scripts/convert_to_gguf.py",
+        "sha256": "7e882d67f4bee9ef8593c622eb3387fffc42c69d68252d45e6fcfaaffa83fc24"
+      },
+      {
+        "path": "scripts/dataset_inspector.py",
+        "sha256": "a75f9840e1925f50d6525faf97a502ed0810538746121cd666e691784be816eb"
+      },
+      {
+        "path": "scripts/estimate_cost.py",
+        "sha256": "7f69e6cd34f35a462a5e6e3cb9121fc785abf2f9cb84ed6c473a0b167556e64b"
+      },
+      {
+        "path": "scripts/hf_benchmarks.py",
+        "sha256": "70524bfe1e897d03a6d43ef6db254fe1bb02c26d9bf1471a35277bcabae64e86"
+      },
+      {
+        "path": "scripts/train_dpo_example.py",
+        "sha256": "de24eb7ab1e61adcc2387256ab40c10a6ca0648ad6db703d7e348ffd37e1d361"
+      },
+      {
+        "path": "scripts/train_grpo_example.py",
+        "sha256": "a25888208b0410e2982aa92c8a96dd43a9fe9fcce45037a48215885c755a608d"
+      },
+      {
+        "path": "scripts/train_sft_example.py",
+        "sha256": "29d1e6aa09c7d548158849c4ffa0bdaccaf7d205a79909b4c872abb9a7961284"
+      },
+      {
+        "path": "scripts/unsloth_sft_example.py",
+        "sha256": "40174038a0f1b03014fe0f0d3099aec2f44fa6954920d90c628c2b5ed21dc84a"
+      }
+    ],
+    "scripts": true,
+    "tokens": {
+      "listed": 163,
+      "loaded": 7195
+    }
+  },
+  {
+    "id": "trl-training",
+    "name": "trl-training",
+    "description": "Post-train LLMs with TRL (Transformers Reinforcement Learning) — SFT, DPO, GRPO, KTO, and reward-model training. Use when writing or debugging training code with the TRL Python API or the trl CLI.",
+    "category": "ai",
+    "repo": "huggingface/skills",
+    "path": "skills/trl-training",
+    "pin": "25910b3d0ba31a2ba102f901cdc9e008c278a69c",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "42c855bdc6171390abc7413cdb19bd4fd8dddfb31094d519a874427de08ddc2a"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 54,
+      "loaded": 1081
+    }
+  },
+  {
     "id": "transformers-js",
     "name": "transformers-js",
     "description": "Use Transformers.js to run state-of-the-art machine learning models directly in JavaScript/TypeScript. Supports NLP (text classification, translation, summarization), computer vision (image classification, object detection), audio (speech recognition, audio classification), and multimodal tasks. Works in browsers and server-side runtimes (Node.js, Bun, Deno) with WebGPU/WASM using pre-trained models from Hugging Face Hub.",
+    "category": "ai",
     "repo": "huggingface/skills",
     "path": "skills/transformers-js",
     "pin": "25910b3d0ba31a2ba102f901cdc9e008c278a69c",
@@ -2700,6 +3015,7 @@ export const SKILL_CATALOG: CatalogSkill[] = [
     "id": "huggingface-papers",
     "name": "huggingface-papers",
     "description": "Look up and read Hugging Face paper pages in markdown, and use the papers API for structured metadata such as authors, linked models/datasets/spaces, Github repo and project page. Use when the user shares a Hugging Face paper page URL, an arXiv URL or ID, or asks to summarize, explain, or analyze an AI research paper.",
+    "category": "ai",
     "repo": "huggingface/skills",
     "path": "skills/huggingface-papers",
     "pin": "25910b3d0ba31a2ba102f901cdc9e008c278a69c",
@@ -2720,6 +3036,7 @@ export const SKILL_CATALOG: CatalogSkill[] = [
     "id": "huggingface-tool-builder",
     "name": "huggingface-tool-builder",
     "description": "Use this skill when the user wants to build tool/scripts or achieve a task where using data from the Hugging Face API would help. This is especially useful when chaining or combining API calls or the task will be repeated/automated. This Skill creates a reusable script to fetch, enrich or process data.",
+    "category": "ai",
     "repo": "huggingface/skills",
     "path": "skills/huggingface-tool-builder",
     "pin": "25910b3d0ba31a2ba102f901cdc9e008c278a69c",
@@ -2765,49 +3082,10 @@ export const SKILL_CATALOG: CatalogSkill[] = [
     }
   },
   {
-    "id": "emil-design-eng",
-    "name": "emil-design-eng",
-    "description": "Emil Kowalski's design-engineering philosophy for UI polish, component design, animation decisions, and the invisible details that make software feel great. Use when building or reviewing a UI component's interactions and polish (press and hover states, popover origin, tooltip timing, transitions vs keyframes, clip-path techniques, drag details) and no narrower skill fits.",
-    "repo": "emilkowalski/skills",
-    "path": "skills/emil-design-eng",
-    "pin": "0f2e23b32bb1265e84cff8d3e75785fec953fb1b",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "cdbfe467e6c9a4940c3a19e795cecf1ba659378d7412e06c245c6ae49da47da6"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 99,
-      "loaded": 7065
-    }
-  },
-  {
-    "id": "animation-performance",
-    "name": "animation-performance",
-    "description": "Keep web animations inside the frame budget — animate composite-only properties, keep motion off the main thread when the page is busy, and find the cause when an animation drops frames. Use when an animation is janky, choppy, stutters, or drops frames; when choosing which property to animate; when deciding between CSS and JS animation on performance grounds; or when reaching for `will-change` or GPU layers. For choosing easing, duration, or whether to animate at all use animate; for reviewing motion as a whole use review-animations.",
-    "repo": "emilkowalski/skills",
-    "path": "skills/animation-performance",
-    "pin": "0f2e23b32bb1265e84cff8d3e75785fec953fb1b",
-    "license": "MIT",
-    "files": [
-      {
-        "path": "SKILL.md",
-        "sha256": "6481e7a611b54c0d1d229ac3ac516c05648e63aa79de88c0a1bdc5ae2666ab80"
-      }
-    ],
-    "scripts": false,
-    "tokens": {
-      "listed": 142,
-      "loaded": 3501
-    }
-  },
-  {
     "id": "humanizer",
     "name": "humanizer",
     "description": "Rewrite AI-sounding text so it reads like the writer without changing what it says. Use when editing or reviewing prose for AI tells: not-X-but-Y contrasts, one-line closers, staged openers, forced triads, dashes everywhere, inflated claims, sales language, stock AI words, bold labels, or filler.",
+    "category": "writing",
     "repo": "blader/humanizer",
     "path": "",
     "pin": "b48c832f0f809c1b5658edbb838c2521b72f2413",
@@ -2850,6 +3128,1134 @@ export const SKILL_CATALOG: CatalogSkill[] = [
     "tokens": {
       "listed": 78,
       "loaded": 8099
+    }
+  },
+  {
+    "id": "internal-comms",
+    "name": "internal-comms",
+    "description": "A set of resources to help me write all kinds of internal communications, using the formats that my company likes to use. Claude should use this skill whenever asked to write some sort of internal communications (status reports, leadership updates, 3P updates, company newsletters, FAQs, incident reports, project updates, etc.).",
+    "category": "writing",
+    "repo": "anthropics/skills",
+    "path": "skills/internal-comms",
+    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "path": "LICENSE.txt",
+        "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      {
+        "path": "SKILL.md",
+        "sha256": "067b7587a344a928fc6534ef66b1bcd591fc7c26d207ea7ca3334aeb678d6475"
+      },
+      {
+        "path": "examples/3p-updates.md",
+        "sha256": "087e4363c0f3513728a7e695eeb9ead5c3ecd12a4681b59340691180e65b68fc"
+      },
+      {
+        "path": "examples/company-newsletter.md",
+        "sha256": "30f81cfbdb03858a006169c72169024089c7c5d3d32611d337782da4f38c86b5"
+      },
+      {
+        "path": "examples/faq-answers.md",
+        "sha256": "5ecd3356cd6666937f2ebefa753253edfdbdca15e368d07baf398bfcced72484"
+      },
+      {
+        "path": "examples/general-comms.md",
+        "sha256": "4d3a4bb198a77626bcf018e96b2b45a2dbabed172d4ade0fcd70d23ae8a47a47"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 87,
+      "loaded": 378
+    }
+  },
+  {
+    "id": "brand-guidelines",
+    "name": "brand-guidelines",
+    "description": "Applies Anthropic's official brand colors and typography to any sort of artifact that may benefit from having Anthropic's look-and-feel. Use it when brand colors or style guidelines, visual formatting, or company design standards apply.",
+    "category": "writing",
+    "repo": "anthropics/skills",
+    "path": "skills/brand-guidelines",
+    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "path": "LICENSE.txt",
+        "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      {
+        "path": "SKILL.md",
+        "sha256": "1120b3769e2985cefb3d25be981b1f914abeba57ae079b83c20c666c164fa9fe"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 65,
+      "loaded": 559
+    }
+  },
+  {
+    "id": "writing-guidelines",
+    "name": "writing-guidelines",
+    "description": "Review docs/prose for Writing Guidelines compliance. Use when asked to \"review my docs\", \"check writing style\", \"audit prose\", \"review docs voice and tone\", or \"check this page against the writing handbook\".",
+    "category": "writing",
+    "repo": "vercel-labs/agent-skills",
+    "path": "skills/writing-guidelines",
+    "pin": "1a2c79d4e6c4a2283dc2c614b6538cbe1ed5ca62",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "89a5f581193289b80af58b980090aeed535047c8df2b55ccbaae0de40283a99d"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 58,
+      "loaded": 309
+    }
+  },
+  {
+    "id": "documentation-and-adrs",
+    "name": "documentation-and-adrs",
+    "description": "Records decisions and documentation, and detects when documentation has drifted from the code it describes. Use when you need to document an architecture decision (ADR) or the reasoning behind a design choice, when changing public APIs, shipping features, when docs may be stale or out of sync with the code they describe, when working out which module docs are still accurate, or when setting up a check so docs cannot silently go out of date again.",
+    "category": "writing",
+    "repo": "addyosmani/agent-skills",
+    "path": "skills/documentation-and-adrs",
+    "pin": "39b723ceebf81474d0557c1fecd01eddab585563",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "a55e540b4544237c2d76873965869e2e6add1e7eee935324f194411eee11e096"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 120,
+      "loaded": 3149
+    }
+  },
+  {
+    "id": "teach",
+    "name": "teach",
+    "description": "Teach the user a new skill or concept, within this workspace.",
+    "category": "writing",
+    "repo": "mattpocock/skills",
+    "path": "skills/productivity/teach",
+    "pin": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "GLOSSARY-FORMAT.md",
+        "sha256": "9b99859ec28437668130d8f2ce5a342938970f8a1ed4fd38c3eab4f4b5fff210"
+      },
+      {
+        "path": "LEARNING-RECORD-FORMAT.md",
+        "sha256": "701fa34b6748aa89e6c960ffb815257f481a7d77fb2900f9028f7edf3fdd6052"
+      },
+      {
+        "path": "MISSION-FORMAT.md",
+        "sha256": "8cacbb3c0644d3ae0ea4965564797099401a6930a23f7cf462918576587f2418"
+      },
+      {
+        "path": "RESOURCES-FORMAT.md",
+        "sha256": "e9cacf34026e11a8d1c8f9de88abe5bcbf654f4ebdb25cae8c0de0d5f48f44ec"
+      },
+      {
+        "path": "SKILL.md",
+        "sha256": "550482c2d674b085c9043b87bfdc14a8f2ec453c736119e7fcbb1e9332bffeba"
+      },
+      {
+        "path": "agents/openai.yaml",
+        "sha256": "5856f3ae8aec742f1499c640aecdd5f1d6af5fa210a7c6ec794de8263a6f733f"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 18,
+      "loaded": 2434
+    }
+  },
+  {
+    "id": "docx",
+    "name": "docx",
+    "description": "Use this skill whenever the user wants to create, read, edit, or manipulate Word documents (.docx files) or Word templates (.dotx files). Triggers include: any mention of 'Word doc', 'word document', '.docx', '.dotx', or requests to produce professional documents with formatting like tables of contents, headings, page numbers, or letterheads. Also use when extracting or reorganizing content from .docx or .dotx files, inserting or replacing images in documents, performing find-and-replace in Word files, working with tracked changes or comments, or converting content into a polished Word document. If the user asks for a 'report', 'memo', 'letter', 'template', or similar deliverable as a Word or .docx file, use this skill. Do NOT use for PDFs, spreadsheets, Google Docs, or general coding tasks unrelated to document generation.",
+    "category": "documents",
+    "repo": "anthropics/skills",
+    "path": "skills/docx",
+    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "path": "LICENSE.txt",
+        "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+      },
+      {
+        "path": "SKILL.md",
+        "sha256": "e094096faf2861e4dbed2dd4ba1960dbc1a137f8a71403b22bf1e4df41b31051"
+      },
+      {
+        "path": "scripts/__init__.py",
+        "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+      },
+      {
+        "path": "scripts/accept_changes.py",
+        "sha256": "0c991d2bc7304a1248e9f3bf9b1498f0b6e76641fc457e7cbd73c99b4eef3a74"
+      },
+      {
+        "path": "scripts/comment.py",
+        "sha256": "37d116e5f56bb142b208c6c6a4bbcf960495abf470ddb7c6675ccfac864ba3d7"
+      },
+      {
+        "path": "scripts/merge_runs.py",
+        "sha256": "3ab367fd7fba4647943d0aa5e65203b15458551410f5ffc821d902616a4b9f40"
+      },
+      {
+        "path": "scripts/office/helpers/__init__.py",
+        "sha256": "5c456ffc522900399b5f9402f92d66aaf2d9f87655d236c69f60bf07f4fd7c9b"
+      },
+      {
+        "path": "scripts/office/helpers/pptx_chart.py",
+        "sha256": "aed734e9a6c743ae712fc228c868bf0f6abcfb6a53549eefb19081b15d240fda"
+      },
+      {
+        "path": "scripts/office/helpers/pptx_slide.py",
+        "sha256": "06fe06953bf038826b85ecc142f4dc9299a37fa0c4e4dd9b00b10486df33524d"
+      },
+      {
+        "path": "scripts/office/helpers/pptx_theme.py",
+        "sha256": "ebb54c56e9c13807f5f98f0cae22d47cdd0162da8525eaa664e3f2c8c8d6bb03"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-chart.xsd",
+        "sha256": "41b93bd8857cc68b1e43be2806a872d736a9bdd6566900062d8fdb57d7bbb354"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-chartDrawing.xsd",
+        "sha256": "3fd0586f2637b98bb9886f0e0b67d89e1cc987c2d158cc7deb5f5b9890ced412"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-diagram.xsd",
+        "sha256": "29b254ee0d10414a8504b5a08149c7baec35a60d5ff607d6b3f492aa36815f40"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-lockedCanvas.xsd",
+        "sha256": "5cb76dabd8b97d1e9308a1700b90c20139be4d50792d21a7f09789f5cccd6026"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-main.xsd",
+        "sha256": "5375417f0f5394b8dd1a7035b9679151f19a6b65df309dec10cfb4a420cb00e9"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-picture.xsd",
+        "sha256": "5d389d42befbebd91945d620242347caecd3367f9a3a7cf8d97949507ae1f53c"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-spreadsheetDrawing.xsd",
+        "sha256": "b4532b6d258832953fbb3ee4c711f4fe25d3faf46a10644b2505f17010d01e88"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-wordprocessingDrawing.xsd",
+        "sha256": "bdad416b096b61d37b71603b2c949484f9070c830bdaeba93bf35e15c8900614"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/pml.xsd",
+        "sha256": "d173c3e5d61e42e2e3a97226c632fd2ab7cc481fc4e492365b87024ab546daff"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-additionalCharacteristics.xsd",
+        "sha256": "3c6709101c6aaa82888df5d8795c33f9e857196790eb320d9194e64be2b6bdd8"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-bibliography.xsd",
+        "sha256": "0b364451dc36a48dd6dae0f3b6ada05fd9b71e5208211f8ee5537d7e51a587e2"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-commonSimpleTypes.xsd",
+        "sha256": "e2abacbb9a55ce1365f8961bc1b1395bbc811e512b111000d8c333f98458dece"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlDataProperties.xsd",
+        "sha256": "0ef4bb354ff44b923564c4ddbdda5987919d220225129ec94614a618ceafc281"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlSchemaProperties.xsd",
+        "sha256": "0d103b99a4a8652f8871552a69d42d2a3760ac6a5e3ef02d979c4273257ff6a4"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesCustom.xsd",
+        "sha256": "9c085407751b9061c1f996f6c39ce58451be22a8d334f09175f0e89e42736285"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesExtended.xsd",
+        "sha256": "bc92e36ccd233722d4c5869bec71ddc7b12e2df56059942cce5a39065cc9c368"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesVariantTypes.xsd",
+        "sha256": "7b5b7413e2c895b1e148e82e292a117d53c7ec65b0696c992edca57b61b4a74b"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-math.xsd",
+        "sha256": "3213ef1631606250f5010b42cad7ef716f7c59426367798e33c374c0ec391d3a"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-relationshipReference.xsd",
+        "sha256": "12264f3c03d738311cd9237d212f1c07479e70f0cbe1ae725d29b36539aef637"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/sml.xsd",
+        "sha256": "beffeed56945c22a77440122c8bdc426f3fcbe7f3b12ea0976c770d1f8d54578"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-main.xsd",
+        "sha256": "f5ee623b08b6a66935e5aced2f5d8ad0fc71bf9e8e833cd490150c0fa94b8763"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-officeDrawing.xsd",
+        "sha256": "585bedc1313b40888dcc544cb74cd939a105ee674f3b1d3aa1cc6d34f70ff155"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-presentationDrawing.xsd",
+        "sha256": "133c9f64a5c5d573b78d0a474122b22506d8eadb5e063f67cdbbb8fa2f161d0e"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-spreadsheetDrawing.xsd",
+        "sha256": "6bdeb169c3717eb01108853bd9fc5a3750fb1fa5b82abbdd854d49855a40f519"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-wordprocessingDrawing.xsd",
+        "sha256": "475dcae1e7d1ea46232db6f8481040c15e53a52a3c256831d3df204212b0e831"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/wml.xsd",
+        "sha256": "c2dd9f61f892deae6acd8d20771ea79b12018af25f3bf8d06639c8542d218cfd"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/xml.xsd",
+        "sha256": "a539aa2fb154fa50e0f5cc97e6ad7cbc66f8ec3e3746f61ec6a8b0d5d15ecdf2"
+      },
+      {
+        "path": "scripts/office/schemas/ecma/fouth-edition/opc-contentTypes.xsd",
+        "sha256": "9e0b7209fc69ab11987900404540969976000c5ebe4d4f58c43dc3842886bf3a"
+      },
+      {
+        "path": "scripts/office/schemas/ecma/fouth-edition/opc-coreProperties.xsd",
+        "sha256": "451958454e8588dfc7cd945981ada142ca06ff3307937f5700df059c2b307fa8"
+      },
+      {
+        "path": "scripts/office/schemas/ecma/fouth-edition/opc-digSig.xsd",
+        "sha256": "6de111e11403f7cd49027400755bae0ea1cabef2815f09bd40a24f0017613b24"
+      },
+      {
+        "path": "scripts/office/schemas/ecma/fouth-edition/opc-relationships.xsd",
+        "sha256": "f565adfef5a502044abc3a9153e157edc25af78304d335994afb958874b15e26"
+      },
+      {
+        "path": "scripts/office/schemas/mce/mc.xsd",
+        "sha256": "3a37e461ecf5a8670fdec34029703401f8728ab9c96ec1739a6ae58d55212413"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-2010.xsd",
+        "sha256": "568b26ee156cb9549aa439ca2158965f77b7c1602b7e0316f40ac6cf586e35f2"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-2012.xsd",
+        "sha256": "0fa75578a000439a7988ba0c59fdc69f774bbd416cbacc14d07125b3f686cb74"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-2018.xsd",
+        "sha256": "be0ff793a22dd31384650c3a4da14c2fa8062751c2e97b0e5ee852bda13c60ad"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-cex-2018.xsd",
+        "sha256": "fddc2b880cabb9005aebbc7e783e53c19fec1c03df7d0e2f2076a33a0fdfd081"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-cid-2016.xsd",
+        "sha256": "127ca209fa73d7cb708449cb355c871867948a96e4a74f7bf5811ef62d17991d"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-sdtdatahash-2020.xsd",
+        "sha256": "842e7163409c8d74f4d7088a8bc99500d80bc75332681a0980055b08f374a604"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-symex-2015.xsd",
+        "sha256": "16f6f8072249f431370723c2cd8974672e0d9c897e00e97dd918079df934871b"
+      },
+      {
+        "path": "scripts/office/soffice.py",
+        "sha256": "c1b83a67bf7e784ce6255d7b3a58999445f3dad19809845821f1293ab4cbf43e"
+      },
+      {
+        "path": "scripts/office/validate.py",
+        "sha256": "21d48e4e86df93e889a01e7d03e7ca63816da3278c9cc4353b89d43246e02364"
+      },
+      {
+        "path": "scripts/office/validators/__init__.py",
+        "sha256": "83e0f035c5abea238d3f2c3968afbd511ed022b527b7c9cb60a9434cc34ff987"
+      },
+      {
+        "path": "scripts/office/validators/base.py",
+        "sha256": "6129ec6a4fc0a4aa78af1434f9baa73994cc24d3261afda4e680e00f215cbf3b"
+      },
+      {
+        "path": "scripts/office/validators/docx.py",
+        "sha256": "7b0f1a23c9cd9ff07187d9d7d359f62317f94a5e389d63fd19766e1688a195a2"
+      },
+      {
+        "path": "scripts/office/validators/pptx.py",
+        "sha256": "3a100ec5f00ae183bca67f4aaa8e3e902caee60254e141b8120f32c53d85cee7"
+      },
+      {
+        "path": "scripts/office/validators/redlining.py",
+        "sha256": "f9c4455adc32b3890d5203d6c25d868d98d7e970bbad76b686f502950737599a"
+      },
+      {
+        "path": "scripts/templates/comments.xml",
+        "sha256": "a08ba83ee8790ac9e3dc61921f4988f19edd7e06ac09d6f1897a877c1581818d"
+      },
+      {
+        "path": "scripts/templates/commentsExtended.xml",
+        "sha256": "544eeecfeceed4b468fff163cd9c366d33641c8b8ab691ce002576197846afe8"
+      },
+      {
+        "path": "scripts/templates/commentsExtensible.xml",
+        "sha256": "bad10b3283e6ad6e7ef6d1ca5169683721ed690ee331282c65df04017e080631"
+      },
+      {
+        "path": "scripts/templates/commentsIds.xml",
+        "sha256": "db20f9616e004ec42ef736e80c2384e45db0f8d1194d31dc8b37c7d6ecdd6420"
+      },
+      {
+        "path": "scripts/templates/people.xml",
+        "sha256": "056f63aa1197fd8c9dda980c9f1b9ff016fd5fa4a462df8aec5f384f39d23e37"
+      }
+    ],
+    "scripts": true,
+    "tokens": {
+      "listed": 211,
+      "loaded": 1861
+    }
+  },
+  {
+    "id": "pdf",
+    "name": "pdf",
+    "description": "Use this skill whenever the user wants to do anything with PDF files. This includes reading or extracting text/tables from PDFs, combining or merging multiple PDFs into one, splitting PDFs apart, rotating pages, adding watermarks, creating new PDFs, filling PDF forms, encrypting/decrypting PDFs, extracting images, and OCR on scanned PDFs to make them searchable. If the user mentions a .pdf file or asks to produce one, use this skill.",
+    "category": "documents",
+    "repo": "anthropics/skills",
+    "path": "skills/pdf",
+    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "path": "FORMS.md",
+        "sha256": "d5df5757e23634cd8a1a37e092af6c3b3b63afb3fd3ce86337fce9017cc3ee9f"
+      },
+      {
+        "path": "LICENSE.txt",
+        "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+      },
+      {
+        "path": "REFERENCE.md",
+        "sha256": "07af9a8f59e77e88fe9b238a403348244f38a4771c54911c412716d8f88f0ea9"
+      },
+      {
+        "path": "SKILL.md",
+        "sha256": "d1c7caf5f35eb7d37877dd7fc33a095037be2b34fb5d2f7f4d43bde3165bb4ee"
+      },
+      {
+        "path": "scripts/check_bounding_boxes.py",
+        "sha256": "0ced522402dd7b3c82a0be9518cf4e485fa9cc0467d7beab6ddb04cb36fcc3e1"
+      },
+      {
+        "path": "scripts/check_fillable_fields.py",
+        "sha256": "1fe10b9980a5493c9bbec8c20630c603eaa475b45403751c08f26738736647b8"
+      },
+      {
+        "path": "scripts/convert_pdf_to_images.py",
+        "sha256": "7f58e292a67e18a8ff000d30bad2469389546731f7e8a698cc1d0aed001ea15d"
+      },
+      {
+        "path": "scripts/create_validation_image.py",
+        "sha256": "8fa9fd7962c9f940045b81cf6b991e7c1057c1838e3f9cc6d305007a222ffebf"
+      },
+      {
+        "path": "scripts/extract_form_field_info.py",
+        "sha256": "bb235b36f497bbb1c7c6821cecf527bbba7213520de11219da99f7b13a38c109"
+      },
+      {
+        "path": "scripts/extract_form_structure.py",
+        "sha256": "6814e3fe8f78c2b16d766c132b5a727ff7a31b71d76a7d46bd6e40fe50bc97c5"
+      },
+      {
+        "path": "scripts/fill_fillable_fields.py",
+        "sha256": "d140872c2e92e41b1e05370ae8d270c5b7f5ebdf55d9905f03bc974a9c708ff5"
+      },
+      {
+        "path": "scripts/fill_pdf_form_with_annotations.py",
+        "sha256": "8a56e063a49ed53c0b0e1d312ecf8023af76816ed139486ec3b539873de202fd"
+      }
+    ],
+    "scripts": true,
+    "tokens": {
+      "listed": 112,
+      "loaded": 2015
+    }
+  },
+  {
+    "id": "pptx",
+    "name": "pptx",
+    "description": "Use this skill any time a .pptx or .potx file is involved in any way — as input, output, or both. This includes: creating slide decks, pitch decks, or presentations; reading, parsing, or extracting text from any .pptx or .potx file (even if the extracted content will be used elsewhere, like in an email or summary); editing, modifying, or updating existing presentations; combining or splitting slide files; working with templates (.potx), layouts, speaker notes, or comments. Trigger whenever the user mentions \"deck,\" \"slides,\" \"presentation,\" or references a .pptx or .potx filename, regardless of what they plan to do with the content afterward. If a .pptx or .potx file needs to be opened, created, or touched, use this skill.",
+    "category": "documents",
+    "repo": "anthropics/skills",
+    "path": "skills/pptx",
+    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "path": "LICENSE.txt",
+        "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+      },
+      {
+        "path": "SKILL.md",
+        "sha256": "1b54d26d78bcb35e3c6a2c723615c4a33c29732de2e5b29c9ecf10b34fb1a2e5"
+      },
+      {
+        "path": "scripts/__init__.py",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "scripts/add_slide.py",
+        "sha256": "23a4c66a9f43e651189cbc9f82ba0a8271d19dc8d44cf0c426dda66f7eb6a93a"
+      },
+      {
+        "path": "scripts/apply_theme.js",
+        "sha256": "e440b33c43f2e707076cb64b57ca926ce886564b115c19ee23ac487bdb1a6259"
+      },
+      {
+        "path": "scripts/clean.py",
+        "sha256": "5c808cd4dff7e02661ef3c68b5917f4e25097cc6610c92a3a7df4a6366a5c3c1"
+      },
+      {
+        "path": "scripts/office/helpers/__init__.py",
+        "sha256": "5c456ffc522900399b5f9402f92d66aaf2d9f87655d236c69f60bf07f4fd7c9b"
+      },
+      {
+        "path": "scripts/office/helpers/pptx_chart.py",
+        "sha256": "aed734e9a6c743ae712fc228c868bf0f6abcfb6a53549eefb19081b15d240fda"
+      },
+      {
+        "path": "scripts/office/helpers/pptx_slide.py",
+        "sha256": "06fe06953bf038826b85ecc142f4dc9299a37fa0c4e4dd9b00b10486df33524d"
+      },
+      {
+        "path": "scripts/office/helpers/pptx_theme.py",
+        "sha256": "ebb54c56e9c13807f5f98f0cae22d47cdd0162da8525eaa664e3f2c8c8d6bb03"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-chart.xsd",
+        "sha256": "41b93bd8857cc68b1e43be2806a872d736a9bdd6566900062d8fdb57d7bbb354"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-chartDrawing.xsd",
+        "sha256": "3fd0586f2637b98bb9886f0e0b67d89e1cc987c2d158cc7deb5f5b9890ced412"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-diagram.xsd",
+        "sha256": "29b254ee0d10414a8504b5a08149c7baec35a60d5ff607d6b3f492aa36815f40"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-lockedCanvas.xsd",
+        "sha256": "5cb76dabd8b97d1e9308a1700b90c20139be4d50792d21a7f09789f5cccd6026"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-main.xsd",
+        "sha256": "5375417f0f5394b8dd1a7035b9679151f19a6b65df309dec10cfb4a420cb00e9"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-picture.xsd",
+        "sha256": "5d389d42befbebd91945d620242347caecd3367f9a3a7cf8d97949507ae1f53c"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-spreadsheetDrawing.xsd",
+        "sha256": "b4532b6d258832953fbb3ee4c711f4fe25d3faf46a10644b2505f17010d01e88"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-wordprocessingDrawing.xsd",
+        "sha256": "bdad416b096b61d37b71603b2c949484f9070c830bdaeba93bf35e15c8900614"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/pml.xsd",
+        "sha256": "d173c3e5d61e42e2e3a97226c632fd2ab7cc481fc4e492365b87024ab546daff"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-additionalCharacteristics.xsd",
+        "sha256": "3c6709101c6aaa82888df5d8795c33f9e857196790eb320d9194e64be2b6bdd8"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-bibliography.xsd",
+        "sha256": "0b364451dc36a48dd6dae0f3b6ada05fd9b71e5208211f8ee5537d7e51a587e2"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-commonSimpleTypes.xsd",
+        "sha256": "e2abacbb9a55ce1365f8961bc1b1395bbc811e512b111000d8c333f98458dece"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlDataProperties.xsd",
+        "sha256": "0ef4bb354ff44b923564c4ddbdda5987919d220225129ec94614a618ceafc281"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlSchemaProperties.xsd",
+        "sha256": "0d103b99a4a8652f8871552a69d42d2a3760ac6a5e3ef02d979c4273257ff6a4"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesCustom.xsd",
+        "sha256": "9c085407751b9061c1f996f6c39ce58451be22a8d334f09175f0e89e42736285"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesExtended.xsd",
+        "sha256": "bc92e36ccd233722d4c5869bec71ddc7b12e2df56059942cce5a39065cc9c368"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesVariantTypes.xsd",
+        "sha256": "7b5b7413e2c895b1e148e82e292a117d53c7ec65b0696c992edca57b61b4a74b"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-math.xsd",
+        "sha256": "3213ef1631606250f5010b42cad7ef716f7c59426367798e33c374c0ec391d3a"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-relationshipReference.xsd",
+        "sha256": "12264f3c03d738311cd9237d212f1c07479e70f0cbe1ae725d29b36539aef637"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/sml.xsd",
+        "sha256": "beffeed56945c22a77440122c8bdc426f3fcbe7f3b12ea0976c770d1f8d54578"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-main.xsd",
+        "sha256": "f5ee623b08b6a66935e5aced2f5d8ad0fc71bf9e8e833cd490150c0fa94b8763"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-officeDrawing.xsd",
+        "sha256": "585bedc1313b40888dcc544cb74cd939a105ee674f3b1d3aa1cc6d34f70ff155"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-presentationDrawing.xsd",
+        "sha256": "133c9f64a5c5d573b78d0a474122b22506d8eadb5e063f67cdbbb8fa2f161d0e"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-spreadsheetDrawing.xsd",
+        "sha256": "6bdeb169c3717eb01108853bd9fc5a3750fb1fa5b82abbdd854d49855a40f519"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-wordprocessingDrawing.xsd",
+        "sha256": "475dcae1e7d1ea46232db6f8481040c15e53a52a3c256831d3df204212b0e831"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/wml.xsd",
+        "sha256": "c2dd9f61f892deae6acd8d20771ea79b12018af25f3bf8d06639c8542d218cfd"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/xml.xsd",
+        "sha256": "a539aa2fb154fa50e0f5cc97e6ad7cbc66f8ec3e3746f61ec6a8b0d5d15ecdf2"
+      },
+      {
+        "path": "scripts/office/schemas/ecma/fouth-edition/opc-contentTypes.xsd",
+        "sha256": "9e0b7209fc69ab11987900404540969976000c5ebe4d4f58c43dc3842886bf3a"
+      },
+      {
+        "path": "scripts/office/schemas/ecma/fouth-edition/opc-coreProperties.xsd",
+        "sha256": "451958454e8588dfc7cd945981ada142ca06ff3307937f5700df059c2b307fa8"
+      },
+      {
+        "path": "scripts/office/schemas/ecma/fouth-edition/opc-digSig.xsd",
+        "sha256": "6de111e11403f7cd49027400755bae0ea1cabef2815f09bd40a24f0017613b24"
+      },
+      {
+        "path": "scripts/office/schemas/ecma/fouth-edition/opc-relationships.xsd",
+        "sha256": "f565adfef5a502044abc3a9153e157edc25af78304d335994afb958874b15e26"
+      },
+      {
+        "path": "scripts/office/schemas/mce/mc.xsd",
+        "sha256": "3a37e461ecf5a8670fdec34029703401f8728ab9c96ec1739a6ae58d55212413"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-2010.xsd",
+        "sha256": "568b26ee156cb9549aa439ca2158965f77b7c1602b7e0316f40ac6cf586e35f2"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-2012.xsd",
+        "sha256": "0fa75578a000439a7988ba0c59fdc69f774bbd416cbacc14d07125b3f686cb74"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-2018.xsd",
+        "sha256": "be0ff793a22dd31384650c3a4da14c2fa8062751c2e97b0e5ee852bda13c60ad"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-cex-2018.xsd",
+        "sha256": "fddc2b880cabb9005aebbc7e783e53c19fec1c03df7d0e2f2076a33a0fdfd081"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-cid-2016.xsd",
+        "sha256": "127ca209fa73d7cb708449cb355c871867948a96e4a74f7bf5811ef62d17991d"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-sdtdatahash-2020.xsd",
+        "sha256": "842e7163409c8d74f4d7088a8bc99500d80bc75332681a0980055b08f374a604"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-symex-2015.xsd",
+        "sha256": "16f6f8072249f431370723c2cd8974672e0d9c897e00e97dd918079df934871b"
+      },
+      {
+        "path": "scripts/office/soffice.py",
+        "sha256": "c1b83a67bf7e784ce6255d7b3a58999445f3dad19809845821f1293ab4cbf43e"
+      },
+      {
+        "path": "scripts/office/validate.py",
+        "sha256": "21d48e4e86df93e889a01e7d03e7ca63816da3278c9cc4353b89d43246e02364"
+      },
+      {
+        "path": "scripts/office/validators/__init__.py",
+        "sha256": "83e0f035c5abea238d3f2c3968afbd511ed022b527b7c9cb60a9434cc34ff987"
+      },
+      {
+        "path": "scripts/office/validators/base.py",
+        "sha256": "6129ec6a4fc0a4aa78af1434f9baa73994cc24d3261afda4e680e00f215cbf3b"
+      },
+      {
+        "path": "scripts/office/validators/docx.py",
+        "sha256": "7b0f1a23c9cd9ff07187d9d7d359f62317f94a5e389d63fd19766e1688a195a2"
+      },
+      {
+        "path": "scripts/office/validators/pptx.py",
+        "sha256": "3a100ec5f00ae183bca67f4aaa8e3e902caee60254e141b8120f32c53d85cee7"
+      },
+      {
+        "path": "scripts/office/validators/redlining.py",
+        "sha256": "f9c4455adc32b3890d5203d6c25d868d98d7e970bbad76b686f502950737599a"
+      },
+      {
+        "path": "scripts/slide_text.py",
+        "sha256": "0deab09d4ae494411ee893f9c69fffc19fe264a6053990a2f066334c0d88d422"
+      },
+      {
+        "path": "scripts/thumbnail.py",
+        "sha256": "94ef83a84346aa2d63913de0d42bb2fe902ccdc17bfac6130096ca758381793c"
+      }
+    ],
+    "scripts": true,
+    "tokens": {
+      "listed": 186,
+      "loaded": 7091
+    }
+  },
+  {
+    "id": "xlsx",
+    "name": "xlsx",
+    "description": "Use this skill any time a spreadsheet file is the primary input or output. This means any task where the user wants to: open, read, edit, or fix an existing .xlsx, .xlsm, .xltx, .csv, or .tsv file (e.g., adding columns, computing formulas, formatting, charting, cleaning messy data); create a new spreadsheet from scratch or from other data sources; or convert between tabular file formats. Trigger especially when the user references a spreadsheet file by name or path — even casually (like \"the xlsx in my downloads\") — and wants something done to it or produced from it. Also trigger for cleaning or restructuring messy tabular data files (malformed rows, misplaced headers, junk data) into proper spreadsheets. The deliverable must be a spreadsheet file. Do NOT trigger when the primary deliverable is a Word document, HTML report, standalone Python script, database pipeline, or Google Sheets API integration, even if tabular data is involved.",
+    "category": "documents",
+    "repo": "anthropics/skills",
+    "path": "skills/xlsx",
+    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "path": "LICENSE.txt",
+        "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+      },
+      {
+        "path": "SKILL.md",
+        "sha256": "f32b1c2b5d5d31e02964df110d6489613d9345f86830c118cfe24159d8448ce6"
+      },
+      {
+        "path": "scripts/office/helpers/__init__.py",
+        "sha256": "5c456ffc522900399b5f9402f92d66aaf2d9f87655d236c69f60bf07f4fd7c9b"
+      },
+      {
+        "path": "scripts/office/helpers/pptx_chart.py",
+        "sha256": "aed734e9a6c743ae712fc228c868bf0f6abcfb6a53549eefb19081b15d240fda"
+      },
+      {
+        "path": "scripts/office/helpers/pptx_slide.py",
+        "sha256": "06fe06953bf038826b85ecc142f4dc9299a37fa0c4e4dd9b00b10486df33524d"
+      },
+      {
+        "path": "scripts/office/helpers/pptx_theme.py",
+        "sha256": "ebb54c56e9c13807f5f98f0cae22d47cdd0162da8525eaa664e3f2c8c8d6bb03"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-chart.xsd",
+        "sha256": "41b93bd8857cc68b1e43be2806a872d736a9bdd6566900062d8fdb57d7bbb354"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-chartDrawing.xsd",
+        "sha256": "3fd0586f2637b98bb9886f0e0b67d89e1cc987c2d158cc7deb5f5b9890ced412"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-diagram.xsd",
+        "sha256": "29b254ee0d10414a8504b5a08149c7baec35a60d5ff607d6b3f492aa36815f40"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-lockedCanvas.xsd",
+        "sha256": "5cb76dabd8b97d1e9308a1700b90c20139be4d50792d21a7f09789f5cccd6026"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-main.xsd",
+        "sha256": "5375417f0f5394b8dd1a7035b9679151f19a6b65df309dec10cfb4a420cb00e9"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-picture.xsd",
+        "sha256": "5d389d42befbebd91945d620242347caecd3367f9a3a7cf8d97949507ae1f53c"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-spreadsheetDrawing.xsd",
+        "sha256": "b4532b6d258832953fbb3ee4c711f4fe25d3faf46a10644b2505f17010d01e88"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/dml-wordprocessingDrawing.xsd",
+        "sha256": "bdad416b096b61d37b71603b2c949484f9070c830bdaeba93bf35e15c8900614"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/pml.xsd",
+        "sha256": "d173c3e5d61e42e2e3a97226c632fd2ab7cc481fc4e492365b87024ab546daff"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-additionalCharacteristics.xsd",
+        "sha256": "3c6709101c6aaa82888df5d8795c33f9e857196790eb320d9194e64be2b6bdd8"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-bibliography.xsd",
+        "sha256": "0b364451dc36a48dd6dae0f3b6ada05fd9b71e5208211f8ee5537d7e51a587e2"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-commonSimpleTypes.xsd",
+        "sha256": "e2abacbb9a55ce1365f8961bc1b1395bbc811e512b111000d8c333f98458dece"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlDataProperties.xsd",
+        "sha256": "0ef4bb354ff44b923564c4ddbdda5987919d220225129ec94614a618ceafc281"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-customXmlSchemaProperties.xsd",
+        "sha256": "0d103b99a4a8652f8871552a69d42d2a3760ac6a5e3ef02d979c4273257ff6a4"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesCustom.xsd",
+        "sha256": "9c085407751b9061c1f996f6c39ce58451be22a8d334f09175f0e89e42736285"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesExtended.xsd",
+        "sha256": "bc92e36ccd233722d4c5869bec71ddc7b12e2df56059942cce5a39065cc9c368"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-documentPropertiesVariantTypes.xsd",
+        "sha256": "7b5b7413e2c895b1e148e82e292a117d53c7ec65b0696c992edca57b61b4a74b"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-math.xsd",
+        "sha256": "3213ef1631606250f5010b42cad7ef716f7c59426367798e33c374c0ec391d3a"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/shared-relationshipReference.xsd",
+        "sha256": "12264f3c03d738311cd9237d212f1c07479e70f0cbe1ae725d29b36539aef637"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/sml.xsd",
+        "sha256": "beffeed56945c22a77440122c8bdc426f3fcbe7f3b12ea0976c770d1f8d54578"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-main.xsd",
+        "sha256": "f5ee623b08b6a66935e5aced2f5d8ad0fc71bf9e8e833cd490150c0fa94b8763"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-officeDrawing.xsd",
+        "sha256": "585bedc1313b40888dcc544cb74cd939a105ee674f3b1d3aa1cc6d34f70ff155"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-presentationDrawing.xsd",
+        "sha256": "133c9f64a5c5d573b78d0a474122b22506d8eadb5e063f67cdbbb8fa2f161d0e"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-spreadsheetDrawing.xsd",
+        "sha256": "6bdeb169c3717eb01108853bd9fc5a3750fb1fa5b82abbdd854d49855a40f519"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/vml-wordprocessingDrawing.xsd",
+        "sha256": "475dcae1e7d1ea46232db6f8481040c15e53a52a3c256831d3df204212b0e831"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/wml.xsd",
+        "sha256": "c2dd9f61f892deae6acd8d20771ea79b12018af25f3bf8d06639c8542d218cfd"
+      },
+      {
+        "path": "scripts/office/schemas/ISO-IEC29500-4_2016/xml.xsd",
+        "sha256": "a539aa2fb154fa50e0f5cc97e6ad7cbc66f8ec3e3746f61ec6a8b0d5d15ecdf2"
+      },
+      {
+        "path": "scripts/office/schemas/ecma/fouth-edition/opc-contentTypes.xsd",
+        "sha256": "9e0b7209fc69ab11987900404540969976000c5ebe4d4f58c43dc3842886bf3a"
+      },
+      {
+        "path": "scripts/office/schemas/ecma/fouth-edition/opc-coreProperties.xsd",
+        "sha256": "451958454e8588dfc7cd945981ada142ca06ff3307937f5700df059c2b307fa8"
+      },
+      {
+        "path": "scripts/office/schemas/ecma/fouth-edition/opc-digSig.xsd",
+        "sha256": "6de111e11403f7cd49027400755bae0ea1cabef2815f09bd40a24f0017613b24"
+      },
+      {
+        "path": "scripts/office/schemas/ecma/fouth-edition/opc-relationships.xsd",
+        "sha256": "f565adfef5a502044abc3a9153e157edc25af78304d335994afb958874b15e26"
+      },
+      {
+        "path": "scripts/office/schemas/mce/mc.xsd",
+        "sha256": "3a37e461ecf5a8670fdec34029703401f8728ab9c96ec1739a6ae58d55212413"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-2010.xsd",
+        "sha256": "568b26ee156cb9549aa439ca2158965f77b7c1602b7e0316f40ac6cf586e35f2"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-2012.xsd",
+        "sha256": "0fa75578a000439a7988ba0c59fdc69f774bbd416cbacc14d07125b3f686cb74"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-2018.xsd",
+        "sha256": "be0ff793a22dd31384650c3a4da14c2fa8062751c2e97b0e5ee852bda13c60ad"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-cex-2018.xsd",
+        "sha256": "fddc2b880cabb9005aebbc7e783e53c19fec1c03df7d0e2f2076a33a0fdfd081"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-cid-2016.xsd",
+        "sha256": "127ca209fa73d7cb708449cb355c871867948a96e4a74f7bf5811ef62d17991d"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-sdtdatahash-2020.xsd",
+        "sha256": "842e7163409c8d74f4d7088a8bc99500d80bc75332681a0980055b08f374a604"
+      },
+      {
+        "path": "scripts/office/schemas/microsoft/wml-symex-2015.xsd",
+        "sha256": "16f6f8072249f431370723c2cd8974672e0d9c897e00e97dd918079df934871b"
+      },
+      {
+        "path": "scripts/office/soffice.py",
+        "sha256": "c1b83a67bf7e784ce6255d7b3a58999445f3dad19809845821f1293ab4cbf43e"
+      },
+      {
+        "path": "scripts/office/validate.py",
+        "sha256": "21d48e4e86df93e889a01e7d03e7ca63816da3278c9cc4353b89d43246e02364"
+      },
+      {
+        "path": "scripts/office/validators/__init__.py",
+        "sha256": "83e0f035c5abea238d3f2c3968afbd511ed022b527b7c9cb60a9434cc34ff987"
+      },
+      {
+        "path": "scripts/office/validators/base.py",
+        "sha256": "6129ec6a4fc0a4aa78af1434f9baa73994cc24d3261afda4e680e00f215cbf3b"
+      },
+      {
+        "path": "scripts/office/validators/docx.py",
+        "sha256": "7b0f1a23c9cd9ff07187d9d7d359f62317f94a5e389d63fd19766e1688a195a2"
+      },
+      {
+        "path": "scripts/office/validators/pptx.py",
+        "sha256": "3a100ec5f00ae183bca67f4aaa8e3e902caee60254e141b8120f32c53d85cee7"
+      },
+      {
+        "path": "scripts/office/validators/redlining.py",
+        "sha256": "f9c4455adc32b3890d5203d6c25d868d98d7e970bbad76b686f502950737599a"
+      },
+      {
+        "path": "scripts/recalc.py",
+        "sha256": "7265aa4a41f5273596ee5694ce8a4d881c18adafb6203fece769107d08403263"
+      }
+    ],
+    "scripts": true,
+    "tokens": {
+      "listed": 240,
+      "loaded": 2443
+    }
+  },
+  {
+    "id": "skill-creator",
+    "name": "skill-creator",
+    "description": "Create new skills, modify and improve existing skills, and measure skill performance. Use when users want to create a skill from scratch, edit, or optimize an existing skill, run evals to test a skill, benchmark skill performance with variance analysis, or optimize a skill's description for better triggering accuracy.",
+    "category": "skills",
+    "repo": "anthropics/skills",
+    "path": "skills/skill-creator",
+    "pin": "1780c5e5a552fd4d1c9d6a7b0cab26b0c2bef064",
+    "license": "Apache-2.0",
+    "files": [
+      {
+        "path": "LICENSE.txt",
+        "sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362"
+      },
+      {
+        "path": "SKILL.md",
+        "sha256": "dcd4803e61e913e6fc27294184cd3a71f09f5e924ff20c8a9a20173e7b3c2bcf"
+      },
+      {
+        "path": "agents/analyzer.md",
+        "sha256": "bf68f4cac5a56c673a928c2e6d619586c5b93ea364026ab37547772cb45a663a"
+      },
+      {
+        "path": "agents/comparator.md",
+        "sha256": "fe1fc9787c495d864c5d6eada47396478572325fde1b33a96d78bf4b849b7a3e"
+      },
+      {
+        "path": "agents/grader.md",
+        "sha256": "57134da0c1a4eea33fbd74a1c9c44aa814f07d6bc64de303edb586f941e5d21a"
+      },
+      {
+        "path": "assets/eval_review.html",
+        "sha256": "ce477dcc74dc1c0d1d3352646a79167b5a63634e936b1019160025065974e452"
+      },
+      {
+        "path": "eval-viewer/generate_review.py",
+        "sha256": "fc9d1b9243fe5ab6012ebd579bd76d0035de1b79fd3b969de114defab26478fb"
+      },
+      {
+        "path": "eval-viewer/viewer.html",
+        "sha256": "a53213426ee1100441d701a3a0d49cda7a842f992d2c36463f4d3cc0258575fa"
+      },
+      {
+        "path": "references/schemas.md",
+        "sha256": "8e8876180a8989b406a4d3edddf875b04cdfd5805cc8616686d552b11ce4455f"
+      },
+      {
+        "path": "scripts/__init__.py",
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      {
+        "path": "scripts/aggregate_benchmark.py",
+        "sha256": "123ef128ea5ccc01a4b1ac212ef5567f21e9c13d3d240609780beeb3200c49aa"
+      },
+      {
+        "path": "scripts/generate_report.py",
+        "sha256": "13df7118a3c50c83c4c3250a606d5f2b20b25a3d44cbc392b3d669ec75281453"
+      },
+      {
+        "path": "scripts/improve_description.py",
+        "sha256": "87d864570220b699fac52da309d2d6efdb060647bfebc74f768128e646accf80"
+      },
+      {
+        "path": "scripts/package_skill.py",
+        "sha256": "1a33059b0db1ef73375d46d513e5ea81369d2e8838c970597b0d52ddef8d1c0f"
+      },
+      {
+        "path": "scripts/quick_validate.py",
+        "sha256": "67cf5703402013936c8fb75ad6a1afecd8841d45cc5e606b634eb05825fde365"
+      },
+      {
+        "path": "scripts/run_eval.py",
+        "sha256": "43e3b8f80dbf69c343967ba77e268fae991d9fa3ed68b32a0ff02532cd48657f"
+      },
+      {
+        "path": "scripts/run_loop.py",
+        "sha256": "7bd6f674203168520517eec94c55f493c0d154339b061b4d7c0f0dad187d0f21"
+      },
+      {
+        "path": "scripts/utils.py",
+        "sha256": "3af8ae62c40c73ab712207436a0d9a981e845f25c5a7040229eb189cc8e45bb1"
+      }
+    ],
+    "scripts": true,
+    "tokens": {
+      "listed": 85,
+      "loaded": 8292
+    }
+  },
+  {
+    "id": "writing-skills",
+    "name": "writing-skills",
+    "description": "Use when creating new skills, editing existing skills, or verifying skills work before deployment",
+    "category": "skills",
+    "repo": "obra/superpowers",
+    "path": "skills/writing-skills",
+    "pin": "22f0b463e7a5e579904dd6211a520321035526f7",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL.md",
+        "sha256": "8cb3ac68c6d8c4bb46886b998b09af7989643cab8bd0e46ee86dd62e64546bbe"
+      },
+      {
+        "path": "references/CLAUDE_MD_TESTING.md",
+        "sha256": "0b379a3415e185d3c434b3ad283d8aa132f3022c2a4f210f168865b5986bcef0"
+      },
+      {
+        "path": "references/anthropic-best-practices.md",
+        "sha256": "217629b356c09c9bd11017c9788e8fc654ca1b32c92d4a51cd490e16dd65e59a"
+      },
+      {
+        "path": "references/bulletproofing.md",
+        "sha256": "9397023e6bc85b556a57f3097371363bf03e28e755c57f403f470bcda90e0a23"
+      },
+      {
+        "path": "references/discovery.md",
+        "sha256": "c6bbc74af3be90f693f7cbc986af6fa94e8df75f65109b52e96032587f5b92af"
+      },
+      {
+        "path": "references/flowcharts.md",
+        "sha256": "8b1f542391f274f0d33f3457ac099a3d317d6877eaa3b8d3b1ebef151b55fda7"
+      },
+      {
+        "path": "references/graphviz-conventions.dot",
+        "sha256": "e2890a593c91370e384b42f2f67b1a6232c9e69dddea7891a0c1c46d7b20b694"
+      },
+      {
+        "path": "references/persuasion-principles.md",
+        "sha256": "a51bc9bf75189ea73a27b3fb504a2fdfdb966fb1f7f1cdf03203230a216ccc03"
+      },
+      {
+        "path": "references/testing-skills-with-subagents.md",
+        "sha256": "ed8a6862c085900135962390530d9dc7637ad6d650b4324ce3b051287a5c3f22"
+      },
+      {
+        "path": "render-graphs.js",
+        "sha256": "c7f412cc629461c4d10287e668731874c0497707023e3e3f74a5355eb2cee196"
+      }
+    ],
+    "scripts": true,
+    "tokens": {
+      "listed": 29,
+      "loaded": 4185
+    }
+  },
+  {
+    "id": "writing-for-agents",
+    "name": "writing-for-agents",
+    "description": "Writing documents for agents. Use when creating or editing skills, or modifying AGENTS.md or CLAUDE.md.",
+    "category": "skills",
+    "repo": "mattpocock/skills",
+    "path": "skills/productivity/writing-for-agents",
+    "pin": "5863806dd4e15c63174bee4e7515a4256792ecfa",
+    "license": "MIT",
+    "files": [
+      {
+        "path": "SKILL-MECHANICS.md",
+        "sha256": "c768e6307c7c10728c401c213f2c4ba71c542127eeb7ad2956aabd15a0fa0059"
+      },
+      {
+        "path": "SKILL.md",
+        "sha256": "551adca942227b44192edba88acd4e8db911f0121ce58ad16944ccf6a896a74a"
+      },
+      {
+        "path": "agents/openai.yaml",
+        "sha256": "eacb24b2a618cfb81dacb0416f4fdd75ddf3a8060f8ddb99aae1b1e301907e4b"
+      }
+    ],
+    "scripts": false,
+    "tokens": {
+      "listed": 32,
+      "loaded": 2722
     }
   }
 ]

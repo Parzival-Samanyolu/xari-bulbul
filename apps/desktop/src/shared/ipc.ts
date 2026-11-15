@@ -1,5 +1,5 @@
 // Contract between the Electron main process and the renderer. Type-only imports from core.
-import type { Fit, HfResult, LlamaRuntimeStatus, MachineInfo, ServerState } from '@harness/core'
+import type { Fit, HfResult, LlamaRuntimeStatus, MachineInfo, ServerState, SkillCategory } from '@harness/core'
 export type { Fit, HfResult, LlamaRuntimeStatus, MachineInfo, ServerState }
 import type {
   AgentEvent,
@@ -92,6 +92,8 @@ export interface CommandInfo {
   description: string
   source: 'builtin' | 'user' | 'project'
   plugin?: string
+  /** Runs this skill (one command per turned-on skill). */
+  skill?: string
 }
 
 export interface ToolInfo {
@@ -123,6 +125,7 @@ export interface CatalogSkillInfo {
   id: string
   name: string
   description: string
+  category: SkillCategory
   repo: string
   license: string
   /** Has files the agent might run. */

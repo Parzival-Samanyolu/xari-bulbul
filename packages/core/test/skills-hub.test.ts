@@ -5,6 +5,7 @@ import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { loadExtensions } from '../src/extensions/loader.js'
 import { SKILL_CATALOG } from '../src/skills/catalog.js'
+import { SKILL_CATEGORIES } from '../src/skills/hub.js'
 import {
   installSkill,
   listRepoSkills,
@@ -167,6 +168,7 @@ describe('SKILL_CATALOG', () => {
       expect(s.files.some((f) => f.path === 'SKILL.md')).toBe(true)
       for (const f of s.files) expect(f.sha256).toMatch(/^[0-9a-f]{64}$/)
       expect(s.license).toBeTruthy()
+      expect(SKILL_CATEGORIES).toContain(s.category)
       expect(s.tokens.listed).toBeGreaterThan(0)
       expect(s.tokens.loaded).toBeGreaterThan(0)
     }
