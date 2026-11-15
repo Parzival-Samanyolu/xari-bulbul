@@ -243,6 +243,8 @@ export default {
   'chat.statusbar.cpu': 'CPU',
   'chat.statusbar.contextTitle': 'Context: {used} of {total} tokens',
   'chat.statusbar.context': '{percent} ctx',
+  'chat.statusbar.synapse': '{plan} {used} / {total} this week',
+  'chat.statusbar.synapseTitle': '{plan} plan: {used} of {total} used this week. Resets {time}. Click for plan details.',
   'chat.statusbar.restart': 'Restart to update {version}',
   'chat.statusbar.download': 'Download update {version}',
   'chat.statusbar.downloading': 'Downloading update {percent}',

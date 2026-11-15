@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react'
+import { SYNAPSE_PROVIDER_ID, type SynapseAccount } from '@harness/core/synapse'
 import type { AppState, UpdateStatus } from '../../../shared/ipc'
 import { CHATGPT_PROVIDER_ID, UsingPlanNote } from './ChatGpt'
 import type { LiveState } from '../App'
@@ -14,12 +16,14 @@ interface Props {
   onUsage: () => void
   /** Opens Settings › Logs & performance. */
   onResources: () => void
+  /** Opens Settings › Providers, where the Synapse plan row lives. */
+  onPlan: () => void
   update: UpdateStatus
   /** Toggles for the bottom (terminal) and right (files, changes) panels; hidden without a folder. */
   panels?: { bottom: boolean; right: boolean; onBottom: () => void; onRight: () => void }
 }
 
-export function StatusBar({ app, live, onOpenPicker, onUsage, onResources, update, panels }: Props) {
+export function StatusBar({ app, live, onOpenPicker, onUsage, onResources, onPlan, update, panels }: Props) {
   const { t: tr, lang } = useT()
   const fmt = useFormat()
   const bytes = (n: number | null | undefined) => (n == null ? '—' : fmt.bytes(n))
@@ -44,6 +48,7 @@ export function StatusBar({ app, live, onOpenPicker, onUsage, onResources, updat
           <UsingPlanNote />
         </span>
       )}
+      {model?.providerId === SYNAPSE_PROVIDER_ID && <SynapseMeter refresh={t.requests} onClick={onPlan} />}
       <span className="sb-sep" />
       <button className="sb-item" onClick={onUsage} title={tr('chat.statusbar.tokensTitle')}>
         <b>{tokens(lang, s.promptTokens)}</b>↑ <b>{tokens(lang, s.completionTokens)}</b>↓{s.cachedTokens > 0 && <span className="muted"> {tr('chat.statusbar.cached', { tokens: tokens(lang, s.cachedTokens) })}</span>}
@@ -113,5 +118,34 @@ export function StatusBar({ app, live, onOpenPicker, onUsage, onResources, updat
         </>
       )}
     </footer>
+  )
+}
+
+/** The Synapse plan's weekly allowance, re-read after each turn (today's request count changes). */
+function SynapseMeter({ refresh, onClick }: { refresh: number; onClick: () => void }) {
+  const { t, lang } = useT()
+  const fmt = useFormat()
+  const [acct, setAcct] = useState<SynapseAccount | null>(null)
+  useEffect(() => {
+    let live = true
+    api.providers.synapseAccount().then((a) => live && setAcct(a), () => {})
+    return () => {
+      live = false
+    }
+  }, [refresh])
+  if (!acct || !(acct.limits.usdPerWeek > 0)) return null
+  const share = Math.min(1, acct.usdThisWeek / acct.limits.usdPerWeek)
+  const vars = { plan: acct.planLabel, used: cost(lang, acct.usdThisWeek), total: cost(lang, acct.limits.usdPerWeek) }
+  return (
+    <button
+      className={`sb-item sb-plan ${share > 0.9 ? 'warn' : ''}`}
+      onClick={onClick}
+      title={t('chat.statusbar.synapseTitle', { ...vars, time: fmt.date(acct.resetsAt, { weekday: 'long', hour: '2-digit', minute: '2-digit' }) })}
+    >
+      <span className="meter">
+        <span className={`meter-fill ${share > 0.9 ? 'hot' : ''}`} style={{ width: `${Math.round(share * 100)}%` }} />
+      </span>
+      {rich(t('chat.statusbar.synapse', { ...vars, used: '{u}' }), { u: <b>{vars.used}</b> })}
+    </button>
   )
 }

@@ -247,6 +247,8 @@ export default {
   'chat.statusbar.cpu': 'CPU',
   'chat.statusbar.contextTitle': 'Kontekst: {total} tokendən {used}',
   'chat.statusbar.context': '{percent} kontekst',
+  'chat.statusbar.synapse': '{plan} bu həftə {used} / {total}',
+  'chat.statusbar.synapseTitle': '{plan} planı: bu həftə {total} məbləğindən {used} istifadə olunub. {time} sıfırlanır. Plan təfərrüatları üçün klikləyin.',
   'chat.statusbar.restart': 'Yenidən başlat və {version} versiyasına yenilə',
   'chat.statusbar.download': 'Yeniləməni endir: {version}',
   'chat.statusbar.downloading': 'Yeniləmə endirilir: {percent}',

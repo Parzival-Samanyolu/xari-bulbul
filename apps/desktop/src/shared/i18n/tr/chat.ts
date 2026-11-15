@@ -247,6 +247,8 @@ export default {
   'chat.statusbar.cpu': 'CPU',
   'chat.statusbar.contextTitle': 'Bağlam: {total} tokenin {used} kadarı',
   'chat.statusbar.context': '{percent} bağlam',
+  'chat.statusbar.synapse': '{plan} bu hafta {used} / {total}',
+  'chat.statusbar.synapseTitle': '{plan} planı: bu hafta {total} tutarın {used} kadarı kullanıldı. {time} sıfırlanır. Plan ayrıntıları için tıklayın.',
   'chat.statusbar.restart': 'Yeniden başlat ve {version} sürümüne güncelle',
   'chat.statusbar.download': 'Güncellemeyi indir: {version}',
   'chat.statusbar.downloading': 'Güncelleme indiriliyor: {percent}',

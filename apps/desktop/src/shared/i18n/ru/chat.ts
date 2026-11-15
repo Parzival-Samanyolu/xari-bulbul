@@ -275,6 +275,8 @@ export default {
   'chat.statusbar.cpu': 'ЦП',
   'chat.statusbar.contextTitle': 'Контекст: {used} из {total} токенов',
   'chat.statusbar.context': '{percent} контекста',
+  'chat.statusbar.synapse': '{plan} {used} / {total} за неделю',
+  'chat.statusbar.synapseTitle': 'Тариф {plan}: использовано {used} из {total} за эту неделю. Сброс: {time}. Нажмите, чтобы открыть детали тарифа.',
   'chat.statusbar.restart': 'Перезапустить и обновить до {version}',
   'chat.statusbar.download': 'Скачать обновление {version}',
   'chat.statusbar.downloading': 'Загрузка обновления: {percent}',

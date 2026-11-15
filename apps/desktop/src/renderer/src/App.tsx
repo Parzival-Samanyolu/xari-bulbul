@@ -469,6 +469,7 @@ export function App() {
           onOpenPicker={() => setPickerOpen(true)}
           onUsage={() => openSettings('usage')}
           onResources={() => openSettings('logs.performance')}
+          onPlan={() => openSettings('providers')}
           update={update}
           panels={app.workspace && panels ? { bottom: showBottom, right: showRight, onBottom: toggleBottom, onRight: toggleRight } : undefined}
         />
