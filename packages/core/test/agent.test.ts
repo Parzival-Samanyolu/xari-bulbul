@@ -270,6 +270,44 @@ describe('Mid-reply failures', () => {
   })
 })
 
+describe('Models without image input', () => {
+  const image = { name: 'shot.png', mediaType: 'image/png', data: 'iVBORw0KGgo=' }
+  const sentImages = (req: { messages: { role: string; images?: unknown[] }[] }) => req.messages.some((m) => m.images?.length)
+
+  it('drops images from the chat after the model rejects them, and keeps working', async () => {
+    const { ProviderError } = await import('../src/providers/types.js')
+    const { agent, provider, events } = await setup([
+      { events: [], fail: new ProviderError('Mock error 404: No endpoints found that support image input', 404, false) },
+      [{ type: 'text', delta: 'I cannot see it.' }],
+      [{ type: 'text', delta: 'Second answer.' }],
+    ])
+    expect(await agent.send('look', { images: [image] })).toBe('done')
+    expect(await agent.send('and now?')).toBe('done')
+    expect(provider.requests).toHaveLength(3)
+    expect(sentImages(provider.requests[0])).toBe(true)
+    expect(sentImages(provider.requests[1])).toBe(false)
+    expect(sentImages(provider.requests[2])).toBe(false)
+    expect(provider.requests[2].messages[1]).toMatchObject({ role: 'user', content: expect.stringContaining('[Image shot.png not shown') })
+    // The session keeps the image for a vision model picked later.
+    expect(agent.session.messages[0]).toMatchObject({ images: [image] })
+    expect(events.some((e) => e.type === 'notice' && /can't see images/.test(e.text))).toBe(true)
+  })
+
+  it('never sends images to a model listed without image input', async () => {
+    const { agent, provider, registry } = await setup([[{ type: 'text', delta: 'ok' }]])
+    registry.seedCache('mock', [{ ...(await provider.listModels())[0], supportsImages: false }])
+    expect(await agent.send('look', { images: [image] })).toBe('done')
+    expect(sentImages(provider.requests[0])).toBe(false)
+  })
+
+  it('still fails on other client errors', async () => {
+    const { ProviderError } = await import('../src/providers/types.js')
+    const { agent, provider } = await setup([{ events: [], fail: new ProviderError('Mock error 400: bad tool schema', 400, false) }])
+    expect(await agent.send('look', { images: [image] })).toBe('error')
+    expect(provider.requests).toHaveLength(1)
+  })
+})
+
 describe('Context overflow', () => {
   const overflow = async () => {
     const { ProviderError } = await import('../src/providers/types.js')

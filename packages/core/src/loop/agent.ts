@@ -10,6 +10,7 @@ import type { MemoryStore } from '../memory/store.js'
 import type { Permissions, PermissionAnswer } from '../permissions/permissions.js'
 import type { ProviderRegistry } from '../providers/registry.js'
 import { isContextOverflow } from '../providers/http.js'
+import { hasImages, isImageUnsupported, withoutImages } from './images.js'
 import { ProviderError, type ChatRequest, type Provider } from '../providers/types.js'
 import { failoverKind, failureLabel, fallbackChain, ProviderUnavailableError, shortModelName } from './fallback.js'
 import { moaOn } from '../moa/config.js'
@@ -197,6 +198,8 @@ export class Agent {
   private browser: BrowserHost | null = null
   /** Models that failed this turn in a way retrying won't fix (not found, no key); left out until the next turn. */
   private skipped = new Set<string>()
+  /** Models that rejected image input in this chat; images are left out of what they're sent. */
+  private noImages = new Set<string>()
 
   constructor(private readonly o: AgentOptions) {
     this.session = o.session
@@ -523,7 +526,7 @@ export class Agent {
       if (text.trim() && !this.o.subagent) void this.autoTitle(text, this.session.meta.title)
     }
     if (images && this.registry.cachedModel(this.model.providerId, this.model.modelId)?.supportsImages === false) {
-      this.emit({ type: 'notice', level: 'warn', text: `${this.model.modelId} doesn't accept images, so the request may fail. Pick a vision model with ⌘/Ctrl+K.` })
+      this.emit({ type: 'notice', level: 'warn', text: `${this.model.modelId} can't see images, so they are left out of what it's sent. Pick a vision model with ⌘/Ctrl+K.` })
     }
     const note = this.session.pendingNote
     this.session.pendingNote = undefined
@@ -862,7 +865,11 @@ export class Agent {
     let extra: Record<string, unknown> | undefined
     const retries = this.settings.agent.requestRetries
     let compactedForOverflow = false
+    const key = modelKey(ref)
     for (let attempt = 0; ; attempt++) {
+      // A model that can't see images gets a text note in their place, so one image doesn't break the chat.
+      const blind = info?.supportsImages === false || this.noImages.has(key)
+      const sent = blind && hasImages(this.session.messages) ? withoutImages(this.session.messages) : this.session.messages
       content = ''
       reasoning = ''
       calls = []
@@ -872,7 +879,7 @@ export class Agent {
       try {
         for await (const ev of provider.chat({
           model: ref.modelId,
-          messages: [{ role: 'system', content: this.systemPrompt(tools, ref) }, ...this.session.messages],
+          messages: [{ role: 'system', content: this.systemPrompt(tools, ref) }, ...sent],
           tools: tools.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
           signal,
           stallMs: this.settings.agent.stallTimeoutSec * 1000,
@@ -894,6 +901,13 @@ export class Agent {
         }
         return { content, reasoning, calls, usage, extra }
       } catch (err) {
+        // The model rejected the images: leave them out for the rest of this chat and try again.
+        if (!blind && !signal.aborted && hasImages(this.session.messages) && isImageUnsupported(err)) {
+          this.noImages.add(key)
+          this.emit({ type: 'stream_reset' })
+          this.emit({ type: 'notice', level: 'warn', text: `${this.modelName(ref)} can't see images, so they are left out of what it's sent. Pick a vision model with ⌘/Ctrl+K.` })
+          continue
+        }
         // A reply that broke off midway (overloaded upstream, common on free models) is retried from scratch.
         if (err instanceof ProviderError && err.retryable && !signal.aborted && attempt < retries) {
           this.emit({ type: 'stream_reset' })
