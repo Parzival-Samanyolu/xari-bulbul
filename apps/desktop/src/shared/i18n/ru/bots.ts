@@ -320,6 +320,8 @@ export default {
 
   // Welcome screen
   'bots.welcome.tagline': 'ИИ-агент для программирования, который работает в вашем проекте с любой моделью на ваш выбор.',
+  'bots.welcome.taglineQaqash': 'Боты, которые общаются с вами, отвечают в WhatsApp и iMessage и разбирают вашу почту, с любой моделью на ваш выбор.',
+  'bots.welcome.pickBot': 'Затем выберите бота на боковой панели и поздоровайтесь.',
   'bots.welcome.connect': 'Подключите модель',
   'bots.welcome.ready': 'Провайдер готов.',
   'bots.welcome.connectHint': 'Добавьте ключ OpenRouter или Ollama Cloud (у обоих есть бесплатные модели) или подключите локальный сервер Ollama / LM Studio, которому ключ не нужен.',

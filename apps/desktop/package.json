@@ -15,11 +15,14 @@
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
+    "dev:qaqash": "electron-vite dev --mode qaqash",
     "build": "electron-vite build",
+    "build:qaqash": "electron-vite build --mode qaqash",
     "preview": "electron-vite preview",
     "typecheck": "tsc -p tsconfig.node.json && tsc -p tsconfig.web.json",
     "test": "echo \"desktop: typecheck only\"",
     "dist": "electron-vite build && electron-builder --publish never",
+    "dist:qaqash": "electron-vite build --mode qaqash && electron-builder --config electron-builder.qaqash.yml --publish never",
     "release": "electron-vite build && electron-builder --publish always -c.publish.provider=github"
   },
   "dependencies": {

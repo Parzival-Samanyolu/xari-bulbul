@@ -21,7 +21,12 @@ jobs:
       fail-fast: false
       matrix:
         os: ${{ fromJSON(inputs.os || '["ubuntu-latest", "macos-latest", "windows-latest"]') }}
+        # Two apps from one codebase: Xarı Bülbül (coding) and Qaqaş (bots). Both go into the same release;
+        # Qaqaş's update feed is its own channel (qaqash.yml), so the two never update into each other.
+        edition: [xari, qaqash]
     runs-on: ${{ matrix.os }}
+    env:
+      XARI_EDITION: ${{ matrix.edition }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -59,7 +64,9 @@ jobs:
         # PowerShell splits `-c.publish.x=y` at the dot, so use bash on Windows too.
         shell: bash
         # Owner/repo come from GITHUB_REPOSITORY; this also bakes the auto-update feed into the app.
-        run: pnpm exec electron-vite build && pnpm exec electron-builder --publish always -c.publish.provider=github -c.publish.releaseType=release
+        run: |
+          if [ "$XARI_EDITION" = qaqash ]; then extra=(--config electron-builder.qaqash.yml -c.publish.channel=qaqash); else extra=(); fi
+          pnpm exec electron-vite build && pnpm exec electron-builder "${extra[@]}" --publish always -c.publish.provider=github -c.publish.releaseType=release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Optional Developer ID signing — add these repository secrets when ready:
@@ -71,4 +78,6 @@ jobs:
         # electron-builder always writes one for the update .zip; without it the updater downloads the zip in full.
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release delete-asset "$GITHUB_REF_NAME" "XariBulbul-${GITHUB_REF_NAME#v}-mac-universal.zip.blockmap" --yes || true
+        run: |
+          name=$([ "$XARI_EDITION" = qaqash ] && echo Qaqash || echo XariBulbul)
+          gh release delete-asset "$GITHUB_REF_NAME" "$name-${GITHUB_REF_NAME#v}-mac-universal.zip.blockmap" --yes || true

@@ -147,6 +147,7 @@ import { LocalModels } from './local-models'
 import { AppError, systemLanguages, tm } from './i18n'
 import { log } from './logger'
 import type { KnownChild } from './resources'
+import { EDITION } from '../shared/edition'
 import { Automations } from './automations'
 import { Scheduler } from './scheduler'
 import { SecretStore } from './secrets'
@@ -271,7 +272,7 @@ export class AppController {
     this.mode = this.settings.permissions.mode
     this.secrets = new SecretStore(path.join(dataDir, 'secrets.json'))
     // HARNESS_CHATGPT_ISSUER points sign-in at a fake server, for end-to-end tests only.
-    this.chatgpt = new ChatGptAuth({ dataDir, secrets: this.secrets, appName: 'Xari Bulbul', issuer: process.env.HARNESS_CHATGPT_ISSUER || undefined })
+    this.chatgpt = new ChatGptAuth({ dataDir, secrets: this.secrets, appName: EDITION.asciiName, issuer: process.env.HARNESS_CHATGPT_ISSUER || undefined })
     this.markExistingInstallOnboarded()
     this.usage = new UsageTracker(this.paths.usage)
     // Every model request (chat steps, subagents, titles, memory review, compaction) counts toward share info's per-model totals.
@@ -1162,6 +1163,8 @@ export class AppController {
 
   /** Starts the iMessage gateway (macOS only) and the WhatsApp bridge if they're on. */
   startGateways() {
+    // Only Qaqaş has the messaging gateways.
+    if (!EDITION.features.gateways) return
     this.imessage.sync()
     this.whatsapp.sync()
   }
@@ -1232,7 +1235,7 @@ export class AppController {
     }
     if (!running) {
       const cwd = path.resolve(cfg.cwd).normalize('NFC')
-      if (!cfg.cwd.trim() || !fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) return `The folder for ${label} chats is missing. Choose one in Xarı Bülbül › Settings › Gateways › ${label}.`
+      if (!cfg.cwd.trim() || !fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) return `The folder for ${label} chats is missing. Choose one in ${EDITION.name} › Settings › Gateways › ${label}.`
       const bot = cfg.botId ? activeBot(this.settings, cfg.botId) : undefined
       const { model } = chatDefaults(this.settings, bot?.id, { model: this.settings.models.default, mode: this.mode })
       const session = newSession(cwd, model, { botId: bot?.id })
@@ -1250,7 +1253,7 @@ export class AppController {
     const agent = running.agent
     const { providerId } = agent.model
     const config = this.settings.providers.find((p) => p.id === providerId)
-    if (!config?.enabled || !this.isReady(providerId)) return `The chat's model can't be reached (${config?.name ?? providerId} is off or has no API key). Open Xarı Bülbül to fix it.`
+    if (!config?.enabled || !this.isReady(providerId)) return `The chat's model can't be reached (${config?.name ?? providerId} is off or has no API key). Open ${EDITION.name} to fix it.`
     // A turn you started in the app for this chat finishes first.
     while (agent.running) await new Promise((r) => setTimeout(r, 500))
     if (this.removed.has(agent.session.meta.id)) return null
@@ -1263,7 +1266,7 @@ export class AppController {
       .at(-1)?.content
     if (reason === 'done') return reply ?? null
     const why = ({ error: 'stopped with an error', aborted: 'was stopped', max_steps: 'hit the step limit', budget: 'hit the budget limit', repeating: 'kept repeating itself' } as const)[reason]
-    return `${reply ? `${reply}\n\n` : ''}(The turn ${why}. Open Xarı Bülbül to see it.)`
+    return `${reply ? `${reply}\n\n` : ''}(The turn ${why}. Open ${EDITION.name} to see it.)`
   }
 
   /** Ends the gateway chat for `tag`, if there is one: it stays in history, and the next message starts a new one. */
@@ -1768,7 +1771,7 @@ export class AppController {
   async newBotThread(botId: string): Promise<AppState> {
     const bot = activeBot(this.settings, botId)
     if (!bot) throw new AppError(chatBot(this.settings, botId) ? 'main.error.botOff' : 'main.error.botGone')
-    const dir = bot.cwd && fs.existsSync(bot.cwd) ? bot.cwd : this.workspace
+    const dir = bot.cwd && fs.existsSync(bot.cwd) ? bot.cwd : (this.workspace ?? this.botHome())
     if (!dir) throw new AppError('main.error.botNeedsFolder')
     this.unreadBots.delete(botId)
     return this.createSession(dir, botId)
@@ -1790,6 +1793,14 @@ export class AppController {
         awaiting: threads.some((m) => awaiting.has(m.id)),
       }
     })
+  }
+
+  /** Qaqaş has no project folders: bots without their own folder work in one inside the data folder. */
+  private botHome(): string | null {
+    if (EDITION.features.coding) return null
+    const dir = path.join(this.dataDir, 'home')
+    fs.mkdirSync(dir, { recursive: true })
+    return dir
   }
 
   /** A new chat in `cwd` (or the current folder), with `botId`'s persona, model and mode when given. */

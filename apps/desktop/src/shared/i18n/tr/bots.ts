@@ -312,6 +312,8 @@ export default {
 
   // Welcome screen
   'bots.welcome.tagline': 'Projenizde, istediğiniz modelle çalışan bir yapay zekâ kodlama ajanı.',
+  'bots.welcome.taglineQaqash': 'Sizinle sohbet eden, WhatsApp ve iMessage’da yanıt veren ve e-postalarınızla ilgilenen botlar, istediğiniz herhangi bir modelle.',
+  'bots.welcome.pickBot': 'Sonra kenar çubuğundan bir bot seçin ve merhaba deyin.',
   'bots.welcome.connect': 'Bir model bağlayın',
   'bots.welcome.ready': 'Bir sağlayıcı hazır.',
   'bots.welcome.connectHint': 'Bir OpenRouter veya Ollama Cloud anahtarı ekleyin (ikisinde de ücretsiz modeller var) ya da anahtar gerektirmeyen yerel bir Ollama / LM Studio sunucusu ekleyin.',

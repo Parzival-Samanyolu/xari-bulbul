@@ -5,6 +5,7 @@ import { app } from 'electron'
 import electronUpdater from 'electron-updater'
 import type { UiEvent, UpdateStatus } from '../shared/ipc'
 import { tm } from './i18n'
+import { EDITION } from '../shared/edition'
 import { log } from './logger'
 
 const { autoUpdater } = electronUpdater
@@ -18,6 +19,11 @@ export function initUpdater(sender: (e: UiEvent) => void, enabled: boolean) {
   const manual = !canInstallUpdates()
   log.info('updater', manual ? 'Updates: this build can only point to the download (not signed for auto-update)' : 'Updates: automatic', { autoCheck: enabled })
   autoUpdater.autoDownload = !manual
+  // Both apps publish to the same GitHub release; Qaqaş reads its own feed (qaqash.yml) there.
+  if (EDITION.updateChannel !== 'latest') {
+    autoUpdater.channel = EDITION.updateChannel
+    autoUpdater.allowDowngrade = false
+  }
   let latest = ''
   autoUpdater.on('checking-for-update', () => send({ type: 'update', status: { state: 'checking' } }))
   autoUpdater.on('update-not-available', () => {

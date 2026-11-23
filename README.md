@@ -9,6 +9,19 @@ It reads, searches, edits and runs code, and it can use **any model** on OpenRou
 
 Built to be owned and extended. The engine is small, readable TypeScript with no agent framework and no AI SDK.
 
+## Two apps, one codebase
+
+- **Xarı Bülbül** is the coding agent: folders, chats, tools, permissions, MCP and skills.
+- **Qaqaş** is the bots app: bots and group chats, WhatsApp and iMessage, and automations that read your email and notes and draft replies for you to review.
+
+Both are built from this repo and share the engine in `packages/core`. Each keeps its own settings and chats.
+
+```bash
+pnpm dev            # Xarı Bülbül
+pnpm dev:qaqash     # Qaqaş
+pnpm dist:qaqash    # Qaqaş installers (release/<version>/Qaqash-*)
+```
+
 ## Features
 
 - **Claude Code–style agent loop:**
