@@ -6,6 +6,7 @@ import { basename } from '../lib/format'
 import { useFormat, useT } from '../lib/i18n'
 import { AutomationsPanel } from './AutomationsPanel'
 import { BotsPanel } from './BotsPanel'
+import { EDITION } from '../../../shared/edition'
 
 interface Props {
   app: AppState
@@ -34,15 +35,18 @@ export function Sidebar({ app, onState, onError, onSettings, onAutomations, onCh
   const openPaths = new Set(app.folders.map((f) => f.path))
   const recents = app.settings.app.recentWorkspaces.filter((w) => !openPaths.has(w))
   const mod = app.platform === 'darwin' ? '⌘' : 'Ctrl+'
-  const botsOn = app.settings.botOptions.enabled
+  // Xarı Bülbül has no bots; in Qaqaş they are the app, so there is no switch to hide them.
+  const coding = EDITION.features.coding
+  const botsOn = EDITION.features.bots && (!coding || app.settings.botOptions.enabled)
   const onBotChat = !!app.session && (isBotChat(app.settings, app.session.meta) || (!!app.session.meta.lobbyId && botsOn))
-  const [tab, setTab] = useState<Tab>(onBotChat ? 'bots' : 'sessions')
+  const home: Tab = coding ? 'sessions' : 'bots'
+  const [tab, setTab] = useState<Tab>(onBotChat ? 'bots' : home)
   // Opening a chat shows the tab it belongs to (a notification click, ⌘1–9, a new chat).
-  useEffect(() => setTab((t) => (t === 'automations' ? t : onBotChat ? 'bots' : 'sessions')), [current, onBotChat])
+  useEffect(() => setTab((t) => (t === 'automations' ? t : onBotChat ? 'bots' : home)), [current, onBotChat, home])
   // The Automations tab shows once there is something to automate with or a run to look at.
   const autoOn = app.settings.schedules.length > 0 || app.automations.runs.length > 0 || app.settings.mail.accounts.length > 0
-  const tabs: Tab[] = ['sessions', ...(botsOn ? (['bots'] as const) : []), ...(autoOn ? (['automations'] as const) : [])]
-  const shownTab: Tab = tabs.includes(tab) ? tab : 'sessions'
+  const tabs: Tab[] = [...(coding ? (['sessions'] as const) : []), ...(botsOn ? (['bots'] as const) : []), ...(autoOn || !coding ? (['automations'] as const) : [])]
+  const shownTab: Tab = tabs.includes(tab) ? tab : tabs[0]
   const unread = app.bots.filter((b) => b.unread).length + app.lobbies.filter((l) => l.unread).length
   const tabKeys = (e: React.KeyboardEvent) => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return

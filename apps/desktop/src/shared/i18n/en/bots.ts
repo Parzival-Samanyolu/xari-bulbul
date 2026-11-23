@@ -312,6 +312,8 @@ export default {
 
   // Welcome screen
   'bots.welcome.tagline': 'An AI coding agent that works in your project, with any model you like.',
+  'bots.welcome.taglineQaqash': 'Bots that chat with you, answer on WhatsApp and iMessage, and handle your email, with any model you like.',
+  'bots.welcome.pickBot': 'Then pick a bot in the sidebar and say hello.',
   'bots.welcome.connect': 'Connect a model',
   'bots.welcome.ready': 'A provider is ready.',
   'bots.welcome.connectHint': 'Add an OpenRouter or Ollama Cloud key (both have free models), or add a local Ollama / LM Studio server, which needs no key.',

@@ -14,17 +14,27 @@ const csp = (): Plugin => ({
     ),
 })
 
-export default defineConfig({
-  main: {
-    // Only `dependencies` are externalized; @harness/core and friends are devDependencies and get bundled.
-    build: { externalizeDeps: true },
-  },
-  preload: {
-    build: { externalizeDeps: true },
-  },
-  renderer: {
-    root: resolve(__dirname, 'src/renderer'),
-    build: { rollupOptions: { input: resolve(__dirname, 'src/renderer/index.html') } },
-    plugins: [react(), csp()],
-  },
+// Which app to build: `xari` (Xarı Bülbül, the default) or `qaqash` (Qaqaş), from `--mode qaqash`
+// or XARI_EDITION=qaqash. See src/shared/edition.ts.
+const editionFor = (mode: string) => (mode === 'qaqash' || process.env.XARI_EDITION === 'qaqash' ? 'qaqash' : 'xari')
+
+export default defineConfig(({ mode }) => {
+  const define = { __EDITION__: JSON.stringify(editionFor(mode)) }
+  return {
+    main: {
+      // Only `dependencies` are externalized; @harness/core and friends are devDependencies and get bundled.
+      build: { externalizeDeps: true },
+      define,
+    },
+    preload: {
+      build: { externalizeDeps: true },
+      define,
+    },
+    renderer: {
+      define,
+      root: resolve(__dirname, 'src/renderer'),
+      build: { rollupOptions: { input: resolve(__dirname, 'src/renderer/index.html') } },
+      plugins: [react(), csp()],
+    },
+  }
 })
