@@ -1,0 +1,25 @@
+{
+  "name": "@harness/cli",
+  "version": "5.8.1",
+  "description": "Xarı Bülbül in the terminal: the same agent as the desktop app, with the same chats and settings",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "bin": { "xari": "dist/xari.mjs" },
+  "files": ["dist"],
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "tsx src/bin.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@harness/core": "workspace:*",
+    "@types/node": "^22.19.0",
+    "esbuild": "^0.28.2",
+    "tsx": "^4.20.0",
+    "typescript": "~5.9.3",
+    "vitest": "^4.1.11"
+  }
+}

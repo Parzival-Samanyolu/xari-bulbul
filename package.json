@@ -16,6 +16,8 @@
   "scripts": {
     "dev": "pnpm --filter @harness/desktop dev",
     "build": "pnpm --filter @harness/desktop build",
+    "build:cli": "pnpm --filter @harness/cli build",
+    "cli": "pnpm --filter @harness/cli dev",
     "dist": "pnpm --filter @harness/desktop dist",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
