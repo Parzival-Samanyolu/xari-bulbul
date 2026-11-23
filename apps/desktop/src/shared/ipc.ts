@@ -687,7 +687,7 @@ export interface HarnessApi {
     pickVault(): Promise<string | null>
   }
   imessage: {
-    /** Texts "Xarı Bülbül is connected." to the first allowed sender. Throws with the reason when it can't. */
+    /** Texts "Xarı is connected." to the first allowed sender. Throws with the reason when it can't. */
     test(): Promise<AppState>
     /** Reads chat.db again now (after granting Full Disk Access). */
     check(): Promise<AppState>
@@ -703,7 +703,7 @@ export interface HarnessApi {
     pair(phone: string): Promise<AppState>
     /** Logs this computer out of WhatsApp and deletes the link. */
     unlink(): Promise<AppState>
-    /** Sends "Xarı Bülbül is connected." to your "Message yourself" chat. */
+    /** Sends "Xarı is connected." to your "Message yourself" chat. */
     test(): Promise<AppState>
     /** Ends the current WhatsApp chat (kept in history); your next message starts a new one. */
     newChat(): Promise<AppState>
@@ -711,6 +711,10 @@ export interface HarnessApi {
     pickFolder(): Promise<string | null>
   }
   bots: {
+    /** Qaqaş only: whether the coding app's data folder has bots and lobbies this app doesn't, and how many. Throws in the coding app. */
+    importable(): Promise<{ available: boolean; bots: number; lobbies: number }>
+    /** Qaqaş only: copies those bots, lobbies, memories, pictures and chats over (the coding app's folder stays untouched; running it again adds nothing). Returns the counts and the new state. */
+    importFromXari(): Promise<{ bots: number; lobbies: number; chats: number; state: AppState }>
     /** Picks an image and copies it into the data folder; the dialog saves the path with the bot. Null when cancelled. */
     pickAvatar(): Promise<{ path: string; url: string } | null>
     /** Folder picker for a bot's own folder; only returns the path. */

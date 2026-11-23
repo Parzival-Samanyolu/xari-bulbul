@@ -80,7 +80,7 @@ export class Automations {
 
   /** Enabled accounts with a saved password; for an automation, only the ones it lists (none listed = all). */
   accounts(only: readonly string[] = []): MailAccount[] {
-    // Mail and notes are Qaqaş features; Xarı Bülbül's automations are for code.
+    // Mail and notes are Qaqaş features; Xarı's automations are for code.
     if (!EDITION.features.mail) return []
     return this.d.settings().mail.accounts.filter((a) => a.enabled && a.address.trim() && this.d.secret(mailSecretId(a.id)) && (!only.length || only.includes(a.id)))
   }

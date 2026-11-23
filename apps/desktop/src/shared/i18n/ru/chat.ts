@@ -46,11 +46,11 @@ export default {
   'chat.notice.fixAgent': 'Открыть лимиты агента',
   'chat.empty.title': 'Что создадим?',
   'chat.empty.intro':
-    'Xarı Bülbül может читать, искать, редактировать и запускать код в {folder}. Перед любыми изменениями он спрашивает, если ниже не выбран другой режим разрешений.',
+    'Xarı может читать, искать, редактировать и запускать код в {folder}. Перед любыми изменениями он спрашивает, если ниже не выбран другой режим разрешений.',
   'chat.empty.tipModel': 'сменить модель',
   'chat.empty.tipCommands': 'команды',
   'chat.empty.tipStop': 'остановить',
-  'chat.empty.agentsMd': 'Добавьте в проект файл {file}: Xarı Bülbül всегда будет следовать инструкциям из него.',
+  'chat.empty.agentsMd': 'Добавьте в проект файл {file}: Xarı всегда будет следовать инструкциям из него.',
   'chat.empty.commands': 'Ваши команды: {list}',
   'chat.revert.changedOne': 'Изменён файл {name}',
   'chat.revert.changedMany': {
@@ -132,7 +132,7 @@ export default {
   'chat.composer.lobbyIdleUnnamed': 'Сообщение в групповой чат. Напишите @имя, чтобы сначала спросить конкретного бота',
   'chat.composer.working': 'Работает… (Esc — остановить)',
   'chat.composer.messageBot': 'Сообщение для {name}',
-  'chat.composer.placeholder': 'Попросите Xarı Bülbül что-нибудь сделать… (/ — команды)',
+  'chat.composer.placeholder': 'Попросите Xarı что-нибудь сделать… (/ — команды)',
   'chat.composer.attach': 'Прикрепить файлы',
   'chat.composer.attachTitle': 'Прикрепить файлы (или перетащите и вставьте их)',
   'chat.composer.switchModel': 'Сменить модель ({key})',
@@ -287,7 +287,7 @@ export default {
   'chat.statusbar.files': 'Файлы',
 
   // Loading.tsx
-  'chat.loading.failed': 'Не удалось запустить Xarı Bülbül.',
+  'chat.loading.failed': 'Не удалось запустить Xarı.',
   'chat.loading.waking': 'Просыпается',
 
   // LayoutPicker.tsx

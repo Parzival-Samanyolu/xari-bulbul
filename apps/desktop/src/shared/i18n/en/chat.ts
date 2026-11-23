@@ -30,11 +30,11 @@ export default {
   'chat.notice.fixUsage': 'Open Usage',
   'chat.notice.fixAgent': 'Open Agent limits',
   'chat.empty.title': 'What should we build?',
-  'chat.empty.intro': 'Xarı Bülbül can read, search, edit and run code in {folder}. It asks before changing anything unless you pick a different permission mode below.',
+  'chat.empty.intro': 'Xarı can read, search, edit and run code in {folder}. It asks before changing anything unless you pick a different permission mode below.',
   'chat.empty.tipModel': 'switch model',
   'chat.empty.tipCommands': 'commands',
   'chat.empty.tipStop': 'stop',
-  'chat.empty.agentsMd': 'Add an {file} to the project to give Xarı Bülbül standing instructions.',
+  'chat.empty.agentsMd': 'Add an {file} to the project to give Xarı standing instructions.',
   'chat.empty.commands': 'Your commands: {list}',
   'chat.revert.changedOne': 'Changed {name}',
   'chat.revert.changedMany': { one: 'Changed {count} file', other: 'Changed {count} files' },
@@ -102,7 +102,7 @@ export default {
   'chat.composer.lobbyIdleUnnamed': 'Message the lobby. @name a bot to ask it first',
   'chat.composer.working': 'Working… (Esc to stop)',
   'chat.composer.messageBot': 'Message {name}',
-  'chat.composer.placeholder': 'Ask Xarı Bülbül to do something… (/ for commands)',
+  'chat.composer.placeholder': 'Ask Xarı to do something… (/ for commands)',
   'chat.composer.attach': 'Attach files',
   'chat.composer.attachTitle': 'Attach files (or drop / paste them)',
   'chat.composer.switchModel': 'Switch model ({key})',
@@ -255,7 +255,7 @@ export default {
   'chat.statusbar.files': 'Files & changes',
 
   // Loading.tsx
-  'chat.loading.failed': "Xarı Bülbül couldn't start.",
+  'chat.loading.failed': "Xarı couldn't start.",
   'chat.loading.waking': 'Waking up',
 
   // LayoutPicker.tsx

@@ -64,7 +64,7 @@ const api: HarnessApi = {
   notes: { setToken: call('notes.setToken') as any, test: call('notes.test') as any, pickVault: call('notes.pickVault') as any },
   whatsapp: { retry: call('whatsapp.retry') as any, pair: call('whatsapp.pair') as any, unlink: call('whatsapp.unlink') as any, test: call('whatsapp.test') as any, newChat: call('whatsapp.newChat') as any, pickFolder: call('whatsapp.pickFolder') as any },
   imessage: { test: call('imessage.test') as any, check: call('imessage.check') as any, openPrivacy: call('imessage.openPrivacy') as any, pickFolder: call('imessage.pickFolder') as any },
-  bots: { pickAvatar: call('bots.pickAvatar') as any, pickFolder: call('bots.pickFolder') as any, open: call('bots.open') as any, newThread: call('bots.newThread') as any, imageProvider: call('bots.imageProvider') as any, generateAvatar: call('bots.generateAvatar') as any, saveAvatar: call('bots.saveAvatar') as any },
+  bots: { importable: call('bots.importable') as any, importFromXari: call('bots.importFromXari') as any, pickAvatar: call('bots.pickAvatar') as any, pickFolder: call('bots.pickFolder') as any, open: call('bots.open') as any, newThread: call('bots.newThread') as any, imageProvider: call('bots.imageProvider') as any, generateAvatar: call('bots.generateAvatar') as any, saveAvatar: call('bots.saveAvatar') as any },
   lobbies: { open: call('lobbies.open') as any, keepTalking: call('lobbies.keepTalking') as any },
   voice: {
     prepare: call('voice.prepare') as any,

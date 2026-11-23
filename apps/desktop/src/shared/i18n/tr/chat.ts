@@ -34,11 +34,11 @@ export default {
   'chat.notice.fixAgent': 'Ajan sınırlarını aç',
   'chat.empty.title': 'Ne geliştirelim?',
   'chat.empty.intro':
-    'Xarı Bülbül, {folder} içindeki kodu okuyabilir, arayabilir, düzenleyebilir ve çalıştırabilir. Aşağıdan farklı bir izin modu seçmediğiniz sürece bir şeyi değiştirmeden önce sorar.',
+    'Xarı, {folder} içindeki kodu okuyabilir, arayabilir, düzenleyebilir ve çalıştırabilir. Aşağıdan farklı bir izin modu seçmediğiniz sürece bir şeyi değiştirmeden önce sorar.',
   'chat.empty.tipModel': 'model değiştir',
   'chat.empty.tipCommands': 'komutlar',
   'chat.empty.tipStop': 'durdur',
-  'chat.empty.agentsMd': 'Projeye bir {file} dosyası ekleyin: Xarı Bülbül oradaki talimatlara her zaman uyar.',
+  'chat.empty.agentsMd': 'Projeye bir {file} dosyası ekleyin: Xarı oradaki talimatlara her zaman uyar.',
   'chat.empty.commands': 'Komutlarınız: {list}',
   'chat.revert.changedOne': 'Değiştirildi: {name}',
   'chat.revert.changedMany': { one: '{count} dosya değiştirildi', other: '{count} dosya değiştirildi' },
@@ -106,7 +106,7 @@ export default {
   'chat.composer.lobbyIdleUnnamed': 'Grup sohbetine mesaj. Önce bir bota sormak için @ad yazın',
   'chat.composer.working': 'Çalışıyor… (durdurmak için Esc)',
   'chat.composer.messageBot': '{name} için mesaj',
-  'chat.composer.placeholder': 'Xarı Bülbül’den bir şey yapmasını isteyin… (komutlar için /)',
+  'chat.composer.placeholder': 'Xarı’dan bir şey yapmasını isteyin… (komutlar için /)',
   'chat.composer.attach': 'Dosya ekle',
   'chat.composer.attachTitle': 'Dosya ekle (veya sürükleyip bırakın, yapıştırın)',
   'chat.composer.switchModel': 'Model değiştir ({key})',
@@ -259,7 +259,7 @@ export default {
   'chat.statusbar.files': 'Dosyalar',
 
   // Loading.tsx
-  'chat.loading.failed': 'Xarı Bülbül başlatılamadı.',
+  'chat.loading.failed': 'Xarı başlatılamadı.',
   'chat.loading.waking': 'Uyanıyor',
 
   // LayoutPicker.tsx

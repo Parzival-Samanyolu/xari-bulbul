@@ -12,7 +12,7 @@ The chosen translation of each recurring term in the app. Use these every time, 
   - ru uses the infinitive: *Сохранить*, *Удалить*, *Отмена*.
 - **Capitalisation:** sentence case in every language. Only the first word and proper names are capitalised.
 - **Do not translate:**
-  - the app name *Xarı Bülbül*
+  - the app names *Xarı* and *Qaqaş*
   - provider, model and product names: OpenRouter, Ollama, GitHub, WhatsApp, MCP
   - file paths, commands, setting ids, keyboard shortcuts
 - **Quotation marks:** az and tr use “…”, ru uses «…».

@@ -2,12 +2,12 @@ import type { Message } from '@harness/core/i18n'
 
 export default {
   // macOS app menu
-  'main.menu.about': 'About Xarı Bülbül',
+  'main.menu.about': 'About Xarı',
   'main.menu.services': 'Services',
-  'main.menu.hide': 'Hide Xarı Bülbül',
+  'main.menu.hide': 'Hide Xarı',
   'main.menu.hideOthers': 'Hide others',
   'main.menu.showAll': 'Show all',
-  'main.menu.quit': 'Quit Xarı Bülbül',
+  'main.menu.quit': 'Quit Xarı',
   'main.menu.file': 'File',
   'main.menu.closeWindow': 'Close window',
   'main.menu.edit': 'Edit',
@@ -35,7 +35,7 @@ export default {
   'main.menu.zoom': 'Zoom',
   'main.menu.front': 'Bring all to front',
   'main.menu.help': 'Help',
-  'main.menu.github': 'Xarı Bülbül on GitHub',
+  'main.menu.github': 'Xarı on GitHub',
   // Open and save dialogs
   'main.dialog.openProject': 'Open project folder',
   'main.dialog.attachFiles': 'Attach files',
@@ -93,6 +93,8 @@ export default {
   'main.error.openFolder': 'Open a folder first.',
   'main.error.lobbyGone': 'That lobby no longer exists.',
   'main.error.openLobby': 'Open a lobby first.',
+  'main.error.importOnlyQaqash': 'Importing bots is only available in Qaqaş.',
+  'main.error.importNoSource': 'Xarı’s data folder wasn’t found, so there are no bots to import.',
   'main.error.providerGone': 'The provider “{id}” no longer exists. Pick another model (⌘/Ctrl+K).',
   'main.error.providerOff': '{name} is turned off. Turn it on in Settings › Providers › API keys, or pick another model.',
   'main.error.needsKey': '{name} needs an API key. Add one in Settings › Providers › API keys.',
@@ -105,7 +107,7 @@ export default {
   'main.error.avatarTooLarge': 'That avatar is too large.',
   'main.error.absolutePath': 'Expected an absolute path.',
   'main.error.outsideFolders': 'That path is outside the open folders.',
-  'main.error.micOff': 'Microphone access is off. Turn it on for Xarı Bülbül in System Settings → Privacy & Security → Microphone.',
+  'main.error.micOff': 'Microphone access is off. Turn it on for Xarı in System Settings → Privacy & Security → Microphone.',
   // Provider and endpoint tests in Settings › Providers
   'main.test.off': 'This provider is turned off.',
   'main.test.noKey': 'No API key set.',
