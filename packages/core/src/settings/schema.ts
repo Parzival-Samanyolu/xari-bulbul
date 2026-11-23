@@ -306,6 +306,8 @@ export const ScheduleSchema = z.object({
       maxPerRun: z.number().int().min(1).max(500).default(10),
       /** Most emails all automatic runs together may send in a day. */
       maxPerDay: z.number().int().min(1).max(2000).default(50),
+      /** Adds the AI disclosure (`mail.aiDisclosure`) to the emails this automation writes; each draft can still be switched. */
+      discloseAi: z.boolean().default(false),
     })
     .prefault({}),
   /** Chained actions once a run ends. */
@@ -661,6 +663,8 @@ export const SettingsSchema = z.object({
       accounts: z.array(MailAccountSchema).default([]),
       /** Addresses or domains (`@example.com`) emails are never sent to. */
       blocklist: z.array(z.string()).default([]),
+      /** The line "Disclose AI" adds above the signature. */
+      aiDisclosure: z.string().default('This email was written with help from AI.'),
     })
     .prefault({}),
 

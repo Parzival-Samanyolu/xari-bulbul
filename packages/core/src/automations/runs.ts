@@ -22,6 +22,8 @@ export interface MailDraft {
   sentAt?: number
   /** Sent without review because the automation sends automatically. */
   auto?: boolean
+  /** Goes out with the AI disclosure line. */
+  disclose?: boolean
 }
 
 /** One run in the Automations inbox. */
@@ -140,10 +142,11 @@ export class RunStore {
     return d
   }
 
-  updateDraft(runId: string, draftId: string, patch: Partial<Pick<MailDraft, 'to' | 'cc' | 'subject' | 'body' | 'status' | 'error' | 'sentAt' | 'auto'>>): MailDraft {
+  updateDraft(runId: string, draftId: string, patch: Partial<Pick<MailDraft, 'to' | 'cc' | 'subject' | 'body' | 'status' | 'error' | 'sentAt' | 'auto' | 'disclose'>>): MailDraft {
     const d = this.draft(runId, draftId)
     if (d.status === 'sent' && patch.status !== 'sent') throw new Error('That email was already sent.')
-    Object.assign(d, patch)
+    // Fields left undefined are left as they are, so a partial edit never blanks the rest.
+    for (const [k, v] of Object.entries(patch)) if (v !== undefined) (d as unknown as Record<string, unknown>)[k] = v
     if (patch.status && patch.status !== 'failed') delete d.error
     this.save()
     return d

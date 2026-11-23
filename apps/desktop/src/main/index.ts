@@ -349,7 +349,7 @@ function registerIpc() {
   handle('automations.removeRun', (id: string) => c.automationsRemoveRun(id))
   handle('automations.send', (runId: string, draftId: string) => c.draftSend(runId, draftId))
   handle('automations.sendAll', (runId: string) => c.draftSendAll(runId))
-  handle('automations.edit', (runId: string, draftId: string, patch: { to?: string; cc?: string; subject?: string; body?: string }) => c.draftEdit(runId, draftId, patch))
+  handle('automations.edit', (runId: string, draftId: string, patch: { to?: string; cc?: string; subject?: string; body?: string; disclose?: boolean }) => c.draftEdit(runId, draftId, patch))
   handle('automations.skip', (runId: string, draftId: string) => c.draftSkip(runId, draftId))
   handle('mail.setPassword', (id: string, password: string | null) => c.mailSetPassword(id, password))
   handle('mail.test', (id: string) => c.mailTest(id))

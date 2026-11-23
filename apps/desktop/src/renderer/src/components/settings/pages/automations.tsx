@@ -35,7 +35,7 @@ function fromTemplate(tpl: Template, t: T, cwd: string): Automation {
     mailTrigger: { account: '', folder: 'INBOX', from: '', everyMinutes: 5 },
     mailAccounts: [],
     notes: [],
-    send: { mode: 'review', maxPerRun: 10, maxPerDay: 50 },
+    send: { mode: 'review', maxPerRun: 10, maxPerDay: 50, discloseAi: false },
     after: { notify: 'desktop', runNext: '' },
   }
   if (tpl === 'replyNew') base.trigger = 'mail'
@@ -243,6 +243,9 @@ export function AutomationsPage({ app, save, onState, onError, go }: PageProps) 
                   }}
                 />
               </Row>
+              <Row label={t('settings.auto.discloseAi')} hint={t('settings.auto.discloseAiHint', { text: app.settings.mail.aiDisclosure.trim() })} search="">
+                <Toggle label={t('settings.auto.discloseAi')} value={sch.send.discloseAi} onChange={(v) => update(i, (s) => (s.send.discloseAi = v))} />
+              </Row>
               {sch.send.mode === 'auto' && (
                 <Row label={t('settings.auto.limits')} hint={t('settings.auto.limitsHint')} search="">
                   <div className="inline">
@@ -427,6 +430,9 @@ export function MailAccountsPage({ app, save, onState, onError }: PageProps) {
           </button>
         ))}
       </div>
+      <Row label={t('settings.mail.aiDisclosure')} hint={t('settings.mail.aiDisclosureHint')} wide search="">
+        <TextField label={t('settings.mail.aiDisclosure')} value={app.settings.mail.aiDisclosure} onChange={(v) => save((s) => ((s.mail.aiDisclosure = v), s))} />
+      </Row>
       <Row label={t('settings.mail.blocklist')} hint={t('settings.mail.blocklistHint')} wide search="">
         <ListField label={t('settings.mail.blocklist')} value={app.settings.mail.blocklist} placeholder="@competitor.com" onChange={(v) => save((s) => ((s.mail.blocklist = v), s))} />
       </Row>

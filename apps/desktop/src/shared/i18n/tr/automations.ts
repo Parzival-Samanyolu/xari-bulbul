@@ -152,4 +152,11 @@ export default {
   'settings.notes.notionToken': 'Entegrasyon belirteci',
   'settings.notes.notionHint': 'Dahili bir entegrasyon oluşturun, belirtecini buraya yapıştırın, sonra okunmasını istediğiniz sayfaları onunla paylaşın (••• › Bağlantılar).',
   'settings.notes.notionMake': 'Entegrasyon oluştur',
+  'auto.draft.disclose': 'YZ’yi belirt',
+  'auto.draft.disclosed': '✓ YZ belirtildi',
+  'auto.draft.discloseHint': 'Bu e-postanın yazılmasına yapay zekânın yardım ettiğini söyleyen bir satır ekler. Metni Ayarlar › Otomasyonlar › E-posta hesapları’ndan değiştirin.',
+  'settings.auto.discloseAi': 'YZ’yi belirt',
+  'settings.auto.discloseAiHint': 'E-postalarına, otomatik gönderilsin ya da gönderilmesin, “{text}” ekler. Yine de her e-posta için ayrı ayrı değiştirebilirsiniz.',
+  'settings.mail.aiDisclosure': 'YZ beyanı',
+  'settings.mail.aiDisclosureHint': 'YZ’yi belirt’in metnin altına, imzanın üstüne eklediği satır.',
 } satisfies Record<keyof typeof en, Message>

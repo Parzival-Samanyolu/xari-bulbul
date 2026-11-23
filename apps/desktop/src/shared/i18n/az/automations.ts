@@ -152,4 +152,11 @@ export default {
   'settings.notes.notionToken': 'İnteqrasiya tokeni',
   'settings.notes.notionHint': 'Daxili inteqrasiya yaradın, tokenini bura yapışdırın, sonra oxunmasını istədiyiniz səhifələri onunla paylaşın (••• › Connections).',
   'settings.notes.notionMake': 'İnteqrasiya yarat',
+  'auto.draft.disclose': 'Sİ-ni bildir',
+  'auto.draft.disclosed': '✓ Sİ bildirildi',
+  'auto.draft.discloseHint': 'Bu məktubun yazılmasında süni intellektin kömək etdiyini bildirən sətir əlavə edir. Mətni Ayarlar › Avtomatlaşdırmalar › E-poçt hesabları bölməsində dəyişin.',
+  'settings.auto.discloseAi': 'Sİ-ni bildir',
+  'settings.auto.discloseAiHint': 'Məktublarına “{text}” əlavə edir, avtomatik göndərilsə də, göndərilməsə də. Hər məktub üçün yenə ayrıca dəyişə bilərsiniz.',
+  'settings.mail.aiDisclosure': 'Sİ bildirişi',
+  'settings.mail.aiDisclosureHint': '“Sİ-ni bildir”in mətnin altına, imzadan əvvəl əlavə etdiyi sətir.',
 } satisfies Record<keyof typeof en, Message>

@@ -242,6 +242,7 @@ function DraftCard({ app, runId, draft, busy, onState, onError }: { app: AppStat
           </div>
           <div className="draft-subject">{draft.subject}</div>
           <pre className="draft-body">{draft.body}</pre>
+          {draft.disclose && <pre className="draft-body draft-disclosure small">{app.settings.mail.aiDisclosure.trim()}</pre>}
           {account?.signature.trim() && <pre className="draft-body muted small">-- {'\n'}{account.signature.trim()}</pre>}
         </>
       )}
@@ -267,6 +268,16 @@ function DraftCard({ app, runId, draft, busy, onState, onError }: { app: AppStat
               </button>
               <button className="btn ghost" disabled={busy || sending} onClick={() => api.automations.skip(runId, draft.id).then(onState, onError)}>
                 {t('auto.draft.skip')}
+              </button>
+              <div className="spacer" />
+              <button
+                className={`btn ghost disclose-btn ${draft.disclose ? 'on' : ''}`}
+                aria-pressed={!!draft.disclose}
+                title={t('auto.draft.discloseHint')}
+                disabled={busy || sending}
+                onClick={() => api.automations.edit(runId, draft.id, { disclose: !draft.disclose }).then(onState, onError)}
+              >
+                {draft.disclose ? t('auto.draft.disclosed') : t('auto.draft.disclose')}
               </button>
             </>
           )}

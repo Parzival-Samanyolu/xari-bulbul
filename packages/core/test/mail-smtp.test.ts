@@ -56,6 +56,7 @@ describe('MailClient.send over SMTP', () => {
       text: 'Hi Ann,\n\nYour chairs ship on Monday.',
       inReplyTo: '<orig@cust.test>',
       references: ['<first@cust.test>', '<orig@cust.test>'],
+      footer: 'This email was written with help from AI.',
     })
     expect(id).toMatch(/^<.+>$/)
     const got = received.at(-1)!
@@ -68,7 +69,8 @@ describe('MailClient.send over SMTP', () => {
     expect(mail.inReplyTo).toBe('<orig@cust.test>')
     expect(mail.references).toEqual(['<first@cust.test>', '<orig@cust.test>'])
     expect(mail.text).toContain('Your chairs ship on Monday.')
-    expect(mail.text).toContain('-- \nShop · +90 555 000 00 00')
+    // The disclosure sits between the text and the signature.
+    expect(mail.text).toContain('Your chairs ship on Monday.\n\nThis email was written with help from AI.\n\n-- \nShop · +90 555 000 00 00')
   })
 
   it('explains a refused login', async () => {

@@ -1117,12 +1117,13 @@ export class AppController {
     return this.state()
   }
 
-  draftEdit(runId: string, draftId: string, patch: { to?: string; cc?: string; subject?: string; body?: string }): AppState {
+  draftEdit(runId: string, draftId: string, patch: { to?: string; cc?: string; subject?: string; body?: string; disclose?: boolean }): AppState {
     this.automations.edit(runId, draftId, {
       to: patch.to != null ? parseAddressList(patch.to) : undefined,
       cc: patch.cc != null ? parseAddressList(patch.cc) : undefined,
       subject: patch.subject,
       body: patch.body,
+      disclose: patch.disclose,
     })
     return this.state()
   }

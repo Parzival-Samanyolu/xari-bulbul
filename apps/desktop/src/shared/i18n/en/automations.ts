@@ -152,4 +152,11 @@ export default {
   'settings.notes.notionToken': 'Integration token',
   'settings.notes.notionHint': 'Create an internal integration, paste its token here, then share the pages you want read with it (••• › Connections).',
   'settings.notes.notionMake': 'Create an integration',
+  'auto.draft.disclose': 'Disclose AI',
+  'auto.draft.disclosed': '✓ AI disclosed',
+  'auto.draft.discloseHint': 'Adds a line saying AI helped write this email. Change the wording in Settings › Automations › Mail accounts.',
+  'settings.auto.discloseAi': 'Disclose AI',
+  'settings.auto.discloseAiHint': 'Adds “{text}” to its emails, sent automatically or not. You can still switch it per email.',
+  'settings.mail.aiDisclosure': 'AI disclosure',
+  'settings.mail.aiDisclosureHint': 'The line Disclose AI adds under the text, above the signature.',
 } as const satisfies Record<string, Message>

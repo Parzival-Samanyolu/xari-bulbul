@@ -62,8 +62,8 @@ describe('mail addresses', () => {
 describe('settings', () => {
   it('keeps old schedules valid and gives new fields safe defaults', () => {
     const s = SettingsSchema.parse({ schedules: [{ id: 's1', prompt: 'hi', cwd: '/p' }] })
-    expect(s.schedules[0]).toMatchObject({ trigger: 'time', send: { mode: 'review', maxPerRun: 10, maxPerDay: 50 }, after: { notify: 'desktop', runNext: '' }, mailAccounts: [], notes: [] })
-    expect(s.mail).toEqual({ accounts: [], blocklist: [] })
+    expect(s.schedules[0]).toMatchObject({ trigger: 'time', send: { mode: 'review', maxPerRun: 10, maxPerDay: 50, discloseAi: false }, after: { notify: 'desktop', runNext: '' }, mailAccounts: [], notes: [] })
+    expect(s.mail).toEqual({ accounts: [], blocklist: [], aiDisclosure: 'This email was written with help from AI.' })
     expect(s.notes).toEqual({ sources: [] })
   })
 })
@@ -88,12 +88,22 @@ describe('RunStore', () => {
     expect(again.unread()).toBe(0)
   })
 
+  it('switches the AI disclosure on a waiting draft', () => {
+    const store = new RunStore(path.join(tmpDir(), 'runs.json'))
+    const run = store.start({ automationId: 'a', name: 'n', sessionId: 's', trigger: 'manual' })
+    const d = store.addDraft(run.id, { account: 'm', to: ['a@b.co'], cc: [], subject: 's', body: 'b', disclose: false })
+    // As the app sends it: only `disclose` set, the rest undefined.
+    const after = store.updateDraft(run.id, d.id, { to: undefined, cc: undefined, subject: undefined, body: undefined, disclose: true })
+    expect(after).toMatchObject({ to: ['a@b.co'], cc: [], subject: 's', body: 'b', disclose: true })
+  })
+
   it('never edits an email that was sent', () => {
     const store = new RunStore(path.join(tmpDir(), 'runs.json'))
     const run = store.start({ automationId: 'a', name: 'n', sessionId: 's', trigger: 'manual' })
     const d = store.addDraft(run.id, { account: 'm', to: ['a@b.co'], cc: [], subject: 's', body: 'b' })
     store.updateDraft(run.id, d.id, { status: 'sent', sentAt: Date.now(), auto: true })
     expect(() => store.updateDraft(run.id, d.id, { body: 'changed' })).toThrow(/already sent/)
+    expect(() => store.updateDraft(run.id, d.id, { disclose: true })).toThrow(/already sent/)
     expect(store.sentIn(run.id)).toBe(1)
     expect(store.autoSentToday()).toBe(1)
   })

@@ -17,6 +17,8 @@ export interface OutgoingMail {
   text: string
   inReplyTo?: string
   references?: string[]
+  /** A line set apart under the text and above the signature, e.g. the AI disclosure. */
+  footer?: string
 }
 
 const addr = (a: AddressObject | AddressObject[] | undefined) => (Array.isArray(a) ? a.map((x) => x.text).join(', ') : (a?.text ?? ''))
@@ -169,12 +171,14 @@ export class MailClient {
     const { host, port, secure } = this.account.smtp
     if (!host) throw new Error(`${this.account.name} has no SMTP server set.`)
     const sig = this.account.signature.trim()
+    const footer = mail.footer?.trim()
+    const body = footer ? `${mail.text.trimEnd()}\n\n${footer}` : mail.text
     const opts = {
       from: { name: this.account.fromName.trim() || this.account.name, address: this.account.address.trim() },
       to: mail.to,
       cc: mail.cc.length ? mail.cc : undefined,
       subject: mail.subject,
-      text: sig ? `${mail.text.trimEnd()}\n\n-- \n${sig}\n` : mail.text,
+      text: sig ? `${body.trimEnd()}\n\n-- \n${sig}\n` : body,
       inReplyTo: mail.inReplyTo || undefined,
       references: mail.references?.length ? mail.references : undefined,
     }

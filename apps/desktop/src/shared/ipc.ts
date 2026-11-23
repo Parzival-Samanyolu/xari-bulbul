@@ -671,7 +671,7 @@ export interface HarnessApi {
     /** Sends every waiting draft of a run. */
     sendAll(runId: string): Promise<AppState>
     /** `to` and `cc` as comma-separated addresses. */
-    edit(runId: string, draftId: string, patch: { to?: string; cc?: string; subject?: string; body?: string }): Promise<AppState>
+    edit(runId: string, draftId: string, patch: { to?: string; cc?: string; subject?: string; body?: string; disclose?: boolean }): Promise<AppState>
     skip(runId: string, draftId: string): Promise<AppState>
   }
   mail: {

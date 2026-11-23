@@ -177,6 +177,7 @@ export class Automations {
       body: input.body,
       inReplyTo: original?.messageId || undefined,
       references: original ? [...original.references, original.messageId].filter(Boolean) : undefined,
+      disclose: schedule?.send.discloseAi ?? false,
     })
     this.d.onChange()
     const review = `Saved to the Automations inbox for the user to review and send (to ${to.join(', ')}). Don't ask the user to send it or repeat it; they'll see it there.`
@@ -205,7 +206,8 @@ export class Automations {
     this.runs.updateDraft(runId, draft.id, { status: 'sending' })
     this.d.onChange()
     try {
-      await this.client(this.account(draft.account)).send({ to: draft.to, cc: draft.cc, subject: draft.subject, text: draft.body, inReplyTo: draft.inReplyTo, references: draft.references })
+      const footer = draft.disclose ? this.d.settings().mail.aiDisclosure : undefined
+      await this.client(this.account(draft.account)).send({ to: draft.to, cc: draft.cc, subject: draft.subject, text: draft.body, inReplyTo: draft.inReplyTo, references: draft.references, footer })
       this.runs.updateDraft(runId, draft.id, { status: 'sent', sentAt: Date.now(), auto })
       log.info('automations', 'Email sent', { auto, recipients: draft.to.length + draft.cc.length })
     } catch (e) {
@@ -234,7 +236,7 @@ export class Automations {
     return failed
   }
 
-  edit(runId: string, draftId: string, patch: { to?: string[]; cc?: string[]; subject?: string; body?: string }) {
+  edit(runId: string, draftId: string, patch: { to?: string[]; cc?: string[]; subject?: string; body?: string; disclose?: boolean }) {
     this.runs.updateDraft(runId, draftId, patch)
   }
 

@@ -152,4 +152,11 @@ export default {
   'settings.notes.notionToken': 'Токен интеграции',
   'settings.notes.notionHint': 'Создайте внутреннюю интеграцию, вставьте сюда её токен, затем откройте ей доступ к нужным страницам (••• › Connections).',
   'settings.notes.notionMake': 'Создать интеграцию',
+  'auto.draft.disclose': 'Указать ИИ',
+  'auto.draft.disclosed': '✓ ИИ указан',
+  'auto.draft.discloseHint': 'Добавляет строку о том, что письмо написано с помощью ИИ. Текст меняется в разделе «Настройки › Автоматизации › Почтовые ящики».',
+  'settings.auto.discloseAi': 'Указывать ИИ',
+  'settings.auto.discloseAiHint': 'Добавляет «{text}» к её письмам, отправленным автоматически или нет. Для каждого письма это можно переключить отдельно.',
+  'settings.mail.aiDisclosure': 'Пометка об ИИ',
+  'settings.mail.aiDisclosureHint': 'Строка, которую «Указать ИИ» добавляет под текстом, над подписью.',
 } satisfies Record<keyof typeof en, Message>
