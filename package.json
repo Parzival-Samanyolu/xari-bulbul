@@ -17,6 +17,8 @@
     "dev": "pnpm --filter @harness/desktop dev",
     "dev:qaqash": "pnpm --filter @harness/desktop dev:qaqash",
     "build": "pnpm --filter @harness/desktop build",
+    "build:cli": "pnpm --filter @harness/cli build",
+    "cli": "pnpm --filter @harness/cli dev",
     "dist": "pnpm --filter @harness/desktop dist",
     "dist:qaqash": "pnpm --filter @harness/desktop dist:qaqash",
     "typecheck": "pnpm -r typecheck",

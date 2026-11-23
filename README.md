@@ -79,6 +79,18 @@ Download the latest installer from [Releases](https://github.com/Parzival-Samany
 
 Arch Linux users can also build a package from the [`PKGBUILD`](packaging/arch).
 
+## Terminal (CLI)
+
+The same agent runs in a terminal as `xari`, sharing the desktop app's settings, chats, memory and usage.
+
+```bash
+pnpm install && pnpm build:cli
+node apps/cli/dist/xari.mjs -p "summarize this repo"     # one answer, then exit
+git diff | node apps/cli/dist/xari.mjs -p "review this" --mode plan
+```
+
+Add `-c` to continue the latest chat in the folder, `--model provider/model` to pick a model, and `--output-format json` for scripts. API keys come from `<PROVIDER>_API_KEY` env vars or the OS keychain. See [apps/cli](apps/cli/README.md).
+
 ## Quick start (from source)
 
 Requires Node 22+ and pnpm 10.
@@ -142,6 +154,7 @@ packages/core/          the engine: no UI, fully tested
   src/memory/           facts saved across chats
   src/settings/         the settings schema (zod) with defaults
 apps/desktop/           Electron app: main process (controller, IPC, keys, updater) + React UI
+apps/cli/               the `xari` terminal app: host, arguments, non-interactive mode
 bench/                  model benchmark: tasks, runner, published results
 ```
 
