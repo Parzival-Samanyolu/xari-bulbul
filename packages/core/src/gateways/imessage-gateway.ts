@@ -319,6 +319,13 @@ export class IMessageGateway {
     for (const part of splitReply(stripMarkdown(reply))) await this.sendText(sender, part)
   }
 
+  /** A note to the first allowed sender, e.g. an automation's summary. */
+  async sendToSelf(text: string): Promise<void> {
+    const to = this.senders()[0]
+    if (!to) throw new Error('Add an allowed sender first.')
+    await this.sendReply(to, text)
+  }
+
   /** "Xarı Bülbül is connected." to the first allowed sender. */
   async sendTest(): Promise<void> {
     const to = this.senders()[0]

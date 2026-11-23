@@ -160,4 +160,12 @@ export default {
   'main.process.terminal': 'Terminal',
   'main.error.chatgptDenied': 'Giriş tarayıcıda reddedildi. Hiçbir şey değişmedi.',
   'main.error.chatgptSignIn': 'ChatGPT girişi tamamlanmadı: {detail}',
+  'main.automation.failed': 'Başarısız: {error}',
+  'main.automation.sent': { one: '{count} e-posta gönderildi.', other: '{count} e-posta gönderildi.' },
+  'main.automation.waiting': { one: '{count} e-posta Otomasyonlar’da incelemenizi bekliyor.', other: '{count} e-posta Otomasyonlar’da incelemenizi bekliyor.' },
+  'main.automation.chainContext': '“{name}” otomasyonu bundan hemen önce çalıştı ve şöyle bitti:\n{summary}',
+  'main.automation.someFailed': { one: '{count} e-posta gönderilemedi. Nedeniyle birlikte gelen kutusunda kalıyor.', other: '{count} e-posta gönderilemedi. Nedeniyle birlikte gelen kutusunda kalıyor.' },
+  'main.automation.sourceGone': 'Bu not kaynağı artık yok.',
+  'main.automation.sourceOff': 'Önce not kaynağını açın.',
+  'main.dialog.vaultFolder': 'Obsidian kasa klasörünüzü seçin',
 } satisfies Record<keyof typeof en, Message>

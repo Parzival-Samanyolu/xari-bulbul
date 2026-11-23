@@ -178,4 +178,12 @@ export default {
   'main.process.terminal': 'Терминал',
   'main.error.chatgptDenied': 'Вход отклонён в браузере. Ничего не изменилось.',
   'main.error.chatgptSignIn': 'Вход в ChatGPT не завершён: {detail}',
+  'main.automation.failed': 'Ошибка: {error}',
+  'main.automation.sent': { one: 'Отправлено {count} письмо.', few: 'Отправлено {count} письма.', many: 'Отправлено {count} писем.', other: 'Отправлено {count} письма.' },
+  'main.automation.waiting': { one: '{count} письмо ждёт вашей проверки в разделе «Автоматизации».', few: '{count} письма ждут вашей проверки в разделе «Автоматизации».', many: '{count} писем ждут вашей проверки в разделе «Автоматизации».', other: '{count} письма ждут вашей проверки в разделе «Автоматизации».' },
+  'main.automation.chainContext': 'Перед этой запускалась автоматизация «{name}», она закончилась так:\n{summary}',
+  'main.automation.someFailed': { one: 'Не удалось отправить {count} письмо. Оно осталось во входящих с причиной.', few: 'Не удалось отправить {count} письма. Они остались во входящих с причиной.', many: 'Не удалось отправить {count} писем. Они остались во входящих с причиной.', other: 'Не удалось отправить {count} письма. Они остались во входящих с причиной.' },
+  'main.automation.sourceGone': 'Этого источника заметок больше нет.',
+  'main.automation.sourceOff': 'Сначала включите источник заметок.',
+  'main.dialog.vaultFolder': 'Выберите папку хранилища Obsidian',
 } satisfies Record<keyof typeof en, Message>

@@ -39,6 +39,8 @@
     "@types/mailparser": "^3.9.0",
     "@types/node": "^22.19.0",
     "@types/nodemailer": "^8.0.2",
+    "@types/smtp-server": "^3.5.13",
+    "smtp-server": "^3.21.7",
     "typescript": "~5.9.3",
     "vitest": "^4.1.11"
   }

@@ -122,6 +122,11 @@ import {
   type PermissionMode,
   type QuestionRequest,
   type Schedule,
+  type RunTrigger,
+  mailSecretId,
+  notesSecretId,
+  parseAddressList,
+  runSummary,
   type Session,
   type SessionMeta,
   type Settings,
@@ -142,6 +147,7 @@ import { LocalModels } from './local-models'
 import { AppError, systemLanguages, tm } from './i18n'
 import { log } from './logger'
 import type { KnownChild } from './resources'
+import { Automations } from './automations'
 import { Scheduler } from './scheduler'
 import { SecretStore } from './secrets'
 import { Terminals } from './terminals'
@@ -195,6 +201,10 @@ export class AppController {
   private readonly mcp: McpManager
   private mcpTimer: NodeJS.Timeout | null = null
   private readonly scheduler: Scheduler
+  /** The Automations inbox, mail accounts, notes and new-mail triggers. */
+  private readonly automations: Automations
+  /** How each chat's last turn ended, for automation runs. */
+  private lastTurnEnd = new Map<string, string>()
   private readonly imessage: IMessageGateway
   private readonly whatsapp: WhatsAppGateway
   private catchUpTimer: NodeJS.Timeout | null = null
@@ -292,9 +302,16 @@ export class AppController {
     this.scheduler = new Scheduler(
       path.join(dataDir, 'schedules.json'),
       () => this.settings.schedules,
-      (s) => this.runScheduled(s),
+      (s, why, extra) => this.runScheduled(s, why, extra),
       () => this.pushState(),
     )
+    this.automations = new Automations({
+      dataDir,
+      settings: () => this.settings,
+      secret: (id) => this.secrets.get(id),
+      trigger: (id, why, extra) => this.scheduler.trigger(id, why, extra),
+      onChange: () => this.pushStateSoon(),
+    })
     this.imessage = new IMessageGateway({
       stateFile: path.join(dataDir, 'gateways.json'),
       config: () => this.settings.gateways.imessage,
@@ -979,6 +996,7 @@ export class AppController {
   async dispose() {
     if (this.catchUpTimer) clearTimeout(this.catchUpTimer)
     this.scheduler.dispose()
+    this.automations.dispose()
     this.imessage.dispose()
     this.whatsapp.dispose()
     this.voiceDownload?.ac.abort()
@@ -997,6 +1015,7 @@ export class AppController {
   /** Arms the schedule timer; after MCP servers had a moment to connect, catches up runs missed while closed. */
   startSchedules() {
     this.scheduler.arm()
+    this.automations.start()
     this.catchUpTimer = setTimeout(() => {
       this.catchUpTimer = null
       this.scheduler.catchUp()
@@ -1008,8 +1027,11 @@ export class AppController {
     return this.state()
   }
 
-  /** Runs a schedule's prompt in a new chat in its folder, in the background (the chat on screen stays). */
-  private async runScheduled(s: Schedule): Promise<void> {
+  /**
+   * Runs an automation's prompt in a new chat in its folder, in the background (the chat on screen
+   * stays), with an entry in the Automations inbox. Then its chained actions: a note to you, the next automation.
+   */
+  private async runScheduled(s: Schedule, why: RunTrigger = 'time', extra?: string): Promise<void> {
     const cwd = path.resolve(s.cwd).normalize('NFC')
     if (!fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) throw new AppError('main.error.folderNotFound', { path: cwd })
     // Another folder's chat gets that folder's extensions, like it would when opened.
@@ -1019,18 +1041,120 @@ export class AppController {
         : await this.loadExtensionsFor(cwd)
     const tools = cwd === this.workspace ? this.tools : assembleTools(ext.tools, this.mcp.tools()).tools
     const session = newSession(cwd, s.model ?? this.settings.models.default)
-    session.meta.title = `⏰ ${s.name.trim() || 'Schedule'}`
+    const name = s.name.trim() || 'Schedule'
+    session.meta.title = `⏰ ${name}`
     // Show the folder in the sidebar so the new chat is visible.
     if (!this.settings.app.openWorkspaces.includes(cwd)) {
       this.settings = { ...this.settings, app: { ...this.settings.app, openWorkspaces: [...this.settings.app.openWorkspaces, cwd] } }
       this.saveSettings()
     }
     this.prune()
-    const running = this.createAgent(session, { tools, skills: ext.skills })
+    const run = this.automations.runs.start({ automationId: s.id, name, sessionId: session.meta.id, trigger: why })
+    const running = this.createAgent(session, { tools, skills: ext.skills, schedule: s })
     this.agents.set(session.meta.id, running)
     this.registry.models(session.meta.model.providerId).catch(() => {})
     this.count('feature.schedule_run')
-    await running.agent.send(expandSlashCommand(s.prompt, this.commandsOf(ext)) ?? s.prompt)
+    this.pushState()
+    const prompt = expandSlashCommand(s.prompt, this.commandsOf(ext)) ?? s.prompt
+    let error: string | undefined
+    try {
+      await running.agent.send(extra ? `${prompt}\n\n${extra}` : prompt)
+      const end = this.lastTurnEnd.get(session.meta.id)
+      if (end && end !== 'done') error = tm(({ error: 'main.notify.error', aborted: 'main.notify.aborted', max_steps: 'main.notify.maxSteps', budget: 'main.notify.budget', repeating: 'main.notify.repeating' } as Record<string, Parameters<typeof tm>[0]>)[end] ?? 'main.notify.error')
+    } catch (e) {
+      error = (e as Error).message
+    }
+    const last = [...running.agent.session.messages].reverse().find((m) => m.role === 'assistant' && m.content.trim())
+    const summary = runSummary(last?.content ?? '')
+    this.automations.runs.finish(run.id, { status: error ? 'failed' : 'done', summary, error })
+    this.pushState()
+    await this.afterRun(s, run.id, session.meta.id, error).catch((e) => log.warn('automations', `After-run action failed: ${(e as Error).message}`))
+    if (error) throw new Error(error)
+  }
+
+  /** The chained actions once a run ends. */
+  private async afterRun(s: Schedule, runId: string, sessionId: string, error?: string) {
+    const run = this.automations.runs.get(runId)
+    if (!run) return
+    const waiting = run.drafts.filter((d) => d.status === 'pending').length
+    const sent = run.drafts.filter((d) => d.status === 'sent').length
+    const title = `⏰ ${run.name}`
+    const lines = [error ? tm('main.automation.failed', { error }) : run.summary.slice(-300) || tm('main.notify.done')]
+    if (sent) lines.push(tm('main.automation.sent', { count: sent }))
+    if (waiting) lines.push(tm('main.automation.waiting', { count: waiting }))
+    const body = lines.join('\n')
+    const how = s.after.notify
+    if (how === 'desktop') this.notify({ sessionId, kind: error ? 'failed' : 'finished', title, body: body.slice(0, 240) })
+    else if (how === 'whatsapp') await this.whatsapp.sendToSelf(`${title}\n${body}`)
+    else if (how === 'imessage') await this.imessage.sendToSelf(`${title}\n${body}`)
+    const next = s.after.runNext
+    if (!error && next && next !== s.id) {
+      const started = this.scheduler.trigger(next, 'chain', tm('main.automation.chainContext', { name: run.name, summary: run.summary || '—' }))
+      if (!started) log.info('automations', 'Next automation did not start (missing, off, or still running)', { automation: next })
+    }
+  }
+
+  // ---------- automations inbox ----------
+
+  automationsMarkRead(id: string | 'all'): AppState {
+    this.automations.runs.markRead(id)
+    return this.state()
+  }
+
+  automationsRemoveRun(id: string): AppState {
+    this.automations.runs.remove(id)
+    return this.state()
+  }
+
+  async draftSend(runId: string, draftId: string): Promise<AppState> {
+    await this.automations.send(runId, draftId)
+    return this.state()
+  }
+
+  async draftSendAll(runId: string): Promise<AppState> {
+    const failed = await this.automations.sendAll(runId)
+    if (failed) throw new AppError('main.automation.someFailed', { count: failed })
+    return this.state()
+  }
+
+  draftEdit(runId: string, draftId: string, patch: { to?: string; cc?: string; subject?: string; body?: string }): AppState {
+    this.automations.edit(runId, draftId, {
+      to: patch.to != null ? parseAddressList(patch.to) : undefined,
+      cc: patch.cc != null ? parseAddressList(patch.cc) : undefined,
+      subject: patch.subject,
+      body: patch.body,
+    })
+    return this.state()
+  }
+
+  draftSkip(runId: string, draftId: string): AppState {
+    this.automations.skip(runId, draftId)
+    return this.state()
+  }
+
+  mailSetPassword(accountId: string, password: string | null): AppState {
+    // App passwords are often shown in groups of four; the spaces aren't part of them.
+    this.secrets.set(mailSecretId(accountId), password?.trim() ? password.replace(/\s+/g, '') : null)
+    return this.state()
+  }
+
+  async mailTest(accountId: string): Promise<AppState> {
+    await this.automations.testAccount(accountId)
+    return this.state()
+  }
+
+  notesSetToken(sourceId: string, token: string | null): AppState {
+    this.secrets.set(notesSecretId(sourceId), token?.trim() || null)
+    return this.state()
+  }
+
+  /** Searches one notes source for anything, to show it connects; resolves with how many notes it found. */
+  async notesTest(sourceId: string): Promise<number> {
+    const source = this.settings.notes.sources.find((s) => s.id === sourceId)
+    if (!source) throw new AppError('main.automation.sourceGone')
+    const hub = this.automations.notesFor({ notes: [sourceId] } as Schedule)
+    if (!hub) throw new AppError('main.automation.sourceOff')
+    return (await hub.search('', { source: sourceId, limit: 50 })).length
   }
 
   // ---------- gateways ----------
@@ -1420,8 +1544,9 @@ export class AppController {
     this.registry.models(session.meta.model.providerId).catch(() => {})
   }
 
-  private createAgent(session: Session, own?: { tools: Tool[]; skills: LoadedExtensions['skills'] }): Running {
+  private createAgent(session: Session, own?: { tools: Tool[]; skills: LoadedExtensions['skills']; schedule?: Schedule }): Running {
     const id = session.meta.id
+    const schedule = own?.schedule ?? null
     // A bot's chats start in the bot's mode; gateway chats in the gateway's.
     const mode = session.meta.gateway ? this.settings.gateways[gatewayKind(session.meta.gateway)].mode : (activeBot(this.settings, session.meta.botId)?.mode ?? this.mode)
     const permissions = new Permissions({ ...this.settings.permissions, mode }, session.meta.cwd)
@@ -1437,6 +1562,8 @@ export class AppController {
       sessions: { list: (opts) => this.sessionMetas(opts?.cwd), load: (sid) => this.store.load(sid) },
       secret: (id) => this.secrets.get(id),
       browserProfileDir: this.browserProfileDir,
+      mail: this.automations.mailFor(id, schedule, () => session.meta.title),
+      notes: this.automations.notesFor(schedule),
       onSave: (s) => {
         if (!s.messages.length || this.removed.has(id)) return
         // The Bots tab shows a line of each bot chat's last message.
@@ -1563,7 +1690,10 @@ export class AppController {
     }
     if (event.type === 'turn_end') {
       this.cancelPending(sessionId)
-      if (sessionId !== this.activeId) {
+      this.lastTurnEnd.set(sessionId, event.reason)
+      // Automation runs tell you about themselves once they end (or not), as each automation says.
+      const automationRun = !!this.automations.runs.bySession(sessionId)?.automationId
+      if (sessionId !== this.activeId && !automationRun) {
         const session = this.agents.get(sessionId)?.agent.session
         const body = tm(({ done: 'main.notify.done', error: 'main.notify.error', aborted: 'main.notify.aborted', max_steps: 'main.notify.maxSteps', budget: 'main.notify.budget', repeating: 'main.notify.repeating' } as const)[event.reason])
         const kind = event.reason === 'done' ? 'finished' : 'failed'
@@ -2287,6 +2417,12 @@ export class AppController {
       plugins: this.pluginInfo(),
       memory: this.memoryInfo(),
       schedules: this.scheduler.status(),
+      automations: {
+        runs: this.automations.runs.list().slice(0, 100),
+        unread: this.automations.runs.unread(),
+        passwords: Object.fromEntries(this.settings.mail.accounts.map((a) => [a.id, this.secrets.has(mailSecretId(a.id))])),
+        tokens: Object.fromEntries(this.settings.notes.sources.map((n) => [n.id, this.secrets.has(notesSecretId(n.id))])),
+      },
       browser: findBrowser(this.settings.tools.browser.path),
       browserLogins: fs.existsSync(this.browserProfileDir),
       voice: this.voiceState(),

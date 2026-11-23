@@ -1,3 +1,4 @@
+import type { ConnectionOptions } from 'node:tls'
 import { ImapFlow, type SearchObject } from 'imapflow'
 import { simpleParser, type AddressObject } from 'mailparser'
 import nodemailer from 'nodemailer'
@@ -63,6 +64,8 @@ export class MailClient {
   constructor(
     private readonly account: MailAccount,
     private readonly password: string,
+    /** TLS options for both servers; tests use this to trust a local self-signed certificate. */
+    private readonly tls?: ConnectionOptions,
   ) {}
 
   private get user() {
@@ -72,7 +75,7 @@ export class MailClient {
   private async imap<T>(fn: (c: ImapFlow) => Promise<T>, signal?: AbortSignal): Promise<T> {
     const { host, port, secure } = this.account.imap
     if (!host) throw new Error(`${this.account.name} has no IMAP server set.`)
-    const c = new ImapFlow({ host, port, secure, auth: { user: this.user, pass: this.password }, logger: false, connectionTimeout: TIMEOUT, greetingTimeout: TIMEOUT, socketTimeout: 2 * TIMEOUT })
+    const c = new ImapFlow({ host, port, secure, auth: { user: this.user, pass: this.password }, tls: this.tls, logger: false, connectionTimeout: TIMEOUT, greetingTimeout: TIMEOUT, socketTimeout: 2 * TIMEOUT })
     c.on('error', () => {})
     const abort = () => void c.close()
     signal?.addEventListener('abort', abort, { once: true })
@@ -176,7 +179,7 @@ export class MailClient {
       references: mail.references?.length ? mail.references : undefined,
     }
     const raw = await new MailComposer(opts).compile().build()
-    const transport = nodemailer.createTransport({ host, port, secure, requireTLS: !secure, auth: { user: this.user, pass: this.password }, connectionTimeout: TIMEOUT, greetingTimeout: TIMEOUT, socketTimeout: 2 * TIMEOUT })
+    const transport = nodemailer.createTransport({ host, port, secure, requireTLS: !secure, tls: this.tls, auth: { user: this.user, pass: this.password }, connectionTimeout: TIMEOUT, greetingTimeout: TIMEOUT, socketTimeout: 2 * TIMEOUT })
     let info
     try {
       info = await transport.sendMail({ envelope: { from: opts.from.address, to: [...mail.to, ...mail.cc] }, raw })
@@ -204,7 +207,7 @@ export class MailClient {
     })
     const { host, port, secure } = this.account.smtp
     if (!host) throw new Error(`${this.account.name} has no SMTP server set.`)
-    const transport = nodemailer.createTransport({ host, port, secure, requireTLS: !secure, auth: { user: this.user, pass: this.password }, connectionTimeout: TIMEOUT })
+    const transport = nodemailer.createTransport({ host, port, secure, requireTLS: !secure, tls: this.tls, auth: { user: this.user, pass: this.password }, connectionTimeout: TIMEOUT })
     try {
       await transport.verify()
     } catch (e) {

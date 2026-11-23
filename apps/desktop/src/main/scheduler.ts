@@ -1,5 +1,5 @@
 import fs from 'node:fs'
-import { missedRun, nextRun, type Schedule } from '@harness/core'
+import { missedRun, nextRun, type RunTrigger, type Schedule } from '@harness/core'
 import type { ScheduleStatus } from '../shared/ipc'
 
 /** Run times per schedule id. `since` is when the schedule was first seen, the reference before its first run. */
@@ -23,7 +23,7 @@ export class Scheduler {
   constructor(
     private readonly file: string,
     private readonly schedules: () => Schedule[],
-    private readonly run: (s: Schedule) => Promise<void>,
+    private readonly run: (s: Schedule, why: RunTrigger, extra?: string) => Promise<void>,
     private readonly onChange: () => void,
   ) {
     this.state = this.load()
@@ -48,8 +48,13 @@ export class Scheduler {
     }
   }
 
+  private ready(s: Schedule): boolean {
+    return !!(s.cwd.trim() && s.prompt.trim())
+  }
+
+  /** Schedules the timer runs: mail-triggered ones start on new mail instead. */
   private runnable(): Schedule[] {
-    return this.schedules().filter((s) => s.enabled && s.cwd.trim() && s.prompt.trim())
+    return this.schedules().filter((s) => s.enabled && s.trigger !== 'mail' && this.ready(s))
   }
 
   /** Recomputes next runs for new or changed schedules and arms the timer for the soonest. */
@@ -110,24 +115,31 @@ export class Scheduler {
   }
 
   runNow(id: string): boolean {
+    return this.trigger(id, 'manual')
+  }
+
+  /** Starts a schedule outside its timer: Run now, new mail, or the automation before it in a chain. */
+  trigger(id: string, why: RunTrigger, extra?: string): boolean {
     const s = this.schedules().find((x) => x.id === id)
-    if (!s || !s.cwd.trim() || !s.prompt.trim()) return false
-    return this.start(s, Date.now())
+    if (!s || !this.ready(s)) return false
+    // A chain or new mail doesn't start a turned-off automation; Run now does.
+    if (why !== 'manual' && !s.enabled) return false
+    return this.start(s, Date.now(), why, extra)
   }
 
   /** Starts a run unless the previous run of the same schedule is still going. */
-  private start(s: Schedule, now: number): boolean {
+  private start(s: Schedule, now: number, why: RunTrigger = 'time', extra?: string): boolean {
     if (this.disposed) return false
     const st = (this.state[s.id] ??= { lastRunAt: null, since: now })
     // The next slot counts from now, so a late or skipped run doesn't fire again right away.
-    if (s.enabled) this.next.set(s.id, { at: nextRun(s.when, now), key: JSON.stringify(s.when) })
+    if (s.enabled && s.trigger !== 'mail') this.next.set(s.id, { at: nextRun(s.when, now), key: JSON.stringify(s.when) })
     if (this.running.has(s.id)) return false
     st.lastRunAt = now
     delete st.error
     this.save()
     this.running.add(s.id)
     this.onChange()
-    this.run(s)
+    this.run(s, why, extra)
       .catch((e) => {
         st.error = (e as Error).message
         this.save()

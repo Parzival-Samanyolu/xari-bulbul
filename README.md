@@ -35,6 +35,13 @@ Built to be owned and extended. The engine is small, readable TypeScript with no
   - **Filters:** searches can be limited to certain sites and to recent results.
   - **Reading pages:** `web_fetch` returns a page's main content as Markdown, in parts for long pages.
 - **MCP servers:** connect local (command) or remote (URL) Model Context Protocol servers in **Settings › MCP servers**. Their tools follow your permission rules as `mcp__<server>__<tool>`. GitHub's hosted server is one click: **Add GitHub**, then paste a token.
+- **Automations:** instructions that run by themselves, on a timer or when new email arrives, each in a new chat:
+  - **Mail:** connect Gmail, Outlook or your own domain (IMAP/SMTP with an app password, kept in the OS keychain). The agent gets `mail_search`, `mail_read` and `mail_draft`.
+  - **Notes:** an Obsidian vault, Apple Notes (macOS) or Notion, read with `notes_search` and `notes_read`. Nothing is ever changed.
+  - **Inbox:** the sidebar's Automations tab lists every run with its summary. Emails it wrote wait there to send, edit or skip.
+  - **Sending, per automation:** wait for your review (the default), or send automatically within per-run and per-day limits. Nothing is ever sent to the blocklist.
+  - **Chained actions:** when a run ends, tell you on the desktop, WhatsApp or iMessage, and start another automation.
+  - **Templates:** personal customer follow-ups, replies to new customer emails, birthday greetings, a morning inbox digest.
 - **Memory:** the agent can remember facts across chats (your preferences, how to test a project) with the `remember` / `forget` tools. Memories live in the app's data folder, and you can review or delete them in **Settings › Memory**.
 - **Detailed settings:**
   - Providers & keys: stored in the OS keychain (macOS Keychain, libsecret on Linux), or encrypted with your Windows account (DPAPI)

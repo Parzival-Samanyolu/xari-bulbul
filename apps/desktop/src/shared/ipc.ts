@@ -1,6 +1,8 @@
 // Contract between the Electron main process and the renderer. Type-only imports from core.
-import type { Fit, HfResult, LlamaRuntimeStatus, MachineInfo, ServerState, SkillCategory } from '@harness/core'
+import type { AutomationRun, MailDraft, Fit, HfResult, LlamaRuntimeStatus, MachineInfo, ServerState, SkillCategory } from '@harness/core'
 export type { Fit, HfResult, LlamaRuntimeStatus, MachineInfo, ServerState }
+export type AutomationRunView = AutomationRun
+export type MailDraftView = MailDraft
 import type {
   AgentEvent,
   ChatMessage,
@@ -434,6 +436,8 @@ export interface AppState {
   memory: MemoryInfo
   /** Run times of each schedule in settings. */
   schedules: ScheduleStatus[]
+  /** The Automations inbox (newest 100 runs) and which mail accounts and notes sources have a saved secret. */
+  automations: { runs: AutomationRun[]; unread: number; passwords: Record<string, boolean>; tokens: Record<string, boolean> }
   /** The browser the browser tools drive (from tools.browser.path or detection), or null if none was found. */
   browser: string | null
   /** A kept browser profile (saved site logins) exists in the data folder. */
@@ -657,6 +661,30 @@ export interface HarnessApi {
     runNow(id: string): Promise<AppState>
     /** Folder picker that only returns the path (doesn't open the folder). */
     pickFolder(): Promise<string | null>
+  }
+  automations: {
+    /** Marks a run (or every run) as seen. */
+    markRead(id: string | 'all'): Promise<AppState>
+    removeRun(id: string): Promise<AppState>
+    /** Sends one draft now; throws with the server's reason when it can't. */
+    send(runId: string, draftId: string): Promise<AppState>
+    /** Sends every waiting draft of a run. */
+    sendAll(runId: string): Promise<AppState>
+    /** `to` and `cc` as comma-separated addresses. */
+    edit(runId: string, draftId: string, patch: { to?: string; cc?: string; subject?: string; body?: string }): Promise<AppState>
+    skip(runId: string, draftId: string): Promise<AppState>
+  }
+  mail: {
+    /** Saves (or with null, removes) an account's password in the keychain. */
+    setPassword(accountId: string, password: string | null): Promise<AppState>
+    /** Logs in to IMAP and SMTP; throws with what failed. */
+    test(accountId: string): Promise<AppState>
+  }
+  notes: {
+    setToken(sourceId: string, token: string | null): Promise<AppState>
+    /** How many notes the source returns; throws with why it can't be read. */
+    test(sourceId: string): Promise<number>
+    pickVault(): Promise<string | null>
   }
   imessage: {
     /** Texts "Xarı Bülbül is connected." to the first allowed sender. Throws with the reason when it can't. */

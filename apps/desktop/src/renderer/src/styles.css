@@ -3787,6 +3787,136 @@ body.resizing * {
   gap: 6px;
 }
 
+/* Automations tab: runs in the sidebar, and a dialog to review the emails a run wrote. */
+.auto-panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.auto-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 4px 0;
+}
+.auto-runs {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.auto-run {
+  width: 100%;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  color: var(--text);
+}
+.auto-run:hover {
+  background: var(--panel-2);
+}
+.auto-run.active {
+  background: var(--panel-2);
+}
+.auto-run-top,
+.auto-run-bottom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.auto-run-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.auto-run.unread .auto-run-name {
+  font-weight: 600;
+}
+.auto-run.unread .auto-run-name::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  vertical-align: middle;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.auto-run-summary {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.run-dialog {
+  width: min(760px, 94vw);
+  max-height: 82vh;
+  overflow-y: auto;
+  outline: none;
+}
+.run-dialog-head,
+.run-drafts-head,
+.draft-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.run-summary {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.45;
+}
+.run-drafts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.draft-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--panel-2);
+}
+.draft-card.sent,
+.draft-card.skipped {
+  opacity: 0.72;
+}
+.draft-subject {
+  font-weight: 600;
+}
+.draft-body {
+  margin: 0;
+  font: inherit;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.45;
+}
+.draft-edit {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 6px 10px;
+  align-items: center;
+}
+.draft-edit textarea {
+  grid-column: 1 / -1;
+  resize: vertical;
+  font: inherit;
+}
+
 /* Bots tab. */
 .bots-panel {
   flex: 1;
