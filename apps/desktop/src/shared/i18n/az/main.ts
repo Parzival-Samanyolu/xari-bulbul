@@ -170,4 +170,8 @@ export default {
   'main.automation.sourceGone': 'Bu qeyd mənbəyi artıq yoxdur.',
   'main.automation.sourceOff': 'Əvvəlcə qeyd mənbəyini aktiv edin.',
   'main.dialog.vaultFolder': 'Obsidian vault qovluğunu seçin',
+  'main.menu.aboutQaqash': 'Qaqaş haqqında',
+  'main.menu.hideQaqash': 'Qaqaş-ı gizlət',
+  'main.menu.quitQaqash': 'Qaqaş-dan çıx',
+  'main.menu.githubQaqash': 'GitHub-da Qaqaş',
 } satisfies Record<keyof typeof en, Message>

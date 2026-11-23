@@ -438,4 +438,5 @@ export default {
   'bots.fields.addTo': 'Добавить в список «{list}»',
   'bots.onboard.badge.chatgptPlan': 'Plus или Pro',
   'bots.onboard.provider.chatgpt': 'Модели OpenAI, оплачиваемые из вашего плана ChatGPT. Войдите, API-ключ не нужен.',
+  'bots.onboard.finishQaqash': 'Начать работу с Qaqaş',
 } satisfies Record<keyof typeof en, Message>

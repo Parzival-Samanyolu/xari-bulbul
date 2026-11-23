@@ -430,4 +430,5 @@ export default {
   'bots.fields.addTo': '{list} listesine ekle',
   'bots.onboard.badge.chatgptPlan': 'Plus veya Pro',
   'bots.onboard.provider.chatgpt': 'ChatGPT planınızdan ödenen OpenAI modelleri. Giriş yapın, API anahtarı gerekmez.',
+  'bots.onboard.finishQaqash': 'Qaqaş’ı kullanmaya başla',
 } satisfies Record<keyof typeof en, Message>

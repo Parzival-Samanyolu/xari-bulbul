@@ -152,7 +152,7 @@ export function Onboarding({ app, onState, onError }: Props) {
           )}
           {id === 'done' ? (
             <button className="btn primary" onClick={finish}>
-              {t('bots.onboard.finish')}
+              {t(EDITION.id === 'qaqash' ? 'bots.onboard.finishQaqash' : 'bots.onboard.finish')}
             </button>
           ) : (
             <button className="btn primary" onClick={() => go(step + 1)}>

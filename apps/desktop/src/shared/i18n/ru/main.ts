@@ -188,4 +188,8 @@ export default {
   'main.automation.sourceGone': 'Этого источника заметок больше нет.',
   'main.automation.sourceOff': 'Сначала включите источник заметок.',
   'main.dialog.vaultFolder': 'Выберите папку хранилища Obsidian',
+  'main.menu.aboutQaqash': 'О программе Qaqaş',
+  'main.menu.hideQaqash': 'Скрыть Qaqaş',
+  'main.menu.quitQaqash': 'Завершить Qaqaş',
+  'main.menu.githubQaqash': 'Qaqaş на GitHub',
 } satisfies Record<keyof typeof en, Message>

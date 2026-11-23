@@ -170,4 +170,8 @@ export default {
   'main.automation.sourceGone': 'Bu not kaynağı artık yok.',
   'main.automation.sourceOff': 'Önce not kaynağını açın.',
   'main.dialog.vaultFolder': 'Obsidian kasa klasörünüzü seçin',
+  'main.menu.aboutQaqash': 'Qaqaş hakkında',
+  'main.menu.hideQaqash': 'Qaqaş’ı gizle',
+  'main.menu.quitQaqash': 'Qaqaş’tan çık',
+  'main.menu.githubQaqash': 'GitHub’da Qaqaş',
 } satisfies Record<keyof typeof en, Message>

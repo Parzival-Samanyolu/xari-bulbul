@@ -430,4 +430,5 @@ export default {
   'bots.fields.addTo': 'Add to {list}',
   'bots.onboard.badge.chatgptPlan': 'Plus or Pro',
   'bots.onboard.provider.chatgpt': 'OpenAI models paid from your ChatGPT plan. Sign in, no API key.',
+  'bots.onboard.finishQaqash': 'Start using Qaqaş',
 } as const satisfies Record<string, Message>

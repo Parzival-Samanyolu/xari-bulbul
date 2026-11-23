@@ -176,4 +176,8 @@ export default {
   'main.automation.sourceGone': 'That notes source no longer exists.',
   'main.automation.sourceOff': 'Turn the notes source on first.',
   'main.dialog.vaultFolder': 'Choose your Obsidian vault folder',
+  'main.menu.aboutQaqash': 'About Qaqaş',
+  'main.menu.hideQaqash': 'Hide Qaqaş',
+  'main.menu.quitQaqash': 'Quit Qaqaş',
+  'main.menu.githubQaqash': 'Qaqaş on GitHub',
 } as const satisfies Record<string, Message>
