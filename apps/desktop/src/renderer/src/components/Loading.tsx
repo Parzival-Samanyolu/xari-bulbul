@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import mark from '../assets/mark.png'
+import { mark } from '../lib/mark'
 import { useT } from '../lib/i18n'
 
 /** How long startup may take before the loading screen shows, so a quick start never flashes it. */

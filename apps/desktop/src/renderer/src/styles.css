@@ -2108,6 +2108,8 @@ button.sb-item:hover {
 .welcome-mark {
   display: block;
   margin: 0 0 14px -4px;
+  /* Each app's mark has its own shape; keep it whole inside the same box. */
+  object-fit: contain;
 }
 
 /* ---------- providers ---------- */
@@ -4707,6 +4709,7 @@ body.resizing * {
 }
 .loading-mark {
   opacity: 0.9;
+  object-fit: contain;
 }
 .loading.shown {
   animation: so-fade 0.3s ease-out;

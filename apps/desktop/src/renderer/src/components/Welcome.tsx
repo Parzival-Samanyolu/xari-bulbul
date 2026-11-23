@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { AppState } from '../../../shared/ipc'
 import { api } from '../lib/api'
 import { useT } from '../lib/i18n'
-import mark from '../assets/mark.png'
+import { mark } from '../lib/mark'
 import { PluginDialog } from './PluginDialog'
 import { EDITION } from '../../../shared/edition'
 

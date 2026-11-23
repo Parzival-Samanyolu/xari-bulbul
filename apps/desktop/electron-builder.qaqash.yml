@@ -11,13 +11,17 @@ extraMetadata:
   description: Qaqaş — bots that chat, answer on WhatsApp and iMessage, and handle your email
 mac:
   category: public.app-category.social-networking
+  icon: build/qaqash/icon.png
   extendInfo:
     CFBundleDisplayName: Qaqaş
     NSMicrophoneUsageDescription: Qaqaş uses the microphone when you dictate a message.
+win:
+  icon: build/qaqash/icon.png
 nsis:
   shortcutName: Qaqaş
 linux:
   category: Network
+  icon: build/qaqash/icon.png
   executableName: qaqash
   synopsis: AI bots for chat, messaging and email
   description: Qaqaş runs AI bots that chat with you, answer on WhatsApp and iMessage, and handle your email, with any model.
