@@ -166,4 +166,12 @@ export default {
   'main.process.terminal': 'Terminal',
   'main.error.chatgptDenied': 'Sign-in was declined in the browser. Nothing changed.',
   'main.error.chatgptSignIn': 'ChatGPT sign-in didn’t finish: {detail}',
+  'main.automation.failed': 'Failed: {error}',
+  'main.automation.sent': { one: '{count} email sent.', other: '{count} emails sent.' },
+  'main.automation.waiting': { one: '{count} email waits for your review in Automations.', other: '{count} emails wait for your review in Automations.' },
+  'main.automation.chainContext': 'The automation “{name}” ran just before this one and ended with:\n{summary}',
+  'main.automation.someFailed': { one: '{count} email could not be sent. It stays in the inbox with the reason.', other: '{count} emails could not be sent. They stay in the inbox with the reason.' },
+  'main.automation.sourceGone': 'That notes source no longer exists.',
+  'main.automation.sourceOff': 'Turn the notes source on first.',
+  'main.dialog.vaultFolder': 'Choose your Obsidian vault folder',
 } as const satisfies Record<string, Message>

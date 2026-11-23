@@ -14,6 +14,7 @@
     "./gateway-senders": "./src/gateways/senders.ts",
     "./profile": "./src/settings/profile.ts",
     "./mcp-presets": "./src/mcp/presets.ts",
+    "./mail-presets": "./src/mail/presets.ts",
     "./voice": "./src/voice/transcribe.ts",
     "./wav": "./src/voice/wav.ts",
     "./speech": "./src/voice/speech-text.ts",
@@ -28,11 +29,18 @@
     "diff": "^9.0.0",
     "fast-glob": "^3.3.3",
     "ignore": "^7.0.10",
+    "imapflow": "^2.12.2",
     "jose": "^6.2.12",
+    "mailparser": "^3.15.0",
+    "nodemailer": "^10.6.1",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@types/mailparser": "^3.9.0",
     "@types/node": "^22.19.0",
+    "@types/nodemailer": "^8.0.2",
+    "@types/smtp-server": "^3.5.13",
+    "smtp-server": "^3.21.7",
     "typescript": "~5.9.3",
     "vitest": "^4.1.11"
   }

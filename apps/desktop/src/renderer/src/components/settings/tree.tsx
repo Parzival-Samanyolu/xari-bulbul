@@ -8,7 +8,8 @@ import type { IconName } from './icons'
 import { DesktopPage, LimitsPage, OutputPage, TerminalPage, ToolAccessPage } from './pages/advanced'
 import { BotsPage } from './pages/bots'
 import { IMessagePage, WhatsAppPage } from './pages/gateways'
-import { PluginsPage, SchedulesPage, SessionsPage, UsagePage, VersionPage } from './pages/data'
+import { AutomationsPage, MailAccountsPage, NotesSourcesPage } from './pages/automations'
+import { PluginsPage, SessionsPage, UsagePage, VersionPage } from './pages/data'
 import { AppearancePage, ChatPage, InstructionsPage, NotificationsPage, ShortcutsPage, WorkspacePage, shortcutLabel } from './pages/general'
 import { AuxModelsPage, FallbackPage, MainModelPage, MoaPage, SubagentsPage } from './pages/model'
 import { LocalModelsPage } from './pages/local'
@@ -325,7 +326,11 @@ export const TABS: TabDef[] = [
     label: 'settings.tab.schedules',
     icon: 'schedules',
     description: 'settings.tab.schedules.desc',
-    sections: [{ id: 'schedules', label: 'settings.section.schedules', page: SchedulesPage, rows: [] }],
+    sections: [
+      { id: 'schedules', label: 'settings.section.schedules', description: 'settings.section.schedules.desc', page: AutomationsPage, rows: [] },
+      { id: 'automations.mail', label: 'settings.section.mailAccounts', page: MailAccountsPage, rows: [['settings.mail.blocklist']] },
+      { id: 'automations.notes', label: 'settings.section.notes', page: NotesSourcesPage, rows: [] },
+    ],
   },
   {
     id: 'memory',
@@ -562,6 +567,7 @@ const ALIASES: Record<string, string> = {
   voice: 'voice.stt',
   about: 'about.version',
   'about.data': 'data',
+  automations: 'schedules',
 }
 
 function find(id: string): PageEntry | null {

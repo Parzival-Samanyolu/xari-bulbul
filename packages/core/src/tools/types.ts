@@ -6,6 +6,8 @@ import type { Session, SessionMeta } from '../sessions/store.js'
 import type { BrowserAccess } from './browser.js'
 import type { JobRegistry } from './jobs.js'
 import type { WebSearchConfig } from './web-search.js'
+import type { MailAccess } from '../mail/types.js'
+import type { NotesAccess } from '../notes/types.js'
 import type { ImageAttachment, JsonSchema, TodoItem } from '../types.js'
 
 export type ToolKind = 'read' | 'edit' | 'exec' | 'network' | 'other'
@@ -33,6 +35,10 @@ export interface ToolContext {
   jobs?: JobRegistry
   /** The agent's browser, launched on first use; absent when the browser tools are off. */
   browser?: BrowserAccess
+  /** Connected email accounts; absent (tools hidden) when none are set up. */
+  mail?: MailAccess
+  /** Connected notes; absent (tools hidden) when none are set up. */
+  notes?: NotesAccess
   /** Runs a subagent; provided by the agent loop when subagents are enabled. */
   runSubagent?(input: SubagentInput): Promise<ToolResult>
   /** Asks the user a question and waits for the answer; absent where nobody can answer (headless, subagents). */

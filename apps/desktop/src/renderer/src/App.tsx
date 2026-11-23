@@ -419,7 +419,7 @@ export function App() {
   return (
     <I18nProvider setting={language} system={system}>
       <div className="app">
-        <Sidebar app={app} onState={setState} onError={fail} onSettings={() => openSettings()} settingsOpen={!!settingsPage} onChat={() => setSettingsPage(null)} onEditBot={editBot} onEditLobby={editLobby} />
+        <Sidebar app={app} onState={setState} onError={fail} onSettings={() => openSettings()} onAutomations={() => openSettings('schedules')} settingsOpen={!!settingsPage} onChat={() => setSettingsPage(null)} onEditBot={editBot} onEditLobby={editLobby} />
         <main className="main">
           {welcome ? (
             <Welcome app={app} onState={setState} onError={fail} onSettings={openSettings} />

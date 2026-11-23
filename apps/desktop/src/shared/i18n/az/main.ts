@@ -160,4 +160,12 @@ export default {
   'main.process.terminal': 'Terminal',
   'main.error.chatgptDenied': 'Giriş brauzerdə rədd edildi. Heç nə dəyişmədi.',
   'main.error.chatgptSignIn': 'ChatGPT-yə giriş tamamlanmadı: {detail}',
+  'main.automation.failed': 'Alınmadı: {error}',
+  'main.automation.sent': { one: '{count} e-poçt göndərildi.', other: '{count} e-poçt göndərildi.' },
+  'main.automation.waiting': { one: '{count} e-poçt Avtomatlaşdırmalarda yoxlamanızı gözləyir.', other: '{count} e-poçt Avtomatlaşdırmalarda yoxlamanızı gözləyir.' },
+  'main.automation.chainContext': '“{name}” avtomatlaşdırması bundan əvvəl işlədi və belə bitdi:\n{summary}',
+  'main.automation.someFailed': { one: '{count} e-poçt göndərilmədi. Səbəbi ilə birlikdə gələnlər qutusunda qalır.', other: '{count} e-poçt göndərilmədi. Səbəbi ilə birlikdə gələnlər qutusunda qalır.' },
+  'main.automation.sourceGone': 'Bu qeyd mənbəyi artıq yoxdur.',
+  'main.automation.sourceOff': 'Əvvəlcə qeyd mənbəyini aktiv edin.',
+  'main.dialog.vaultFolder': 'Obsidian vault qovluğunu seçin',
 } satisfies Record<keyof typeof en, Message>

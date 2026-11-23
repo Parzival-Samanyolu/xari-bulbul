@@ -345,6 +345,20 @@ function registerIpc() {
   handle('skills.browse', (repo: string) => c.browseSkills(repo))
   handle('skills.installFound', (key: string) => c.installFoundSkill(key))
   handle('schedules.runNow', (id: string) => c.runScheduleNow(id))
+  handle('automations.markRead', (id: string) => c.automationsMarkRead(id))
+  handle('automations.removeRun', (id: string) => c.automationsRemoveRun(id))
+  handle('automations.send', (runId: string, draftId: string) => c.draftSend(runId, draftId))
+  handle('automations.sendAll', (runId: string) => c.draftSendAll(runId))
+  handle('automations.edit', (runId: string, draftId: string, patch: { to?: string; cc?: string; subject?: string; body?: string; disclose?: boolean }) => c.draftEdit(runId, draftId, patch))
+  handle('automations.skip', (runId: string, draftId: string) => c.draftSkip(runId, draftId))
+  handle('mail.setPassword', (id: string, password: string | null) => c.mailSetPassword(id, password))
+  handle('mail.test', (id: string) => c.mailTest(id))
+  handle('notes.setToken', (id: string, token: string | null) => c.notesSetToken(id, token))
+  handle('notes.test', (id: string) => c.notesTest(id))
+  handle('notes.pickVault', async () => {
+    const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory'], title: tm('main.dialog.vaultFolder') })
+    return r.canceled ? null : (r.filePaths[0] ?? null)
+  })
   handle('schedules.pickFolder', async () => {
     const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: tm('main.dialog.scheduleFolder'), defaultPath: c.state().workspace ?? undefined })
     return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]

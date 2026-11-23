@@ -439,6 +439,11 @@ export class WhatsAppGateway {
     await this.sendText(this.selfJid(), `${this.d.config().prefix}${WA_APPROVAL_TEXT(subject)}`).catch(() => {})
   }
 
+  /** A note in your "Message yourself" chat, e.g. an automation's summary. */
+  async sendToSelf(text: string): Promise<void> {
+    await this.sendReply(this.selfJid(), text)
+  }
+
   /** "Xarı Bülbül is connected." in your "Message yourself" chat. */
   async sendTest(): Promise<void> {
     await this.sendText(this.selfJid(), `${this.d.config().prefix}${WA_TEST_TEXT}`)

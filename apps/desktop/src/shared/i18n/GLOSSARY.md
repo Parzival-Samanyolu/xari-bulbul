@@ -67,6 +67,13 @@ The chosen translation of each recurring term in the app. Use these every time, 
 | extension | genişləndirmə | uzantı | расширение | Tools and commands from `.harness/`. |
 | MCP server | MCP serveri | MCP sunucusu | MCP-сервер | |
 | schedule | cədvəl | zamanlama | расписание | Scheduled runs. "Scheduled task": *planlaşdırılmış tapşırıq* / *zamanlanmış görev* / *задача по расписанию*. |
+| automation | avtomatlaşdırma | otomasyon | автоматизация | A schedule plus its trigger, sources and follow-up actions. Replaces "schedule" in the UI. |
+| inbox (automations) | gələnlər qutusu | gelen kutusu | входящие | The Automations tab: runs and the emails they wrote. |
+| draft | qaralama | taslak | черновик | An email waiting for review. |
+| email | e-poçt | e-posta | письмо | "Email account": *e-poçt hesabı* / *e-posta hesabı* / *почтовый ящик*. |
+| notes | qeydlər | notlar | заметки | Obsidian, Apple Notes, Notion. Product names stay untranslated. |
+| send | göndər | gönder | отправить | Button. |
+| skip | keç | atla | пропустить | Button: leave a draft unsent. |
 | task / to-do | tapşırıq | görev | задача | Items in the agent's to-do list. |
 | session | sessiya | oturum | сеанс | Prefer "chat" in UI copy. Use this only where the code concept leaks, as in usage per session. |
 | context | kontekst | bağlam | контекст | The model's context window. "Context is full": *Kontekst doludur* / *Bağlam dolu* / *Контекст заполнен*. |

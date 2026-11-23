@@ -4,6 +4,7 @@ import { isBotChat } from '@harness/core/bots'
 import { api } from '../lib/api'
 import { basename } from '../lib/format'
 import { useFormat, useT } from '../lib/i18n'
+import { AutomationsPanel } from './AutomationsPanel'
 import { BotsPanel } from './BotsPanel'
 
 interface Props {
@@ -11,6 +12,8 @@ interface Props {
   onState: (s: AppState) => void
   onError: (e: unknown) => void
   onSettings: () => void
+  /** Opens Settings at the Automations tab. */
+  onAutomations: () => void
   onChat: () => void
   settingsOpen: boolean
   /** Opens the bot dialog: a bot's id to edit it, nothing for a new one. */
@@ -19,9 +22,9 @@ interface Props {
   onEditLobby: (id?: string) => void
 }
 
-type Tab = 'sessions' | 'bots'
+type Tab = 'sessions' | 'bots' | 'automations'
 
-export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpen, onEditBot, onEditLobby }: Props) {
+export function Sidebar({ app, onState, onError, onSettings, onAutomations, onChat, settingsOpen, onEditBot, onEditLobby }: Props) {
   const { t } = useT()
   const fmt = useFormat()
   const [menu, setMenu] = useState(false)
@@ -35,13 +38,17 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
   const onBotChat = !!app.session && (isBotChat(app.settings, app.session.meta) || (!!app.session.meta.lobbyId && botsOn))
   const [tab, setTab] = useState<Tab>(onBotChat ? 'bots' : 'sessions')
   // Opening a chat shows the tab it belongs to (a notification click, ⌘1–9, a new chat).
-  useEffect(() => setTab(onBotChat ? 'bots' : 'sessions'), [current, onBotChat])
-  const shownTab: Tab = botsOn ? tab : 'sessions'
+  useEffect(() => setTab((t) => (t === 'automations' ? t : onBotChat ? 'bots' : 'sessions')), [current, onBotChat])
+  // The Automations tab shows once there is something to automate with or a run to look at.
+  const autoOn = app.settings.schedules.length > 0 || app.automations.runs.length > 0 || app.settings.mail.accounts.length > 0
+  const tabs: Tab[] = ['sessions', ...(botsOn ? (['bots'] as const) : []), ...(autoOn ? (['automations'] as const) : [])]
+  const shownTab: Tab = tabs.includes(tab) ? tab : 'sessions'
   const unread = app.bots.filter((b) => b.unread).length + app.lobbies.filter((l) => l.unread).length
   const tabKeys = (e: React.KeyboardEvent) => {
     if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
     e.preventDefault()
-    const next: Tab = shownTab === 'sessions' ? 'bots' : 'sessions'
+    const i = tabs.indexOf(shownTab)
+    const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length]
     setTab(next)
     document.getElementById(`side-tab-${next}`)?.focus()
   }
@@ -148,9 +155,9 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
   return (
     <aside className="sidebar" aria-label={t('bots.sidebar.chats')}>
       <div className="sidebar-drag" />
-      {botsOn && (
+      {tabs.length > 1 && (
         <div className="side-tabs" role="tablist" aria-label={t('bots.sidebar.tabs')}>
-          {(['sessions', 'bots'] as const).map((id) => (
+          {tabs.map((id) => (
             <button
               key={id}
               id={`side-tab-${id}`}
@@ -162,18 +169,23 @@ export function Sidebar({ app, onState, onError, onSettings, onChat, settingsOpe
               onClick={() => setTab(id)}
               onKeyDown={tabKeys}
             >
-              {id === 'sessions' ? t('bots.sidebar.sessions') : t('bots.sidebar.bots')}
+              {id === 'sessions' ? t('bots.sidebar.sessions') : id === 'bots' ? t('bots.sidebar.bots') : t('auto.inbox.tab')}
               {id === 'bots' && unread > 0 && <span className="side-tab-dot" role="img" aria-label={t('bots.sidebar.newReplies', { count: unread })} />}
+              {id === 'automations' && app.automations.unread > 0 && <span className="side-tab-dot" role="img" aria-label={t('auto.inbox.unread', { count: app.automations.unread })} />}
             </button>
           ))}
         </div>
       )}
-      {shownTab === 'bots' ? (
+      {shownTab === 'automations' ? (
+        <div className="side-panel" id="side-panel-automations" role="tabpanel" aria-labelledby="side-tab-automations">
+          <AutomationsPanel app={app} onState={onState} onError={onError} onManage={onAutomations} onChat={onChat} />
+        </div>
+      ) : shownTab === 'bots' ? (
         <div className="side-panel" id="side-panel-bots" role="tabpanel" aria-labelledby="side-tab-bots">
           <BotsPanel app={app} onState={onState} onError={onError} onEditBot={onEditBot} onEditLobby={onEditLobby} onChat={onChat} settingsOpen={settingsOpen} />
         </div>
       ) : (
-        <div className="side-panel" id="side-panel-sessions" role={botsOn ? 'tabpanel' : undefined} aria-labelledby={botsOn ? 'side-tab-sessions' : undefined}>
+        <div className="side-panel" id="side-panel-sessions" role={tabs.length > 1 ? 'tabpanel' : undefined} aria-labelledby={tabs.length > 1 ? 'side-tab-sessions' : undefined}>
           <div className="workspace">
             <button ref={trigger} className="workspace-btn" aria-haspopup="menu" aria-expanded={menu} onClick={() => setMenu((m) => !m)}>
               <span className="workspace-name">{t('bots.sidebar.folders')}</span>
