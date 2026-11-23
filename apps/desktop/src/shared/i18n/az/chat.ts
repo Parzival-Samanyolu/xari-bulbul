@@ -34,11 +34,11 @@ export default {
   'chat.notice.fixAgent': 'Agent limitlərini aç',
   'chat.empty.title': 'Nə quraq?',
   'chat.empty.intro':
-    'Xarı Bülbül {folder} qovluğunda kodu oxuya, axtara, redaktə edə və işə sala bilər. Aşağıda başqa icazə rejimi seçməsəniz, nəyisə dəyişməzdən əvvəl soruşur.',
+    'Xarı {folder} qovluğunda kodu oxuya, axtara, redaktə edə və işə sala bilər. Aşağıda başqa icazə rejimi seçməsəniz, nəyisə dəyişməzdən əvvəl soruşur.',
   'chat.empty.tipModel': 'modeli dəyiş',
   'chat.empty.tipCommands': 'əmrlər',
   'chat.empty.tipStop': 'dayandır',
-  'chat.empty.agentsMd': 'Layihəyə {file} faylı əlavə edin: Xarı Bülbül oradakı təlimatlara həmişə əməl edəcək.',
+  'chat.empty.agentsMd': 'Layihəyə {file} faylı əlavə edin: Xarı oradakı təlimatlara həmişə əməl edəcək.',
   'chat.empty.commands': 'Əmrləriniz: {list}',
   'chat.revert.changedOne': 'Dəyişdirildi: {name}',
   'chat.revert.changedMany': { one: '{count} fayl dəyişdirildi', other: '{count} fayl dəyişdirildi' },
@@ -106,7 +106,7 @@ export default {
   'chat.composer.lobbyIdleUnnamed': 'Qrup söhbətinə mesaj. Bir bota əvvəlcə müraciət etmək üçün @ad yazın',
   'chat.composer.working': 'İşləyir… (dayandırmaq üçün Esc)',
   'chat.composer.messageBot': '{name} üçün mesaj',
-  'chat.composer.placeholder': 'Xarı Bülbüldən nəsə etməsini istəyin… (əmrlər üçün /)',
+  'chat.composer.placeholder': 'Xarı-dan nəsə etməsini istəyin… (əmrlər üçün /)',
   'chat.composer.attach': 'Fayl əlavə et',
   'chat.composer.attachTitle': 'Fayl əlavə et (və ya sürükləyib buraxın, yapışdırın)',
   'chat.composer.switchModel': 'Modeli dəyiş ({key})',
@@ -259,7 +259,7 @@ export default {
   'chat.statusbar.files': 'Fayllar',
 
   // Loading.tsx
-  'chat.loading.failed': 'Xarı Bülbül başlaya bilmədi.',
+  'chat.loading.failed': 'Xarı başlaya bilmədi.',
   'chat.loading.waking': 'Oyanır',
 
   // LayoutPicker.tsx

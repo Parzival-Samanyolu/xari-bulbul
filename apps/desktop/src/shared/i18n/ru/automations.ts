@@ -147,7 +147,7 @@ export default {
   'settings.notes.vault': 'Папка хранилища',
   'settings.notes.vaultHint': 'Папка с вашими заметками в Markdown. Папка .obsidian пропускается.',
   'settings.notes.appleFolder': 'Папка',
-  'settings.notes.appleHint': 'Оставьте пустым, чтобы читать все папки. В первый раз macOS спросит, можно ли Xarı Bülbül управлять приложением «Заметки».',
+  'settings.notes.appleHint': 'Оставьте пустым, чтобы читать все папки. В первый раз macOS спросит, можно ли Xarı управлять приложением «Заметки».',
   'settings.notes.allFolders': 'Все папки',
   'settings.notes.notionToken': 'Токен интеграции',
   'settings.notes.notionHint': 'Создайте внутреннюю интеграцию, вставьте сюда её токен, затем откройте ей доступ к нужным страницам (••• › Connections).',

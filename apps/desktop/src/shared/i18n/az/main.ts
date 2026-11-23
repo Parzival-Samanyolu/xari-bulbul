@@ -2,12 +2,12 @@ import type { Message } from '@harness/core/i18n'
 import type en from '../en/main'
 
 export default {
-  'main.menu.about': 'Xarı Bülbül haqqında',
+  'main.menu.about': 'Xarı haqqında',
   'main.menu.services': 'Xidmətlər',
-  'main.menu.hide': 'Xarı Bülbülü gizlət',
+  'main.menu.hide': 'Xarı-nı gizlət',
   'main.menu.hideOthers': 'Digərlərini gizlət',
   'main.menu.showAll': 'Hamısını göstər',
-  'main.menu.quit': 'Xarı Bülbüldən çıx',
+  'main.menu.quit': 'Xarı-dan çıx',
   'main.menu.file': 'Fayl',
   'main.menu.closeWindow': 'Pəncərəni bağla',
   'main.menu.edit': 'Redaktə',
@@ -35,7 +35,7 @@ export default {
   'main.menu.zoom': 'Pəncərəni böyüt',
   'main.menu.front': 'Hamısını önə gətir',
   'main.menu.help': 'Kömək',
-  'main.menu.github': 'GitHub-da Xarı Bülbül',
+  'main.menu.github': 'GitHub-da Xarı',
   'main.dialog.openProject': 'Layihə qovluğunu aç',
   'main.dialog.attachFiles': 'Faylları əlavə et',
   'main.dialog.scheduleFolder': 'Bu cədvəl üçün qovluq',
@@ -91,6 +91,8 @@ export default {
   'main.error.openFolder': 'Əvvəlcə qovluq açın.',
   'main.error.lobbyGone': 'Bu qrup söhbəti artıq yoxdur.',
   'main.error.openLobby': 'Əvvəlcə qrup söhbəti açın.',
+  'main.error.importOnlyQaqash': 'Botların idxalı yalnız Qaqaş-da mümkündür.',
+  'main.error.importNoSource': 'Xarı-nın məlumat qovluğu tapılmadı, idxal ediləcək bot yoxdur.',
   'main.error.providerGone': '“{id}” provayderi artıq yoxdur. Başqa model seçin (⌘/Ctrl+K).',
   'main.error.providerOff': '{name} söndürülüb. Onu Ayarlar › Provayderlər › API açarları bölməsində yandırın və ya başqa model seçin.',
   'main.error.needsKey': '{name} üçün API açarı lazımdır. Onu Ayarlar › Provayderlər › API açarları bölməsində əlavə edin.',
@@ -103,7 +105,7 @@ export default {
   'main.error.avatarTooLarge': 'Bu avatar çox böyükdür.',
   'main.error.absolutePath': 'Mütləq yol gözlənilirdi.',
   'main.error.outsideFolders': 'Bu yol açıq qovluqlardan kənardadır.',
-  'main.error.micOff': 'Mikrofona giriş bağlıdır. Onu System Settings → Privacy & Security → Microphone bölməsində Xarı Bülbül üçün yandırın.',
+  'main.error.micOff': 'Mikrofona giriş bağlıdır. Onu System Settings → Privacy & Security → Microphone bölməsində Xarı üçün yandırın.',
   'main.test.off': 'Bu provayder söndürülüb.',
   'main.test.noKey': 'API açarı təyin edilməyib.',
   'main.test.keyAccepted': {

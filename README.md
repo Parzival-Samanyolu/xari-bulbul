@@ -1,8 +1,8 @@
-<p align="center"><img src="docs/brand/logo-oled-1024.png" width="180" alt="Xarı Bülbül logo: a Caucasian bee-orchid on black"></p>
+<p align="center"><img src="docs/brand/logo-oled-1024.png" width="180" alt="Xarı logo: a Caucasian bee-orchid on black"></p>
 
-# Xarı Bülbül
+# Xarı
 
-*Xarı bülbül* is a flower from Karabakh, and this is an AI coding agent.
+*Xarı bülbül* is a flower from Karabakh, and this is an AI coding agent. The app is called **Xarı** (it was Xarı Bülbül before; the repo keeps the old name, and so does the data folder, so nothing moves for existing users).
 
 An AI coding agent for **macOS, Windows and Linux** that works directly in your project, as a desktop app.
 It reads, searches, edits and runs code, and it can use **any model** on OpenRouter, Ollama Cloud, Google AI Studio (Gemini), Anthropic, OpenAI, Mistral, xAI, Groq, Cerebras, NVIDIA, Z.ai, Samanyolu AI Synapse, or any OpenAI-compatible API. With a ChatGPT Plus or Pro plan you can also **Continue with ChatGPT** and use the plan instead of an API key.
@@ -11,13 +11,13 @@ Built to be owned and extended. The engine is small, readable TypeScript with no
 
 ## Two apps, one codebase
 
-- **Xarı Bülbül** is the coding agent: folders, chats, tools, permissions, MCP and skills.
+- **Xarı** (formerly Xarı Bülbül) is the coding agent: folders, chats, tools, permissions, MCP and skills.
 - **Qaqaş** is the bots app: bots and group chats, WhatsApp and iMessage, and automations that read your email and notes and draft replies for you to review.
 
 Both are built from this repo and share the engine in `packages/core`. Each keeps its own settings and chats.
 
 ```bash
-pnpm dev            # Xarı Bülbül
+pnpm dev            # Xarı
 pnpm dev:qaqash     # Qaqaş
 pnpm dist:qaqash    # Qaqaş installers (release/<version>/Qaqash-*)
 ```
@@ -106,7 +106,7 @@ To keep a development profile separate from your real one:
 HARNESS_DATA_DIR=/tmp/harness-dev pnpm dev
 ```
 
-## Extending Xarı Bülbül
+## Extending Xarı
 
 Extensions live in `~/.harness/` (yours, applied to every project) or `<project>/.harness/` (per project):
 

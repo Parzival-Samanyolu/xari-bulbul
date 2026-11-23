@@ -2,12 +2,12 @@ import type { Message } from '@harness/core/i18n'
 import type en from '../en/main'
 
 export default {
-  'main.menu.about': 'О программе Xarı Bülbül',
+  'main.menu.about': 'О программе Xarı',
   'main.menu.services': 'Службы',
-  'main.menu.hide': 'Скрыть Xarı Bülbül',
+  'main.menu.hide': 'Скрыть Xarı',
   'main.menu.hideOthers': 'Скрыть остальные',
   'main.menu.showAll': 'Показать все',
-  'main.menu.quit': 'Завершить Xarı Bülbül',
+  'main.menu.quit': 'Завершить Xarı',
   'main.menu.file': 'Файл',
   'main.menu.closeWindow': 'Закрыть окно',
   'main.menu.edit': 'Правка',
@@ -35,7 +35,7 @@ export default {
   'main.menu.zoom': 'Изменить масштаб',
   'main.menu.front': 'Все окна — на передний план',
   'main.menu.help': 'Справка',
-  'main.menu.github': 'Xarı Bülbül на GitHub',
+  'main.menu.github': 'Xarı на GitHub',
   'main.dialog.openProject': 'Открыть папку проекта',
   'main.dialog.attachFiles': 'Прикрепить файлы',
   'main.dialog.scheduleFolder': 'Папка для этого расписания',
@@ -91,6 +91,8 @@ export default {
   'main.error.openFolder': 'Сначала откройте папку.',
   'main.error.lobbyGone': 'Этого группового чата больше нет.',
   'main.error.openLobby': 'Сначала откройте групповой чат.',
+  'main.error.importOnlyQaqash': 'Импорт ботов доступен только в Qaqaş.',
+  'main.error.importNoSource': 'Папка данных Xarı не найдена, импортировать нечего.',
   'main.error.providerGone': 'Провайдера «{id}» больше нет. Выберите другую модель (⌘/Ctrl+K).',
   'main.error.providerOff': 'Провайдер {name} выключен. Включите его в разделе Настройки › Провайдеры › API-ключи или выберите другую модель.',
   'main.error.needsKey': 'Для {name} нужен API-ключ. Добавьте его в разделе Настройки › Провайдеры › API-ключи.',
@@ -108,7 +110,7 @@ export default {
   'main.error.avatarTooLarge': 'Этот аватар слишком большой.',
   'main.error.absolutePath': 'Ожидался абсолютный путь.',
   'main.error.outsideFolders': 'Этот путь находится за пределами открытых папок.',
-  'main.error.micOff': 'Доступ к микрофону выключен. Включите его для Xarı Bülbül в разделе Системные настройки → Конфиденциальность и безопасность → Микрофон.',
+  'main.error.micOff': 'Доступ к микрофону выключен. Включите его для Xarı в разделе Системные настройки → Конфиденциальность и безопасность → Микрофон.',
   'main.test.off': 'Этот провайдер выключен.',
   'main.test.noKey': 'API-ключ не задан.',
   'main.test.keyAccepted': {

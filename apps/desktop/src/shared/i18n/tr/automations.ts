@@ -147,7 +147,7 @@ export default {
   'settings.notes.vault': 'Kasa klasörü',
   'settings.notes.vaultHint': 'Markdown notlarınızın bulunduğu klasör. .obsidian klasörü atlanır.',
   'settings.notes.appleFolder': 'Klasör',
-  'settings.notes.appleHint': 'Tüm klasörleri okumak için boş bırakın. İlk seferde macOS, Xarı Bülbül’ün Notlar’ı denetlemesine izin verip vermeyeceğinizi sorar.',
+  'settings.notes.appleHint': 'Tüm klasörleri okumak için boş bırakın. İlk seferde macOS, Xarı’nın Notlar’ı denetlemesine izin verip vermeyeceğinizi sorar.',
   'settings.notes.allFolders': 'Tüm klasörler',
   'settings.notes.notionToken': 'Entegrasyon belirteci',
   'settings.notes.notionHint': 'Dahili bir entegrasyon oluşturun, belirtecini buraya yapıştırın, sonra okunmasını istediğiniz sayfaları onunla paylaşın (••• › Bağlantılar).',

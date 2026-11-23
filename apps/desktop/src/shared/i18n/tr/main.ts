@@ -2,12 +2,12 @@ import type { Message } from '@harness/core/i18n'
 import type en from '../en/main'
 
 export default {
-  'main.menu.about': 'Xarı Bülbül hakkında',
+  'main.menu.about': 'Xarı hakkında',
   'main.menu.services': 'Hizmetler',
-  'main.menu.hide': "Xarı Bülbül'ü gizle",
+  'main.menu.hide': "Xarı'yı gizle",
   'main.menu.hideOthers': 'Diğerlerini gizle',
   'main.menu.showAll': 'Tümünü göster',
-  'main.menu.quit': "Xarı Bülbül'den çık",
+  'main.menu.quit': "Xarı'dan çık",
   'main.menu.file': 'Dosya',
   'main.menu.closeWindow': 'Pencereyi kapat',
   'main.menu.edit': 'Düzen',
@@ -35,7 +35,7 @@ export default {
   'main.menu.zoom': 'Pencereyi büyüt',
   'main.menu.front': 'Tümünü öne getir',
   'main.menu.help': 'Yardım',
-  'main.menu.github': "GitHub'da Xarı Bülbül",
+  'main.menu.github': "GitHub'da Xarı",
   'main.dialog.openProject': 'Proje klasörünü aç',
   'main.dialog.attachFiles': 'Dosya ekle',
   'main.dialog.scheduleFolder': 'Bu zamanlama için klasör',
@@ -91,6 +91,8 @@ export default {
   'main.error.openFolder': 'Önce bir klasör açın.',
   'main.error.lobbyGone': 'Bu grup sohbeti artık yok.',
   'main.error.openLobby': 'Önce bir grup sohbeti açın.',
+  'main.error.importOnlyQaqash': 'Botları içe aktarma yalnızca Qaqaş’ta kullanılabilir.',
+  'main.error.importNoSource': 'Xarı’nın veri klasörü bulunamadı, içe aktarılacak bot yok.',
   'main.error.providerGone': '“{id}” sağlayıcısı artık yok. Başka bir model seçin (⌘/Ctrl+K).',
   'main.error.providerOff': '{name} kapalı. Ayarlar › Sağlayıcılar › API anahtarları bölümünden açın ya da başka bir model seçin.',
   'main.error.needsKey': '{name} için bir API anahtarı gerekiyor. Ayarlar › Sağlayıcılar › API anahtarları bölümünden ekleyin.',
@@ -103,7 +105,7 @@ export default {
   'main.error.avatarTooLarge': 'Bu avatar çok büyük.',
   'main.error.absolutePath': 'Mutlak bir yol bekleniyordu.',
   'main.error.outsideFolders': 'Bu yol açık klasörlerin dışında.',
-  'main.error.micOff': 'Mikrofon erişimi kapalı. Sistem Ayarları → Gizlilik ve Güvenlik → Mikrofon bölümünden Xarı Bülbül için açın.',
+  'main.error.micOff': 'Mikrofon erişimi kapalı. Sistem Ayarları → Gizlilik ve Güvenlik → Mikrofon bölümünden Xarı için açın.',
   'main.test.off': 'Bu sağlayıcı kapalı.',
   'main.test.noKey': 'API anahtarı ayarlanmamış.',
   'main.test.keyAccepted': {
