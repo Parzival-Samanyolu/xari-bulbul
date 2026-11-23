@@ -1,7 +1,7 @@
 {
   "name": "@harness/cli",
   "version": "5.8.1",
-  "description": "Xarı Bülbül in the terminal: the same agent as the desktop app, with the same chats and settings",
+  "description": "Xarı in the terminal: the same agent as the desktop app, with the same chats and settings",
   "license": "MIT",
   "private": true,
   "type": "module",

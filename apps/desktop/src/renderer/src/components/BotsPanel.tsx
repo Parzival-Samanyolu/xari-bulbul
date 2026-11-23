@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import { useFormat, useT } from '../lib/i18n'
 import { BotFaceView } from './BotFace'
 import { BotAvatar, StackedFaces, withBot } from './Bots'
+import { EDITION } from '../../../shared/edition'
 
 type Bot = Settings['bots'][number]
 
@@ -41,6 +42,33 @@ export function BotsPanel({ app, onState, onError, onEditBot, onEditLobby, onCha
   }, [])
 
   const save = (s: Settings) => api.settings.set(s).then(onState, onError)
+  // Qaqaş: bots made before the split live in Xarı's data folder; offer to bring them over.
+  const [importable, setImportable] = useState<{ bots: number; lobbies: number } | null>(null)
+  const [imported, setImported] = useState('')
+  const [importing, setImporting] = useState(false)
+  useEffect(() => {
+    if (EDITION.id !== 'qaqash') return
+    api.bots.importable().then((r) => setImportable(r.available && r.bots + r.lobbies > 0 ? r : null), () => setImportable(null))
+  }, [bots.length])
+  const importBots = () => {
+    setImporting(true)
+    api.bots
+      .importFromXari()
+      .then((r) => {
+        onState(r.state)
+        setImportable(null)
+        setImported(t('bots.import.done', { count: r.bots + r.lobbies }))
+      }, onError)
+      .finally(() => setImporting(false))
+  }
+  const importOffer = importable && (
+    <div className="bots-import">
+      <span className="muted small">{t('bots.import.offer', { count: importable.bots + importable.lobbies })}</span>
+      <button className={`btn ${bots.length ? 'ghost' : ''}`} disabled={importing} onClick={importBots}>
+        {importing ? t('bots.import.importing') : t('bots.import.button')}
+      </button>
+    </div>
+  )
   const open = (b: Bot) => {
     onChat()
     api.bots.open(b.id).then(onState, onError)
@@ -79,6 +107,7 @@ export function BotsPanel({ app, onState, onError, onEditBot, onEditLobby, onCha
             <button className="btn primary" onClick={() => onEditBot()}>
               {t('bots.panel.make')}
             </button>
+            {importOffer}
           </div>
         ) : (
           <ul className="bot-rows" aria-label={t('bots.panel.title')}>
@@ -152,7 +181,10 @@ export function BotsPanel({ app, onState, onError, onEditBot, onEditLobby, onCha
             })}
           </ul>
         )}
-        {bots.length > 0 && !app.workspace && <p className="muted small pad">{t('bots.panel.noFolder')}</p>}
+        {bots.length > 0 && importOffer}
+        {imported && <p className="muted small bots-import-done" role="status">{imported}</p>}
+        {/* Qaqaş bots work in their own folder, so only Xarı asks for one. */}
+        {EDITION.features.coding && bots.length > 0 && !app.workspace && <p className="muted small pad">{t('bots.panel.noFolder')}</p>}
         {bots.length > 0 && <LobbiesSection app={app} onState={onState} onError={onError} onEditLobby={onEditLobby} onChat={onChat} settingsOpen={settingsOpen} />}
       </div>
 

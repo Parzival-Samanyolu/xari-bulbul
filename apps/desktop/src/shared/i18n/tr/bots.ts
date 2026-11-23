@@ -431,4 +431,8 @@ export default {
   'bots.onboard.badge.chatgptPlan': 'Plus veya Pro',
   'bots.onboard.provider.chatgpt': 'ChatGPT planınızdan ödenen OpenAI modelleri. Giriş yapın, API anahtarı gerekmez.',
   'bots.onboard.finishQaqash': 'Qaqaş’ı kullanmaya başla',
+  'bots.import.offer': { one: 'Xarı’dan {count} bot veya grup sohbeti buraya taşınabilir.', other: 'Xarı’dan {count} bot ve grup sohbeti buraya taşınabilir.' },
+  'bots.import.button': 'Buraya taşı',
+  'bots.import.importing': 'Taşınıyor…',
+  'bots.import.done': { one: '{count} bot sohbetleriyle birlikde taşındı. Xarı kendi kopyasını saklıyor.', other: '{count} bot ve grup sohbeti, sohbetleriyle birlikde taşındı. Xarı kendi kopyasını saklıyor.' },
 } satisfies Record<keyof typeof en, Message>

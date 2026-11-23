@@ -1,4 +1,4 @@
-# xari: Xarı Bülbül in the terminal
+# xari: Xarı in the terminal
 
 The desktop app's agent, in a terminal. It runs the same engine (`@harness/core`) with the same tools,
 MCP servers, memory, skills and permission modes, and it uses the **same data folder**, so a chat
@@ -52,6 +52,30 @@ Use `--mode auto` (or allow rules in settings) for runs that must edit files or 
 commands still ask, so they are denied in `-p`.
 
 Exit codes: `0` done, `1` error, `2` usage, `3` budget, `4` step limit, `130` interrupted (Ctrl+C).
+
+## The interactive chat
+
+Run `xari` in a project folder. What's finished scrolls up like normal terminal output, so your
+terminal's own scrolling, search and copy work; only the bottom is live: the reply being written,
+running tools, approvals and the prompt.
+
+| Key | Does |
+|---|---|
+| `enter` | send (while it works, your message waits in a queue) |
+| `alt+enter`, `ctrl+j` | new line in the prompt; pasted text keeps its line breaks |
+| `esc` | stop the agent; twice clears the prompt |
+| `shift+tab` | cycle Ask → Auto-edit → Plan → Full auto |
+| `↑` `↓` | earlier prompts (saved in the data folder) |
+| `tab` | complete a `/` command |
+| `ctrl+c` | stop, then clear, then (twice) quit · `ctrl+d` quits on an empty prompt |
+| `ctrl+l` | clear the screen |
+
+Approvals show the command or the change. Answer with `1`/`y` (yes), `2`/`a` (yes for the rest of
+the chat) or `3`/`n`, or just type what it should do instead and press Enter.
+
+Commands: `/help`, `/new`, `/resume`, `/model [provider/model]`, `/mode [mode]`, `/compact`,
+`/undo` (put back the files the last turn changed), `/cost`, `/exit`, plus your own commands and skills.
+Colours follow `NO_COLOR`.
 
 ## Where things live
 

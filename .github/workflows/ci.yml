@@ -26,3 +26,4 @@ jobs:
       - run: pnpm build
       # The bots app (Qaqaş) is the same code built as another edition.
       - run: pnpm --filter @harness/desktop build:qaqash
+      - run: pnpm build:cli

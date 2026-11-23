@@ -431,4 +431,8 @@ export default {
   'bots.onboard.badge.chatgptPlan': 'Plus or Pro',
   'bots.onboard.provider.chatgpt': 'OpenAI models paid from your ChatGPT plan. Sign in, no API key.',
   'bots.onboard.finishQaqash': 'Start using Qaqaş',
+  'bots.import.offer': { one: '{count} bot or group chat from Xarı can come over.', other: '{count} bots and group chats from Xarı can come over.' },
+  'bots.import.button': 'Bring them here',
+  'bots.import.importing': 'Bringing them…',
+  'bots.import.done': { one: 'Brought over {count} bot with its chats. Xarı keeps its copy.', other: 'Brought over {count} bots and group chats with their chats. Xarı keeps its copy.' },
 } as const satisfies Record<string, Message>

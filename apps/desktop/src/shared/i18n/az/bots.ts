@@ -431,4 +431,8 @@ export default {
   'bots.onboard.badge.chatgptPlan': 'Plus və ya Pro',
   'bots.onboard.provider.chatgpt': 'ChatGPT planınızdan ödənilən OpenAI modelləri. Daxil olun, API açarı lazım deyil.',
   'bots.onboard.finishQaqash': 'Qaqaş ilə işə başla',
+  'bots.import.offer': { one: 'Xarı-dan {count} bot və ya qrup söhbəti köçürülə bilər.', other: 'Xarı-dan {count} bot və qrup söhbəti köçürülə bilər.' },
+  'bots.import.button': 'Buraya köçür',
+  'bots.import.importing': 'Köçürülür…',
+  'bots.import.done': { one: '{count} bot söhbətləri ilə birlikdə köçürüldü. Xarı öz nüsxəsini saxlayır.', other: '{count} bot və qrup söhbəti söhbətləri ilə birlikdə köçürüldü. Xarı öz nüsxəsini saxlayır.' },
 } satisfies Record<keyof typeof en, Message>

@@ -439,4 +439,8 @@ export default {
   'bots.onboard.badge.chatgptPlan': 'Plus или Pro',
   'bots.onboard.provider.chatgpt': 'Модели OpenAI, оплачиваемые из вашего плана ChatGPT. Войдите, API-ключ не нужен.',
   'bots.onboard.finishQaqash': 'Начать работу с Qaqaş',
+  'bots.import.offer': { one: 'Из Xarı можно перенести {count} бота или групповой чат.', few: 'Из Xarı можно перенести {count} бота и групповых чата.', many: 'Из Xarı можно перенести {count} ботов и групповых чатов.', other: 'Из Xarı можно перенести {count} бота и групповых чата.' },
+  'bots.import.button': 'Перенести сюда',
+  'bots.import.importing': 'Переносим…',
+  'bots.import.done': { one: 'Перенесён {count} бот вместе с чатами. В Xarı остаётся своя копия.', few: 'Перенесено {count} бота и групповых чата вместе с чатами. В Xarı остаётся своя копия.', many: 'Перенесено {count} ботов и групповых чатов вместе с чатами. В Xarı остаётся своя копия.', other: 'Перенесено {count} бота и групповых чата вместе с чатами. В Xarı остаётся своя копия.' },
 } satisfies Record<keyof typeof en, Message>

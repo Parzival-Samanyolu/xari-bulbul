@@ -23,7 +23,7 @@ export type ParseResult = { ok: true; args: CliArgs } | { ok: false; error: stri
 const MODES: PermissionMode[] = ['ask', 'acceptEdits', 'plan', 'auto']
 const FORMATS: OutputFormat[] = ['text', 'json', 'stream-json']
 
-export const USAGE = `xari: Xarı Bülbül in the terminal
+export const USAGE = `xari: Xarı in the terminal
 
 Usage:
   xari [options] [prompt...]        interactive chat (the prompt is sent first)

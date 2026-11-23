@@ -3927,6 +3927,20 @@ body.resizing * {
   font: inherit;
 }
 
+/* Qaqaş: the offer to bring bots over from Xarı. */
+.bots-import {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 12px 8px 4px;
+  text-align: center;
+}
+.bots-import-done {
+  margin: 8px;
+  text-align: center;
+}
+
 /* Bots tab. */
 .bots-panel {
   flex: 1;

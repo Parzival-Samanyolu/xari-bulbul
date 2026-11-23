@@ -154,7 +154,7 @@ packages/core/          the engine: no UI, fully tested
   src/memory/           facts saved across chats
   src/settings/         the settings schema (zod) with defaults
 apps/desktop/           Electron app: main process (controller, IPC, keys, updater) + React UI
-apps/cli/               the `xari` terminal app: host, arguments, non-interactive mode
+apps/cli/               the `xari` terminal app: host, arguments, interactive UI (src/tui), non-interactive mode
 bench/                  model benchmark: tasks, runner, published results
 ```
 
