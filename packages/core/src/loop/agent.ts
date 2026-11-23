@@ -28,6 +28,10 @@ import { BROWSER_READ_TOOL, BROWSER_TOOL, BrowserHost, findBrowser, type Browser
 import { SEARCH_KEY_ID, type WebSearchConfig } from '../tools/web-search.js'
 import { TASK_TOOL } from '../tools/task.js'
 import { ASK_USER_TOOL } from '../tools/ask-user.js'
+import { MAIL_DRAFT_TOOL, MAIL_TOOLS } from '../tools/mail.js'
+import { NOTES_TOOLS } from '../tools/notes.js'
+import type { MailAccess } from '../mail/types.js'
+import type { NotesAccess } from '../notes/types.js'
 import type { SessionAccess, SubagentInput, Tool, ToolContext, ToolResult, UserQuestion } from '../tools/types.js'
 import type { ChatMessage, FileAttachment, ImageAttachment, ModelRef, TodoItem, ToolCall, Usage } from '../types.js'
 import { checkBudget, computeCost, type UsageRecord, type UsageSummary, type UsageTracker } from '../usage/tracker.js'
@@ -132,6 +136,10 @@ export interface AgentOptions {
   secret?: (id: string) => string | undefined
   /** Browser profile kept between chats when `tools.browser.keepLogins` is on. Without it every browser gets a throwaway profile. */
   browserProfileDir?: string
+  /** Email accounts this chat may use; the mail tools are hidden without it. Subagents may read but not write. */
+  mail?: MailAccess
+  /** Notes this chat may read; the notes tools are hidden without it. */
+  notes?: NotesAccess
 }
 
 /** A tiny counting semaphore: `await acquire()` returns the release function. */
@@ -310,6 +318,9 @@ export class Agent {
     if (!this.browserOn) disabled.add(BROWSER_TOOL).add(BROWSER_READ_TOOL)
     // Questions need someone to answer them.
     if (!this.o.askUser || this.o.subagent) disabled.add(ASK_USER_TOOL)
+    if (!this.o.mail) for (const n of MAIL_TOOLS) disabled.add(n)
+    if (this.o.subagent) disabled.add(MAIL_DRAFT_TOOL)
+    if (!this.o.notes) for (const n of NOTES_TOOLS) disabled.add(n)
     return filterBotTools(this.tools, this.bot).filter((t) => !disabled.has(t.name) && (!plan || t.readOnly))
   }
 
@@ -1029,6 +1040,8 @@ export class Agent {
       },
       sessions: this.sessionAccess(),
       webSearch: this.webSearchConfig(),
+      mail: this.o.mail,
+      notes: this.o.notes,
       runSubagent: this.o.subagent ? undefined : (input) => this.runSubagent(callId, input, signal),
       askUser: this.o.askUser && !this.o.subagent ? (q) => this.o.askUser!({ ...q, callId }) : undefined,
       checkpoint: (abs, before) => this.checkpoint(abs, before),
@@ -1121,6 +1134,8 @@ export class Agent {
       subagent: { description: input.description, parentSessionId: this.session.meta.id },
       jobs: this.jobs,
       secret: this.o.secret,
+      mail: this.o.mail,
+      notes: this.o.notes,
       // Approvals surface in the parent's task card; ids are prefixed to stay unique.
       askPermission: (req) =>
         this.o.askPermission({ ...req, callId: `${callId}/${req.callId}`, reason: `Subagent "${input.description}": ${req.reason}` }),

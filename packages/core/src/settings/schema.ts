@@ -281,8 +281,76 @@ export const ScheduleSchema = z.object({
     .prefault({}),
   /** null = the default model. */
   model: ModelRefSchema.nullable().default(null),
+  /** What starts a run: the timer in `when`, or new mail in `mailTrigger.account`. "Run now" works for both. */
+  trigger: z.enum(['time', 'mail']).default('time'),
+  mailTrigger: z
+    .object({
+      /** Mail account id whose new messages start a run. */
+      account: z.string().default(''),
+      folder: z.string().default('INBOX'),
+      /** Only messages whose sender contains this text ('' = any). */
+      from: z.string().default(''),
+      /** How often the account is checked. */
+      everyMinutes: z.number().int().min(1).max(1440).default(5),
+    })
+    .prefault({}),
+  /** Mail accounts the run may read and write from (ids; empty = all of them). */
+  mailAccounts: z.array(z.string()).default([]),
+  /** Notes sources the run may read (ids; empty = all of them). */
+  notes: z.array(z.string()).default([]),
+  /** What happens to emails the run writes: "review" waits in the Automations inbox for Send; "auto" sends them right away. */
+  send: z
+    .object({
+      mode: z.enum(['review', 'auto']).default('review'),
+      /** Most emails one run may send automatically; the rest wait for review. */
+      maxPerRun: z.number().int().min(1).max(500).default(10),
+      /** Most emails all automatic runs together may send in a day. */
+      maxPerDay: z.number().int().min(1).max(2000).default(50),
+    })
+    .prefault({}),
+  /** Chained actions once a run ends. */
+  after: z
+    .object({
+      /** Where the run's summary goes: a desktop notification, a WhatsApp or iMessage text to you, or nowhere. */
+      notify: z.enum(['none', 'desktop', 'whatsapp', 'imessage']).default('desktop'),
+      /** Another automation's id to start when this run finishes without an error ('' = none). */
+      runNext: z.string().default(''),
+    })
+    .prefault({}),
 })
 export type Schedule = z.infer<typeof ScheduleSchema>
+
+/** An email account the mail tools read (IMAP) and send from (SMTP). Its password lives in the keychain as `mail:<id>`. */
+export const MailAccountSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().default('Mail'),
+  enabled: z.boolean().default(true),
+  /** Fills in the servers; "custom" is your own domain or any other host. */
+  provider: z.enum(['gmail', 'outlook', 'custom']).default('custom'),
+  address: z.string().default(''),
+  /** The name customers see next to the address. */
+  fromName: z.string().default(''),
+  /** Login name, when it isn't the address. */
+  username: z.string().default(''),
+  imap: z.object({ host: z.string().default(''), port: z.number().int().min(1).max(65535).default(993), secure: z.boolean().default(true) }).prefault({}),
+  smtp: z.object({ host: z.string().default(''), port: z.number().int().min(1).max(65535).default(465), secure: z.boolean().default(true) }).prefault({}),
+  /** Added under every email written from this account. */
+  signature: z.string().default(''),
+})
+export type MailAccount = z.infer<typeof MailAccountSchema>
+
+/** Where notes come from: an Obsidian vault folder, Apple Notes (macOS), or Notion (token in the keychain as `notes:<id>`). */
+export const NotesSourceSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().default('Notes'),
+  enabled: z.boolean().default(true),
+  kind: z.enum(['obsidian', 'apple', 'notion']).default('obsidian'),
+  /** The vault folder (Obsidian). */
+  path: z.string().default(''),
+  /** Apple Notes folder to read ('' = all folders). */
+  folder: z.string().default(''),
+})
+export type NotesSource = z.infer<typeof NotesSourceSchema>
 
 const PERMISSION_MODES = ['ask', 'acceptEdits', 'plan', 'auto'] as const
 
@@ -586,6 +654,22 @@ export const SettingsSchema = z.object({
     .prefault({}),
 
   schedules: z.array(ScheduleSchema).default([]),
+
+  /** Email accounts for automations and the mail tools. */
+  mail: z
+    .object({
+      accounts: z.array(MailAccountSchema).default([]),
+      /** Addresses or domains (`@example.com`) emails are never sent to. */
+      blocklist: z.array(z.string()).default([]),
+    })
+    .prefault({}),
+
+  /** Notes the notes tools can read. */
+  notes: z
+    .object({
+      sources: z.array(NotesSourceSchema).default([]),
+    })
+    .prefault({}),
 
   /** Characters to chat with (the sidebar's Bots tab). */
   bots: z.array(BotSchema).default(() => structuredClone(STARTER_BOTS)),

@@ -13,9 +13,11 @@ import type { Tool } from './types.js'
 import { webFetchTool } from './web-fetch.js'
 import { webSearchTool } from './web-search.js'
 import { writeFileTool } from './write-file.js'
+import { mailDraftTool, mailReadTool, mailSearchTool } from './mail.js'
+import { notesReadTool, notesSearchTool } from './notes.js'
 
 export function builtinTools(): Tool[] {
-  return [readFileTool, writeFileTool, editFileTool, multiEditTool, listDirTool, globTool, grepTool, bashTool, bashOutputTool, killJobTool, webSearchTool, webFetchTool, browserTool, browserReadTool, todoTool, askUserTool, taskTool, rememberTool, forgetTool, skillTool, saveSkillTool, sessionSearchTool]
+  return [readFileTool, writeFileTool, editFileTool, multiEditTool, listDirTool, globTool, grepTool, bashTool, bashOutputTool, killJobTool, webSearchTool, webFetchTool, browserTool, browserReadTool, todoTool, askUserTool, taskTool, rememberTool, forgetTool, skillTool, saveSkillTool, sessionSearchTool, mailSearchTool, mailReadTool, mailDraftTool, notesSearchTool, notesReadTool]
 }
 
 export * from './types.js'
@@ -31,3 +33,5 @@ export { checkFile } from './check.js'
 export { FORGET_TOOL, REMEMBER_TOOL } from './memory.js'
 export { SAVE_SKILL_TOOL, SKILL_TOOL } from './skills.js'
 export { SESSION_SEARCH_TOOL } from './session-search.js'
+export { MAIL_DRAFT_TOOL, MAIL_READ_TOOL, MAIL_SEARCH_TOOL, MAIL_TOOLS } from './mail.js'
+export { NOTES_READ_TOOL, NOTES_SEARCH_TOOL, NOTES_TOOLS } from './notes.js'
