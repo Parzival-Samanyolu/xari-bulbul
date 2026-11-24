@@ -2,8 +2,20 @@
 import { chmodSync } from 'node:fs'
 import { build } from 'esbuild'
 
+// Ink loads React's devtools bridge when DEV is set; the CLI never uses it, so it's stubbed out.
+const noDevtools = {
+  name: 'no-react-devtools',
+  setup(b) {
+    b.onResolve({ filter: /^react-devtools-core$/ }, () => ({ path: 'react-devtools-core', namespace: 'stub' }))
+    b.onLoad({ filter: /.*/, namespace: 'stub' }, () => ({ contents: 'export default { initialize() {}, connectToDevTools() {} }', loader: 'js' }))
+  },
+}
+
 await build({
   entryPoints: ['src/bin.ts'],
+  jsx: 'automatic',
+  plugins: [noDevtools],
+  define: { 'process.env.NODE_ENV': '"production"' },
   outfile: 'dist/xari.mjs',
   bundle: true,
   platform: 'node',

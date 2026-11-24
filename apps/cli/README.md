@@ -75,7 +75,13 @@ the chat) or `3`/`n`, or just type what it should do instead and press Enter.
 
 Commands: `/help`, `/new`, `/resume`, `/model [provider/model]`, `/mode [mode]`, `/compact`,
 `/undo` (put back the files the last turn changed), `/cost`, `/exit`, plus your own commands and skills.
-Colours follow `NO_COLOR`.
+Colours follow `NO_COLOR`. The theme picks light or dark from your terminal (`COLORFGBG`); set
+`XARI_THEME=light` or `XARI_THEME=dark` to choose.
+
+The UI is built with [Ink](https://github.com/vadimdemedes/ink). Markdown, syntax-highlighted code,
+diffs and the option lists use components from [Gemini CLI](https://github.com/google-gemini/gemini-cli)
+(Apache 2.0, see `src/ui/vendor/gemini/` and `THIRD_PARTY_NOTICES.md`); the layout, the prompt and
+the wiring to Xarı's engine are Xarı's own (`src/ui/App.tsx`, `src/ui/store.ts`).
 
 ## Where things live
 
@@ -109,5 +115,5 @@ pnpm --filter @harness/cli typecheck
 ```
 
 `src/host.ts` builds the engine pieces (`createHost`), `src/args.ts` parses the command line,
-`src/main.ts` has `run(argv, io)` (what the tests call), and `src/tui/index.ts` is the interactive mode:
+`src/main.ts` has `run(argv, io)` (what the tests call), and `src/tui/index.ts` starts the interactive mode (the Ink app in `src/ui/`):
 `runInteractive(host, { initialPrompt, session })`.
