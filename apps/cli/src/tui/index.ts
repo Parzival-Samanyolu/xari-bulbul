@@ -26,6 +26,6 @@ export async function runInteractive(host: Host, opts: InteractiveOptions): Prom
   if (opts.initialPrompt) void store.submit(opts.initialPrompt)
   await app.waitUntilExit()
   store.dispose()
-  if (store.hasMessages) process.stdout.write(`\x1b[2mResume this chat with: xari --resume ${store.sessionId}\x1b[22m\n`)
+  if (store.hasMessages) process.stdout.write(`\x1b[2m${host.t('resume.hint', { command: `xari --resume ${store.sessionId}` })}\x1b[22m\n`)
   return 0
 }

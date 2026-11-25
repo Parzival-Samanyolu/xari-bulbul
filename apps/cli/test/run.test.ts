@@ -60,7 +60,7 @@ function io(dataDir: string, cwd: string, stdin?: string): CliIO & { out: string
     stdin: { isTTY: stdin === undefined, read: async () => stdin ?? '' },
     stdout: (s: string) => void (o.out += s),
     stderr: (s: string) => void (o.err += s),
-    env: { HARNESS_DATA_DIR: dataDir, PATH: process.env.PATH },
+    env: { HARNESS_DATA_DIR: dataDir, PATH: process.env.PATH, XARI_LANG: 'en' },
     cwd,
   }
   return o
@@ -166,7 +166,7 @@ describe('createHost', () => {
     const { dataDir, cwd } = setup()
     fs.mkdirSync(path.join(cwd, '.harness', 'commands'), { recursive: true })
     fs.writeFileSync(path.join(cwd, '.harness', 'commands', 'greet.md'), '---\ndescription: Say hello\n---\nGreet $ARGUMENTS warmly')
-    const host = await createHost({ cwd, env: { HARNESS_DATA_DIR: dataDir, PATH: process.env.PATH }, noMcp: true })
+    const host = await createHost({ cwd, env: { HARNESS_DATA_DIR: dataDir, PATH: process.env.PATH, XARI_LANG: 'en' }, noMcp: true })
     try {
       expect(host.dataDir).toBe(dataDir)
       expect(host.resolveModel('mock/foo/bar')).toEqual({ providerId: 'mock', modelId: 'foo/bar' })

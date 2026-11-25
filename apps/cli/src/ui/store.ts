@@ -5,6 +5,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import type { Agent, AgentEvent, PermissionAnswer, PermissionMode, PermissionRequest, QuestionRequest, Session, ToolResult, TodoItem } from '@harness/core'
 import type { Host } from '../host.js'
+import { tEn, type MessageKey, type T } from '../i18n/index.js'
 import { splitStable } from '../tui/markdown.js'
 
 /** One finished entry of the transcript (printed once, into the terminal's scrollback). */
@@ -53,31 +54,34 @@ export interface ChatState {
 
 export const MODE_ORDER: PermissionMode[] = ['ask', 'acceptEdits', 'plan', 'auto']
 
-export const BUILTIN_HELP: [string, string][] = [
-  ['/help', 'this list'],
-  ['/new', 'start a new chat (also /clear)'],
-  ['/resume', 'open an earlier chat in this folder'],
-  ['/model [name]', 'show or switch the model (provider/model)'],
-  ['/mode [mode]', 'ask, acceptEdits, plan or auto (shift+tab cycles)'],
-  ['/compact', 'summarize older messages to free context'],
-  ['/undo', 'put back the files the last turn changed'],
-  ['/cost', 'tokens and cost for this chat and today'],
-  ['/exit', 'quit (or ctrl+d)'],
+/** /help's command list; the commands stay as typed, their descriptions follow the interface language. */
+export const builtinHelp = (t: T = tEn): [string, string][] => [
+  ['/help', t('help.cmd.help')],
+  ['/new', t('help.cmd.new')],
+  ['/resume', t('help.cmd.resume')],
+  ['/model [name]', t('help.cmd.model')],
+  ['/mode [mode]', t('help.cmd.mode')],
+  ['/compact', t('help.cmd.compact')],
+  ['/undo', t('help.cmd.undo')],
+  ['/cost', t('help.cmd.cost')],
+  ['/exit', t('help.cmd.exit')],
 ]
 
-export const KEY_HELP: [string, string][] = [
-  ['enter', 'send · alt+enter or ctrl+j for a new line'],
-  ['esc', 'stop the agent · twice to clear the prompt'],
-  ['shift+tab', 'cycle Ask → Auto-edit → Plan → Full auto'],
-  ['↑ ↓', 'earlier prompts'],
-  ['tab', 'complete a / command'],
-  ['ctrl+c', 'stop, clear, then quit'],
+export const keyHelp = (t: T = tEn): [string, string][] => [
+  ['enter', t('help.key.enter')],
+  ['esc', t('help.key.esc')],
+  ['shift+tab', t('help.key.shiftTab', { modes: MODE_ORDER.map((m) => modeLabel(m, t)).join(' → ') })],
+  ['↑ ↓', t('help.key.arrows')],
+  ['tab', t('help.key.tab')],
+  ['ctrl+c', t('help.key.ctrlC')],
 ]
 
 const BUILTIN = new Set(['help', 'new', 'clear', 'resume', 'model', 'mode', 'compact', 'undo', 'cost', 'exit', 'quit'])
 
 export class ChatStore extends EventEmitter {
   state: ChatState
+  /** Messages in the interface language. */
+  readonly t: T
   private agent!: Agent
   private session: Session
   private nextId = 0
@@ -90,6 +94,7 @@ export class ChatStore extends EventEmitter {
     private readonly version: string,
   ) {
     super()
+    this.t = host.t
     this.session = session
     this.state = {
       items: [],
@@ -217,7 +222,7 @@ export class ChatStore extends EventEmitter {
       case 'usage':
         return this.set({ contextPct: e.contextLength ? Math.round((e.contextTokens / e.contextLength) * 100) : null, cost: e.summary.session.cost })
       case 'compacted':
-        return this.notice(`Summarized ${e.removedMessages} older messages to free up context`)
+        return this.notice(this.t('notice.compacted', { count: e.removedMessages }))
       case 'notice':
         return this.notice(e.text, e.level === 'warn' ? 'warn' : 'info')
       case 'fallback':
@@ -226,13 +231,13 @@ export class ChatStore extends EventEmitter {
         this.flushReply()
         return this.notice(e.message, 'error')
       case 'memory':
-        if (e.added.length) this.notice(`Remembered: ${e.added.map((f) => f.fact).join('; ')}`)
+        if (e.added.length) this.notice(this.t('notice.remembered', { facts: e.added.map((f) => f.fact).join('; ') }))
         return
       case 'turn_end': {
         this.flushReply()
         this.set({ running: false, thinking: '', tools: [] })
-        const why: Record<string, string> = { aborted: 'Stopped.', max_steps: 'Stopped at the step limit. Say “continue” to go on.', budget: 'Stopped: the budget limit was reached.', repeating: 'Stopped: it kept repeating the same step.' }
-        if (why[e.reason]) this.notice(why[e.reason], 'warn')
+        const why: Record<string, MessageKey> = { aborted: 'notice.stopped', max_steps: 'notice.stoppedMaxSteps', budget: 'notice.stoppedBudget', repeating: 'notice.stoppedRepeating' }
+        if (why[e.reason]) this.notice(this.t(why[e.reason]), 'warn')
         // Messages typed while it worked go next, one turn each.
         const [next, ...rest] = this.state.queue
         if (next) {
@@ -267,14 +272,14 @@ export class ChatStore extends EventEmitter {
   stop() {
     if (!this.state.running) return false
     this.agent.stop()
-    this.flash('Stopping…')
+    this.flash(this.t('notice.stopping'))
     return true
   }
 
   setMode(mode: PermissionMode) {
     this.host.setMode(this.agent, mode)
     this.set({ mode })
-    this.flash(`${modeLabel(mode)} mode`)
+    this.flash(this.t('mode.flash', { mode: modeLabel(mode, this.t) }))
   }
 
   cycleMode() {
@@ -320,7 +325,7 @@ export class ChatStore extends EventEmitter {
 
   /** Commands for the suggestion list: Xarı's own, then the user's commands and skills. */
   commands(prefix: string): { name: string; description: string }[] {
-    const all = [...BUILTIN_HELP.map(([c, d]) => ({ name: c.split(/[ ,]/)[0].slice(1), description: d })), ...this.host.slashCommands().filter((c) => !BUILTIN.has(c.name))]
+    const all = [...builtinHelp(this.t).map(([c, d]) => ({ name: c.split(/[ ,]/)[0].slice(1), description: d })), ...this.host.slashCommands().filter((c) => !BUILTIN.has(c.name))]
     return all.filter((c) => c.name.startsWith(prefix.toLowerCase()))
   }
 
@@ -331,12 +336,12 @@ export class ChatStore extends EventEmitter {
     const arg = raw.trim()
     switch (name) {
       case 'help':
-        this.add({ kind: 'lines', title: 'Commands', rows: BUILTIN_HELP })
+        this.add({ kind: 'lines', title: this.t('help.commands'), rows: builtinHelp(this.t) })
         {
           const own = this.host.slashCommands().filter((c) => !BUILTIN.has(c.name))
-          if (own.length) this.add({ kind: 'lines', title: 'Your commands and skills', rows: own.map((c) => [`/${c.name}`, c.description]) })
+          if (own.length) this.add({ kind: 'lines', title: this.t('help.ownCommands'), rows: own.map((c) => [`/${c.name}`, c.description]) })
         }
-        this.add({ kind: 'lines', title: 'Keys', rows: KEY_HELP })
+        this.add({ kind: 'lines', title: this.t('help.keys'), rows: keyHelp(this.t) })
         return true
       case 'exit':
       case 'quit':
@@ -346,13 +351,15 @@ export class ChatStore extends EventEmitter {
       case 'clear':
         if (this.state.running) this.agent.stop()
         this.attach(this.host.newSession(this.agent.model))
-        this.notice('New chat')
+        this.notice(this.t('notice.newChat'))
         return true
       case 'mode': {
         if (!arg) return this.cycleMode(), true
-        const want = MODE_ORDER.find((x) => x.toLowerCase() === arg.toLowerCase() || modeLabel(x).toLowerCase() === arg.toLowerCase())
+        // The mode's id, or its name in English or in the interface language.
+        const a = arg.toLocaleLowerCase()
+        const want = MODE_ORDER.find((x) => [x, modeLabel(x), modeLabel(x, this.t)].some((n) => n.toLocaleLowerCase() === a))
         if (want) this.setMode(want)
-        else this.notice(`Modes: ${MODE_ORDER.join(', ')}`, 'warn')
+        else this.notice(this.t('mode.list', { modes: MODE_ORDER.join(', ') }), 'warn')
         return true
       }
       case 'model': {
@@ -360,7 +367,7 @@ export class ChatStore extends EventEmitter {
           try {
             this.agent.setModel(this.host.resolveModel(arg))
             this.set({ model: this.modelName() })
-            this.notice(`Model: ${this.modelName()}`)
+            this.notice(this.t('notice.model', { model: this.modelName() }))
             const hint = this.host.keyHint(this.agent.model.providerId)
             if (hint) this.notice(hint, 'warn')
           } catch (err) {
@@ -371,19 +378,19 @@ export class ChatStore extends EventEmitter {
         const provider = this.agent.model.providerId
         const models = await this.host.models(provider).catch(() => [])
         if (!models.length) {
-          this.notice(`Model: ${this.modelName()}. Switch with /model provider/model`)
+          this.notice(this.t('notice.modelSwitch', { model: this.modelName() }))
           return true
         }
         this.set({
           overlay: {
             kind: 'picker',
-            title: `Model · ${provider}`,
-            choices: models.slice(0, 300).map((x) => ({ label: x.id, hint: x.free ? 'free' : x.contextLength ? `${Math.round(x.contextLength / 1000)}k` : undefined })),
+            title: this.t('picker.model', { provider }),
+            choices: models.slice(0, 300).map((x) => ({ label: x.id, hint: x.free ? this.t('picker.free') : x.contextLength ? `${Math.round(x.contextLength / 1000)}k` : undefined })),
             initial: Math.max(0, models.findIndex((x) => x.id === this.agent.model.modelId)),
             pick: (i) => {
               this.agent.setModel({ providerId: provider, modelId: models[i].id })
               this.set({ model: this.modelName() })
-              this.notice(`Model: ${this.modelName()}`)
+              this.notice(this.t('notice.model', { model: this.modelName() }))
             },
           },
         })
@@ -392,18 +399,18 @@ export class ChatStore extends EventEmitter {
       case 'resume': {
         const chats = this.host.listSessions(this.session.meta.cwd).filter((s) => s.id !== this.session.meta.id && !s.botId)
         if (!chats.length) {
-          this.notice('No earlier chats in this folder.')
+          this.notice(this.t('notice.noEarlierChats'))
           return true
         }
         this.set({
           overlay: {
             kind: 'picker',
-            title: 'Resume a chat',
-            choices: chats.map((s) => ({ label: s.title, hint: ago(s.updatedAt) })),
+            title: this.t('picker.resume'),
+            choices: chats.map((s) => ({ label: s.title, hint: ago(s.updatedAt, this.t) })),
             initial: 0,
             pick: (i) =>
               void this.host.loadSession(chats[i].id).then((s) => {
-                if (!s) return this.notice('That chat is gone.', 'error')
+                if (!s) return this.notice(this.t('notice.chatGone'), 'error')
                 this.attach(s)
                 this.replay(s)
               }),
@@ -412,19 +419,19 @@ export class ChatStore extends EventEmitter {
         return true
       }
       case 'compact':
-        if (this.state.running) return this.notice('Wait for the turn to finish first.', 'warn'), true
-        this.notice('Summarizing older messages…')
+        if (this.state.running) return this.notice(this.t('notice.waitForTurn'), 'warn'), true
+        this.notice(this.t('notice.summarizing'))
         await this.agent.compact().then(
-          (ok) => !ok && this.notice('Nothing to summarize yet.'),
+          (ok) => !ok && this.notice(this.t('notice.nothingToSummarize')),
           (err) => this.notice((err as Error).message, 'error'),
         )
         return true
       case 'undo': {
         const cp = this.agent.checkpoints.at(-1)
-        if (!cp) return this.notice('Nothing to undo: no files changed in this chat yet.'), true
+        if (!cp) return this.notice(this.t('notice.nothingToUndo')), true
         try {
           const restored = this.agent.revert(cp.at)
-          this.notice(`↶ Put back ${restored.length} file${restored.length === 1 ? '' : 's'}: ${restored.map((f) => path.relative(this.session.meta.cwd, f) || f).join(', ')}`, 'ok')
+          this.notice(this.t('notice.putBack', { count: restored.length, files: restored.map((f) => path.relative(this.session.meta.cwd, f) || f).join(', ') }), 'ok')
         } catch (err) {
           this.notice((err as Error).message, 'error')
         }
@@ -432,8 +439,10 @@ export class ChatStore extends EventEmitter {
       }
       case 'cost': {
         const s = this.host.usage.summary(this.session.meta.id)
-        const row = (t: typeof s.session) => `${t.requests} requests · ${fmtTokens(t.promptTokens)} in · ${fmtTokens(t.completionTokens)} out · $${t.cost.toFixed(4)}${t.costPartial ? ' (some prices unknown)' : ''}`
-        this.add({ kind: 'lines', title: 'Usage', rows: [['This chat', row(s.session)], ['Today', row(s.today)]] })
+        const t = this.t
+        const row = (u: typeof s.session) =>
+          [t('usage.requests', { count: u.requests }), t('usage.in', { tokens: fmtTokens(u.promptTokens) }), t('usage.out', { tokens: fmtTokens(u.completionTokens) }), `$${u.cost.toFixed(4)}${u.costPartial ? ` ${t('usage.pricesUnknown')}` : ''}`].join(' · ')
+        this.add({ kind: 'lines', title: t('usage.title'), rows: [[t('usage.thisChat'), row(s.session)], [t('usage.today'), row(s.today)]] })
         return true
       }
       default:
@@ -444,7 +453,7 @@ export class ChatStore extends EventEmitter {
   /** An earlier chat, shortened: your messages, the replies and which tools ran. */
   private replay(s: Session) {
     const msgs = s.messages.slice(-40)
-    if (s.messages.length > 40) this.notice(`… ${s.messages.length - 40} earlier messages`)
+    if (s.messages.length > 40) this.notice(this.t('notice.earlierMessages', { count: s.messages.length - 40 }))
     for (const m of msgs) {
       if (m.role === 'user' && !m.synthetic) this.add({ kind: 'user', text: m.content })
       else if (m.role === 'assistant') {
@@ -452,7 +461,7 @@ export class ChatStore extends EventEmitter {
         for (const c of m.toolCalls ?? []) this.add({ kind: 'tool', name: c.name, subject: '', state: 'ok', result: { content: '' }, cwd: s.meta.cwd })
       }
     }
-    this.notice('── resumed ──')
+    this.notice(this.t('notice.resumed'))
   }
 
   dispose() {
@@ -461,14 +470,15 @@ export class ChatStore extends EventEmitter {
   }
 }
 
-export const modeLabel = (m: PermissionMode) => ({ ask: 'Ask', acceptEdits: 'Auto-edit', plan: 'Plan', auto: 'Full auto' })[m]
+/** The mode's name as the desktop shows it: Ask, Auto-edit, Plan, Full auto. */
+export const modeLabel = (m: PermissionMode, t: T = tEn) => t(`mode.${m}`)
 
-export function ago(t: number): string {
-  const s = Math.round((Date.now() - t) / 1000)
-  if (s < 60) return 'just now'
-  if (s < 3600) return `${Math.round(s / 60)} min ago`
-  if (s < 86400) return `${Math.round(s / 3600)} h ago`
-  return `${Math.round(s / 86400)} days ago`
+export function ago(at: number, t: T = tEn): string {
+  const s = Math.round((Date.now() - at) / 1000)
+  if (s < 60) return t('ago.now')
+  if (s < 3600) return t('ago.minutes', { count: Math.round(s / 60) })
+  if (s < 86400) return t('ago.hours', { count: Math.round(s / 3600) })
+  return t('ago.days', { count: Math.round(s / 86400) })
 }
 
 export const fmtTokens = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}k` : String(n))

@@ -1,4 +1,5 @@
 import type { PermissionMode } from '@harness/core'
+import { tEn, type MessageKey, type T } from './i18n/index.js'
 
 export type OutputFormat = 'text' | 'json' | 'stream-json'
 
@@ -23,30 +24,44 @@ export type ParseResult = { ok: true; args: CliArgs } | { ok: false; error: stri
 const MODES: PermissionMode[] = ['ask', 'acceptEdits', 'plan', 'auto']
 const FORMATS: OutputFormat[] = ['text', 'json', 'stream-json']
 
-export const USAGE = `xari: Xarı in the terminal
+const USAGE_ROWS: [string, MessageKey][] = [
+  ['xari [options] [prompt...]', 'help.usage.interactive'],
+  ['xari -p "prompt" [options]', 'help.usage.print'],
+  ['cat file | xari -p "explain"', 'help.usage.stdin'],
+]
 
-Usage:
-  xari [options] [prompt...]        interactive chat (the prompt is sent first)
-  xari -p "prompt" [options]        one non-interactive turn, then exit
-  cat file | xari -p "explain"      stdin is added to the prompt
+const OPTION_ROWS: [string, MessageKey][] = [
+  ['-p, --print <prompt>', 'help.opt.print'],
+  ['    --output-format <f>', 'help.opt.outputFormat'],
+  ['    --model <id>', 'help.opt.model'],
+  ['    --mode <mode>', 'help.opt.mode'],
+  ['-c, --continue', 'help.opt.continue'],
+  ['-r, --resume <id>', 'help.opt.resume'],
+  ['    --cwd <dir>', 'help.opt.cwd'],
+  ['    --max-steps <n>', 'help.opt.maxSteps'],
+  ['-v, --version', 'help.opt.version'],
+  ['-h, --help', 'help.opt.help'],
+]
 
-Options:
-  -p, --print <prompt>        run once without a UI and print the answer
-      --output-format <f>     text (default), json or stream-json (with -p)
-      --model <id>            provider/model (e.g. groq/openai/gpt-oss-120b) or a model id
-      --mode <mode>           permission mode: ask, acceptEdits, plan or auto
-  -c, --continue              continue the latest chat in this folder
-  -r, --resume <id>           resume a chat by id
-      --cwd <dir>             work in this folder (default: the current one)
-      --max-steps <n>         most model steps in one turn
-  -v, --version               print the version
-  -h, --help                  show this help
-
-Without a UI to ask, -p denies anything that needs approval; use --mode auto to allow it.
-Exit codes: 0 done, 1 error, 2 usage, 3 budget, 4 step limit, 130 interrupted.`
+/** `--help`: the commands and flags stay as typed; their descriptions are in the interface language. */
+export function usage(t: T = tEn): string {
+  const rows = (list: [string, MessageKey][], width: number) => list.map(([left, key]) => `  ${left.padEnd(width)}${t(key)}`)
+  return [
+    `xari: ${t('help.tagline')}`,
+    '',
+    t('help.usage'),
+    ...rows(USAGE_ROWS, 34),
+    '',
+    t('help.options'),
+    ...rows(OPTION_ROWS, 28),
+    '',
+    t('help.noUi'),
+    t('help.exitCodes'),
+  ].join('\n')
+}
 
 /** Hand-written so the CLI has no dependency; `--flag value` and `--flag=value` both work. */
-export function parseArgs(argv: string[]): ParseResult {
+export function parseArgs(argv: string[], t: T = tEn): ParseResult {
   const args: CliArgs = { outputFormat: 'text', continue: false, version: false, help: false, prompt: '' }
   const words: string[] = []
   let formatGiven = false
@@ -75,12 +90,12 @@ export function parseArgs(argv: string[]): ParseResult {
     const value = (name: string): string | ParseResult => {
       if (inline !== undefined) return inline
       const next = argv[i + 1]
-      if (next === undefined || (next.startsWith('-') && next !== '-')) return fail(`${name} needs a value`)
+      if (next === undefined || (next.startsWith('-') && next !== '-')) return fail(t('error.needsValue', { flag: name }))
       i++
       return next
     }
     const bool = (): boolean => {
-      if (inline !== undefined) throw new Error(`${arg} takes no value`)
+      if (inline !== undefined) throw new Error(t('error.takesNoValue', { flag: arg }))
       return true
     }
     try {
@@ -99,7 +114,7 @@ export function parseArgs(argv: string[]): ParseResult {
         case '--output-format': {
           const v = value(arg)
           if (typeof v !== 'string') return v
-          if (!FORMATS.includes(v as OutputFormat)) return fail(`--output-format must be one of: ${FORMATS.join(', ')} (got "${v}")`)
+          if (!FORMATS.includes(v as OutputFormat)) return fail(t('error.oneOf', { flag: arg, choices: FORMATS.join(', '), value: v }))
           args.outputFormat = v as OutputFormat
           formatGiven = true
           break
@@ -113,7 +128,7 @@ export function parseArgs(argv: string[]): ParseResult {
         case '--mode': {
           const v = value(arg)
           if (typeof v !== 'string') return v
-          if (!MODES.includes(v as PermissionMode)) return fail(`--mode must be one of: ${MODES.join(', ')} (got "${v}")`)
+          if (!MODES.includes(v as PermissionMode)) return fail(t('error.oneOf', { flag: arg, choices: MODES.join(', '), value: v }))
           args.mode = v as PermissionMode
           break
         }
@@ -137,7 +152,7 @@ export function parseArgs(argv: string[]): ParseResult {
         case '--max-steps': {
           const v = value(arg)
           if (typeof v !== 'string') return v
-          if (!/^\d+$/.test(v) || Number(v) < 1) return fail(`--max-steps must be a positive whole number (got "${v}")`)
+          if (!/^\d+$/.test(v) || Number(v) < 1) return fail(t('error.positiveNumber', { flag: arg, value: v }))
           args.maxSteps = Number(v)
           break
         }
@@ -150,15 +165,15 @@ export function parseArgs(argv: string[]): ParseResult {
           args.help = bool()
           break
         default:
-          return fail(`unknown option "${arg}". Run "xari --help" for the list.`)
+          return fail(t('error.unknownOption', { option: arg }))
       }
     } catch (e) {
       return fail((e as Error).message)
     }
   }
 
-  if (args.continue && args.resume) return fail('use either --continue or --resume, not both')
-  if (formatGiven && args.print === undefined) return fail('--output-format only works with -p/--print')
+  if (args.continue && args.resume) return fail(t('error.continueOrResume'))
+  if (formatGiven && args.print === undefined) return fail(t('error.formatNeedsPrint'))
   // Words after -p belong to the prompt too, so `xari -p fix the bug` works unquoted.
   if (args.print !== undefined) args.print = [args.print, ...words].filter(Boolean).join(' ')
   else args.prompt = words.join(' ')
