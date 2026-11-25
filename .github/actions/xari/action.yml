@@ -1,0 +1,86 @@
+name: Xarı
+description: Run the Xarı coding agent (the xari CLI) on a prompt in CI and use its answer or its edits.
+author: Xarı
+
+inputs:
+  prompt:
+    description: What to ask the agent. Include any context (a diff, a log) in the text.
+    required: true
+  api-key:
+    description: API key for the provider. Pass a secret; it is masked and never printed.
+    required: true
+  provider:
+    description: openrouter, anthropic, openai or custom (any OpenAI-compatible server, needs base-url).
+    default: openrouter
+  model:
+    description: >-
+      Model id as the provider names it, without the provider prefix. The default is OpenRouter's free
+      router (openrouter/free), which picks a free model; set a stronger model for real reviews,
+      e.g. anthropic/claude-sonnet-4.5 on OpenRouter or claude-sonnet-4-5 on Anthropic.
+    default: openrouter/free
+  mode:
+    description: >-
+      plan (read-only, default), acceptEdits (may edit files) or auto (may also run commands on the runner).
+    default: plan
+  base-url:
+    description: OpenAI-compatible API root, e.g. https://llm.example.com/v1. Only for provider custom.
+    default: ''
+  max-steps:
+    description: Most model steps in one turn. Empty uses the CLI default.
+    default: ''
+  working-directory:
+    description: Folder the agent works in, relative to the workspace.
+    default: .
+  comment-on-pr:
+    description: "true posts the answer as a PR comment (and updates it on later runs). Needs pull-requests: write."
+    default: 'false'
+  github-token:
+    description: Token used only for the PR comment.
+    default: ${{ github.token }}
+  output-format:
+    description: text, json or stream-json (what the CLI prints; the result output is always the final answer).
+    default: text
+
+outputs:
+  result:
+    description: The agent's final answer.
+    value: ${{ steps.run.outputs.result }}
+  exit-code:
+    description: "xari's exit code: 0 done, 1 error, 3 budget, 4 step limit."
+    value: ${{ steps.run.outputs.exit-code }}
+
+runs:
+  using: composite
+  steps:
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 10.22.0
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: pnpm
+        cache-dependency-path: ${{ github.action_path }}/../../../pnpm-lock.yaml
+    # Build from the action's own checkout, so the CLI always matches the ref the workflow pins
+    # (uses: owner/repo/.github/actions/xari@ref). Only the CLI and what it depends on is installed.
+    - name: Build xari
+      shell: bash
+      working-directory: ${{ github.action_path }}/../../..
+      run: |
+        pnpm install --frozen-lockfile --filter "@harness/cli..."
+        pnpm build:cli
+    - name: Run xari
+      id: run
+      shell: bash
+      run: node "${{ github.action_path }}/run.mjs"
+      env:
+        INPUT_PROMPT: ${{ inputs.prompt }}
+        INPUT_API_KEY: ${{ inputs.api-key }}
+        INPUT_PROVIDER: ${{ inputs.provider }}
+        INPUT_MODEL: ${{ inputs.model }}
+        INPUT_MODE: ${{ inputs.mode }}
+        INPUT_BASE_URL: ${{ inputs.base-url }}
+        INPUT_MAX_STEPS: ${{ inputs.max-steps }}
+        INPUT_WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        INPUT_COMMENT_ON_PR: ${{ inputs.comment-on-pr }}
+        INPUT_GITHUB_TOKEN: ${{ inputs.github-token }}
+        INPUT_OUTPUT_FORMAT: ${{ inputs.output-format }}
