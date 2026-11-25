@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Installs the `xari` terminal app on a Linux server (Ubuntu/Debian/Fedora/Oracle Linux, x64 or arm64):
 #   curl -fsSL https://raw.githubusercontent.com/Parzival-Samanyolu/xari-bulbul/main/apps/cli/install.sh | sudo bash
-# Options (environment): XARI_REF=<branch or tag> (default main), XARI_SRC=<local checkout to build instead
-# of cloning>, XARI_SWAP_GB=<total swap to reach, default 4; 0 skips>, XARI_SKIP_KEY=1 (don't ask for a key).
+# It downloads the CLI that GitHub Actions built (.github/workflows/cli.yml) and builds it here only when
+# there is none. Options (environment): XARI_REF=<branch> (default main), XARI_SRC=<local checkout to
+# build instead of downloading>, XARI_SWAP_GB=<total swap to reach, default 4; 0 skips>, XARI_SKIP_KEY=1 (don't ask for a key).
 # Safe to run again: it updates the app and leaves existing swap, settings and keys alone.
 set -euo pipefail
 
@@ -101,7 +102,33 @@ build_cli() {
   $pnpm -s build:cli
   install -d "$PREFIX/bin"
   install -m 755 apps/cli/dist/xari.mjs "$PREFIX/bin/xari.mjs"
-  # The command: the bundled app on this Node, whatever Node is first on PATH.
+  link_cli
+}
+
+# ---------------------------------------------------------------- download (built by GitHub Actions)
+# .github/workflows/cli.yml publishes the bundled CLI for main (cli-latest) and for each branch
+# (cli-<branch>). Downloading needs no build tools and little memory; building here is the fallback.
+download_cli() {
+  [[ -z ${XARI_SRC:-} ]] || return 1
+  local tag=cli-latest
+  [[ $REF == main ]] || tag="cli-$(echo "$REF" | tr '/' '-' | tr -cd 'A-Za-z0-9._-')"
+  local base="https://github.com/Parzival-Samanyolu/xari-bulbul/releases/download/$tag" tmp
+  tmp=$(mktemp -d)
+  say "Downloading the built CLI ($tag)"
+  if ! curl -fsSL -o "$tmp/xari.mjs" "$base/xari.mjs" || ! curl -fsSL -o "$tmp/xari.mjs.sha256" "$base/xari.mjs.sha256"; then
+    warn "No built CLI for $REF yet; building it here instead."
+    rm -rf "$tmp"
+    return 1
+  fi
+  (cd "$tmp" && sha256sum -c --quiet xari.mjs.sha256) || die "The downloaded file doesn't match its checksum; not installing it."
+  install -d "$PREFIX/bin"
+  install -m 755 "$tmp/xari.mjs" "$PREFIX/bin/xari.mjs"
+  rm -rf "$tmp"
+  link_cli
+}
+
+# The command: the bundled app on this Node, whatever Node is first on PATH.
+link_cli() {
   cat > /usr/local/bin/xari <<EOF
 #!/bin/sh
 exec "$NODE" "$PREFIX/bin/xari.mjs" "\$@"
@@ -152,7 +179,7 @@ set_up_key() {
 add_swap
 install_packages
 install_node
-build_cli
+download_cli || build_cli
 set_up_key
 echo
 say "Done. Start it in a project folder:  cd ~/my-project && xari"
