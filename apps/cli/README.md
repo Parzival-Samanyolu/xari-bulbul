@@ -1,10 +1,33 @@
 # xari: Xarı in the terminal
 
+![xari in a terminal: a prompt, a proposed edit, the approval box and the applied diff](../../docs/media/xari-cli.gif)
+
 The desktop app's agent, in a terminal. It runs the same engine (`@harness/core`) with the same tools,
 MCP servers, memory, skills and permission modes, and it uses the **same data folder**, so a chat
 started here shows up in the desktop app and the other way round.
 
-## Install from source
+## Install
+
+### On a Linux server (one command)
+
+Works on Ubuntu, Debian, Fedora and Oracle Linux, x64 or arm64. It adds swap on small servers, installs Node 22, builds `xari` into `/opt/xari`, links `/usr/local/bin/xari` and asks which model service to use (Synapse or OpenRouter) and for its key.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Parzival-Samanyolu/xari-bulbul/main/apps/cli/install.sh | sudo bash
+```
+
+Run it again to update; existing swap, settings and keys are left alone. Options are environment variables:
+
+| Variable | Meaning |
+|---|---|
+| `XARI_REF` | Branch or tag to install. Default `main`. |
+| `XARI_SRC` | Build a local checkout instead of cloning (for a private repo or a fork). |
+| `XARI_SWAP_GB` | Total swap to reach. Default `4`; `0` skips swap. |
+| `XARI_SKIP_KEY` | `1` skips the key question. |
+
+Example: `curl -fsSL <url> | sudo XARI_REF=v5.8.1 XARI_SKIP_KEY=1 bash`.
+
+### From source
 
 Needs Node 22 or newer and pnpm.
 
@@ -105,7 +128,7 @@ connect in the background and are closed on exit.
 
 1. `<PROVIDER>_API_KEY` environment variables (`OPENROUTER_API_KEY`, `GROQ_API_KEY`, `OLLAMA_CLOUD_API_KEY`, …) always win.
 2. Then the OS keychain the desktop app uses: macOS Keychain, or libsecret (`secret-tool`) on Linux.
-3. A `xb-secrets.json` file in the data folder, if there is no keychain.
+3. A `xb-secrets.json` file in the data folder, if there is no keychain. This is where the server installer saves the key (mode 600, readable only by the user who ran `sudo`).
 
 **Limitation:** on Linux without a keyring and on Windows, the desktop app stores keys with Electron's
 safeStorage, which only Electron can decrypt. The CLI prints a hint when it finds no key for the model's
@@ -114,6 +137,10 @@ provider: set the env var, or install libsecret and a keyring and enter the key 
 only borrows its access token (it lasts about an hour).
 
 Not in the terminal yet: mail, notes, automations, gateways, local model management and the browser's saved logins.
+
+## GitHub Action
+
+Run `xari` in CI to review pull requests or fix tests: see [the GitHub Action](../../docs/github-action/README.md).
 
 ## Development
 

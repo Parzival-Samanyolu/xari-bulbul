@@ -1,5 +1,7 @@
 # Xarı GitHub Action
 
+[Back to the main README](../../README.md) · [CLI docs](../../apps/cli/README.md)
+
 Runs the `xari` CLI (the same agent as the desktop app) on a prompt inside a workflow. Use it to review pull
 requests, explain failures, or make small fixes and open a PR.
 
