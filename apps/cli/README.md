@@ -78,6 +78,14 @@ Commands: `/help`, `/new`, `/resume`, `/model [provider/model]`, `/mode [mode]`,
 Colours follow `NO_COLOR`. The theme picks light or dark from your terminal (`COLORFGBG`); set
 `XARI_THEME=light` or `XARI_THEME=dark` to choose.
 
+## Language
+
+The terminal speaks English, Azerbaijani, Turkish and Russian, with the desktop app's wording. It uses
+the language chosen in the desktop app (Settings › General › Language, `appearance.language` in
+`settings.json`). When that is "System", `XARI_LANG` (`en`, `az`, `tr` or `ru`) decides, then the system
+locale (`LC_ALL`, `LC_MESSAGES`, `LANG`), else English. For example: `XARI_LANG=az xari --help`.
+Flags, commands and everything sent to the model stay English. Messages are in `src/i18n/`.
+
 The UI is built with [Ink](https://github.com/vadimdemedes/ink). Markdown, syntax-highlighted code,
 diffs and the option lists use components from [Gemini CLI](https://github.com/google-gemini/gemini-cli)
 (Apache 2.0, see `src/ui/vendor/gemini/` and `THIRD_PARTY_NOTICES.md`); the layout, the prompt and

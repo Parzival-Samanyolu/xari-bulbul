@@ -1,5 +1,6 @@
 // Xarı's stand-ins for the parts of Gemini CLI the vendored components expect: the colour theme,
-// settings, logging, a few small helpers and the arrow-key selection hook. Written for Xarı.
+// settings, logging, a few small helpers, the arrow-key selection hook and Xarı's interface
+// language (`useT`). Written for Xarı.
 import { useEffect, useRef, useState } from 'react'
 import { useInput } from 'ink'
 import { Theme, type ColorsTheme } from './theme.js'
@@ -69,6 +70,9 @@ export const theme: SemanticColors = {
 }
 
 export const colors = palette
+
+/** Xarı's messages in the interface language, for the text Xarı wrote in these components. */
+export { useT } from '../../t.js'
 
 export const debugLogger = { warn: (..._a: unknown[]) => {}, debug: (..._a: unknown[]) => {}, error: (..._a: unknown[]) => {} }
 

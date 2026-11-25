@@ -11,42 +11,16 @@ import { DiffRenderer } from './vendor/gemini/DiffRenderer.js'
 import { RadioButtonSelect } from './vendor/gemini/RadioButtonSelect.js'
 import { colors, theme } from './vendor/gemini/_shim.js'
 import { type ChatState, type ChatStore, type Item, modeLabel, saveHistory } from './store.js'
+import { hasMessage, tEn, type T } from '../i18n/index.js'
+import { TContext, useT } from './t.js'
 
 const MARK = '✿'
 const SPIN = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
 
-const TOOL_LABELS: Record<string, string> = {
-  read_file: 'Read',
-  write_file: 'Write',
-  edit_file: 'Edit',
-  multi_edit: 'Edit',
-  list_dir: 'List',
-  glob: 'Find',
-  grep: 'Search',
-  bash: 'Run',
-  bash_output: 'Output',
-  kill_job: 'Stop job',
-  web_search: 'Web search',
-  web_fetch: 'Fetch',
-  browser: 'Browser',
-  browser_read: 'Browser',
-  todo_write: 'Checklist',
-  ask_user: 'Question',
-  task: 'Subagent',
-  remember: 'Remember',
-  forget: 'Forget',
-  skill: 'Skill',
-  save_skill: 'Save skill',
-  session_search: 'Past chats',
-  mail_search: 'Mail search',
-  mail_read: 'Read mail',
-  mail_draft: 'Draft email',
-  notes_search: 'Notes search',
-  notes_read: 'Read note',
-}
-
-export function toolLabel(name: string): string {
-  if (TOOL_LABELS[name]) return TOOL_LABELS[name]
+/** A tool's name in the transcript and approvals ("Read", "Run"…); MCP tools show `server · tool`. */
+export function toolLabel(name: string, t: T = tEn): string {
+  const key = `tool.${name}`
+  if (hasMessage(key)) return t(key)
   const mcp = /^mcp__(.+?)__(.+)$/.exec(name)
   return mcp ? `${mcp[1]} · ${mcp[2]}` : name
 }
@@ -90,20 +64,21 @@ const shortPath = (p: string) => (home && p.startsWith(home) ? `~${p.slice(home.
 // ---------------------------------------------------------------- transcript entries
 
 function Banner({ item, cols }: { item: Extract<Item, { kind: 'banner' }>; cols: number }) {
+  const t = useT()
   return (
     <Box borderStyle="round" borderColor={colors.AccentPurple} paddingX={1} flexDirection="column" width={Math.min(cols, 76)} marginBottom={1}>
       <Text>
         <Text color={colors.AccentPurple}>{MARK} </Text>
         <Text bold>Xarı</Text>
         <Text color={theme.text.secondary}> v{item.version}</Text>
-        {item.resumed ? <Text color={theme.text.secondary}> · resumed “{item.resumed}”</Text> : null}
+        {item.resumed ? <Text color={theme.text.secondary}> · {t('banner.resumed', { title: item.resumed })}</Text> : null}
       </Text>
       <Text color={theme.text.secondary} wrap="truncate-middle">
         {shortPath(item.cwd)}
       </Text>
       <Text> </Text>
       <Text color={theme.text.secondary}>
-        <Text color={theme.text.primary}>/help</Text> commands · <Text color={theme.text.primary}>shift+tab</Text> mode · <Text color={theme.text.primary}>esc</Text> stop
+        <Text color={theme.text.primary}>/help</Text> {t('banner.commands')} · <Text color={theme.text.primary}>shift+tab</Text> {t('banner.mode')} · <Text color={theme.text.primary}>esc</Text> {t('banner.stop')}
       </Text>
     </Box>
   )
@@ -134,8 +109,9 @@ function Reply({ text, first, cols, pending }: { text: string; first: boolean; c
 }
 
 function ToolResultView({ name, result, state, cwd, cols }: { name: string; result: ToolResult; state: 'ok' | 'error' | 'denied'; cwd: string; cols: number }) {
+  const t = useT()
   const first = (s: string) => s.trim().split('\n')[0] ?? ''
-  if (state === 'denied') return <ResultLine color={colors.AccentYellow} text={first(result.content) || 'Not allowed.'} />
+  if (state === 'denied') return <ResultLine color={colors.AccentYellow} text={first(result.content) || t('result.notAllowed')} />
   if (state === 'error') return <ResultLine color={colors.AccentRed} text={first(result.content)} />
   if (result.display?.kind === 'diff') {
     const d = result.display
@@ -158,7 +134,7 @@ function ToolResultView({ name, result, state, cwd, cols }: { name: string; resu
     const tail = lines.slice(-4)
     return (
       <Box flexDirection="column">
-        {lines.length > 4 && <ResultLine text={`… ${lines.length - 4} lines above`} />}
+        {lines.length > 4 && <ResultLine text={t('result.linesAbove', { count: lines.length - 4 })} />}
         {tail.map((l, i) => (
           <Text key={i} color={theme.text.secondary} wrap="truncate">
             {i === 0 && lines.length <= 4 ? '  ↳ ' : '    '}
@@ -168,7 +144,7 @@ function ToolResultView({ name, result, state, cwd, cols }: { name: string; resu
       </Box>
     )
   }
-  return <ResultLine text={`${lines[0]}${lines.length > 1 ? `  (${lines.length} lines)` : ''}`} />
+  return <ResultLine text={`${lines[0]}${lines.length > 1 ? `  ${t('result.lineCount', { count: lines.length })}` : ''}`} />
 }
 
 const ResultLine = ({ text, color }: { text: string; color?: string }) => (
@@ -179,24 +155,26 @@ const ResultLine = ({ text, color }: { text: string; color?: string }) => (
 )
 
 function ToolLine({ name, subject, state, spin }: { name: string; subject: string; state: 'running' | 'ok' | 'error' | 'denied'; spin?: string }) {
+  const t = useT()
   const dot = state === 'running' ? <Text color={colors.AccentPurple}>{spin}</Text> : state === 'ok' ? <Text color={colors.AccentGreen}>◆</Text> : state === 'denied' ? <Text color={colors.AccentYellow}>◇</Text> : <Text color={colors.AccentRed}>◆</Text>
   return (
     <Text wrap="truncate">
-      {dot} <Text bold>{toolLabel(name)}</Text> <Text color={theme.text.secondary}>{subject}</Text>
+      {dot} <Text bold>{toolLabel(name, t)}</Text> <Text color={theme.text.secondary}>{subject}</Text>
     </Text>
   )
 }
 
 function Todos({ todos }: { todos: TodoItem[] }) {
+  const t = useT()
   return (
     <Box flexDirection="column" marginBottom={1}>
-      <Text color={theme.text.secondary}> Checklist</Text>
-      {todos.map((t, i) => (
+      <Text color={theme.text.secondary}> {t('todos.title')}</Text>
+      {todos.map((todo, i) => (
         <Text key={i} wrap="truncate">
           {'  '}
-          {t.status === 'completed' ? <Text color={colors.AccentGreen}>☑ </Text> : t.status === 'in_progress' ? <Text color={colors.AccentPurple}>▣ </Text> : <Text color={theme.text.secondary}>☐ </Text>}
-          <Text bold={t.status === 'in_progress'} color={t.status === 'completed' ? theme.text.secondary : undefined} strikethrough={t.status === 'completed'}>
-            {t.content}
+          {todo.status === 'completed' ? <Text color={colors.AccentGreen}>☑ </Text> : todo.status === 'in_progress' ? <Text color={colors.AccentPurple}>▣ </Text> : <Text color={theme.text.secondary}>☐ </Text>}
+          <Text bold={todo.status === 'in_progress'} color={todo.status === 'completed' ? theme.text.secondary : undefined} strikethrough={todo.status === 'completed'}>
+            {todo.content}
           </Text>
         </Text>
       ))}
@@ -311,22 +289,23 @@ function Preview({ input, cols }: { input: Record<string, unknown>; cols: number
 }
 
 function OverlayView({ state, store, editorEmpty, cols }: { state: ChatState; store: ChatStore; editorEmpty: boolean; cols: number }) {
+  const t = useT()
   const o = state.overlay!
   if (o.kind === 'permission') {
     const req = o.req
     return (
-      <Panel title="Allow?" cols={cols}>
+      <Panel title={t('approval.title')} cols={cols}>
         <Text>
-          <Text bold>{toolLabel(req.tool)}</Text> {req.subject}
+          <Text bold>{toolLabel(req.tool, t)}</Text> {req.subject}
         </Text>
         {req.reason ? <Text color={theme.text.secondary}>{req.reason}</Text> : null}
         <Preview input={(req.input ?? {}) as Record<string, unknown>} cols={cols - 4} />
         <RadioButtonSelect
           isFocused={editorEmpty}
           items={[
-            { key: 'yes', value: 'yes', label: 'Yes' },
-            { key: 'always', value: 'always', label: `Yes, and don’t ask again this session`, sublabel: req.suggestedRule },
-            { key: 'no', value: 'no', label: 'No, tell Xarı what to do instead', sublabel: 'type it below, then Enter' },
+            { key: 'yes', value: 'yes', label: t('approval.yes') },
+            { key: 'always', value: 'always', label: t('approval.always'), sublabel: req.suggestedRule },
+            { key: 'no', value: 'no', label: t('approval.no'), sublabel: t('approval.noHint') },
           ]}
           onSelect={(v) => store.answerPermission(v === 'yes' ? { type: 'allow' } : v === 'always' ? { type: 'allowAlways' } : { type: 'deny' })}
         />
@@ -336,7 +315,7 @@ function OverlayView({ state, store, editorEmpty, cols }: { state: ChatState; st
   if (o.kind === 'question') {
     const multi = !!o.req.multiSelect
     return (
-      <Panel title="Question" cols={cols}>
+      <Panel title={t('question.title')} cols={cols}>
         <Text>{o.req.question}</Text>
         <Box marginTop={1}>
           <RadioButtonSelect
@@ -347,14 +326,14 @@ function OverlayView({ state, store, editorEmpty, cols }: { state: ChatState; st
             onHighlight={(i) => (highlighted.current = i)}
           />
         </Box>
-        <Text color={theme.text.secondary}>{multi ? 'space picks · enter sends · or type an answer below' : 'enter picks · or type an answer below'}</Text>
+        <Text color={theme.text.secondary}>{multi ? t('question.multiHint') : t('question.hint')}</Text>
       </Panel>
     )
   }
   return (
     <Panel title={o.title} cols={cols}>
       <RadioButtonSelect items={o.choices.map((c, i) => ({ key: String(i), value: i, label: c.label, sublabel: c.hint }))} initialIndex={o.initial} maxItemsToShow={10} showScrollArrows showNumbers={false} onSelect={(i) => store.pick(i)} />
-      <Text color={theme.text.secondary}>↑↓ move · enter picks · esc closes</Text>
+      <Text color={theme.text.secondary}>{t('picker.hint')}</Text>
     </Panel>
   )
 }
@@ -396,20 +375,21 @@ function InputBox({ editor, placeholder, cols, busy }: { editor: LineEditor; pla
 }
 
 function Footer({ state, cols }: { state: ChatState; cols: number }) {
+  const t = useT()
   const ctx = state.contextPct
   return (
     <Box width={cols} paddingX={1}>
       <Box flexGrow={1}>
         <Text wrap="truncate">
-          <Text color={MODE_COLORS[state.mode]}>⏵ {modeLabel(state.mode)}</Text>
+          <Text color={MODE_COLORS[state.mode]}>⏵ {modeLabel(state.mode, t)}</Text>
           <Text color={theme.text.secondary}> · shift+tab</Text>
-          {state.queue.length ? <Text color={colors.AccentPurple}> · {state.queue.length} queued</Text> : null}
+          {state.queue.length ? <Text color={colors.AccentPurple}> · {t('footer.queued', { count: state.queue.length })}</Text> : null}
           {state.hint ? <Text color={theme.text.secondary}> · {state.hint}</Text> : null}
         </Text>
       </Box>
       <Text wrap="truncate" color={theme.text.secondary}>
         {state.model}
-        {ctx != null ? <Text color={ctx >= 80 ? colors.AccentYellow : theme.text.secondary}> · {ctx}% context</Text> : null}
+        {ctx != null ? <Text color={ctx >= 80 ? colors.AccentYellow : theme.text.secondary}> · {t('footer.context', { percent: ctx })}</Text> : null}
         {state.cost > 0 ? ` · $${state.cost < 0.01 ? state.cost.toFixed(4) : state.cost.toFixed(2)}` : ''}
       </Text>
     </Box>
@@ -420,6 +400,7 @@ function Footer({ state, cols }: { state: ChatState; cols: number }) {
 
 export function App({ store, editor, historyFile }: { store: ChatStore; editor: LineEditor; historyFile: string }) {
   const state = useStore(store)
+  const t = store.t
   const cols = useColumns()
   const { exit } = useApp()
   const spin = useSpinner(state.running)
@@ -467,7 +448,7 @@ export function App({ store, editor, historyFile }: { store: ChatStore; editor: 
       if (!editor.empty) return editor.clear(), touch()
       if (Date.now() - lastCtrlC < 2000) return quit()
       setLastCtrlC(Date.now())
-      return store.flash('Press ctrl+c again to quit')
+      return store.flash(t('notice.pressCtrlCAgain'))
     }
     if (key.ctrl && input === 'd' && editor.empty && !o) return quit()
     if (key.escape) {
@@ -522,20 +503,22 @@ export function App({ store, editor, historyFile }: { store: ChatStore; editor: 
     touch()
   })
 
-  const label = state.tools.length ? 'Working' : state.reply ? 'Writing' : state.thinking ? 'Thinking' : 'Waiting for the model'
-  const placeholder = o?.kind === 'permission' ? 'Or type what to do instead' : o?.kind === 'question' ? 'Type an answer, or pick one above' : state.running ? 'Type to queue a message' : 'Ask Xarı to do something · /help'
+  const label = t(state.tools.length ? 'status.working' : state.reply ? 'status.writing' : state.thinking ? 'status.thinking' : 'status.waiting')
+  const placeholder = t(o?.kind === 'permission' ? 'placeholder.permission' : o?.kind === 'question' ? 'placeholder.question' : state.running ? 'placeholder.queue' : 'placeholder.idle')
+  const tokens = state.tokensOut >= 1000 ? `${(state.tokensOut / 1000).toFixed(1)}k` : String(state.tokensOut)
+  const status = [t('status.seconds', { seconds: elapsed }), ...(state.tokensOut ? [t('status.tokens', { tokens })] : []), t('status.escToStop')].join(' · ')
 
   const transcript = <Static items={state.items}>{(item) => <HistoryItem key={item.id} item={item} cols={cols} />}</Static>
-  if (quitting) return transcript
+  if (quitting) return <TContext.Provider value={t}>{transcript}</TContext.Provider>
 
   return (
-    <>
+    <TContext.Provider value={t}>
       {transcript}
       <Box flexDirection="column" width={cols}>
         {state.reply.trim() ? <Reply text={state.reply} first={!state.replyStarted} cols={cols} pending /> : null}
         {state.running && state.thinking && !state.reply && !state.tools.length ? (
           <Text color={theme.text.secondary} wrap="truncate">
-            {'  ◇ thinking '}
+            {`  ◇ ${t('status.thinkingLine')} `}
             <Text italic>{state.thinking.replace(/\s+/g, ' ').trim().slice(-160)}</Text>
           </Text>
         ) : null}
@@ -560,7 +543,7 @@ export function App({ store, editor, historyFile }: { store: ChatStore; editor: 
               <Text color={colors.AccentPurple}>{spin} </Text>
               <Text>{label}… </Text>
               <Text color={theme.text.secondary}>
-                ({elapsed}s{state.tokensOut ? ` · ↓ ${state.tokensOut >= 1000 ? `${(state.tokensOut / 1000).toFixed(1)}k` : state.tokensOut} tokens` : ''} · esc to stop)
+                ({status})
               </Text>
             </Text>
           </Box>
@@ -582,6 +565,6 @@ export function App({ store, editor, historyFile }: { store: ChatStore; editor: 
         ))}
         <Footer state={state} cols={cols} />
       </Box>
-    </>
+    </TContext.Provider>
   )
 }

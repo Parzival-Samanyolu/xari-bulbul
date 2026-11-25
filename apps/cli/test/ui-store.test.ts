@@ -36,7 +36,7 @@ async function store() {
   const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'xari-ui-data-'))
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'xari-ui-cwd-'))
   fs.writeFileSync(path.join(dataDir, 'settings.json'), JSON.stringify(parseSettings({ providers: [{ id: 'mock', name: 'Mock', baseUrl, requiresKey: false }], models: { default: { providerId: 'mock', modelId: 'm' } }, memory: { enabled: false }, permissions: { mode: 'ask' } })))
-  const host = await createHost({ cwd, env: { HARNESS_DATA_DIR: dataDir, PATH: process.env.PATH }, version: 't', noMcp: true })
+  const host = await createHost({ cwd, env: { HARNESS_DATA_DIR: dataDir, PATH: process.env.PATH, XARI_LANG: 'en' }, version: 't', noMcp: true })
   return { s: new ChatStore(host, host.newSession(), 't'), cwd, host }
 }
 

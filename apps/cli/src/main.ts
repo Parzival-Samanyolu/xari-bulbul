@@ -1,8 +1,9 @@
 import fs from 'node:fs'
 import path from 'node:path'
-import { EXIT, runHeadless, type Session } from '@harness/core'
+import { EXIT, loadSettingsFile, resolveDataDir, runHeadless, type Session } from '@harness/core'
 import pkg from '../package.json'
-import { parseArgs, USAGE, type CliArgs } from './args.js'
+import { parseArgs, usage, type CliArgs } from './args.js'
+import { cliLanguage, tFor, type T } from './i18n/index.js'
 import { createHost, type Host } from './host.js'
 import { runInteractive } from './tui/index.js'
 
@@ -19,14 +20,16 @@ export interface CliIO {
 
 /** Parses the command line, runs it and returns the process exit code. */
 export async function run(argv: string[], io: CliIO): Promise<number> {
-  const parsed = parseArgs(argv)
+  // The language is known before the command line is read, so usage errors and --help are translated.
+  const t = tFor(cliLanguage(loadSettingsFile(resolveDataDir(io.env)).appearance.language, io.env))
+  const parsed = parseArgs(argv, t)
   if (!parsed.ok) {
     io.stderr(`xari: ${parsed.error}\n`)
     return EXIT.usage
   }
   const args = parsed.args
   if (args.help) {
-    io.stdout(USAGE + '\n')
+    io.stdout(usage(t) + '\n')
     return EXIT.ok
   }
   if (args.version) {
@@ -36,7 +39,7 @@ export async function run(argv: string[], io: CliIO): Promise<number> {
 
   const cwd = path.resolve(io.cwd, args.cwd ?? '.')
   if (!fs.existsSync(cwd) || !fs.statSync(cwd).isDirectory()) {
-    io.stderr(`xari: --cwd "${cwd}" is not a folder\n`)
+    io.stderr(`xari: ${t('error.notAFolder', { path: cwd })}\n`)
     return EXIT.usage
   }
   // Read piped input before anything else, so a usage error doesn't leave the pipe unread.
@@ -45,17 +48,17 @@ export async function run(argv: string[], io: CliIO): Promise<number> {
     const piped = io.stdin.isTTY ? '' : await io.stdin.read()
     prompt = [args.print, piped.trim()].filter(Boolean).join('\n\n')
     if (!prompt) {
-      io.stderr('xari: -p needs a prompt, as an argument or on stdin\n')
+      io.stderr(`xari: ${t('error.needsPrompt')}\n`)
       return EXIT.usage
     }
   } else if (!io.stdin.isTTY) {
-    io.stderr('xari: no terminal to chat in. Use -p "prompt" for a single answer, or run xari in a terminal.\n')
+    io.stderr(`xari: ${t('error.noTerminal')}\n`)
     return EXIT.usage
   }
 
   const host = await createHost({ cwd, env: io.env, version: pkg.version, mode: args.mode, maxSteps: args.maxSteps })
   try {
-    const session = await pickSession(host, args)
+    const session = await pickSession(host, args, t)
     if (typeof session === 'string') {
       io.stderr(`xari: ${session}\n`)
       return EXIT.usage
@@ -87,13 +90,13 @@ export async function run(argv: string[], io: CliIO): Promise<number> {
 }
 
 /** The chat to use: a resumed or continued one, or a new one. A string is an error message. */
-async function pickSession(host: Host, args: CliArgs): Promise<Session | string> {
+async function pickSession(host: Host, args: CliArgs, t: T): Promise<Session | string> {
   let session: Session | null = null
   if (args.resume) {
     // An id, or the start of one.
     const meta = host.listSessions('').find((m) => m.id === args.resume) ?? host.listSessions('').find((m) => m.id.startsWith(args.resume!))
     session = meta ? await host.loadSession(meta.id) : null
-    if (!session) return `no chat with id "${args.resume}"`
+    if (!session) return t('error.noChat', { id: args.resume })
   } else if (args.continue) {
     session = await host.latestSession()
   }

@@ -41,8 +41,9 @@ import {
   type Tool,
   type UsageTracker as Usage,
 } from '@harness/core'
+import { cliLanguage, tFor, type Lang, type MessageKey, type T } from './i18n/index.js'
 
-/** Commands the interface handles itself, same list as the desktop app. */
+/** Commands the interface handles itself, same list as the desktop app (descriptions in English; slashCommands() translates them). */
 export const BUILTIN_COMMANDS: SlashInfo[] = [
   { name: 'compact', description: 'Summarize older messages to free up context', source: 'builtin' },
   { name: 'clear', description: 'Start a new chat', source: 'builtin' },
@@ -87,6 +88,10 @@ export interface Host {
   readonly usage: Usage
   /** Where API keys come from: the OS keychain, or a plain file when there is none. */
   readonly secretStorage: 'keychain' | 'libsecret' | 'file'
+  /** The interface language: the desktop's `appearance.language`, else XARI_LANG, else the system locale. */
+  readonly lang: Lang
+  /** Messages in `lang`. */
+  readonly t: T
   /** A new, unsaved chat in the host's folder (saved after its first message). */
   newSession(model?: ModelRef): Session
   /** A saved chat by id; also loads the extensions of its folder. */
@@ -144,6 +149,8 @@ export async function createHost(opts: HostOptions = {}): Promise<Host> {
     agent: { ...loaded.agent, ...(opts.maxSteps ? { maxStepsPerTurn: opts.maxSteps } : {}) },
   }
   const defaultMode = opts.mode ?? settings.permissions.mode
+  const lang = cliLanguage(settings.appearance.language, env)
+  const t = tFor(lang)
 
   const keys = new KeyStore(detectSecretBackend(dataDir), env)
   // "Continue with ChatGPT": works when the desktop stored its sign-in in the keychain. While the
@@ -214,6 +221,8 @@ export async function createHost(opts: HostOptions = {}): Promise<Host> {
     cwd,
     usage,
     secretStorage: keys.storage,
+    lang,
+    t,
 
     newSession(model) {
       return newSession(cwd, model ?? host.defaultModel())
@@ -277,7 +286,7 @@ export async function createHost(opts: HostOptions = {}): Promise<Host> {
 
     slashCommands() {
       const custom = commandsOf(cwd).map((c) => ({ name: c.name, description: c.description, source: c.source, skill: c.skill }))
-      return [...BUILTIN_COMMANDS, ...custom]
+      return [...BUILTIN_COMMANDS.map((c) => ({ ...c, description: t(`slash.${c.name}` as MessageKey) })), ...custom]
     },
     expandPrompt: (text, dir = cwd) => expandSlashCommand(text, commandsOf(dir)) ?? text,
 
@@ -286,11 +295,8 @@ export async function createHost(opts: HostOptions = {}): Promise<Host> {
       const name = providerId.toUpperCase().replace(/[^A-Z0-9]/g, '_') + '_API_KEY'
       // The desktop keeps keys in Electron safeStorage when there is no keychain; only the desktop can decrypt that.
       const desktopFile = fs.existsSync(path.join(dataDir, 'secrets.json'))
-      const why =
-        keys.storage === 'file' && desktopFile
-          ? 'Keys saved in the desktop app are encrypted with Electron and the terminal cannot read them.'
-          : `No key for "${providerId}" was found.`
-      return `${why} Set ${name} in your environment, or ${process.platform === 'linux' ? 'install libsecret (secret-tool) and a keyring, then re-enter the key in the desktop app' : 'save the key in the desktop app'}.`
+      const why = keys.storage === 'file' && desktopFile ? t('key.desktopEncrypted') : t('key.notFound', { provider: providerId })
+      return `${why} ${t(process.platform === 'linux' ? 'key.setEnvLinux' : 'key.setEnv', { name })}`
     },
 
     async waitForMcp(ms) {
