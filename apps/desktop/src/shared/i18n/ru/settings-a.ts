@@ -362,6 +362,8 @@ export default {
   'settings.shortcuts.terminalHelp': 'Показывает или скрывает терминал внизу.',
   'settings.shortcuts.filesPanel': 'Панель файлов и изменений',
   'settings.shortcuts.filesPanelHelp': 'Показывает или скрывает панель справа.',
+  'settings.shortcuts.undoTurn': 'Отменить последний запрос',
+  'settings.shortcuts.undoTurnHelp': 'Возвращает файлы, изменённые последним запросом с изменениями, как /undo.',
   'settings.shortcuts.fixedNthChat': 'Открыть n-й чат в папке',
   'settings.shortcuts.fixedMode': 'Сменить режим разрешений (в поле сообщения)',
   'settings.shortcuts.fixedSend': 'Отправить, когда Enter добавляет строку',

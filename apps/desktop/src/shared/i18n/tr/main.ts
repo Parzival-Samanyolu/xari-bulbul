@@ -53,6 +53,8 @@ export default {
   'main.error.accountName': 'Hesaba bir ad verin.',
   'main.error.accountKey': 'Hesabın API anahtarını yapıştırın.',
   'main.error.accountGone': 'Bu hesap artık yok.',
+  'main.error.nothingToUndo': 'Geri alınacak bir şey yok: bu sohbette henüz hiçbir dosya değişmedi.',
+  'main.error.undoWhileRunning': 'Geri almadan önce isteğin bitmesini bekleyin veya onu durdurun.',
   'main.error.lastAccount': 'Bir sağlayıcıda en az bir hesap kalmalı. Bunun yerine anahtarını kaldırın.',
   'main.error.noRecording': 'Kayıt alınmadı.',
   'main.error.voiceOff': 'Sesli giriş Ayarlar › Ajan › Sesli giriş bölümünde kapalı.',

@@ -81,11 +81,13 @@ interface RightProps {
   app: AppState
   onState: (s: AppState) => void
   onError: (e: unknown) => void
+  /** Asks to undo every change a turn made. */
+  onUndo: (at: number) => void
 }
 
 type RightTab = 'files' | 'changes'
 
-export function RightPanel({ app, onState, onError }: RightProps) {
+export function RightPanel({ app, onState, onError, onUndo }: RightProps) {
   const { t } = useT()
   const [tab, setTab] = useState<RightTab>('files')
   const tabs: { id: RightTab; label: string }[] = [
@@ -122,7 +124,7 @@ export function RightPanel({ app, onState, onError }: RightProps) {
         {tab === 'files' ? (
           app.workspace ? <FilesPanel key={app.workspace} root={app.workspace} onError={onError} /> : <p className="muted small pad">{t('chat.files.noFolder')}</p>
         ) : (
-          <ChangesPanel app={app} onState={onState} onError={onError} />
+          <ChangesPanel app={app} onState={onState} onError={onError} onUndo={onUndo} />
         )}
       </div>
     </div>
@@ -270,13 +272,57 @@ function FilesPanel({ root, onError }: { root: string; onError: (e: unknown) => 
 
 // ---------------------------------------------------------------- changes
 
+/** The chat's turns that changed files, newest first, each with "Undo" (or that it was undone). */
+function TurnList({ app, onUndo }: { app: AppState; onUndo: (at: number) => void }) {
+  const { t } = useT()
+  const session = app.session
+  if (!session) return null
+  const left = new Map(session.checkpoints.filter((c) => Object.keys(c.files).length).map((c) => [c.at, Object.keys(c.files).length]))
+  const undone = new Map(session.undone.filter((u) => u.files.length).map((u) => [u.at, u.files.length]))
+  const ats = [...new Set([...left.keys(), ...undone.keys()])].sort((a, b) => b - a)
+  if (!ats.length) return null
+  const label = (at: number) => {
+    const m = session.messages[at]
+    const text = m?.role === 'user' && !m.synthetic ? m.content.trim().split('\n')[0] : ''
+    return text || t('chat.changes.earlierTurn')
+  }
+  return (
+    <>
+      <h3 className="changes-sub">{t('chat.changes.byTurn')}</h3>
+      <ul className="change-list turn-list" aria-label={t('chat.changes.byTurn')}>
+        {ats.map((at) => {
+          const n = left.get(at)
+          const desc = `turn-desc-${at}`
+          return (
+            <li key={at} className="change turn-row">
+              <div className="change-row">
+                <span className="turn-text ellipsis" id={`${desc}-t`} title={label(at)}>
+                  {label(at)}
+                </span>
+                <span className="muted small" id={desc}>
+                  {n ? t('chat.changes.count', { count: n }) : t('chat.undo.undone', { count: undone.get(at) ?? 0 })}
+                </span>
+                {!!n && (
+                  <button className="link small" aria-describedby={`${desc}-t ${desc}`} disabled={app.running} title={app.running ? t('chat.changes.wait') : undefined} onClick={() => onUndo(at)}>
+                    {t('chat.notice.undo')}
+                  </button>
+                )}
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+    </>
+  )
+}
+
 const STATUS: Record<FileChange['status'], { letter: string; label: MessageKey }> = {
   added: { letter: 'A', label: 'chat.changes.added' },
   modified: { letter: 'M', label: 'chat.changes.modified' },
   deleted: { letter: 'D', label: 'chat.changes.deleted' },
 }
 
-function ChangesPanel({ app, onState, onError }: RightProps) {
+function ChangesPanel({ app, onState, onError, onUndo }: RightProps) {
   const { t } = useT()
   const id = app.session?.meta.id
   const [changes, setChanges] = useState<FileChange[] | null>(null)
@@ -339,7 +385,9 @@ function ChangesPanel({ app, onState, onError }: RightProps) {
         </button>
       </div>
       {changes.length === 0 && <p className="muted small pad">{t('chat.changes.hint')}</p>}
-      <ul className="change-list">
+      <TurnList app={app} onUndo={onUndo} />
+      {changes.length > 0 && <h3 className="changes-sub">{t('chat.changes.byFile')}</h3>}
+      <ul className="change-list" aria-label={t('chat.changes.byFile')}>
         {changes.map((c) => {
           const isOpen = open.has(c.path)
           const s = STATUS[c.status]

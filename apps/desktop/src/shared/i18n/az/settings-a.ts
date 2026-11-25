@@ -362,6 +362,8 @@ export default {
   'settings.shortcuts.terminalHelp': 'Aşağıdakı terminalı göstərir və ya gizlədir.',
   'settings.shortcuts.filesPanel': 'Fayllar və dəyişikliklər paneli',
   'settings.shortcuts.filesPanelHelp': 'Sağdakı paneli göstərir və ya gizlədir.',
+  'settings.shortcuts.undoTurn': 'Son sorğunu geri qaytar',
+  'settings.shortcuts.undoTurnHelp': 'Dəyişiklik edən son sorğunun fayllarını /undo kimi geri qaytarır.',
   'settings.shortcuts.fixedNthChat': 'Qovluqdakı n-ci söhbəti aç',
   'settings.shortcuts.fixedMode': 'İcazə rejimini dəyiş (mesaj sahəsində)',
   'settings.shortcuts.fixedSend': 'Enter yeni sətir əlavə edəndə göndər',

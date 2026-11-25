@@ -55,6 +55,8 @@ export default {
   'main.error.accountName': 'Give the account a name.',
   'main.error.accountKey': 'Paste the account’s API key.',
   'main.error.accountGone': 'That account no longer exists.',
+  'main.error.nothingToUndo': 'Nothing to undo: no files changed in this chat yet.',
+  'main.error.undoWhileRunning': 'Wait for the turn to finish, or stop it, before undoing.',
   'main.error.lastAccount': 'A provider keeps at least one account. Remove its key instead.',
   'main.error.noRecording': 'No recording received.',
   'main.error.voiceOff': 'Voice input is turned off in Settings › Agent › Voice input.',

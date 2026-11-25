@@ -144,7 +144,7 @@ import {
   settingsPath,
 } from '@harness/core'
 import { fetchSynapseAccount, SYNAPSE_PROVIDER_ID, type SynapseAccount } from '@harness/core/synapse'
-import type { AccountView, AppState, AttachmentInput, BotAvatarRequest, CatalogSkillInfo, FoundSkillInfo, SkillRepoHit, BotRow, LobbyRow, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
+import type { AccountView, AppState, AttachmentInput, BotAvatarRequest, CatalogSkillInfo, FoundSkillInfo, SkillRepoHit, BotRow, LobbyRow, EndpointProbe, EndpointProbeInput, ExtensionsInfo, MemoryInfo, PluginInfo, ProviderTestResult, SessionView, UiEvent, UndoResult, SpeechAudio, VoiceDownload, VoiceState } from '../shared/ipc'
 import { LocalModels } from './local-models'
 import { AppError, systemLanguages, tm } from './i18n'
 import { log } from './logger'
@@ -166,6 +166,7 @@ const BUILTIN_COMMANDS = [
   { name: 'clear', description: 'Start a new chat', source: 'builtin' as const },
   { name: 'model', description: 'Open the model switcher', source: 'builtin' as const },
   { name: 'mode', description: 'Cycle the permission mode', source: 'builtin' as const },
+  { name: 'undo', description: 'Put back the files the last turn changed', source: 'builtin' as const },
 ]
 
 interface Running {
@@ -2039,6 +2040,25 @@ export class AppController {
     return this.state()
   }
 
+  /**
+   * Reverts every file a turn changed (the latest turn that has changes when `at` is left out), in
+   * the chat on screen. Returns the files put back, relative to the chat's folder.
+   */
+  undo(at?: number): UndoResult {
+    const agent = this.agent
+    if (!agent) throw new AppError('main.error.nothingToUndo')
+    if (agent.running) throw new AppError('main.error.undoWhileRunning')
+    const cp = at === undefined ? agent.checkpoints.filter((c) => Object.keys(c.files).length).sort((a, b) => b.at - a.at)[0] : agent.checkpoints.find((c) => c.at === at)
+    if (!cp) throw new AppError('main.error.nothingToUndo')
+    this.count('feature.checkpoint_revert', { scope: at === undefined ? 'latest' : 'turn' })
+    const cwd = agent.session.meta.cwd
+    const restored = agent.revert(cp.at).map((f) => {
+      const rel = path.relative(cwd, f)
+      return rel && !rel.startsWith('..') && !path.isAbsolute(rel) ? rel.split(path.sep).join('/') : f
+    })
+    return { state: this.state(), at: cp.at, restored }
+  }
+
   answer(sessionId: string, callId: string, text: string): AppState {
     const key = `${sessionId}:${callId}`
     const q = this.questions.get(key)
@@ -2348,7 +2368,7 @@ export class AppController {
   private sessionView(): SessionView | null {
     const s = this.agent?.session ?? this.lobby?.session
     if (!s) return null
-    return { meta: s.meta, messages: s.messages, todos: s.todos, displays: s.displays ?? {}, denied: s.denied ?? [], checkpoints: s.checkpoints ?? [] }
+    return { meta: s.meta, messages: s.messages, todos: s.todos, displays: s.displays ?? {}, denied: s.denied ?? [], checkpoints: s.checkpoints ?? [], undone: s.undone ?? [] }
   }
 
   // ---------- memory ----------

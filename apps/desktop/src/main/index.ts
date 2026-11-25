@@ -311,6 +311,7 @@ function registerIpc() {
   handle('agent.answer', (sessionId, id, text) => c.answer(sessionId, id, text))
   handle('agent.retry', () => c.retry())
   handle('agent.revert', (at, file) => c.revert(at, file))
+  handle('agent.undo', (at?: number) => c.undo(at))
   handle('agent.editMessage', (index, text, revert) => c.editMessage(index, text, revert))
   handle('fs.tree', (dir: string) => c.listDir(dir))
   handle('fs.read', (file: string) => c.readFile(file))
