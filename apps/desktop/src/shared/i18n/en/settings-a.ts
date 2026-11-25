@@ -361,6 +361,8 @@ export default {
   'settings.shortcuts.terminalHelp': 'Shows or hides the terminal at the bottom.',
   'settings.shortcuts.filesPanel': 'Files and changes panel',
   'settings.shortcuts.filesPanelHelp': 'Shows or hides the panel on the right.',
+  'settings.shortcuts.undoTurn': 'Undo the last turn',
+  'settings.shortcuts.undoTurnHelp': 'Puts back the files the latest turn with changes edited, like /undo.',
   'settings.shortcuts.fixedNthChat': 'Open the nth chat in the folder',
   'settings.shortcuts.fixedMode': 'Change permission mode (in the message box)',
   'settings.shortcuts.fixedSend': 'Send when Enter adds a newline',

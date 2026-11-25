@@ -15,7 +15,7 @@ import { ProviderError, type ChatRequest, type Provider } from '../providers/typ
 import { failoverKind, failureLabel, fallbackChain, ProviderUnavailableError, shortModelName } from './fallback.js'
 import { moaOn } from '../moa/config.js'
 import { aggregatorMessages, collectText, mixtureTranscript, proposerMessages, runProposers } from '../moa/mixture.js'
-import { newSession, titleFrom, type Checkpoint, type Session } from '../sessions/store.js'
+import { newSession, titleFrom, type Checkpoint, type Session, type UndoneTurn } from '../sessions/store.js'
 import { generateTitle } from '../sessions/title.js'
 import { modelKey, type Bot, type Settings } from '../settings/schema.js'
 import { activeBot, filterBotSkills, filterBotTools } from '../bots/bots.js'
@@ -574,6 +574,7 @@ export class Agent {
     const dropped = (this.session.checkpoints ?? []).filter((c) => c.at >= index)
     if (opts.revert) for (const c of [...dropped].sort((a, b) => b.at - a.at)) this.restore(c.files)
     this.session.checkpoints = (this.session.checkpoints ?? []).filter((c) => c.at < index)
+    if (this.session.undone) this.session.undone = this.session.undone.filter((u) => u.at < index)
     this.session.messages = this.session.messages.slice(0, index)
     this.session.lastPromptTokens = undefined
     this.save()
@@ -583,6 +584,11 @@ export class Agent {
   /** Turns that changed files, with the files they changed. */
   get checkpoints(): Checkpoint[] {
     return this.session.checkpoints ?? []
+  }
+
+  /** Turns whose changes were reverted (whole or file by file), with the files put back. */
+  get undone(): UndoneTurn[] {
+    return this.session.undone ?? []
   }
 
   /**
@@ -598,6 +604,10 @@ export class Agent {
     for (const f of Object.keys(files)) delete cp.files[f]
     if (!Object.keys(cp.files).length) this.session.checkpoints = this.checkpoints.filter((c) => c !== cp)
     if (restored.length) {
+      const undone = (this.session.undone ??= [])
+      const u = undone.find((x) => x.at === at)
+      if (u) u.files = [...new Set([...u.files, ...restored])]
+      else undone.push({ at, files: restored })
       const list = restored.map((f) => `- ${f}`).join('\n')
       const note = `The user reverted your changes to these files; they are back to how they were before that turn:\n${list}\nRe-read them before editing.`
       this.session.pendingNote = [this.session.pendingNote, note].filter(Boolean).join('\n\n')
@@ -1359,6 +1369,7 @@ export class Agent {
     // Two messages (summary + acknowledgement) replace the first `split`.
     const shift = (at: number) => (at >= split ? at - split + 2 : -1)
     this.session.checkpoints = this.checkpoints.map((c) => ({ ...c, at: shift(c.at) })).filter((c) => c.at >= 0)
+    if (this.session.undone) this.session.undone = this.session.undone.map((u) => ({ ...u, at: shift(u.at) })).filter((u) => u.at >= 0)
     if (this.turnAt >= 0) this.turnAt = Math.max(0, shift(this.turnAt))
     this.emit({ type: 'compacted', removedMessages: split })
     this.save()

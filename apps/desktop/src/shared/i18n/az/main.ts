@@ -53,6 +53,8 @@ export default {
   'main.error.accountName': 'Hesaba ad verin.',
   'main.error.accountKey': 'Hesabın API açarını yapışdırın.',
   'main.error.accountGone': 'Bu hesab artıq yoxdur.',
+  'main.error.nothingToUndo': 'Geri qaytarılacaq heç nə yoxdur: bu söhbətdə hələ heç bir fayl dəyişdirilməyib.',
+  'main.error.undoWhileRunning': 'Geri qaytarmazdan əvvəl sorğunun bitməsini gözləyin və ya onu dayandırın.',
   'main.error.lastAccount': 'Provayderdə ən azı bir hesab qalmalıdır. Bunun əvəzinə onun açarını silin.',
   'main.error.noRecording': 'Səs yazısı alınmadı.',
   'main.error.voiceOff': 'Səsli daxiletmə Ayarlar › Agent › Səsli daxiletmə bölməsində söndürülüb.',

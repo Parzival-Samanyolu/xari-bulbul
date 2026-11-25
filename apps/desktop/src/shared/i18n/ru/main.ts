@@ -53,6 +53,8 @@ export default {
   'main.error.accountName': 'Дайте аккаунту название.',
   'main.error.accountKey': 'Вставьте API-ключ аккаунта.',
   'main.error.accountGone': 'Этого аккаунта больше нет.',
+  'main.error.nothingToUndo': 'Отменять нечего: в этом чате ещё не менялись файлы.',
+  'main.error.undoWhileRunning': 'Дождитесь завершения запроса или остановите его, прежде чем отменять изменения.',
   'main.error.lastAccount': 'У провайдера должен остаться хотя бы один аккаунт. Вместо этого удалите его ключ.',
   'main.error.noRecording': 'Запись не получена.',
   'main.error.voiceOff': 'Голосовой ввод выключен в разделе Настройки › Агент › Голосовой ввод.',

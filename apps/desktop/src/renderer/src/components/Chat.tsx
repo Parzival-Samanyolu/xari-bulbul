@@ -1,5 +1,5 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { AppState, ChatMessage, Checkpoint, MixtureInfo, PermissionAnswer, PermissionRequest, QuestionRequest, ToolDisplay } from '../../../shared/ipc'
+import type { AppState, ChatMessage, Checkpoint, MixtureInfo, UndoneTurn, PermissionAnswer, PermissionRequest, QuestionRequest, ToolDisplay } from '../../../shared/ipc'
 import { chatBot } from '@harness/core/bots'
 import type { LiveState, Notice, ToolLive } from '../App'
 import { api } from '../lib/api'
@@ -12,6 +12,7 @@ import { Question } from './Question'
 import { ProviderLogo } from './ProviderLogo'
 import { basename, modelLabel } from '../lib/format'
 import { SpeakButton } from './SpeakButton'
+import { relTo } from './UndoDialog'
 import { speakerFor, type SpeakAs } from '../lib/speech'
 import { useFormat, useT } from '../lib/i18n'
 import { CHATGPT_USAGE_URL } from './ChatGpt'
@@ -30,6 +31,8 @@ interface Props {
   /** Sends "continue" after the step limit. */
   onContinue: () => void
   onRevert: (at: number, file?: string) => void
+  /** Asks to undo every change a turn made. */
+  onUndo: (at: number) => void
   onEdit: (index: number, text: string, revert: boolean) => void
   onUndoMemory: (memory: NonNullable<Notice['memory']>) => void
   onState: (s: AppState) => void
@@ -55,7 +58,7 @@ export function Chat(props: Props) {
   return <OneChat {...props} />
 }
 
-function OneChat({ app, live, onDismiss, onSettings, approval, question, onRetry, onContinue, onRevert, onEdit, onUndoMemory, onState, onError, onEditBot }: Props) {
+function OneChat({ app, live, onDismiss, onSettings, approval, question, onRetry, onContinue, onRevert, onUndo, onEdit, onUndoMemory, onState, onError, onEditBot }: Props) {
   const session = app.session
   // Memoized: a new object every render would re-render every message.
   const chatVoice = useMemo(() => speakerFor(app), [app.session?.meta.botId, app.settings.bots])
@@ -90,7 +93,7 @@ function OneChat({ app, live, onDismiss, onSettings, approval, question, onRetry
     return { results: map, lastCalls: asker }
   }, [messages])
   const denied = useMemo(() => new Set(session?.denied), [session?.denied])
-  const turns = useMemo(() => turnLayout(messages ?? [], session?.checkpoints ?? []), [messages, session?.checkpoints])
+  const turns = useMemo(() => turnLayout(messages ?? [], session?.checkpoints ?? [], session?.undone ?? []), [messages, session?.checkpoints, session?.undone])
 
   if (!session) return <div className="chat" />
 
@@ -171,8 +174,8 @@ function OneChat({ app, live, onDismiss, onSettings, approval, question, onRetry
           </>
         )}
         {session.messages.map((m, i) => {
-          const cp = turns.endsAt.get(i)
-          const bar = cp && settled(cp.at) && <RevertBar key={`r${cp.at}`} checkpoint={cp} onRevert={onRevert} />
+          const end = turns.endsAt.get(i)
+          const bar = end && settled(end.at) && <UndoBar key={`r${end.at}`} turn={end} cwd={session.meta.cwd} running={app.running} onUndo={onUndo} />
           if (m.role === 'user')
             return [
               <UserBubble
@@ -299,17 +302,26 @@ function EmptyChat({ app }: { app: AppState }) {
   )
 }
 
+/** A turn that changed files: what's left to undo, and what was undone already. */
+interface TurnChanges {
+  at: number
+  checkpoint?: Checkpoint
+  undone?: UndoneTurn
+}
+
 /**
- * Where each turn starts, and where its "Revert" bar goes: after the last message of a turn that
- * changed files (before the next message you wrote).
+ * Where each turn starts, and where its "Undo changes" bar goes: after the last message of a turn
+ * that changed files (before the next message you wrote).
  */
-function turnLayout(messages: ChatMessage[], checkpoints: Checkpoint[]) {
+function turnLayout(messages: ChatMessage[], checkpoints: Checkpoint[], undone: UndoneTurn[]) {
   const starts = messages.flatMap((m, i) => (m.role === 'user' && !m.synthetic ? [i] : []))
   const byAt = new Map(checkpoints.filter((c) => Object.keys(c.files).length).map((c) => [c.at, c]))
-  const endsAt = new Map<number, Checkpoint>()
+  const undoneAt = new Map(undone.filter((u) => u.files.length).map((u) => [u.at, u]))
+  const endsAt = new Map<number, TurnChanges>()
   starts.forEach((at, k) => {
-    const cp = byAt.get(at)
-    if (cp) endsAt.set((starts[k + 1] ?? messages.length) - 1, cp)
+    const checkpoint = byAt.get(at)
+    const u = undoneAt.get(at)
+    if (checkpoint || u) endsAt.set((starts[k + 1] ?? messages.length) - 1, { at, checkpoint, undone: u })
   })
   return {
     starts,
@@ -323,19 +335,37 @@ function turnLayout(messages: ChatMessage[], checkpoints: Checkpoint[]) {
 
 const base = (p: string) => p.split(/[\\/]/).pop() ?? p
 
-function RevertBar({ checkpoint, onRevert }: { checkpoint: Checkpoint; onRevert: (at: number) => void }) {
+/** The end of a turn that changed files: "Undo changes" while there's something left, then that it was undone. */
+function UndoBar({ turn, cwd, running, onUndo }: { turn: TurnChanges; cwd: string; running: boolean; onUndo: (at: number) => void }) {
   const { t } = useT()
-  const files = Object.keys(checkpoint.files)
+  const files = Object.keys(turn.checkpoint?.files ?? {})
+  if (!files.length) {
+    const n = turn.undone?.files.length ?? 0
+    return (
+      <div className="revert-bar undone" title={turn.undone?.files.map((f) => relTo(cwd, f)).join('\n')}>
+        <span className="muted small">
+          <span aria-hidden>↶ </span>
+          {t('chat.undo.undone', { count: n })}
+        </span>
+      </div>
+    )
+  }
   const one = files.length === 1
+  const desc = `undo-desc-${turn.at}`
   return (
     <div className="revert-bar">
-      <span className="muted small">{one ? t('chat.revert.changedOne', { name: base(files[0]) }) : t('chat.revert.changedMany', { count: files.length })}</span>
+      <span className="muted small" id={desc}>
+        {one ? t('chat.revert.changedOne', { name: base(files[0]) }) : t('chat.revert.changedMany', { count: files.length })}
+      </span>
       <button
-        className="link small"
-        title={files.join('\n')}
-        onClick={() => confirm(one ? t('chat.revert.confirmOne', { name: base(files[0]) }) : t('chat.revert.confirmMany', { count: files.length })) && onRevert(checkpoint.at)}
+        className="link small undo-turn"
+        aria-describedby={desc}
+        title={running ? t('chat.changes.wait') : files.map((f) => relTo(cwd, f)).join('\n')}
+        disabled={running}
+        onClick={() => onUndo(turn.at)}
       >
-        {t('chat.revert.button')}
+        <span aria-hidden>↶ </span>
+        {t('chat.undo.button')}
       </button>
     </div>
   )

@@ -36,6 +36,8 @@ export interface Session {
   denied?: string[]
   /** Files as they were before each turn's edits, so a turn can be reverted. */
   checkpoints?: Checkpoint[]
+  /** Turns whose changes were reverted, so the chat can say so instead of offering it again. */
+  undone?: UndoneTurn[]
   /** A note for the model, sent with the next user message (e.g. files the user reverted). */
   pendingNote?: string
   /** Usage of the last request, used to decide when to compact. */
@@ -47,6 +49,13 @@ export interface Checkpoint {
   at: number
   /** Absolute path → content before the turn's first edit, or null if the turn created the file. */
   files: Record<string, string | null>
+}
+
+export interface UndoneTurn {
+  /** Index in `messages` of the user message that started the turn (as in `Checkpoint.at`). */
+  at: number
+  /** Absolute paths that were put back. */
+  files: string[]
 }
 
 export function newSession(cwd: string, model: ModelRef, opts: { botId?: string; lobbyId?: string } = {}): Session {

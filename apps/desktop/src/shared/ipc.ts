@@ -26,11 +26,13 @@ import type {
   Settings,
   TodoItem,
   ToolDisplay,
+  UndoneTurn,
   UsageSummary,
   ProviderUsage,
 } from '@harness/core'
 
 export type {
+  UndoneTurn,
   IMessageStatus,
   WhatsAppStatus,
   AgentEvent,
@@ -87,6 +89,17 @@ export interface SessionView {
   denied: string[]
   /** Turns that changed files and can still be reverted. */
   checkpoints: Checkpoint[]
+  /** Turns whose changes were reverted, with the files put back. */
+  undone: UndoneTurn[]
+}
+
+/** What undoing a turn did. */
+export interface UndoResult {
+  state: AppState
+  /** The turn that was undone (`Checkpoint.at`). */
+  at: number
+  /** Files put back, relative to the chat's folder (absolute when outside it). */
+  restored: string[]
 }
 
 export interface CommandInfo {
@@ -592,6 +605,8 @@ export interface HarnessApi {
     retry(): Promise<void>
     /** Restores the files a turn changed (or just `file`), in the chat on screen. */
     revert(at: number, file?: string): Promise<AppState>
+    /** Restores every file a turn changed (the latest turn with changes when `at` is left out), in the chat on screen. */
+    undo(at?: number): Promise<UndoResult>
     /** Replaces an earlier message of the chat on screen and runs from there. */
     editMessage(index: number, text: string, revert: boolean): Promise<void>
   }

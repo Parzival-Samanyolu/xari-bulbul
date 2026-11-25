@@ -18,6 +18,7 @@ import { Welcome } from './components/Welcome'
 import { BotDialog } from './components/BotDialog'
 import { LobbyDialog } from './components/LobbyDialog'
 import { Loading } from './components/Loading'
+import { UndoDialog } from './components/UndoDialog'
 import { I18nProvider, useT } from './lib/i18n'
 import { makeT, type Vars } from '@harness/core/i18n'
 import { CATALOGS, type MessageKey } from '../../shared/i18n/catalog'
@@ -326,6 +327,29 @@ export function App() {
   const onRevert = useCallback((at: number, file?: string) => void api.agent.revert(at, file).then(setState, fail), [setState, fail])
   const onUndoMemory = useCallback((m: NonNullable<Notice['memory']>) => void api.memory.undo(m.sessionId, m.added, m.removed).then(setState, fail), [setState, fail])
   const onEdit = useCallback((index: number, text: string, revert: boolean) => void api.agent.editMessage(index, text, revert).catch(fail), [fail])
+  /** The turn whose undo is being confirmed (its chat and `Checkpoint.at`), or null. */
+  const [undoAsk, setUndoAsk] = useState<{ sessionId: string; at: number } | null>(null)
+  /** Asks to undo a turn's changes: `at`, or the latest turn that has changes (/undo and its shortcut). */
+  const onUndo = useCallback((at?: number) => {
+    const cur = latest.current
+    const say = (level: Notice['level'], key: MessageKey) => dispatch({ type: 'notice', level, text: english(key), msg: { key } })
+    if (!cur?.session || cur.session.meta.lobbyId) return
+    if (cur.running) return say('warn', 'chat.undo.wait')
+    const live = cur.session.checkpoints.filter((c) => Object.keys(c.files).length)
+    const cp = at === undefined ? live.sort((a, b) => b.at - a.at)[0] : live.find((c) => c.at === at)
+    if (!cp) return say('info', 'chat.undo.nothing')
+    setUndoAsk({ sessionId: cur.session.meta.id, at: cp.at })
+  }, [])
+  const confirmUndo = useCallback(
+    (at: number) =>
+      api.agent.undo(at).then((r) => {
+        setUndoAsk(null)
+        setState(r.state)
+        const msg: Msg = { key: 'chat.undo.done', vars: { count: r.restored.length } }
+        dispatch({ type: 'notice', level: 'info', text: english(msg.key, msg.vars), msg })
+      }, (e: unknown) => (setUndoAsk(null), fail(e))),
+    [setState, fail],
+  )
   /** Changes the panels on screen and saves them. */
   const savePanels = useCallback(
     (patch: Partial<Panels>) => {
@@ -368,6 +392,9 @@ export function App() {
       } else if (is('modelPicker')) {
         e.preventDefault()
         setPickerOpen((o) => !o)
+      } else if (is('undoTurn')) {
+        e.preventDefault()
+        onUndo()
       } else if (is('newChat') && app.workspace) {
         e.preventDefault()
         api.sessions.create().then(setState, fail)
@@ -387,7 +414,7 @@ export function App() {
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [app?.settings, app?.platform, app?.workspace, app?.running, app?.sessions, app?.session?.meta.id, approval, pickerOpen, settingsPage, setState, fail, toggleBottom, toggleRight])
+  }, [app?.settings, app?.platform, app?.workspace, app?.running, app?.sessions, app?.session?.meta.id, approval, pickerOpen, settingsPage, setState, fail, toggleBottom, toggleRight, onUndo])
 
   // Share info counts which Settings tabs get opened (tab ids only).
   const settingsTab = settingsPage ? pageEntry(settingsPage).tab.id : null
@@ -435,6 +462,7 @@ export function App() {
                 onRetry={onRetry}
                 onContinue={onContinue}
                 onRevert={onRevert}
+                onUndo={onUndo}
                 onEdit={onEdit}
                 onUndoMemory={onUndoMemory}
                 onState={setState}
@@ -442,7 +470,7 @@ export function App() {
                 onEditBot={editBot}
                 onEditLobby={editLobby}
               />
-              <Composer app={app} onState={setState} onError={fail} onOpenPicker={() => setPickerOpen(true)} />
+              <Composer app={app} onState={setState} onError={fail} onOpenPicker={() => setPickerOpen(true)} onUndo={onUndo} />
             </>
           )}
         </main>
@@ -450,7 +478,7 @@ export function App() {
           <WithT>{(t) => (
           <aside className="side-right" style={{ width: panels.right }} aria-label={t('chat.app.filesPanel')}>
             <Resizer axis="x" label={t('chat.app.resizeFiles')} value={panels.right} min={220} max={Math.max(220, Math.min(1200, window.innerWidth - 570))} onChange={(right) => setPanels({ ...panels, right })} onCommit={(right) => savePanels({ right })} />
-            <RightPanel app={app} onState={setState} onError={fail} />
+            <RightPanel app={app} onState={setState} onError={fail} onUndo={onUndo} />
           </aside>
           )}</WithT>
         )}
@@ -473,6 +501,10 @@ export function App() {
           update={update}
           panels={app.workspace && panels ? { bottom: showBottom, right: showRight, onBottom: toggleBottom, onRight: toggleRight } : undefined}
         />
+        {undoAsk && app.session?.meta.id === undoAsk.sessionId && (() => {
+          const cp = app.session.checkpoints.find((c) => c.at === undoAsk.at && Object.keys(c.files).length)
+          return cp ? <UndoDialog key={`${undoAsk.sessionId}:${undoAsk.at}`} checkpoint={cp} cwd={app.session.meta.cwd} onCancel={() => setUndoAsk(null)} onConfirm={() => confirmUndo(cp.at)} /> : null
+        })()}
         {pickerOpen && <ModelPicker app={app} onClose={() => setPickerOpen(false)} onState={setState} onError={fail} />}
         <ChatGptWelcome app={app} onState={setState} />
         {settingsPage && <SettingsOverlay app={app} page={settingsPage} onPage={setSettingsPage} onState={setState} onClose={() => setSettingsPage(null)} update={update} onEditBot={editBot} />}

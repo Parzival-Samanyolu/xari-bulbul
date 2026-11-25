@@ -45,6 +45,7 @@ The chosen translation of each recurring term in the app. Use these every time, 
 | folder | qovluq | klasör | папка | Also used for "workspace" in the UI. Do not say "work area". |
 | project | layihə | proje | проект | |
 | changes | dəyişikliklər | değişiklikler | изменения | File edits made in a chat (the diff panel). |
+| undo (a turn's changes) | geri qaytar | geri al | отменить | Puts back the files a turn changed (`/undo`). "Undo changes": *Dəyişiklikləri geri qaytar* / *Değişiklikleri geri al* / *Отменить изменения*. "Put back N files" (done): *N fayl geri qaytarıldı* / *N dosya geri yüklendi* / *Восстановлено N файлов*. A turn is *sorğu* / *istek* / *запрос* in this wording. |
 | approval | təsdiq | onay | подтверждение | The request to allow a tool call. "Needs approval": *Təsdiq gözləyir* / *Onay bekliyor* / *Ждёт подтверждения*. |
 | approve / allow | icazə ver | izin ver | разрешить | Button. "Allow once": *Bir dəfə icazə ver* / *Bir kez izin ver* / *Разрешить один раз*. "Always allow": *Həmişə icazə ver* / *Her zaman izin ver* / *Разрешать всегда*. |
 | deny | rədd et | reddet | запретить | Button. |

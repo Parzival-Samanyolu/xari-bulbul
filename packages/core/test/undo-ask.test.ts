@@ -142,6 +142,7 @@ describe('undo and edit', () => {
     expect(fs.readFileSync(path.join(dir, 'app.txt'), 'utf8')).toBe('hello world\n')
     expect(fs.existsSync(path.join(dir, 'new1.txt'))).toBe(false)
     expect(agent.checkpoints).toHaveLength(0)
+    expect(agent.undone).toEqual([{ at: 0, files: restored }])
 
     await agent.send('thanks')
     const wire = toWireMessage(provider.requests.at(-1)!.messages.at(-1)!)
@@ -156,6 +157,10 @@ describe('undo and edit', () => {
     expect(fs.existsSync(path.join(dir, 'new1.txt'))).toBe(false)
     expect(fs.readFileSync(path.join(dir, 'app.txt'), 'utf8')).toBe('hello there\n')
     expect(Object.keys(agent.checkpoints[0].files)).toEqual([path.join(dir, 'app.txt')])
+    expect(agent.undone).toEqual([{ at: 0, files: [path.join(dir, 'new1.txt')] }])
+    agent.revert(0)
+    expect(agent.checkpoints).toHaveLength(0)
+    expect(agent.undone).toEqual([{ at: 0, files: [path.join(dir, 'new1.txt'), path.join(dir, 'app.txt')] }])
   })
 
   it('keeps the content from before the first edit of a turn', async () => {

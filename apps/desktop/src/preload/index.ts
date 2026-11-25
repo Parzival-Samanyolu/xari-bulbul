@@ -40,6 +40,7 @@ const api: HarnessApi = {
     answer: call('agent.answer') as any,
     retry: call('agent.retry') as any,
     revert: call('agent.revert') as any,
+    undo: call('agent.undo') as any,
     editMessage: call('agent.editMessage') as any,
   },
   fs: { tree: call('fs.tree') as any, read: call('fs.read') as any },
