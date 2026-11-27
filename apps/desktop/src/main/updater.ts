@@ -19,7 +19,6 @@ export function initUpdater(sender: (e: UiEvent) => void, enabled: boolean) {
   const manual = !canInstallUpdates()
   log.info('updater', manual ? 'Updates: this build can only point to the download (not signed for auto-update)' : 'Updates: automatic', { autoCheck: enabled })
   autoUpdater.autoDownload = !manual
-  // Both apps publish to the same GitHub release; Qaqaş reads its own feed (qaqash.yml) there.
   if (EDITION.updateChannel !== 'latest') {
     autoUpdater.channel = EDITION.updateChannel
     autoUpdater.allowDowngrade = false

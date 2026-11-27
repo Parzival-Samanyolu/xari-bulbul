@@ -25,7 +25,6 @@ export { failoverKind, failureLabel, fallbackChain, type FailoverKind } from './
 export * from './moa/config.js'
 export * from './bots/bots.js'
 export * from './bots/lobby.js'
-export { importBots, planBotImport, wantedSession, type BotImportPlan, type BotImportResult } from './bots/import.js'
 export { loadAttachment, imageFromData, IMAGE_TYPES, MAX_IMAGE_BYTES, MAX_TEXT_BYTES } from './attachments/load.js'
 export * from './providers/catalog.js'
 export * from './host/paths.js'

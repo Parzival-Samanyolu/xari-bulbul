@@ -14,15 +14,3 @@ The logo is an edit of a real photograph of *Ophrys caucasica*, the Caucasian be
 | `apps/desktop/src/renderer/src/assets/mark.png` | Transparent cut-out used inside the app (works on light and dark themes) |
 
 To regenerate: download the source photo as `pd.jpg`, then run `python3 cut.py && python3 compose.py`. This needs `opencv-python`, `numpy` and `pillow`.
-
-## Qaqaş logo
-
-*Qaqaş* is Azerbaijani for "brother", so the bots app's logo is two chat bubbles leaning on each other: the older one (lime) typing, the younger one (plum) smiling. It uses Xarı's frame (a black rounded square on Apple's 1024 grid) and the orchid's colours, so the two apps read as a family. It's drawn as a vector, with no photo involved.
-
-| File | Use |
-|---|---|
-| `qaqash.svg` | Source drawing |
-| `qaqash-icon-1024.png` | App icon, copied to `apps/desktop/build/qaqash/icon.png` (set in `electron-builder.qaqash.yml`) |
-| `apps/desktop/src/renderer/src/assets/mark-qaqash.png` | The bubbles without the frame, used inside the app |
-
-To regenerate, render `qaqash.svg` at 1024×1024 with a transparent background (any SVG renderer; a headless browser screenshot works).

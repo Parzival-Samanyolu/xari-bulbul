@@ -1,21 +1,19 @@
-// Records xari-desktop.gif or qaqash.gif: the Electron app under xvfb against the scripted mock model.
-// The app must be built for the edition first (both builds write apps/desktop/out):
-//   pnpm --filter @harness/desktop build            && node docs/media/scripts/record-desktop.cjs xari
-//   pnpm --filter @harness/desktop build:qaqash     && node docs/media/scripts/record-desktop.cjs qaqash
+// Records xari-desktop.gif (coding) or xari-bots.gif (a bot chat): the Electron app under xvfb against
+// the scripted mock model. Build the app first: pnpm --filter @harness/desktop build
 // Needs: xvfb (run via `xvfb-run -a`), ffmpeg, playwright, the electron binary from node_modules.
-// Usage: NODE_PATH=$(npm root -g) xvfb-run -a node docs/media/scripts/record-desktop.cjs <xari|qaqash> [outFile]
+// Usage: NODE_PATH=$(npm root -g) xvfb-run -a node docs/media/scripts/record-desktop.cjs <xari|bots> [outFile]
 const fs = require('fs')
 const path = require('path')
 const { _electron } = require('playwright')
 const { sleep, startMock, assemble } = require('./lib.cjs')
 
 const root = path.resolve(__dirname, '../../..')
-const edition = process.argv[2] === 'qaqash' ? 'qaqash' : 'xari'
-const out = path.resolve(process.argv[3] || path.join(__dirname, '..', edition === 'qaqash' ? 'qaqash.gif' : 'xari-desktop.gif'))
+const edition = process.argv[2] === 'bots' ? 'bots' : 'xari'
+const out = path.resolve(process.argv[3] || path.join(__dirname, '..', edition === 'bots' ? 'xari-bots.gif' : 'xari-desktop.gif'))
 const work = `/tmp/demo-desk-${edition}`
 const proj = path.join(work, 'shop-api')
 const data = path.join(work, 'data')
-const PORT = edition === 'qaqash' ? 47822 : 47812
+const PORT = edition === 'bots' ? 47822 : 47812
 const electronBin = [path.join(root, 'node_modules/electron/dist/electron'), path.join(root, 'apps/desktop/node_modules/electron/dist/electron'), process.env.ELECTRON_BIN].find((p) => p && fs.existsSync(p))
 if (!electronBin) throw new Error('electron binary not found; run pnpm install or set ELECTRON_BIN')
 
@@ -47,10 +45,10 @@ module.exports = app
     permissions: { mode: 'auto' },
     memory: { autoReview: false },
     tools: { loadUserExtensions: false },
-    ...(edition === 'qaqash' ? { bots: [{ id: 'ayla', name: 'Ayla', enabled: true }, { id: 'deniz', name: 'Deniz', enabled: true }] } : {}),
+    ...(edition === 'bots' ? { botOptions: { enabled: true }, bots: [{ id: 'ayla', name: 'Ayla', enabled: true }, { id: 'deniz', name: 'Deniz', enabled: true }] } : {}),
   }
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify(settings))
-  const mock = startMock(PORT, edition === 'qaqash' ? 'bot' : 'code')
+  const mock = startMock(PORT, edition === 'bots' ? 'bot' : 'code')
   await sleep(800)
   const app = await _electron.launch({ executablePath: electronBin, args: [path.join(root, 'apps/desktop'), '--no-sandbox'], env: { ...process.env, HOME: work, HARNESS_DATA_DIR: data, HARNESS_TELEMETRY: 'off' } })
   const win = await app.firstWindow()

@@ -16,7 +16,6 @@ interface Props {
 export function Welcome({ app, onState, onError, onSettings }: Props) {
   const { t } = useT()
   const connected = Object.values(app.ready).some(Boolean)
-  // Qaqaş has no project folders, so its only step is connecting a model.
   const coding = EDITION.features.coding
   const hasFolder = !!app.workspace || !coding
   // The first unfinished step carries the primary action.
@@ -36,7 +35,7 @@ export function Welcome({ app, onState, onError, onSettings }: Props) {
     <div className="welcome">
       <img className="welcome-mark" src={mark} alt="" width={96} height={76} />
       <h1>{EDITION.name}</h1>
-      <p className="muted">{coding ? t('bots.welcome.tagline') : t('bots.welcome.taglineQaqash')}</p>
+      <p className="muted">{t('bots.welcome.tagline')}</p>
       <ol className="steps">
         <li className={connected ? 'done' : ''}>
           <div>

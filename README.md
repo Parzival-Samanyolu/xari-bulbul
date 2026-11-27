@@ -54,21 +54,6 @@ Run it again to update. Options, flags, keys and shortcuts are in [apps/cli](app
 
 The CLI's Markdown, code and diff display uses components from [Gemini CLI](https://github.com/google-gemini/gemini-cli) (Apache-2.0). See [apps/cli/THIRD_PARTY_NOTICES.md](apps/cli/THIRD_PARTY_NOTICES.md).
 
-## Qaqaş, the bots app
-
-<img src="docs/brand/qaqash-icon-1024.png" width="72" align="left" alt="Qaqaş icon: two chat bubbles">
-
-**Qaqaş** ("brother" in Azerbaijani) is a second app built from the same codebase and engine. It has bots and group chats, WhatsApp and iMessage, and automations that read your email and notes and draft replies for you to review. It can import bots from Xarı. Each app keeps its own settings and chats.
-
-<br clear="left">
-
-![Qaqaş: a bot chat, then the Automations tab](docs/media/qaqash.gif)
-
-```bash
-pnpm dev:qaqash     # run Qaqaş from source
-pnpm dist:qaqash    # Qaqaş installers (release/<version>/Qaqash-*)
-```
-
 ## Features
 
 <details>
@@ -117,9 +102,16 @@ pnpm dist:qaqash    # Qaqaş installers (release/<version>/Qaqash-*)
 </details>
 
 <details>
+<summary><b>Bots and messaging</b></summary>
+
+- **Bots:** characters with their own model, instructions, picture and memory, in the **Bots** tab (switch it on in Settings). Group chats put several bots in one room.
+- **WhatsApp and iMessage:** a bot can answer you there (iMessage on macOS only).
+</details>
+
+<details>
 <summary><b>Automations (mail, notes, review inbox)</b></summary>
 
-Instructions that run by themselves, on a timer or when new email arrives, each in a new chat. Mail and notes are set up in Qaqaş.
+Instructions that run by themselves, on a timer or when new email arrives, each in a new chat.
 
 - **Mail:** Gmail, Outlook or your own domain (IMAP/SMTP with an app password, kept in the OS keychain). Tools: `mail_search`, `mail_read`, `mail_draft`.
 - **Notes:** an Obsidian vault, Apple Notes (macOS) or Notion, read with `notes_search` and `notes_read`. Nothing is ever changed.
@@ -198,7 +190,7 @@ packages/core/          the engine: no UI, fully tested
   src/mcp/              MCP client: connects servers, adapts their tools
   src/memory/           facts saved across chats
   src/settings/         the settings schema (zod) with defaults
-apps/desktop/           Electron app, built as two editions (src/shared/edition.ts): Xarı and Qaqaş
+apps/desktop/           Electron app
 apps/cli/               the `xari` terminal app: host, arguments, Ink UI (src/ui), non-interactive mode, install.sh
 bench/                  model benchmark: tasks, runner, published results
 ```

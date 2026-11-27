@@ -6,7 +6,7 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, Notification, p
 import { Telemetry, defaultScrubContext, telemetryUrl } from '@harness/core'
 import { IPC_EVENT, type RendererError, type TrackEvent, type UiEvent } from '../shared/ipc'
 import { encodeAppError } from '../shared/app-error'
-import { EDITION, dataDirNameOf } from '../shared/edition'
+import { EDITION } from '../shared/edition'
 import { AppController, type BackgroundNotice } from './controller'
 import { AppError, buildAppMenu, setMainLanguage, tm } from './i18n'
 import { errText, log } from './logger'
@@ -392,8 +392,6 @@ function registerIpc() {
     const r = await dialog.showOpenDialog(win!, { properties: ['openDirectory', 'createDirectory'], title: tm('main.dialog.botFolder'), defaultPath: c.state().workspace ?? undefined })
     return r.canceled || !r.filePaths[0] ? null : r.filePaths[0]
   })
-  handle('bots.importable', () => c.importableBots())
-  handle('bots.importFromXari', () => c.importBots())
   handle('bots.open', (botId: string) => c.openBot(botId))
   handle('bots.newThread', (botId: string) => c.newBotThread(botId))
   handle('bots.imageProvider', () => c.botImageProvider())
@@ -481,16 +479,6 @@ process.on('unhandledRejection', (reason) => {
 app.commandLine.appendSwitch('force-gpu-mem-available-mb', '192')
 app.commandLine.appendSwitch('force-gpu-mem-discardable-limit-mb', '32')
 
-/**
- * Qaqaş can import the bots the coding app kept before the split: its data folder is where Xarı
- * keeps them. A test profile (HARNESS_DATA_DIR) has none; QAQASH_IMPORT_FROM points at a copy.
- */
-function botImportSource(): string | undefined {
-  if (process.env.QAQASH_IMPORT_FROM) return path.resolve(process.env.QAQASH_IMPORT_FROM)
-  if (process.env.HARNESS_DATA_DIR || EDITION.id !== 'qaqash') return undefined
-  return path.join(app.getPath('appData'), dataDirNameOf('xari'))
-}
-
 app.whenReady().then(async () => {
   log.init(app.getPath('userData'))
   log.info('app', `Started ${EDITION.name} ${app.getVersion()}`, { edition: EDITION.id, platform: process.platform, arch: process.arch, os: process.getSystemVersion?.() ?? os.release(), electron: process.versions.electron, packaged: app.isPackaged })
@@ -510,7 +498,7 @@ app.whenReady().then(async () => {
     ready: () => !!controller?.getSettings().app.onboarded,
     scrub: defaultScrubContext(app.getAppPath()),
   })
-  controller = new AppController(app.getPath('userData'), app.getVersion(), send, notify, { telemetry, shareInfoOff: !url, whatsappBridge: whatsappBridgeSource(), onLanguage: languageChanged, botImportSource: botImportSource() })
+  controller = new AppController(app.getPath('userData'), app.getVersion(), send, notify, { telemetry, shareInfoOff: !url, whatsappBridge: whatsappBridgeSource(), onLanguage: languageChanged })
   languageChanged(controller.getSettings().appearance.language)
   telemetry.event('app.start', { packaged: app.isPackaged })
   telemetry.start()

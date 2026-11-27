@@ -35,7 +35,7 @@ export function Sidebar({ app, onState, onError, onSettings, onAutomations, onCh
   const openPaths = new Set(app.folders.map((f) => f.path))
   const recents = app.settings.app.recentWorkspaces.filter((w) => !openPaths.has(w))
   const mod = app.platform === 'darwin' ? '⌘' : 'Ctrl+'
-  // Xarı has no bots; in Qaqaş they are the app, so there is no switch to hide them.
+  // Bots show when they're switched on in settings.
   const coding = EDITION.features.coding
   const botsOn = EDITION.features.bots && (!coding || app.settings.botOptions.enabled)
   const onBotChat = !!app.session && (isBotChat(app.settings, app.session.meta) || (!!app.session.meta.lobbyId && botsOn))

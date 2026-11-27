@@ -93,8 +93,6 @@ export default {
   'main.error.openFolder': 'Сначала откройте папку.',
   'main.error.lobbyGone': 'Этого группового чата больше нет.',
   'main.error.openLobby': 'Сначала откройте групповой чат.',
-  'main.error.importOnlyQaqash': 'Импорт ботов доступен только в Qaqaş.',
-  'main.error.importNoSource': 'Папка данных Xarı не найдена, импортировать нечего.',
   'main.error.providerGone': 'Провайдера «{id}» больше нет. Выберите другую модель (⌘/Ctrl+K).',
   'main.error.providerOff': 'Провайдер {name} выключен. Включите его в разделе Настройки › Провайдеры › API-ключи или выберите другую модель.',
   'main.error.needsKey': 'Для {name} нужен API-ключ. Добавьте его в разделе Настройки › Провайдеры › API-ключи.',
@@ -190,8 +188,4 @@ export default {
   'main.automation.sourceGone': 'Этого источника заметок больше нет.',
   'main.automation.sourceOff': 'Сначала включите источник заметок.',
   'main.dialog.vaultFolder': 'Выберите папку хранилища Obsidian',
-  'main.menu.aboutQaqash': 'О программе Qaqaş',
-  'main.menu.hideQaqash': 'Скрыть Qaqaş',
-  'main.menu.quitQaqash': 'Завершить Qaqaş',
-  'main.menu.githubQaqash': 'Qaqaş на GitHub',
 } satisfies Record<keyof typeof en, Message>

@@ -320,7 +320,6 @@ export default {
 
   // Welcome screen
   'bots.welcome.tagline': 'ИИ-агент для программирования, который работает в вашем проекте с любой моделью на ваш выбор.',
-  'bots.welcome.taglineQaqash': 'Боты, которые общаются с вами, отвечают в WhatsApp и iMessage и разбирают вашу почту, с любой моделью на ваш выбор.',
   'bots.welcome.pickBot': 'Затем выберите бота на боковой панели и поздоровайтесь.',
   'bots.welcome.connect': 'Подключите модель',
   'bots.welcome.ready': 'Провайдер готов.',
@@ -438,9 +437,4 @@ export default {
   'bots.fields.addTo': 'Добавить в список «{list}»',
   'bots.onboard.badge.chatgptPlan': 'Plus или Pro',
   'bots.onboard.provider.chatgpt': 'Модели OpenAI, оплачиваемые из вашего плана ChatGPT. Войдите, API-ключ не нужен.',
-  'bots.onboard.finishQaqash': 'Начать работу с Qaqaş',
-  'bots.import.offer': { one: 'Из Xarı можно перенести {count} бота или групповой чат.', few: 'Из Xarı можно перенести {count} бота и групповых чата.', many: 'Из Xarı можно перенести {count} ботов и групповых чатов.', other: 'Из Xarı можно перенести {count} бота и групповых чата.' },
-  'bots.import.button': 'Перенести сюда',
-  'bots.import.importing': 'Переносим…',
-  'bots.import.done': { one: 'Перенесён {count} бот вместе с чатами. В Xarı остаётся своя копия.', few: 'Перенесено {count} бота и групповых чата вместе с чатами. В Xarı остаётся своя копия.', many: 'Перенесено {count} ботов и групповых чатов вместе с чатами. В Xarı остаётся своя копия.', other: 'Перенесено {count} бота и групповых чата вместе с чатами. В Xarı остаётся своя копия.' },
 } satisfies Record<keyof typeof en, Message>

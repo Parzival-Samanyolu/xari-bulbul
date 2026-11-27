@@ -93,8 +93,6 @@ export default {
   'main.error.openFolder': 'Əvvəlcə qovluq açın.',
   'main.error.lobbyGone': 'Bu qrup söhbəti artıq yoxdur.',
   'main.error.openLobby': 'Əvvəlcə qrup söhbəti açın.',
-  'main.error.importOnlyQaqash': 'Botların idxalı yalnız Qaqaş-da mümkündür.',
-  'main.error.importNoSource': 'Xarı-nın məlumat qovluğu tapılmadı, idxal ediləcək bot yoxdur.',
   'main.error.providerGone': '“{id}” provayderi artıq yoxdur. Başqa model seçin (⌘/Ctrl+K).',
   'main.error.providerOff': '{name} söndürülüb. Onu Ayarlar › Provayderlər › API açarları bölməsində yandırın və ya başqa model seçin.',
   'main.error.needsKey': '{name} üçün API açarı lazımdır. Onu Ayarlar › Provayderlər › API açarları bölməsində əlavə edin.',
@@ -172,8 +170,4 @@ export default {
   'main.automation.sourceGone': 'Bu qeyd mənbəyi artıq yoxdur.',
   'main.automation.sourceOff': 'Əvvəlcə qeyd mənbəyini aktiv edin.',
   'main.dialog.vaultFolder': 'Obsidian vault qovluğunu seçin',
-  'main.menu.aboutQaqash': 'Qaqaş haqqında',
-  'main.menu.hideQaqash': 'Qaqaş-ı gizlət',
-  'main.menu.quitQaqash': 'Qaqaş-dan çıx',
-  'main.menu.githubQaqash': 'GitHub-da Qaqaş',
 } satisfies Record<keyof typeof en, Message>

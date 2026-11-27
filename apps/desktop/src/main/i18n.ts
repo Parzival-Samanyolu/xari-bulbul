@@ -66,15 +66,15 @@ export function buildAppMenu(): void {
     {
       label: app.name,
       submenu: [
-        { role: 'about', label: tm(EDITION.id === 'qaqash' ? 'main.menu.aboutQaqash' : 'main.menu.about') },
+        { role: 'about', label: tm('main.menu.about') },
         sep,
         { role: 'services', label: tm('main.menu.services') },
         sep,
-        { role: 'hide', label: tm(EDITION.id === 'qaqash' ? 'main.menu.hideQaqash' : 'main.menu.hide') },
+        { role: 'hide', label: tm('main.menu.hide') },
         { role: 'hideOthers', label: tm('main.menu.hideOthers') },
         { role: 'unhide', label: tm('main.menu.showAll') },
         sep,
-        { role: 'quit', label: tm(EDITION.id === 'qaqash' ? 'main.menu.quitQaqash' : 'main.menu.quit') },
+        { role: 'quit', label: tm('main.menu.quit') },
       ],
     },
     {
@@ -131,7 +131,7 @@ export function buildAppMenu(): void {
     {
       role: 'help',
       label: tm('main.menu.help'),
-      submenu: [{ label: tm(EDITION.id === 'qaqash' ? 'main.menu.githubQaqash' : 'main.menu.github'), click: () => void shell.openExternal(REPO_URL) }],
+      submenu: [{ label: tm('main.menu.github'), click: () => void shell.openExternal(REPO_URL) }],
     },
   ]
   Menu.setApplicationMenu(Menu.buildFromTemplate(template))

@@ -539,7 +539,7 @@ export const TABS: TabDef[] = [
   },
 ]
 
-/** Sections this app leaves out (Xarı has no bots or messaging; Qaqaş has no coding settings). */
+/** Sections this build leaves out (see shared/edition.ts). */
 const OFF_HERE = new Set(EDITION.hiddenSettings)
 
 const shown = (p: PageDef, s?: Settings) => !p.hidden && !OFF_HERE.has(p.id) && (!s || !p.when || p.when(s))

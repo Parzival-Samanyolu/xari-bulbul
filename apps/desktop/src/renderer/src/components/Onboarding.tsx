@@ -104,7 +104,7 @@ export function Onboarding({ app, onState, onError }: Props) {
         <div className="onboard-hello">
           <img className="welcome-mark" src={mark} alt="" width={96} height={76} />
           <h1>{EDITION.name}</h1>
-          <p className="muted">{EDITION.features.coding ? t('bots.welcome.tagline') : t('bots.welcome.taglineQaqash')}</p>
+          <p className="muted">{t('bots.welcome.tagline')}</p>
           <button className="btn primary onboard-start" autoFocus onClick={() => setStarted(true)}>
             {t('bots.onboard.start')}
           </button>
@@ -152,7 +152,7 @@ export function Onboarding({ app, onState, onError }: Props) {
           )}
           {id === 'done' ? (
             <button className="btn primary" onClick={finish}>
-              {t(EDITION.id === 'qaqash' ? 'bots.onboard.finishQaqash' : 'bots.onboard.finish')}
+              {t('bots.onboard.finish')}
             </button>
           ) : (
             <button className="btn primary" onClick={() => go(step + 1)}>

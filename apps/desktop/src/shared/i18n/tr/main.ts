@@ -93,8 +93,6 @@ export default {
   'main.error.openFolder': 'Önce bir klasör açın.',
   'main.error.lobbyGone': 'Bu grup sohbeti artık yok.',
   'main.error.openLobby': 'Önce bir grup sohbeti açın.',
-  'main.error.importOnlyQaqash': 'Botları içe aktarma yalnızca Qaqaş’ta kullanılabilir.',
-  'main.error.importNoSource': 'Xarı’nın veri klasörü bulunamadı, içe aktarılacak bot yok.',
   'main.error.providerGone': '“{id}” sağlayıcısı artık yok. Başka bir model seçin (⌘/Ctrl+K).',
   'main.error.providerOff': '{name} kapalı. Ayarlar › Sağlayıcılar › API anahtarları bölümünden açın ya da başka bir model seçin.',
   'main.error.needsKey': '{name} için bir API anahtarı gerekiyor. Ayarlar › Sağlayıcılar › API anahtarları bölümünden ekleyin.',
@@ -172,8 +170,4 @@ export default {
   'main.automation.sourceGone': 'Bu not kaynağı artık yok.',
   'main.automation.sourceOff': 'Önce not kaynağını açın.',
   'main.dialog.vaultFolder': 'Obsidian kasa klasörünüzü seçin',
-  'main.menu.aboutQaqash': 'Qaqaş hakkında',
-  'main.menu.hideQaqash': 'Qaqaş’ı gizle',
-  'main.menu.quitQaqash': 'Qaqaş’tan çık',
-  'main.menu.githubQaqash': 'GitHub’da Qaqaş',
 } satisfies Record<keyof typeof en, Message>

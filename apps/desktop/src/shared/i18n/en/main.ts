@@ -95,8 +95,6 @@ export default {
   'main.error.openFolder': 'Open a folder first.',
   'main.error.lobbyGone': 'That lobby no longer exists.',
   'main.error.openLobby': 'Open a lobby first.',
-  'main.error.importOnlyQaqash': 'Importing bots is only available in Qaqaş.',
-  'main.error.importNoSource': 'Xarı’s data folder wasn’t found, so there are no bots to import.',
   'main.error.providerGone': 'The provider “{id}” no longer exists. Pick another model (⌘/Ctrl+K).',
   'main.error.providerOff': '{name} is turned off. Turn it on in Settings › Providers › API keys, or pick another model.',
   'main.error.needsKey': '{name} needs an API key. Add one in Settings › Providers › API keys.',
@@ -178,8 +176,4 @@ export default {
   'main.automation.sourceGone': 'That notes source no longer exists.',
   'main.automation.sourceOff': 'Turn the notes source on first.',
   'main.dialog.vaultFolder': 'Choose your Obsidian vault folder',
-  'main.menu.aboutQaqash': 'About Qaqaş',
-  'main.menu.hideQaqash': 'Hide Qaqaş',
-  'main.menu.quitQaqash': 'Quit Qaqaş',
-  'main.menu.githubQaqash': 'Qaqaş on GitHub',
 } as const satisfies Record<string, Message>

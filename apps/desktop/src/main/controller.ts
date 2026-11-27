@@ -79,8 +79,6 @@ import {
   saveSettingsFile,
   exportSettings,
   importSettings,
-  importBots,
-  planBotImport,
   resetSettings,
   guessProviderApi,
   ProviderConfigSchema,
@@ -262,8 +260,6 @@ export class AppController {
       shareInfoOff?: boolean
       /** The app's copy of the WhatsApp bridge source. */
       whatsappBridge?: string
-      /** Qaqaş only: the coding app's data folder to import bots from. Unset when there is none (a test profile). */
-      botImportSource?: string
       /** Called with `appearance.language` when it changes, so main's menus and dialogs follow. */
       onLanguage?: (setting: string) => void
     } = {},
@@ -1168,7 +1164,6 @@ export class AppController {
 
   /** Starts the iMessage gateway (macOS only) and the WhatsApp bridge if they're on. */
   startGateways() {
-    // Only Qaqaş has the messaging gateways.
     if (!EDITION.features.gateways) return
     this.imessage.sync()
     this.whatsapp.sync()
@@ -1800,7 +1795,7 @@ export class AppController {
     })
   }
 
-  /** Qaqaş has no project folders: bots without their own folder work in one inside the data folder. */
+  /** Without coding there are no project folders: bots without their own folder work in one inside the data folder. */
   private botHome(): string | null {
     if (EDITION.features.coding) return null
     const dir = path.join(this.dataDir, 'home')
@@ -2180,26 +2175,6 @@ export class AppController {
 
   private get botImageDir(): string {
     return path.join(this.dataDir, 'bots')
-  }
-
-  /** Qaqaş only: what the coding app's data folder still has to offer (bots and lobbies not here yet). */
-  importableBots(): { available: boolean; bots: number; lobbies: number } {
-    if (!EDITION.features.bots || EDITION.features.coding) throw new AppError('main.error.importOnlyQaqash')
-    const from = this.opts.botImportSource
-    if (!from || !fs.existsSync(from)) return { available: false, bots: 0, lobbies: 0 }
-    const plan = planBotImport(from, this.dataDir, this.settings)
-    return { available: plan.bots.length + plan.lobbies.length > 0, bots: plan.bots.length, lobbies: plan.lobbies.length }
-  }
-
-  /** Qaqaş only: copies bots, lobbies, memories, pictures and chats over from the coding app. Never touches that folder. */
-  async importBots(): Promise<{ bots: number; lobbies: number; chats: number; state: AppState }> {
-    if (!EDITION.features.bots || EDITION.features.coding) throw new AppError('main.error.importOnlyQaqash')
-    const from = this.opts.botImportSource
-    if (!from || !fs.existsSync(from)) throw new AppError('main.error.importNoSource')
-    const r = importBots(from, this.dataDir, this.settings)
-    // Files are copied by now; saving the settings last is what makes the bots appear.
-    const state = r.bots || r.lobbies ? await this.setSettings(r.settings, { prune: false }) : this.state()
-    return { bots: r.bots, lobbies: r.lobbies, chats: r.chats, state }
   }
 
   /** Copies a picture into `<data>/bots/` for a bot's avatar; the bot dialog saves the path. */

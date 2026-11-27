@@ -312,7 +312,6 @@ export default {
 
   // Welcome screen
   'bots.welcome.tagline': 'Layihənizdə istədiyiniz modellə işləyən süni intellekt proqramlaşdırma agenti.',
-  'bots.welcome.taglineQaqash': 'Sizinlə söhbət edən, WhatsApp və iMessage-də cavab verən və e-poçtunuzla məşğul olan botlar, istədiyiniz istənilən modellə.',
   'bots.welcome.pickBot': 'Sonra yan paneldə bot seçin və salam deyin.',
   'bots.welcome.connect': 'Model qoşun',
   'bots.welcome.ready': 'Provayder hazırdır.',
@@ -430,9 +429,4 @@ export default {
   'bots.fields.addTo': '{list} siyahısına əlavə et',
   'bots.onboard.badge.chatgptPlan': 'Plus və ya Pro',
   'bots.onboard.provider.chatgpt': 'ChatGPT planınızdan ödənilən OpenAI modelləri. Daxil olun, API açarı lazım deyil.',
-  'bots.onboard.finishQaqash': 'Qaqaş ilə işə başla',
-  'bots.import.offer': { one: 'Xarı-dan {count} bot və ya qrup söhbəti köçürülə bilər.', other: 'Xarı-dan {count} bot və qrup söhbəti köçürülə bilər.' },
-  'bots.import.button': 'Buraya köçür',
-  'bots.import.importing': 'Köçürülür…',
-  'bots.import.done': { one: '{count} bot söhbətləri ilə birlikdə köçürüldü. Xarı öz nüsxəsini saxlayır.', other: '{count} bot və qrup söhbəti söhbətləri ilə birlikdə köçürüldü. Xarı öz nüsxəsini saxlayır.' },
 } satisfies Record<keyof typeof en, Message>
