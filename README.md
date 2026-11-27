@@ -1,62 +1,27 @@
-<p align="center"><img src="docs/brand/logo-oled-1024.png" width="180" alt="Xarı Bülbül logo: a Caucasian bee-orchid on black"></p>
+<p align="center"><img src="docs/brand/logo-oled-1024.png" width="120" alt="Xarı logo: a Caucasian bee-orchid on black"></p>
 
-# Xarı Bülbül
+# Xarı
 
-*Xarı bülbül* is a flower from Karabakh, and this is an AI coding agent.
+**An open-source coding agent that speaks Azerbaijani, Turkish and Russian.** It works with any model, including your own Synapse server or a local one, in a desktop app and in the terminal.
 
-An AI coding agent for **macOS, Windows and Linux** that works directly in your project, as a desktop app.
-It reads, searches, edits and runs code, and it can use **any model** on OpenRouter, Ollama Cloud, Google AI Studio (Gemini), Anthropic, OpenAI, Mistral, xAI, Groq, Cerebras, NVIDIA, Z.ai, Samanyolu AI Synapse, or any OpenAI-compatible API. With a ChatGPT Plus or Pro plan you can also **Continue with ChatGPT** and use the plan instead of an API key.
+![Xarı desktop app: a prompt, the reply streaming, and an edit shown as a diff](docs/media/xari-desktop.gif)
 
-Built to be owned and extended. The engine is small, readable TypeScript with no agent framework and no AI SDK.
+*Xarı bülbül* is a flower from Karabakh. The app is called Xarı (formerly Xarı Bülbül; the repo and the data folder keep the old name, so nothing moves for existing users).
 
-## Features
+## Why Xarı
 
-- **Claude Code–style agent loop:**
-  - tools for read, edit (exact-match replace), write, list, glob, grep, shell, web search, web fetch and a todo list
-  - a diff for every edit
-  - live streaming, Stop / Esc, and resumable chats
-- **One-step model switching:** press ⌘/Ctrl+K to switch models, even mid-conversation. The switcher:
-  - opens on **free models only** by default (18 of OpenRouter's ~460)
-  - puts your favorites and recently used models on top
-  - sorts by newest, name, context or price
-  - is a click away from the full catalog
+- **Your language, everywhere.** The desktop app and the terminal CLI both speak English, Azerbaijani, Turkish and Russian.
+- **Any model.** OpenRouter, Ollama Cloud, Google AI Studio (Gemini), Anthropic, OpenAI, Mistral, xAI, Groq, Cerebras, NVIDIA, Z.ai, Samanyolu AI Synapse, or any OpenAI-compatible API (local Ollama, LM Studio, vLLM). With a ChatGPT Plus or Pro plan, use **Continue with ChatGPT** instead of an API key. Switch models mid-chat with ⌘/Ctrl+K.
+- **You stay in control.** Four permission modes (Ask, Auto-edit, Plan, Full auto). Destructive commands such as `rm` or `git reset --hard` always ask, even in Full auto. You can **undo a turn's changes** in one step.
+- **Desktop and terminal share everything.** The same chats, settings, memory and usage. Start in one, continue in the other.
+- **Runs in CI.** A [GitHub Action](docs/github-action/README.md) reviews pull requests or fixes tests with the same agent.
+- **Open source, MIT.** The engine is small, readable TypeScript with no agent framework and no AI SDK. Built to be owned and extended.
 
-  The default model is `openrouter/free`, which lets OpenRouter pick an available free model for you.
-- **Token, request and cost tracking:**
-  - live in the status bar: prompt/completion/cached tokens, requests, and cost per chat and per day
-  - a context-window meter
-  - a per-model breakdown, CSV export, and per-chat or daily budgets (warn or stop)
-- **Permission modes:** Ask / Auto-edit / Plan (read-only) / Full auto, plus allow and deny rules like `bash(npm test*)` or `edit_file(src/**)`. Writes outside the project folder always ask.
-- **Destructive commands always ask:** `rm`, `git reset --hard`, force pushes and similar need your approval even in Full auto, and are only ever allowed once. Before a turn ends, the agent checks for unfinished checklist steps and failed tool calls and must report anything it skipped.
-- **Web search:**
-  - **No key needed:** DuckDuckGo first, then Brave's free search when DuckDuckGo is busy. Results unrelated to the query are rejected.
-  - **Free keys (optional):** a Brave Search key (2,000 searches a month) or a Tavily key (1,000 a month) is used first in automatic mode. Add one in **Settings › Tools & extensions › Web search** or by setting `BRAVE_API_KEY` / `TAVILY_API_KEY`.
-  - **Your own SearXNG:** also supported.
-  - **Filters:** searches can be limited to certain sites and to recent results.
-  - **Reading pages:** `web_fetch` returns a page's main content as Markdown, in parts for long pages.
-- **MCP servers:** connect local (command) or remote (URL) Model Context Protocol servers in **Settings › MCP servers**. Their tools follow your permission rules as `mcp__<server>__<tool>`. GitHub's hosted server is one click: **Add GitHub**, then paste a token.
-- **Automations:** instructions that run by themselves, on a timer or when new email arrives, each in a new chat:
-  - **Mail:** connect Gmail, Outlook or your own domain (IMAP/SMTP with an app password, kept in the OS keychain). The agent gets `mail_search`, `mail_read` and `mail_draft`.
-  - **Notes:** an Obsidian vault, Apple Notes (macOS) or Notion, read with `notes_search` and `notes_read`. Nothing is ever changed.
-  - **Inbox:** the sidebar's Automations tab lists every run with its summary. Emails it wrote wait there to send, edit or skip.
-  - **Sending, per automation:** wait for your review (the default), or send automatically within per-run and per-day limits. Nothing is ever sent to the blocklist.
-  - **Chained actions:** when a run ends, tell you on the desktop, WhatsApp or iMessage, and start another automation.
-  - **Templates:** personal customer follow-ups, replies to new customer emails, birthday greetings, a morning inbox digest.
-- **Memory:** the agent can remember facts across chats (your preferences, how to test a project) with the `remember` / `forget` tools. Memories live in the app's data folder, and you can review or delete them in **Settings › Memory**.
-- **Detailed settings:**
-  - Providers & keys: stored in the OS keychain (macOS Keychain, libsecret on Linux), or encrypted with your Windows account (DPAPI)
-  - Models: defaults, per-model overrides, reasoning effort
-  - Agent: custom instructions, system prompt override, compaction, timeouts, shell
-  - Tools, Usage, Appearance, and settings import/export for your team
-- **Several folders at once:** the sidebar lists every open folder with its chats. Chats keep working while you look at another chat or folder; the sidebar shows which are working or need approval (a dot on collapsed folders), and you get a notification when a background chat finishes.
-- **Subagents:** the agent can hand wide searches or independent jobs to subagents that start with a fresh context and run in parallel. Only their reports come back to the chat. You can set their model, how many run at once, and whether they may edit.
-- **Automatic context compaction:** long conversations are summarized when the context window fills up. `AGENTS.md` / `HARNESS.md` / `CLAUDE.md` project instructions are loaded automatically.
-- **Extensions:** add your own tools (`.mjs`) and slash commands (`.md`), and add any OpenAI-compatible provider.
-- **Auto-updates** from GitHub Releases.
+## Get it
 
-## Install
+### Desktop (macOS, Windows, Linux)
 
-Download the latest installer from [Releases](https://github.com/Parzival-Samanyolu/xari-bulbul/releases/latest):
+Download from [Releases](https://github.com/Parzival-Samanyolu/xari-bulbul/releases/latest):
 
 | System | File |
 |---|---|
@@ -64,7 +29,104 @@ Download the latest installer from [Releases](https://github.com/Parzival-Samany
 | Windows (x64) | `.exe` |
 | Linux (x64, any distro) | `.AppImage`: `chmod +x XariBulbul-*.AppImage` and run it |
 
-Arch Linux users can also build a package from the [`PKGBUILD`](packaging/arch).
+Arch Linux users can build a package from the [`PKGBUILD`](packaging/arch). The app updates itself from GitHub Releases.
+
+### Terminal (CLI)
+
+![The xari CLI asking to approve an edit](docs/media/xari-cli.gif)
+
+From source (Node 22+ and pnpm 10):
+
+```bash
+pnpm install && pnpm build:cli
+node apps/cli/dist/xari.mjs                              # interactive chat in this folder
+node apps/cli/dist/xari.mjs -p "summarize this repo"     # one answer, then exit
+git diff | node apps/cli/dist/xari.mjs -p "review this" --mode plan
+```
+
+On a Linux server, one command installs Node 22, builds `xari`, adds swap if the machine is small, and asks for an API key:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Parzival-Samanyolu/xari-bulbul/main/apps/cli/install.sh | sudo bash
+```
+
+Run it again to update. Options, flags, keys and shortcuts are in [apps/cli](apps/cli/README.md).
+
+The CLI's Markdown, code and diff display uses components from [Gemini CLI](https://github.com/google-gemini/gemini-cli) (Apache-2.0). See [apps/cli/THIRD_PARTY_NOTICES.md](apps/cli/THIRD_PARTY_NOTICES.md).
+
+## Features
+
+<details>
+<summary><b>The agent</b></summary>
+
+- **Claude Code-style loop:** tools for read, edit (exact-match replace), write, list, glob, grep, shell, web search, web fetch and a todo list. A diff for every edit, live streaming, Stop / Esc, resumable chats.
+- **Model switching:** ⌘/Ctrl+K, even mid-conversation. Opens on free models only by default; favorites and recents on top; sort by newest, name, context or price. The default model is `openrouter/free`.
+- **Subagents:** wide searches and independent jobs go to subagents with a fresh context, in parallel. Only their reports come back. Set their model, how many run at once, and whether they may edit.
+- **Memory:** `remember` / `forget` tools keep facts across chats. Review or delete them in **Settings › Memory**.
+- **Context compaction:** long chats are summarized when the window fills. `AGENTS.md`, `HARNESS.md` and `CLAUDE.md` project instructions load automatically.
+- **Several folders at once:** the sidebar lists every open folder with its chats. Background chats keep working, and you get a notification when one finishes.
+- **Undo:** put back the files a turn changed, from the chat, with `/undo`, a shortcut or the changes panel.
+</details>
+
+<details>
+<summary><b>Permissions and safety</b></summary>
+
+- **Modes:** Ask / Auto-edit / Plan (read-only) / Full auto. Add allow and deny rules like `bash(npm test*)` or `edit_file(src/**)`. Writes outside the project folder always ask.
+- **Destructive commands always ask:** `rm`, `git reset --hard`, force pushes and similar need approval even in Full auto, and are allowed once only.
+- **Finish check:** before a turn ends, the agent checks for unfinished checklist steps and failed tool calls and must report anything it skipped.
+- **Keys** are stored in the OS keychain (macOS Keychain, libsecret on Linux) or encrypted with your Windows account (DPAPI).
+</details>
+
+<details>
+<summary><b>Usage and cost tracking</b></summary>
+
+- Live in the status bar: prompt, completion and cached tokens, requests, and cost per chat and per day.
+- A context-window meter, a per-model breakdown, CSV export, and per-chat or daily budgets (warn or stop).
+- ChatGPT plan usage is shown at API prices. Synapse shows your plan and this week's allowance.
+</details>
+
+<details>
+<summary><b>Web search</b></summary>
+
+- **No key needed:** DuckDuckGo first, then Brave's free search when DuckDuckGo is busy. Unrelated results are rejected.
+- **Free keys (optional):** Brave (2,000 searches a month) or Tavily (1,000 a month), used first in automatic mode. Add one in **Settings › Tools & extensions › Web search** or set `BRAVE_API_KEY` / `TAVILY_API_KEY`. Your own SearXNG also works.
+- Searches can be limited to sites and to recent results. `web_fetch` returns a page as Markdown, in parts for long pages.
+</details>
+
+<details>
+<summary><b>MCP servers, skills and extensions</b></summary>
+
+- **MCP:** connect local (command) or remote (URL) servers in **Settings › MCP servers**. Their tools follow your permission rules as `mcp__<server>__<tool>`. GitHub's hosted server is one click: **Add GitHub**, then paste a token.
+- **Skills and plugins:** a catalog with GitHub search, token estimates, on/off switches and a `/` command per skill.
+- **Extensions:** your own tools (`.mjs`) and slash commands (`.md`), and any OpenAI-compatible provider. See [Extending Xarı](#extending-xarı).
+</details>
+
+<details>
+<summary><b>Bots and messaging</b></summary>
+
+- **Bots:** characters with their own model, instructions, picture and memory, in the **Bots** tab (switch it on in Settings). Group chats put several bots in one room.
+- **WhatsApp and iMessage:** a bot can answer you there (iMessage on macOS only).
+</details>
+
+<details>
+<summary><b>Automations (mail, notes, review inbox)</b></summary>
+
+Instructions that run by themselves, on a timer or when new email arrives, each in a new chat.
+
+- **Mail:** Gmail, Outlook or your own domain (IMAP/SMTP with an app password, kept in the OS keychain). Tools: `mail_search`, `mail_read`, `mail_draft`.
+- **Notes:** an Obsidian vault, Apple Notes (macOS) or Notion, read with `notes_search` and `notes_read`. Nothing is ever changed.
+- **Inbox:** every run is listed with its summary. Emails the agent wrote wait there to send, edit or skip.
+- **Sending, per automation:** wait for your review (the default), or send automatically within per-run and per-day limits. Nothing goes to the blocklist.
+- **Disclose AI:** a button on drafts adds a disclosure line; the default is per automation and the text is editable.
+- **Chained actions:** when a run ends, notify you on the desktop, WhatsApp or iMessage, and start another automation.
+- **Templates:** customer follow-ups, replies to new customer emails, birthday greetings, a morning inbox digest.
+</details>
+
+<details>
+<summary><b>Settings</b></summary>
+
+Providers and keys, models (defaults, per-model overrides, reasoning effort), agent (custom instructions, system prompt override, compaction, timeouts, shell), tools, usage, appearance and language, and settings import/export for your team.
+</details>
 
 ## Quick start (from source)
 
@@ -75,7 +137,7 @@ pnpm install
 pnpm dev          # launches the desktop app with hot reload
 ```
 
-1. Open **Settings › Providers › API keys** and paste an [OpenRouter](https://openrouter.ai/keys) or [Ollama Cloud](https://ollama.com/settings/keys) or [Google AI Studio](https://aistudio.google.com/apikey) key. It's tested as soon as you save it.
+1. Open **Settings › Providers › API keys** and paste an [OpenRouter](https://openrouter.ai/keys), [Ollama Cloud](https://ollama.com/settings/keys) or [Google AI Studio](https://aistudio.google.com/apikey) key. It is tested as soon as you save it.
 2. Open a project folder and start asking.
 
 | Shortcut | Action |
@@ -85,7 +147,7 @@ pnpm dev          # launches the desktop app with hot reload
 | ⌘/Ctrl+, | Settings |
 | Shift+Tab | Cycle permission mode |
 | Esc | Stop the agent |
-| `/` | Slash commands (`/compact`, `/clear`, `/model`, `/mode`, plus yours) |
+| `/` | Slash commands (`/compact`, `/clear`, `/model`, `/mode`, `/undo`, plus yours) |
 
 To keep a development profile separate from your real one:
 
@@ -93,7 +155,7 @@ To keep a development profile separate from your real one:
 HARNESS_DATA_DIR=/tmp/harness-dev pnpm dev
 ```
 
-## Extending Xarı Bülbül
+## Extending Xarı
 
 Extensions live in `~/.harness/` (yours, applied to every project) or `<project>/.harness/` (per project):
 
@@ -128,7 +190,8 @@ packages/core/          the engine: no UI, fully tested
   src/mcp/              MCP client: connects servers, adapts their tools
   src/memory/           facts saved across chats
   src/settings/         the settings schema (zod) with defaults
-apps/desktop/           Electron app: main process (controller, IPC, keys, updater) + React UI
+apps/desktop/           Electron app
+apps/cli/               the `xari` terminal app: host, arguments, Ink UI (src/ui), non-interactive mode, install.sh
 bench/                  model benchmark: tasks, runner, published results
 ```
 
@@ -165,7 +228,6 @@ Builds are **unsigned** until you add signing secrets (see the comments in the w
 
 ## Roadmap
 
-- Undo / checkpoints per turn
 - OAuth sign-in for remote MCP servers
 - Hooks
 - Sandboxed shell

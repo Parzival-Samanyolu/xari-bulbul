@@ -43,9 +43,9 @@ mac:
   x64ArchFiles: '**/node_modules/node-pty/prebuilds/darwin-*/*'
   # Only the display name may be non-ASCII: Electron finds its helper apps via CFBundleName.
   extendInfo:
-    CFBundleDisplayName: Xarı Bülbül
+    CFBundleDisplayName: Xarı
     # Shown when voice input first asks for the microphone.
-    NSMicrophoneUsageDescription: Xarı Bülbül uses the microphone when you dictate a message.
+    NSMicrophoneUsageDescription: Xarı uses the microphone when you dictate a message.
   target:
     - target: dmg
       arch: [universal]
@@ -70,7 +70,7 @@ win:
       arch: [x64]
 nsis:
   differentialPackage: false
-  shortcutName: Xarı Bülbül
+  shortcutName: Xarı
   oneClick: false
   allowToChangeInstallationDirectory: true
 linux:
@@ -79,14 +79,14 @@ linux:
     - '!**/node_modules/node-pty/prebuilds/**'
   # AppImage runs on every distro and updates itself; packaging/arch/PKGBUILD repackages it for Arch.
   target: [AppImage]
-  maintainer: Xarı Bülbül contributors
+  maintainer: Xarı contributors
   # Used for the .desktop file and the package name on Linux (must be lowercase ASCII).
   executableName: xari-bulbul
   synopsis: AI coding agent for your desktop
-  description: Xarı Bülbül is a desktop AI coding agent that works with OpenRouter, Ollama and any OpenAI-compatible provider.
+  description: Xarı is a desktop AI coding agent that works with OpenRouter, Ollama and any OpenAI-compatible provider.
   desktop:
     entry:
-      Name: Xarı Bülbül
+      Name: Xarı
       StartupWMClass: Xari Bulbul
 # Publishing (GitHub Releases + auto-update feed) is configured by the release workflow,
 # where GitHub provides the repository. Local builds (`pnpm dist`) never publish.

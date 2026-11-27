@@ -1,3 +1,4 @@
+import { EDITION } from '../shared/edition'
 import { app, Menu, shell, type MenuItemConstructorOptions } from 'electron'
 import { makeT, resolveLang, type Lang, type Vars } from '@harness/core/i18n'
 import { CATALOGS, type MessageKey } from '../shared/i18n/catalog'

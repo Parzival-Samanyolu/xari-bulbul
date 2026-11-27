@@ -5,7 +5,7 @@ import type { Settings } from '../../../shared/ipc'
 // "Mod+Alt+B": Mod is ⌘ on macOS and Ctrl elsewhere; the key comes from the physical key, so
 // Option on a Mac (which changes the typed character) still matches.
 
-export type ShortcutId = 'modelPicker' | 'settings' | 'newChat' | 'terminal' | 'filesPanel'
+export type ShortcutId = 'modelPicker' | 'settings' | 'newChat' | 'terminal' | 'filesPanel' | 'undoTurn'
 
 /** Names and help texts are `settings.shortcuts.<id>` and `settings.shortcuts.<id>Help`. */
 export const SHORTCUTS: { id: ShortcutId; combo: string }[] = [
@@ -14,6 +14,8 @@ export const SHORTCUTS: { id: ShortcutId; combo: string }[] = [
   { id: 'newChat', combo: 'Mod+N' },
   { id: 'terminal', combo: 'Mod+J' },
   { id: 'filesPanel', combo: 'Mod+Alt+B' },
+  // Mod+Z stays the text box's own undo.
+  { id: 'undoTurn', combo: 'Mod+Alt+Z' },
 ]
 
 /** Shortcuts that can't be changed, listed for reference. */

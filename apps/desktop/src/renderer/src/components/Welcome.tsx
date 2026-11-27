@@ -2,8 +2,9 @@ import { useState } from 'react'
 import type { AppState } from '../../../shared/ipc'
 import { api } from '../lib/api'
 import { useT } from '../lib/i18n'
-import mark from '../assets/mark.png'
+import { mark } from '../lib/mark'
 import { PluginDialog } from './PluginDialog'
+import { EDITION } from '../../../shared/edition'
 
 interface Props {
   app: AppState
@@ -15,7 +16,8 @@ interface Props {
 export function Welcome({ app, onState, onError, onSettings }: Props) {
   const { t } = useT()
   const connected = Object.values(app.ready).some(Boolean)
-  const hasFolder = !!app.workspace
+  const coding = EDITION.features.coding
+  const hasFolder = !!app.workspace || !coding
   // The first unfinished step carries the primary action.
   const next = !connected ? 'connect' : !hasFolder ? 'folder' : null
   const recents = app.settings.app.recentWorkspaces.filter((w) => w !== app.workspace)
@@ -32,7 +34,7 @@ export function Welcome({ app, onState, onError, onSettings }: Props) {
   return (
     <div className="welcome">
       <img className="welcome-mark" src={mark} alt="" width={96} height={76} />
-      <h1>Xarı Bülbül</h1>
+      <h1>{EDITION.name}</h1>
       <p className="muted">{t('bots.welcome.tagline')}</p>
       <ol className="steps">
         <li className={connected ? 'done' : ''}>
@@ -48,6 +50,7 @@ export function Welcome({ app, onState, onError, onSettings }: Props) {
             {connected ? t('bots.welcome.manage') : t('bots.welcome.connectButton')}
           </button>
         </li>
+        {coding && (
         <li className={hasFolder ? 'done' : ''}>
           <div>
             <b>{t('bots.welcome.openProject')}</b>
@@ -57,8 +60,10 @@ export function Welcome({ app, onState, onError, onSettings }: Props) {
             {hasFolder ? t('bots.welcome.changeFolder') : t('bots.sidebar.openFolder')}
           </button>
         </li>
+        )}
       </ol>
-      {suggestions.map((p) => (
+      {!coding && <p className="muted small">{t('bots.welcome.pickBot')}</p>}
+      {coding && suggestions.map((p) => (
         <section key={p.id} className="plugin-suggestion" aria-label={t('bots.welcome.pluginLabel', { name: p.name })}>
           <div>
             <b>{t('bots.welcome.pluginFound', { name: p.name })}</b>
@@ -75,7 +80,7 @@ export function Welcome({ app, onState, onError, onSettings }: Props) {
         </section>
       ))}
       {dialogPlugin && <PluginDialog plugin={dialogPlugin} workspace={app.workspace} onClose={() => setInstalling(null)} onState={onState} />}
-      {recents.length > 0 && (
+      {coding && recents.length > 0 && (
         <div className="recents">
           <div className="muted small">{t('bots.welcome.recent')}</div>
           {recents.map((w) => (

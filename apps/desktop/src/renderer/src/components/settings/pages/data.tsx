@@ -10,6 +10,7 @@ import { PluginDialog, includesText } from '../../PluginDialog'
 import type { PageProps } from '../common'
 import { toolToggle } from './advanced'
 import { rich } from '../../../lib/rich'
+import { EDITION } from '../../../../../shared/edition'
 
 type T = ReturnType<typeof useT>['t']
 
@@ -312,7 +313,7 @@ export function VersionPage({ app, save, update }: PageProps) {
   const { t } = useT()
   return (
     <Section>
-      <Row label={t('settings.data.version')} search="Version" hint={updateText(t, update) || `Xarı Bülbül ${app.version}`}>
+      <Row label={t('settings.data.version')} search="Version" hint={updateText(t, update) || `${EDITION.name} ${app.version}`}>
         <div className="inline">
           <span className="mono">{app.version}</span>
           {update.state === 'manual' && (

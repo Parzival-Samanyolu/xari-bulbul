@@ -46,11 +46,11 @@ export default {
   'chat.notice.fixAgent': 'Открыть лимиты агента',
   'chat.empty.title': 'Что создадим?',
   'chat.empty.intro':
-    'Xarı Bülbül может читать, искать, редактировать и запускать код в {folder}. Перед любыми изменениями он спрашивает, если ниже не выбран другой режим разрешений.',
+    'Xarı может читать, искать, редактировать и запускать код в {folder}. Перед любыми изменениями он спрашивает, если ниже не выбран другой режим разрешений.',
   'chat.empty.tipModel': 'сменить модель',
   'chat.empty.tipCommands': 'команды',
   'chat.empty.tipStop': 'остановить',
-  'chat.empty.agentsMd': 'Добавьте в проект файл {file}: Xarı Bülbül всегда будет следовать инструкциям из него.',
+  'chat.empty.agentsMd': 'Добавьте в проект файл {file}: Xarı всегда будет следовать инструкциям из него.',
   'chat.empty.commands': 'Ваши команды: {list}',
   'chat.revert.changedOne': 'Изменён файл {name}',
   'chat.revert.changedMany': {
@@ -59,16 +59,16 @@ export default {
     many: 'Изменено {count} файлов',
     other: 'Изменено {count} файла',
   },
-  'chat.revert.confirmOne': 'Вернуть {name} к состоянию до этого запроса? Изменения, сделанные командами оболочки, не отменяются.',
-  'chat.revert.confirmMany': {
-    one: 'Вернуть {count} файл к состоянию до этого запроса? Изменения, сделанные командами оболочки, не отменяются.',
-    few: 'Вернуть {count} файла к состоянию до этого запроса? Изменения, сделанные командами оболочки, не отменяются.',
-    many: 'Вернуть {count} файлов к состоянию до этого запроса? Изменения, сделанные командами оболочки, не отменяются.',
-    other: 'Вернуть {count} файла к состоянию до этого запроса? Изменения, сделанные командами оболочки, не отменяются.',
-  },
   'chat.revert.confirmFile': 'Вернуть {name} к состоянию до этого запроса?',
-  'chat.revert.button': 'Откатить изменения',
   'chat.revert.file': 'Откатить этот файл',
+  'chat.undo.button': 'Отменить изменения',
+  'chat.undo.undone': { one: 'Отменено: восстановлен {count} файл', few: 'Отменено: восстановлено {count} файла', many: 'Отменено: восстановлено {count} файлов', other: 'Отменено: восстановлено {count} файла' },
+  'chat.undo.title': 'Отменить изменения этого запроса?',
+  'chat.undo.intro': { one: '{count} файл вернётся к состоянию до запроса:', few: '{count} файла вернутся к состоянию до запроса:', many: '{count} файлов вернутся к состоянию до запроса:', other: '{count} файла вернутся к состоянию до запроса:' },
+  'chat.undo.shell': 'Изменения, сделанные командами оболочки, не отменяются.',
+  'chat.undo.done': { one: 'Восстановлен {count} файл', few: 'Восстановлено {count} файла', many: 'Восстановлено {count} файлов', other: 'Восстановлено {count} файла' },
+  'chat.undo.nothing': 'Отменять нечего: в этом чате ещё не менялись файлы.',
+  'chat.undo.wait': 'Дождитесь завершения запроса или остановите его, прежде чем отменять изменения.',
   'chat.user.summary': 'Предыдущий разговор (сводка)',
   'chat.user.review': 'Перед завершением проверены незаконченные шаги',
   'chat.user.lines': { one: '{count} строка', few: '{count} строки', many: '{count} строк', other: '{count} строки' },
@@ -125,6 +125,7 @@ export default {
   'chat.slash.clear': 'Начать новый чат',
   'chat.slash.model': 'Открыть выбор модели',
   'chat.slash.mode': 'Переключить режим разрешений',
+  'chat.slash.undo': 'Вернуть файлы, изменённые последним запросом',
   'chat.slash.skillBadge': 'навык',
   'chat.composer.message': 'Сообщение',
   'chat.composer.lobbyRunning': 'Вмешайтесь или нажмите Esc, чтобы остановить их',
@@ -132,7 +133,7 @@ export default {
   'chat.composer.lobbyIdleUnnamed': 'Сообщение в групповой чат. Напишите @имя, чтобы сначала спросить конкретного бота',
   'chat.composer.working': 'Работает… (Esc — остановить)',
   'chat.composer.messageBot': 'Сообщение для {name}',
-  'chat.composer.placeholder': 'Попросите Xarı Bülbül что-нибудь сделать… (/ — команды)',
+  'chat.composer.placeholder': 'Попросите Xarı что-нибудь сделать… (/ — команды)',
   'chat.composer.attach': 'Прикрепить файлы',
   'chat.composer.attachTitle': 'Прикрепить файлы (или перетащите и вставьте их)',
   'chat.composer.switchModel': 'Сменить модель ({key})',
@@ -287,7 +288,7 @@ export default {
   'chat.statusbar.files': 'Файлы',
 
   // Loading.tsx
-  'chat.loading.failed': 'Не удалось запустить Xarı Bülbül.',
+  'chat.loading.failed': 'Не удалось запустить Xarı.',
   'chat.loading.waking': 'Просыпается',
 
   // LayoutPicker.tsx
@@ -341,5 +342,8 @@ export default {
   'chat.changes.wait': 'Дождитесь завершения запроса',
   'chat.changes.restoreTitle': 'Восстановить файл в состоянии до этого чата',
   'chat.changes.revert': 'Откатить',
+  'chat.changes.byTurn': 'По запросам',
+  'chat.changes.byFile': 'По файлам',
+  'chat.changes.earlierTurn': 'Предыдущий запрос',
   'chat.chatgpt.usingPlan': 'Используется план ChatGPT',
 } satisfies Record<keyof typeof en, Message>

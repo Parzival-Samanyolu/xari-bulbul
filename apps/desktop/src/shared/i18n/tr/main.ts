@@ -2,12 +2,12 @@ import type { Message } from '@harness/core/i18n'
 import type en from '../en/main'
 
 export default {
-  'main.menu.about': 'Xarı Bülbül hakkında',
+  'main.menu.about': 'Xarı hakkında',
   'main.menu.services': 'Hizmetler',
-  'main.menu.hide': "Xarı Bülbül'ü gizle",
+  'main.menu.hide': "Xarı'yı gizle",
   'main.menu.hideOthers': 'Diğerlerini gizle',
   'main.menu.showAll': 'Tümünü göster',
-  'main.menu.quit': "Xarı Bülbül'den çık",
+  'main.menu.quit': "Xarı'dan çık",
   'main.menu.file': 'Dosya',
   'main.menu.closeWindow': 'Pencereyi kapat',
   'main.menu.edit': 'Düzen',
@@ -35,7 +35,7 @@ export default {
   'main.menu.zoom': 'Pencereyi büyüt',
   'main.menu.front': 'Tümünü öne getir',
   'main.menu.help': 'Yardım',
-  'main.menu.github': "GitHub'da Xarı Bülbül",
+  'main.menu.github': "GitHub'da Xarı",
   'main.dialog.openProject': 'Proje klasörünü aç',
   'main.dialog.attachFiles': 'Dosya ekle',
   'main.dialog.scheduleFolder': 'Bu zamanlama için klasör',
@@ -53,6 +53,8 @@ export default {
   'main.error.accountName': 'Hesaba bir ad verin.',
   'main.error.accountKey': 'Hesabın API anahtarını yapıştırın.',
   'main.error.accountGone': 'Bu hesap artık yok.',
+  'main.error.nothingToUndo': 'Geri alınacak bir şey yok: bu sohbette henüz hiçbir dosya değişmedi.',
+  'main.error.undoWhileRunning': 'Geri almadan önce isteğin bitmesini bekleyin veya onu durdurun.',
   'main.error.lastAccount': 'Bir sağlayıcıda en az bir hesap kalmalı. Bunun yerine anahtarını kaldırın.',
   'main.error.noRecording': 'Kayıt alınmadı.',
   'main.error.voiceOff': 'Sesli giriş Ayarlar › Ajan › Sesli giriş bölümünde kapalı.',
@@ -103,7 +105,7 @@ export default {
   'main.error.avatarTooLarge': 'Bu avatar çok büyük.',
   'main.error.absolutePath': 'Mutlak bir yol bekleniyordu.',
   'main.error.outsideFolders': 'Bu yol açık klasörlerin dışında.',
-  'main.error.micOff': 'Mikrofon erişimi kapalı. Sistem Ayarları → Gizlilik ve Güvenlik → Mikrofon bölümünden Xarı Bülbül için açın.',
+  'main.error.micOff': 'Mikrofon erişimi kapalı. Sistem Ayarları → Gizlilik ve Güvenlik → Mikrofon bölümünden Xarı için açın.',
   'main.test.off': 'Bu sağlayıcı kapalı.',
   'main.test.noKey': 'API anahtarı ayarlanmamış.',
   'main.test.keyAccepted': {

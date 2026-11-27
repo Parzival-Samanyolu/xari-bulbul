@@ -1,0 +1,48 @@
+# Example: fix failing tests on demand and open a pull request with the result.
+# Copy to .github/workflows/xari-fix-tests.yml in YOUR repository (it lives under docs/ here so it never runs).
+name: Xarı fix tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      test-command:
+        description: Command that runs the tests
+        default: npm test
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - uses: Parzival-Samanyolu/xari-bulbul/.github/actions/xari@main # pin a tag or commit in real use
+        with:
+          api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          model: anthropic/claude-sonnet-4.5
+          # acceptEdits can change files but not run commands. Use `auto` only if the agent must run
+          # the tests itself, and only in a repository where that is acceptable.
+          mode: acceptEdits
+          max-steps: '40'
+          prompt: |
+            The command `${{ inputs.test-command }}` fails. Read the failing tests and the code they
+            cover, find the cause and fix the code (not the tests, unless a test is wrong). Keep the
+            change small. Finish with a short explanation of what was wrong.
+
+      # Edits are left in the working tree; this turns them into a pull request.
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          branch: xari/fix-tests
+          commit-message: 'fix: make the tests pass (Xarı)'
+          title: 'Fix failing tests (Xarı)'
+          body: |
+            Proposed by the Xarı action. Review the diff before merging; the run log has the explanation.

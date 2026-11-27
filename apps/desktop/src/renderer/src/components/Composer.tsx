@@ -33,7 +33,7 @@ let attachId = 0
 const IMAGE = /^image\/(png|jpeg|gif|webp)$/
 
 /** Descriptions of the built-in slash commands (main sends them in English). */
-const BUILTIN_DESCRIPTIONS = { compact: 'chat.slash.compact', clear: 'chat.slash.clear', model: 'chat.slash.model', mode: 'chat.slash.mode' } as const
+const BUILTIN_DESCRIPTIONS = { compact: 'chat.slash.compact', clear: 'chat.slash.clear', model: 'chat.slash.model', mode: 'chat.slash.mode', undo: 'chat.slash.undo' } as const
 
 function readAsDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -64,9 +64,11 @@ interface Props {
   onState: (s: AppState) => void
   onError: (e: unknown) => void
   onOpenPicker: () => void
+  /** Undoes the latest turn that changed files (/undo), after asking. */
+  onUndo: () => void
 }
 
-export function Composer({ app, onState, onError, onOpenPicker }: Props) {
+export function Composer({ app, onState, onError, onOpenPicker, onUndo }: Props) {
   const { t } = useT()
   const fmt = useFormat()
   const MODE_LIST = modes(t)
@@ -183,6 +185,13 @@ export function Composer({ app, onState, onError, onOpenPicker }: Props) {
         onError(e)
       })
       return
+    }
+    // /undo answers even while a turn runs (it says to wait).
+    if (msg === '/undo' && !attachments.length) {
+      setHistory((h) => [msg, ...h.filter((x) => x !== msg)].slice(0, 50))
+      setHIdx(-1)
+      setText('')
+      return onUndo()
     }
     if ((!msg && !attachments.length) || app.running) return
     if (attachments.length) {

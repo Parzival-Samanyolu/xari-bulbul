@@ -147,7 +147,7 @@ export default {
   'settings.notes.vault': 'Vault folder',
   'settings.notes.vaultHint': 'The folder with your Markdown notes. The .obsidian folder is skipped.',
   'settings.notes.appleFolder': 'Folder',
-  'settings.notes.appleHint': 'Leave empty to read all folders. The first time, macOS asks whether Xarı Bülbül may control Notes.',
+  'settings.notes.appleHint': 'Leave empty to read all folders. The first time, macOS asks whether Xarı may control Notes.',
   'settings.notes.allFolders': 'All folders',
   'settings.notes.notionToken': 'Integration token',
   'settings.notes.notionHint': 'Create an internal integration, paste its token here, then share the pages you want read with it (••• › Connections).',

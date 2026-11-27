@@ -2,12 +2,12 @@ import type { Message } from '@harness/core/i18n'
 import type en from '../en/main'
 
 export default {
-  'main.menu.about': 'О программе Xarı Bülbül',
+  'main.menu.about': 'О программе Xarı',
   'main.menu.services': 'Службы',
-  'main.menu.hide': 'Скрыть Xarı Bülbül',
+  'main.menu.hide': 'Скрыть Xarı',
   'main.menu.hideOthers': 'Скрыть остальные',
   'main.menu.showAll': 'Показать все',
-  'main.menu.quit': 'Завершить Xarı Bülbül',
+  'main.menu.quit': 'Завершить Xarı',
   'main.menu.file': 'Файл',
   'main.menu.closeWindow': 'Закрыть окно',
   'main.menu.edit': 'Правка',
@@ -35,7 +35,7 @@ export default {
   'main.menu.zoom': 'Изменить масштаб',
   'main.menu.front': 'Все окна — на передний план',
   'main.menu.help': 'Справка',
-  'main.menu.github': 'Xarı Bülbül на GitHub',
+  'main.menu.github': 'Xarı на GitHub',
   'main.dialog.openProject': 'Открыть папку проекта',
   'main.dialog.attachFiles': 'Прикрепить файлы',
   'main.dialog.scheduleFolder': 'Папка для этого расписания',
@@ -53,6 +53,8 @@ export default {
   'main.error.accountName': 'Дайте аккаунту название.',
   'main.error.accountKey': 'Вставьте API-ключ аккаунта.',
   'main.error.accountGone': 'Этого аккаунта больше нет.',
+  'main.error.nothingToUndo': 'Отменять нечего: в этом чате ещё не менялись файлы.',
+  'main.error.undoWhileRunning': 'Дождитесь завершения запроса или остановите его, прежде чем отменять изменения.',
   'main.error.lastAccount': 'У провайдера должен остаться хотя бы один аккаунт. Вместо этого удалите его ключ.',
   'main.error.noRecording': 'Запись не получена.',
   'main.error.voiceOff': 'Голосовой ввод выключен в разделе Настройки › Агент › Голосовой ввод.',
@@ -108,7 +110,7 @@ export default {
   'main.error.avatarTooLarge': 'Этот аватар слишком большой.',
   'main.error.absolutePath': 'Ожидался абсолютный путь.',
   'main.error.outsideFolders': 'Этот путь находится за пределами открытых папок.',
-  'main.error.micOff': 'Доступ к микрофону выключен. Включите его для Xarı Bülbül в разделе Системные настройки → Конфиденциальность и безопасность → Микрофон.',
+  'main.error.micOff': 'Доступ к микрофону выключен. Включите его для Xarı в разделе Системные настройки → Конфиденциальность и безопасность → Микрофон.',
   'main.test.off': 'Этот провайдер выключен.',
   'main.test.noKey': 'API-ключ не задан.',
   'main.test.keyAccepted': {

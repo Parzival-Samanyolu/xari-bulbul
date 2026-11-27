@@ -2108,6 +2108,8 @@ button.sb-item:hover {
 .welcome-mark {
   display: block;
   margin: 0 0 14px -4px;
+  /* Each app's mark has its own shape; keep it whole inside the same box. */
+  object-fit: contain;
 }
 
 /* ---------- providers ---------- */
@@ -2445,6 +2447,33 @@ button.sb-item:hover {
   justify-content: flex-end;
   gap: 8px;
   margin-top: -4px;
+}
+.revert-bar .undo-turn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.undo-dialog {
+  width: min(560px, 92vw);
+}
+.undo-intro {
+  margin: 0 0 6px;
+}
+.undo-files {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 6px 10px;
+  max-height: 40vh;
+  overflow-y: auto;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.undo-files li {
+  padding: 2px 0;
+  font-size: 0.92em;
+}
+.undo-actions {
+  justify-content: flex-end;
 }
 .tool-actions {
   display: flex;
@@ -2817,6 +2846,22 @@ body.resizing * {
 }
 .changes {
   overflow-y: auto;
+}
+.changes-sub {
+  margin: 0;
+  padding: 8px 12px 4px;
+  font-size: 0.8em;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: none;
+}
+.turn-row .change-row {
+  padding: 2px 8px 2px 12px;
+  min-height: 30px;
+}
+.turn-text {
+  flex: 1;
+  min-width: 0;
 }
 .change {
   border-bottom: 1px solid var(--border);
@@ -4707,6 +4752,7 @@ body.resizing * {
 }
 .loading-mark {
   opacity: 0.9;
+  object-fit: contain;
 }
 .loading.shown {
   animation: so-fade 0.3s ease-out;

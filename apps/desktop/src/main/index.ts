@@ -6,6 +6,7 @@ import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, Notification, p
 import { Telemetry, defaultScrubContext, telemetryUrl } from '@harness/core'
 import { IPC_EVENT, type RendererError, type TrackEvent, type UiEvent } from '../shared/ipc'
 import { encodeAppError } from '../shared/app-error'
+import { EDITION } from '../shared/edition'
 import { AppController, type BackgroundNotice } from './controller'
 import { AppError, buildAppMenu, setMainLanguage, tm } from './i18n'
 import { errText, log } from './logger'
@@ -189,7 +190,7 @@ function createWindow() {
     minWidth: 820,
     minHeight: 560,
     show: false,
-    title: 'Xarı Bülbül',
+    title: EDITION.name,
     backgroundColor: windowBackground(),
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     webPreferences: {
@@ -310,6 +311,7 @@ function registerIpc() {
   handle('agent.answer', (sessionId, id, text) => c.answer(sessionId, id, text))
   handle('agent.retry', () => c.retry())
   handle('agent.revert', (at, file) => c.revert(at, file))
+  handle('agent.undo', (at?: number) => c.undo(at))
   handle('agent.editMessage', (index, text, revert) => c.editMessage(index, text, revert))
   handle('fs.tree', (dir: string) => c.listDir(dir))
   handle('fs.read', (file: string) => c.readFile(file))
@@ -443,7 +445,10 @@ function registerIpc() {
   handle('monitor.sample', () => sampleResources(c.knownProcesses()))
 }
 
-app.setName('Xarı Bülbül')
+// The name is display only. userData is set explicitly to <appData>/<dataDirName> (what the old name
+// gave: Electron's default is appData + app name), so renaming the app never moves anyone's data.
+app.setName(EDITION.name)
+app.setPath('userData', path.join(app.getPath('appData'), EDITION.dataDirName))
 // Windows attributes notifications and taskbar grouping to this id (the installer's appId).
 if (process.platform === 'win32') app.setAppUserModelId('dev.xaribulbul.app')
 // Separate profile for development/testing: HARNESS_DATA_DIR=/tmp/harness pnpm dev. Set before the
@@ -476,7 +481,7 @@ app.commandLine.appendSwitch('force-gpu-mem-discardable-limit-mb', '32')
 
 app.whenReady().then(async () => {
   log.init(app.getPath('userData'))
-  log.info('app', `Started Xarı Bülbül ${app.getVersion()}`, { platform: process.platform, arch: process.arch, os: process.getSystemVersion?.() ?? os.release(), electron: process.versions.electron, packaged: app.isPackaged })
+  log.info('app', `Started ${EDITION.name} ${app.getVersion()}`, { edition: EDITION.id, platform: process.platform, arch: process.arch, os: process.getSystemVersion?.() ?? os.release(), electron: process.versions.electron, packaged: app.isPackaged })
   loadShellPath()
   // Windows/Linux: Electron's default menu binds Ctrl+R, Ctrl+W, Ctrl+Shift+I and others, which the
   // terminal and composer need, so packaged builds drop it; text fields keep their editing keys

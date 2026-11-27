@@ -22,6 +22,7 @@ import {
   type Schedule,
   type Settings,
 } from '@harness/core'
+import { EDITION } from '../shared/edition'
 import { log } from './logger'
 
 export interface AutomationDeps {
@@ -79,6 +80,7 @@ export class Automations {
 
   /** Enabled accounts with a saved password; for an automation, only the ones it lists (none listed = all). */
   accounts(only: readonly string[] = []): MailAccount[] {
+    if (!EDITION.features.mail) return []
     return this.d.settings().mail.accounts.filter((a) => a.enabled && a.address.trim() && this.d.secret(mailSecretId(a.id)) && (!only.length || only.includes(a.id)))
   }
 
@@ -138,6 +140,7 @@ export class Automations {
   }
 
   notesFor(schedule: Schedule | null): NotesAccess | undefined {
+    if (!EDITION.features.mail) return undefined
     const only = schedule?.notes ?? []
     const sources = this.d.settings().notes.sources.filter((s) => s.enabled && (!only.length || only.includes(s.id)))
     if (!sources.length) return undefined

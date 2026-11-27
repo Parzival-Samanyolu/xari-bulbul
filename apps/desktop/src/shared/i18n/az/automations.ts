@@ -147,7 +147,7 @@ export default {
   'settings.notes.vault': 'Vault qovluğu',
   'settings.notes.vaultHint': 'Markdown qeydlərinizin olduğu qovluq. .obsidian qovluğu keçilir.',
   'settings.notes.appleFolder': 'Qovluq',
-  'settings.notes.appleHint': 'Bütün qovluqları oxumaq üçün boş saxlayın. İlk dəfə macOS Xarı Bülbül-ün Notes-u idarə etməsinə icazə verib-verməyəcəyinizi soruşur.',
+  'settings.notes.appleHint': 'Bütün qovluqları oxumaq üçün boş saxlayın. İlk dəfə macOS Xarı-nın Notes-u idarə etməsinə icazə verib-verməyəcəyinizi soruşur.',
   'settings.notes.allFolders': 'Bütün qovluqlar',
   'settings.notes.notionToken': 'İnteqrasiya tokeni',
   'settings.notes.notionHint': 'Daxili inteqrasiya yaradın, tokenini bura yapışdırın, sonra oxunmasını istədiyiniz səhifələri onunla paylaşın (••• › Connections).',

@@ -2,7 +2,11 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './App'
 import { api } from './lib/api'
+import { EDITION } from '../../shared/edition'
 import './styles.css'
+
+// index.html is shared by both apps; the window title follows this build's app.
+document.title = EDITION.name
 
 // Uncaught errors go to main for share info, which scrubs them and sends nothing while it's off.
 const report = (kind: 'error' | 'rejection' | 'crash', e: unknown) => {

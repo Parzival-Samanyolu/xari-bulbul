@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { AppState, PermissionMode, ProviderTestResult, Settings } from '../../../shared/ipc'
 import { api } from '../lib/api'
 import { useT } from '../lib/i18n'
-import mark from '../assets/mark.png'
+import { mark } from '../lib/mark'
 import { Toggle } from './fields'
 import { LayoutPicker, withLayout } from './LayoutPicker'
 import { PROFILE_EXPERIENCE, PROFILE_ROLES, PROFILE_USES, ShareInfoText, experienceLabels, languageOptions, purposeLabels, roleLabels } from './profile'
@@ -10,6 +10,7 @@ import { ProviderLogo } from './ProviderLogo'
 import { ChatGptConnect } from './ChatGpt'
 import { KEY_LINKS, ModelChoice, SecretInput, refText } from './settings/common'
 import { errorText as clean } from '../lib/errors'
+import { EDITION } from '../../../shared/edition'
 
 // First run: a welcome screen, then four short steps. Every answer is saved as it's given, so
 // quitting halfway keeps what was chosen. Setup ends with `app.onboarded`, set on Done.
@@ -102,7 +103,7 @@ export function Onboarding({ app, onState, onError }: Props) {
         <div className="onboard-drag" />
         <div className="onboard-hello">
           <img className="welcome-mark" src={mark} alt="" width={96} height={76} />
-          <h1>Xarı Bülbül</h1>
+          <h1>{EDITION.name}</h1>
           <p className="muted">{t('bots.welcome.tagline')}</p>
           <button className="btn primary onboard-start" autoFocus onClick={() => setStarted(true)}>
             {t('bots.onboard.start')}

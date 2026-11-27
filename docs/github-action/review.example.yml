@@ -1,0 +1,46 @@
+# Example: Xarı reviews every pull request and keeps one comment up to date.
+# Copy to .github/workflows/xari-review.yml in YOUR repository (it lives under docs/ here so it never runs).
+name: Xarı review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write # only for the comment
+
+jobs:
+  review:
+    # Fork PRs get no secrets, so skip them instead of failing.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # the diff needs the base branch's history
+
+      - name: Collect the diff
+        id: diff
+        run: |
+          {
+            echo 'text<<XARI_DIFF_EOF'
+            git diff "origin/${{ github.base_ref }}...HEAD" | head -c 120000
+            echo
+            echo 'XARI_DIFF_EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: Parzival-Samanyolu/xari-bulbul/.github/actions/xari@main # pin a tag or commit in real use
+        with:
+          api-key: ${{ secrets.OPENROUTER_API_KEY }}
+          model: anthropic/claude-sonnet-4.5
+          mode: plan # read-only
+          comment-on-pr: 'true'
+          prompt: |
+            Review this pull request. The repository is checked out in the current folder, so you may read
+            files for context. Report bugs, risky changes and missing tests, most important first, with
+            file names. Say so briefly if it looks fine. Do not restate the diff.
+
+            Diff against ${{ github.base_ref }}:
+
+            ${{ steps.diff.outputs.text }}

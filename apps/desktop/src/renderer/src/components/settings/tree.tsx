@@ -3,6 +3,7 @@ import { makeT, type Lang } from '@harness/core/i18n'
 import { CATALOGS, searchText, type MessageKey } from '../../../../shared/i18n/catalog'
 import type { Settings } from '../../../../shared/ipc'
 import { SHORTCUTS } from '../../lib/shortcuts'
+import { EDITION } from '../../../../shared/edition'
 import type { PageProps } from './common'
 import type { IconName } from './icons'
 import { DesktopPage, LimitsPage, OutputPage, TerminalPage, ToolAccessPage } from './pages/advanced'
@@ -538,7 +539,10 @@ export const TABS: TabDef[] = [
   },
 ]
 
-const shown = (p: PageDef, s?: Settings) => !p.hidden && (!s || !p.when || p.when(s))
+/** Sections this build leaves out (see shared/edition.ts). */
+const OFF_HERE = new Set(EDITION.hiddenSettings)
+
+const shown = (p: PageDef, s?: Settings) => !p.hidden && !OFF_HERE.has(p.id) && (!s || !p.when || p.when(s))
 
 /** The tabs with only the sections shown with `s` (tabs left empty by that are dropped). */
 export function visibleTabs(s?: Settings): TabDef[] {

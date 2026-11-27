@@ -5,6 +5,7 @@ import { api } from '../lib/api'
 import { useFormat, useT } from '../lib/i18n'
 import { BotFaceView } from './BotFace'
 import { BotAvatar, StackedFaces, withBot } from './Bots'
+import { EDITION } from '../../../shared/edition'
 
 type Bot = Settings['bots'][number]
 
@@ -152,7 +153,7 @@ export function BotsPanel({ app, onState, onError, onEditBot, onEditLobby, onCha
             })}
           </ul>
         )}
-        {bots.length > 0 && !app.workspace && <p className="muted small pad">{t('bots.panel.noFolder')}</p>}
+        {EDITION.features.coding && bots.length > 0 && !app.workspace && <p className="muted small pad">{t('bots.panel.noFolder')}</p>}
         {bots.length > 0 && <LobbiesSection app={app} onState={onState} onError={onError} onEditLobby={onEditLobby} onChat={onChat} settingsOpen={settingsOpen} />}
       </div>
 

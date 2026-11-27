@@ -1,0 +1,44 @@
+# Builds the xari CLI (one file, dist/xari.mjs) and publishes it as a rolling release, so servers can
+# download it instead of building: `cli-latest` for main, `cli-<branch>` for other branches.
+# apps/cli/install.sh downloads from these releases.
+name: CLI build
+
+on:
+  push:
+    branches: [main, 'claude/**']
+    paths: ['apps/cli/**', 'packages/core/**', 'pnpm-lock.yaml', '.github/workflows/cli.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cli-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --filter "@harness/cli..."
+      - run: pnpm --filter @harness/cli test
+      - run: pnpm build:cli
+      - name: Publish the rolling release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ref="${GITHUB_REF_NAME}"
+          if [ "$ref" = main ]; then tag=cli-latest; else tag="cli-$(echo "$ref" | tr '/' '-' | tr -cd 'A-Za-z0-9._-')"; fi
+          cd apps/cli/dist
+          sha256sum xari.mjs > xari.mjs.sha256
+          version=$(node xari.mjs --version)
+          notes="xari ${version}, built from ${ref} at ${GITHUB_SHA::7}. Install on a server: see apps/cli/install.sh."
+          # Move the tag to this commit and replace the files, so the download link never changes.
+          gh release delete "$tag" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$tag" xari.mjs xari.mjs.sha256 --target "$GITHUB_SHA" --title "xari CLI (${ref})" --notes "$notes" --prerelease
