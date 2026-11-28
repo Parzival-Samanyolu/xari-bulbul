@@ -50,7 +50,7 @@ module.exports = app
   fs.writeFileSync(path.join(data, 'settings.json'), JSON.stringify(settings))
   const mock = startMock(PORT, edition === 'bots' ? 'bot' : 'code')
   await sleep(800)
-  const app = await _electron.launch({ executablePath: electronBin, args: [path.join(root, 'apps/desktop'), '--no-sandbox'], env: { ...process.env, HOME: work, HARNESS_DATA_DIR: data, HARNESS_TELEMETRY: 'off' } })
+  const app = await _electron.launch({ executablePath: electronBin, args: [path.join(root, 'apps/desktop'), '--no-sandbox'], env: { ...process.env, HOME: work, HARNESS_DATA_DIR: data, XB_TELEMETRY: '0' } })
   const win = await app.firstWindow()
   await win.setViewportSize({ width: 1200, height: 760 })
   await win.waitForTimeout(3500)
